@@ -77,12 +77,12 @@ mod tests {
     }
 
     #[test]
-    fn account_id_must_be_a_valid_ed25519_public_key() {
+    fn signature_is_bound_to_the_sender_public_key() {
         let (_, mut tx) = signed_transaction();
-        tx.sender = AccountId([0xff; 32]);
+        tx.sender = AccountId(SigningKey::from_bytes(&[9; 32]).verifying_key().to_bytes());
         assert_eq!(
             verify_account_transaction(&tx),
-            Err(SignatureError::InvalidPublicKey)
+            Err(SignatureError::InvalidSignature)
         );
     }
 }
