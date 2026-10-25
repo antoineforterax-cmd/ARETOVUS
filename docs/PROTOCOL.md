@@ -6,7 +6,7 @@ Ce document décrit l’implémentation actuelle. Les questions de recherche, me
 
 ## Profil transaction/état
 
-- Un compte est la clé publique Ed25519 brute de 32 octets. La signature est de 64 octets et porte sur l’empreinte canonique versionnée, réseau, expéditeur, nonce, destinataire, montant et frais.
+- En v1, un compte est la clé publique Ed25519 brute de 32 octets. Le profil v2 optionnel exige Ed25519 et ML-DSA-65; l’identifiant engage les deux clés et les deux signatures autorisent le même digest. La signature est de 64 octets et porte sur l’empreinte canonique versionnée, réseau, expéditeur, nonce, destinataire, montant et frais.
 - Les montants sont des entiers non signés à 8 décimales. Encodage réseau big-endian et décodage canonique; formats incorrects, données excédentaires et dépassements sont rejetés.
 - Une transaction débite montant + frais, exige la signature exacte et le prochain nonce. Le lot de transactions est appliqué atomiquement.
 - Le bloc engage la liste ordonnée des identifiants de transactions et l’identité de mineur. Ce n’est pas un arbre de Merkle.
@@ -15,7 +15,7 @@ Ce document décrit l’implémentation actuelle. Les questions de recherche, me
 
 L’en-tête version 0 porte l’identifiant réseau, le hash parent, l’engagement du bloc, l’horodatage et le nonce. Le hash SHA-256 de l’encodage canonique doit commencer par le nombre requis de bits nuls. Le bloc doit avoir un horodatage strictement supérieur à la médiane des onze ancêtres disponibles.
 
-Le retarget se fait à chaque intervalle configuré, sur les médianes de temps de la branche. Il ajuste la difficulté par pas entiers de bits, bornés par un maximum de pas et par les difficultés min/max. Chaque bloc compte `2^bits` unités de travail; une chaîne avec un travail total supérieur gagne. En cas d’égalité, le hash de tête le plus petit gagne. Cette règle est une candidate expérimentale : la sécurité contre les horloges manipulées et une simulation indépendante restent à faire.
+À chaque hauteur multiple de l’intervalle, le retarget mesure `timestamp_candidat - timestamp_ancêtre(H - intervalle)`, avec un minimum de 1 seconde. Ce delta couvre les espacements de blocs visés et inclut le candidat. Chaque timestamp est strictement supérieur à celui du parent et au temps médian des 11 ancêtres. Aucun plafond lié à l’horloge locale n’est une règle de consensus. L’ajustement reste borné par fenêtre et par difficulté min/max.
 
 ## Émission et frais
 
