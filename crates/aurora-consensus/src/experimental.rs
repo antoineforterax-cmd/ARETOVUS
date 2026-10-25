@@ -71,7 +71,9 @@ pub enum BlockError {
 impl fmt::Display for BlockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BlockError::UnsupportedHeaderVersion => write!(f, "version d'en-tête non prise en charge"),
+            BlockError::UnsupportedHeaderVersion => {
+                write!(f, "version d'en-tête non prise en charge")
+            }
             BlockError::TooManyTransactions => write!(f, "trop de transactions"),
             BlockError::NetworkMismatch => write!(f, "réseau de transaction différent du bloc"),
             BlockError::InvalidTransaction(err) => write!(f, "transaction invalide : {err}"),
