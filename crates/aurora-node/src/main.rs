@@ -127,8 +127,10 @@ fn mine_one(
     miner: AccountId,
     timestamp: u64,
 ) -> Result<AccountBlock, Box<dyn Error>> {
-    let timestamp = timestamp.max(chain.median_time_past().saturating_add(1));
-    let difficulty = chain.next_difficulty_bits()?;
+    let timestamp = timestamp
+        .max(chain.median_time_past().saturating_add(1))
+        .max(chain.tip_timestamp().saturating_add(1));
+    let difficulty = chain.next_difficulty_bits(timestamp)?;
     let mut block = AccountBlock::build_with_miner(
         NetworkId::Testnet,
         chain.tip_hash(),
