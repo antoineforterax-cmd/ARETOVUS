@@ -1,61 +1,55 @@
-# AURORA — prototype expérimental
+# AURORA — blockchain expérimentale
 
-> **Statut : base expérimentale. Ce n'est PAS une blockchain utilisable, PAS sécurisée, PAS auditée.**
-> Le prototype inclut une vérification Ed25519 de transferts par comptes et des snapshots de chaîne validés, mais aucun réseau P2P ni portefeuille. Ne jamais utiliser
-> avec de vrais fonds. Toutes les règles ici sont des **hypothèses** listées dans
-> `docs/DECISION_REGISTER.md` (annexe B) ; aucune décision n'est validée.
+> Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
 
-## Ce que contient ce dépôt (v0.0.1)
+## État actuel
 
-| Crate | Contenu actuel |
+| Composant | Fonctionnement présent |
 |---|---|
-| `aurora-core` | montants entiers, sérialisation canonique, SHA-256 à domaines, transferts par comptes et vérification Ed25519 expérimentale |
-| `aurora-consensus` | blocs de comptes signés, application atomique, retarget expérimental et sélection par travail cumulé |
-| `aurora-storage` | snapshots versionnés et contrôlés par checksum de toutes les branches acceptées ; reconstruction par rejeu |
-| `aurora-node` | commande locale regtest, snapshots optionnels avec `--data-dir`, aucun service réseau ni minage |
-| `aurora-wallet` | crate vide et réservée (aucune clé) |
+| `aurora-core` | Montants entiers à 8 décimales, encodage canonique, transferts de comptes signés et vérifiés par Ed25519 (`ed25519-dalek`). |
+| `aurora-consensus` | Validation atomique des transactions/blocs, PoW SHA-256, timestamps au-dessus de la médiane des 11 ancêtres, retarget expérimental, travail cumulé u320, choix de branche et réorganisation de l’état/récompenses. |
+| `aurora-storage` | Snapshots `AURORSNP` version 3 avec checksum, paramètres de consensus et toutes les branches; chargement par rejeu et revalidation. |
+| `aurora-node` | Minage local testnet, persistance à chaque bloc, serveur TCP de synchronisation pull et commande client de synchronisation. |
+| `aurora-wallet` | Réservé; aucun portefeuille ou gestion de clés utilisateur. |
 
-La persistance conserve les blocs acceptés de toutes les branches et les rejoue au redémarrage; le format reste un snapshot simple, pas une base optimisée. Le profil fixe de regtest et les paramètres de retarget sont enregistrés afin de rejouer les mêmes contrôles après redémarrage. La règle de retarget est expérimentale, par fenêtres et par pas entiers bornés; elle n’est pas une règle validée pour réseau public. Aucun reward de bloc n’est encore appliqué.
+## Règles économiques exécutées
 
-## Commandes
+Le nœud testnet utilise le profil existant `fast_start_500` : plafond brut de 500 000 000 AUR et 8 décimales. La récompense par bloc est choisie avec l’offre émise au début du bloc : 500 AUR jusqu’à 5 M émis, 100 jusqu’à 25 M, 60 jusqu’à 75 M, 30 jusqu’à 175 M, 10 jusqu’à 350 M, puis 1 AUR jusqu’au plafond. L’émission du dernier bloc est tronquée au reliquat exact.
 
-Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour télécharger les dépendances (`sha2`, `ed25519-dalek`).
+Cinq pour cent de l’émission vont à la trésorerie (arrondi inférieur en unités minimales); le reste au mineur. La moitié des frais va au mineur (arrondi inférieur), le reste est brûlé. L’identité du mineur est engagée dans le bloc. Les récompenses sont recalculées sur l’état du parent de chaque branche; une réorganisation remplace donc aussi l’offre et les soldes canoniques.
+
+Ces constantes sont exécutées par le profil de testnet du dépôt; elles n’impliquent aucune approbation de lancement ou valeur monétaire. Les constructeurs génériques de chaîne gardent les récompenses désactivées par défaut.
+
+## Testnet expérimentale locale
+
+Prérequis : Rust stable, dépendances disponibles via crates.io. Les commandes ci-dessous sont des nœuds autonomes sur la même machine ou des hôtes joignables.
 
 ```bash
-cargo fmt --all            # première fois : formate le code (le code a été écrit sans rustfmt)
-./scripts/check.sh         # fmt --check + clippy + build + tests
-cargo test --workspace     # tests seuls
-cargo run -p aurora-node -- regtest  # valide la genèse locale en mémoire
-cargo run -p aurora-node -- regtest --data-dir ./aurora-regtest-data  # charge ou sauvegarde un snapshot
-python3 scripts/reference_vectors.py   # recalcule les valeurs attendues des vecteurs (Python indépendant)
+# Afficher les commandes disponibles
+cargo run -p aurora-node -- --help
+
+# Miner 10 blocs, avec une identité de mineur de 32 octets écrite en hexadécimal
+cargo run -p aurora-node -- testnet mine --data-dir ./aurora-node-a --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10
+
+# Servir la chaîne locale sur TCP
+cargo run -p aurora-node -- testnet serve --data-dir ./aurora-node-a --listen 0.0.0.0:18444
+
+# Synchroniser un second répertoire depuis le pair
+cargo run -p aurora-node -- testnet sync --data-dir ./aurora-node-b --peer 127.0.0.1:18444
+
+# Vérification CI locale (si l’environnement Rust possède l’éditeur de liens requis)
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo build --workspace --locked
+cargo test --workspace --locked
 ```
 
-`aurora-node regtest --data-dir` crée le snapshot de genèse s’il n’existe pas, puis revalide les blocs enregistrés au redémarrage. Ce mode ne démarre aucun pair et n’ajoute pas de blocs.
+Paramètres testnet codés : difficulté initiale 8 bits nuls en tête, cible 60 secondes, ajustement tous les 10 blocs par pas entiers bornés, min 4/max 20 bits; la trésorerie a l’identifiant fixe de test `[0xA0; 32]`. Le minage examine les nonces de manière déterministe. `--miner` est un identifiant public fourni par l’utilisateur, pas une clé privée.
 
-## Persistance expérimentale
+Le protocole TCP est expérimental et pull-only : empreinte de genèse/paramètres, messages de taille bornée, pages jusqu’à 64 blocs, timeout d’E/S de 10 secondes, plafond d’inventaire de 100 000 blocs et validation consensus de chaque bloc. `serve` répond aux demandes; `sync` récupère une seule fois l’inventaire annoncé. Il n’y a pas encore de découverte automatique, propagation spontanée, réseau multi-pairs, mempool, reprise automatique de connexion ni test contre une suite complète de pairs hostiles. Ne pas exposer ce service à Internet.
 
-Le format `AURORSNP` version 2 contient les paramètres de difficulté, tous les blocs acceptés en ordre topologique, leurs encodages canoniques et un SHA-256 de contrôle. Chaque snapshot immuable est écrit sous un nom déterminé par la hauteur, l’empreinte de tête et le checksum. Au chargement, les blocs sont rejoués et revalidés depuis la genèse avec l’état initial fourni par le réseau. Les snapshots corrompus ou de version inconnue sont rejetés. Il reste à éprouver les pannes, sauvegardes et migrations; ce format ne remplace pas une base de données optimisée.
+Les tests Rust sont exécutés en CI GitHub Actions. Sur l’environnement Windows de développement, la compilation locale peut échouer si `link.exe` (Visual C++ Build Tools) manque; cela ne remplace pas la CI.
 
-## Dépendances
+## Limites avant de parler d’une blockchain terminée
 
-| Dépendance | Rôle | Pourquoi |
-|---|---|---|
-| `sha2` 0.10 (RustCrypto) | SHA-256 | Évite toute primitive cryptographique maison. À re-vérifier : maintenance, version, `cargo audit`. |
-| `ed25519-dalek` 2.x | Signature Ed25519 stricte | Vérification de signature via une bibliothèque maintenue ; compte identifié par sa clé publique brute de 32 octets. |
-
-Les « tests de propriétés » utilisent un générateur maison déterministe
-(non cryptographique, tests uniquement) ; `proptest` et `cargo-fuzz` sont prévus (TST-03).
-
-## Règles de travail (GOV-04)
-
-- Le code généré par IA est du code **non vérifié** tant qu'il n'a pas été compilé, testé et relu.
-- Aucune règle de consensus, de politique monétaire ou de cryptographie n'est ajoutée ou changée
-  sans décision du porteur dans `docs/DECISION_REGISTER.md`.
-- Aucune clé, aucun secret dans le dépôt (`.gitignore` exclut `.env`, `*.key`, `*.pem`, `*.seed`).
-- Distinguer toujours : tests **exécutés**, tests **écrits mais non exécutés**, tests **prévus**.
-
-## Documentation
-
-- `docs/DECISION_REGISTER.md` : décisions, statuts, justifications, tests requis, hypothèses du code.
-- `docs/CONSENSUS.md` : état des règles de consensus (aucune validée).
-- `docs/THREAT_MODEL.md` : menaces et mesures, sans score tant que la méthode n'est pas validée.
+Il reste notamment : synchronisation et propagation multi-pairs robustes, découverte/reconnexion, messages malveillants et tests DoS, simulation indépendante des retargets et horodatages, tests de crash/coupure disque et migrations de stockage, fuzzing, tests multi-nœuds reproductibles et revue de sécurité indépendante. L’interface portefeuille, l’explorateur Web et le site de présentation sont volontairement hors de cette étape.
