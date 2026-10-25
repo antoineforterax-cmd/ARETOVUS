@@ -18,3 +18,4 @@ pub mod experimental;
 pub mod fork_chain;
 pub mod local_chain;
 pub mod proof_of_work;
+pub mod reward;
