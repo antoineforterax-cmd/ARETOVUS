@@ -23,6 +23,8 @@ const MAX_SYNC_BLOCKS: usize = 100_000;
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
+const SUBMIT_BLOCK: u8 = 3;
+const BLOCK_ACCEPTED: u8 = 0x83;
 const BLOCKS_REPLY: u8 = 0x82;
 const ERROR_REPLY: u8 = 0xff;
 
@@ -213,7 +215,7 @@ fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
 pub fn handle_peer(
     mut stream: TcpStream,
     chain: &mut AccountForkChain,
-    _data_dir: &Path,
+    data_dir: &Path,
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
     let hello = read_frame(&mut stream)?;
@@ -228,11 +230,29 @@ pub fn handle_peer(
             Err(P2pError::Io(e)) if e.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
             Err(e) => return Err(e),
         };
-        if request.first() != Some(&GET_BLOCKS) || request.len() != 5 {
-            return Err(P2pError::Protocol("unknown request"));
+        match request.first() {
+            Some(&GET_BLOCKS) if request.len() == 5 => {
+                let start =
+                    u32::from_be_bytes(request[1..5].try_into().expect("fixed slice")) as usize;
+                respond_blocks(&mut stream, chain, start)?;
+            }
+            Some(&SUBMIT_BLOCK) if request.len() > 1 => {
+                let block = AccountBlock::from_canonical_bytes(&request[1..])
+                    .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
+                match chain.submit(block) {
+                    Ok(_) => {
+                        save_snapshot(data_dir, chain)?;
+                    }
+                    Err(AccountForkChainError::DuplicateBlock) => {}
+                    Err(error) => return Err(P2pError::Chain(error)),
+                }
+                let mut reply = vec![BLOCK_ACCEPTED];
+                reply.extend_from_slice(&chain.height().to_be_bytes());
+                reply.extend_from_slice(chain.tip_hash().as_bytes());
+                write_frame(&mut stream, &reply)?;
+            }
+            _ => return Err(P2pError::Protocol("unknown or malformed request")),
         }
-        let start = u32::from_be_bytes(request[1..5].try_into().expect("fixed slice")) as usize;
-        respond_blocks(&mut stream, chain, start)?;
     }
 }
 
@@ -252,6 +272,29 @@ pub fn serve(
             }
             Err(error) => eprintln!("accept failed: {error}"),
         }
+    }
+    Ok(())
+}
+
+/// Send one locally validated block to a configured peer for independent consensus validation.
+pub fn propagate_block(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+    block: &AccountBlock,
+) -> Result<(), P2pError> {
+    let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
+    set_timeouts(&stream)?;
+    send_hello(&mut stream, chain)?;
+    check_hello(&read_frame(&mut stream)?, chain)?;
+    let encoded = block
+        .to_canonical_bytes()
+        .map_err(|_| P2pError::Protocol("block encoding failed"))?;
+    let mut request = vec![SUBMIT_BLOCK];
+    request.extend_from_slice(&encoded);
+    write_frame(&mut stream, &request)?;
+    let reply = read_frame(&mut stream)?;
+    if reply.len() != 41 || reply[0] != BLOCK_ACCEPTED {
+        return Err(P2pError::Protocol("peer did not acknowledge block"));
     }
     Ok(())
 }
@@ -350,6 +393,37 @@ mod tests {
         assert_eq!(client.height(), 1);
         assert!(rx.recv_timeout(Duration::from_secs(2)).unwrap());
         thread.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn pushed_block_is_validated_and_persisted_by_peer() {
+        let dir = std::env::temp_dir().join(format!("aurora-p2p-push-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let mut server_chain = chain();
+        let server_genesis = server_chain.tip_hash();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server_dir = dir.clone();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let result = handle_peer(stream, &mut server_chain, &server_dir);
+            (result, server_chain)
+        });
+        let mut client = chain();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, client.tip_hash(), 2, 0, vec![]).unwrap();
+        client.submit(block.clone()).unwrap();
+        propagate_block(address, &client, &block).unwrap();
+        let (result, received) = server.join().unwrap();
+        assert!(result.is_ok());
+        assert_eq!(received.height(), 1);
+        assert_ne!(received.tip_hash(), server_genesis);
+        let restored =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+                .unwrap();
+        assert_eq!(restored.tip_hash(), received.tip_hash());
         fs::remove_dir_all(dir).unwrap();
     }
 
