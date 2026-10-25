@@ -15,6 +15,21 @@ The initial implementation must prioritize correctness, reproducibility, bounded
 
 ## 2. Scope and non-goals
 
+### Experimental account-transfer profile (branch `feature/emission-schedule-v0`)
+
+The current branch implements an explicitly experimental account-transfer path. For this profile,
+`sender` is the raw 32-byte Ed25519 public key and `auth_data` is exactly 64 bytes containing an
+Ed25519 signature over the 32-byte `signing_digest`. The digest commits to version, network,
+sender, nonce, recipient, amount, and fee in canonical encoding, under the distinct
+`AURORA/exp/v0/tx-signing` hash domain. The transaction identifier continues to include the full
+canonical encoding, including the signature. The maintained `ed25519-dalek` crate performs strict
+signature verification before any ledger mutation.
+
+This profile exists to make a local experimental node coherent; it does not settle the repository's
+open UTXO-vs-account decision or define user-facing addresses. Keys, wire format, economics, block
+state validation, difficulty adjustment, and chain reorganization remain experimental or incomplete.
+Do not use it for real funds or describe it as production-ready.
+
 ### In scope for the research phase
 
 - Transaction and state models, including a comparison of UTXO and account-based designs.

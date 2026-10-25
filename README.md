@@ -1,7 +1,7 @@
 # AURORA — prototype expérimental
 
 > **Statut : base expérimentale. Ce n'est PAS une blockchain utilisable, PAS sécurisée, PAS auditée.**
-> Aucune preuve de travail, aucun réseau, aucun portefeuille, aucune signature. Ne jamais utiliser
+> Le prototype inclut une vérification Ed25519 de transferts par comptes, mais aucun réseau P2P ni portefeuille. Ne jamais utiliser
 > avec de vrais fonds. Toutes les règles ici sont des **hypothèses** listées dans
 > `docs/DECISION_REGISTER.md` (annexe B) ; aucune décision n'est validée.
 
@@ -9,7 +9,7 @@
 
 | Crate | Contenu actuel |
 |---|---|
-| `aurora-core` | montants entiers, sérialisation canonique, hachage SHA-256 avec domaines, transaction expérimentale |
+| `aurora-core` | montants entiers, sérialisation canonique, SHA-256 à domaines, transferts par comptes et vérification Ed25519 expérimentale |
 | `aurora-consensus` | bloc expérimental, engagement sur les transactions (pas un Merkle), validation **sans état** |
 | `aurora-node` | exécutable qui affiche un avertissement, rien d'autre |
 | `aurora-wallet` | crate vide et réservée (aucune clé) |
@@ -19,7 +19,7 @@ justifieront (pas avant).
 
 ## Commandes
 
-Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour télécharger `sha2`.
+Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour télécharger les dépendances (`sha2`, `ed25519-dalek`).
 
 ```bash
 cargo fmt --all            # première fois : formate le code (le code a été écrit sans rustfmt)
@@ -37,8 +37,9 @@ Après le premier build réussi : committer `Cargo.lock` et figer la version de 
 | Dépendance | Rôle | Pourquoi |
 |---|---|---|
 | `sha2` 0.10 (RustCrypto) | SHA-256 | Évite toute primitive cryptographique maison. À re-vérifier : maintenance, version, `cargo audit`. |
+| `ed25519-dalek` 2.x | Signature Ed25519 stricte | Vérification de signature via une bibliothèque maintenue ; compte identifié par sa clé publique brute de 32 octets. |
 
-Aucune autre dépendance. Les « tests de propriétés » utilisent un générateur maison déterministe
+Les « tests de propriétés » utilisent un générateur maison déterministe
 (non cryptographique, tests uniquement) ; `proptest` et `cargo-fuzz` sont prévus (TST-03).
 
 ## Règles de travail (GOV-04)

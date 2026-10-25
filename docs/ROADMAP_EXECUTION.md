@@ -21,8 +21,8 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 - Workspace Rust avec crates `aurora-core`, `aurora-consensus`, `aurora-node` et `aurora-wallet`.
 - `aurora-core` contient déjà un type de montant, un encodage canonique expérimental, SHA-256 avec séparation de domaines, des identifiants de réseau et un modèle de transaction par comptes.
-- La transaction de compte reste **non signée** : le registre expérimental vérifie réseau, nonce, autorisation fournie par callback, solde et application atomique. Ce callback ne remplace pas encore une signature cryptographique réelle.
-- Une empreinte canonique de signature (`signing_digest`) est maintenant définie pour les champs de transaction hors `auth_data`, avec un domaine de hachage distinct du txid. Elle doit encore être figée par spécification et vecteurs indépendants avant de brancher une bibliothèque de signature.
+- Le registre expérimental vérifie maintenant Ed25519 strictement via `ed25519-dalek`; `sender` est la clé publique brute et `auth_data` la signature de 64 octets.
+- L'empreinte canonique `signing_digest` couvre les champs hors `auth_data`, avec un domaine distinct du txid. Un profil de format est documenté; des vecteurs indépendants et la confirmation CI restent requis.
 - Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
 - La CI a précédemment échoué sur rustfmt. Des corrections de formatage et un correctif aux tests du registre ont été poussés, mais aucune exécution CI confirmant le commit courant n'a été récupérée lors de cette vérification. Clippy, compilation et tests restent donc à confirmer.
@@ -78,14 +78,14 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 ### Phase 2 — Registre d'état et transactions valides
 
-**État actuel : partiellement implémenté, non terminé.** Les contrôles de base et des tests de rejet sans mutation existent dans `aurora-core::state`; l'autorisation est encore simulée par callback, et il manque les règles complètes d'émission, de frais, de bloc et de réorganisation.
+**État actuel : partiellement implémenté, non terminé.** Le registre en mémoire vérifie les signatures Ed25519, le réseau, les nonces, les soldes et l'émission atomiquement. Les règles complètes d'émission, de frais, de bloc et de réorganisation manquent encore.
 
 **Actions**
 1. [x] Prototype en mémoire d'un état de comptes déterministe : solde et nonce.
-2. [x] Contrôles préalables du réseau, nonce exact, autorisation via callback, solde pour montant + frais et arithmétique vérifiée.
+2. [x] Contrôles préalables du réseau, nonce exact, signature Ed25519, solde pour montant + frais et arithmétique vérifiée.
 3. [x] Rejet sans mutation partielle pour les cas déjà couverts par les tests unitaires.
 4. [ ] Définir le traitement des transactions concurrentes d'un même compte et les règles du mempool.
-5. [ ] Intégrer une vraie vérification de signature avec une bibliothèque maintenue et un format de message signé spécifié.
+5. [x] Intégrer la vérification Ed25519 avec `ed25519-dalek` et documenter le profil expérimental signé.
 6. [ ] Définir frais minimums, comptabilité du burn, trésorerie et récompense de bloc.
 7. [ ] Ajouter tests de propriétés/fuzzing et confirmer l'ensemble par CI verte.
 

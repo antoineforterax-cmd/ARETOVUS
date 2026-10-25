@@ -1,7 +1,7 @@
 //! Registre de comptes déterministe pour le prototype AURORA.
 //!
-//! Les signatures ne sont volontairement pas implémentées ici : l'appelant doit fournir un
-//! vérificateur cryptographique. Aucun transfert ne modifie l'état si une vérification échoue.
+//! Les transferts passent une vérification Ed25519. Aucun transfert ne modifie l'état si une
+//! vérification échoue.
 //! Ce module ne constitue pas encore une validation complète de bloc ou de consensus.
 
 use std::collections::BTreeMap;
@@ -10,6 +10,7 @@ use std::fmt;
 use crate::accounts::{AccountId, AccountTransaction};
 use crate::amount::{Amount, AmountError};
 use crate::network::NetworkId;
+use crate::signature::verify_account_transaction;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AccountState {
@@ -106,14 +107,7 @@ impl AccountLedger {
 
     /// Applique un transfert atomiquement après les contrôles d'état et d'autorisation.
     /// Le callback doit être un vérificateur cryptographique réel avant tout usage réseau.
-    pub fn apply_transaction<F>(
-        &mut self,
-        tx: &AccountTransaction,
-        verify_authorization: F,
-    ) -> Result<Amount, StateError>
-    where
-        F: FnOnce(&AccountTransaction) -> bool,
-    {
+    pub fn apply_transaction(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
         tx.check_stateless()
             .map_err(|_| StateError::InvalidTransaction)?;
         if tx.network != self.network {
@@ -133,7 +127,7 @@ impl AccountLedger {
             });
         }
 
-        if !verify_authorization(tx) {
+        if verify_account_transaction(tx).is_err() {
             return Err(StateError::InvalidAuthorization);
         }
 
@@ -181,28 +175,42 @@ mod tests {
     use super::*;
     use crate::accounts::{AccountTransaction, ACCOUNT_TX_VERSION};
     use crate::network::NetworkId;
+    use ed25519_dalek::{Signer, SigningKey};
 
     fn id(byte: u8) -> AccountId {
         AccountId([byte; 32])
     }
 
+    fn signing_key() -> SigningKey {
+        SigningKey::from_bytes(&[1; 32])
+    }
+
     fn tx(nonce: u64, amount: u64, fee: u64) -> AccountTransaction {
-        AccountTransaction {
+        let key = signing_key();
+        let mut transaction = AccountTransaction {
             version: ACCOUNT_TX_VERSION,
             network: NetworkId::Regtest,
-            sender: id(1),
+            sender: AccountId(key.verifying_key().to_bytes()),
             nonce,
             recipient: id(2),
             amount: Amount::from_units(amount).unwrap(),
             fee: Amount::from_units(fee).unwrap(),
-            auth_data: vec![1],
-        }
+            auth_data: Vec::new(),
+        };
+        transaction.auth_data = key
+            .sign(transaction.signing_digest().unwrap().as_bytes())
+            .to_bytes()
+            .to_vec();
+        transaction
     }
 
     fn funded_ledger() -> AccountLedger {
         let mut ledger = AccountLedger::new(NetworkId::Regtest);
         ledger
-            .credit_issuance(id(1), Amount::from_units(1_000).unwrap())
+            .credit_issuance(
+                AccountId(signing_key().verifying_key().to_bytes()),
+                Amount::from_units(1_000).unwrap(),
+            )
             .unwrap();
         ledger
     }
@@ -210,9 +218,10 @@ mod tests {
     #[test]
     fn valid_transfer_debits_amount_and_fee_and_increments_nonce() {
         let mut ledger = funded_ledger();
-        ledger.apply_transaction(&tx(0, 200, 5), |_| true).unwrap();
-        assert_eq!(ledger.account(id(1)).balance.to_units(), 795);
-        assert_eq!(ledger.account(id(1)).next_nonce, 1);
+        ledger.apply_transaction(&tx(0, 200, 5)).unwrap();
+        let sender = tx(0, 200, 5).sender;
+        assert_eq!(ledger.account(sender).balance.to_units(), 795);
+        assert_eq!(ledger.account(sender).next_nonce, 1);
         assert_eq!(ledger.account(id(2)).balance.to_units(), 200);
         assert_eq!(ledger.account(id(2)).next_nonce, 0);
     }
@@ -224,7 +233,7 @@ mod tests {
         let mut transaction = tx(0, 10, 1);
         transaction.network = NetworkId::Testnet;
         assert_eq!(
-            ledger.apply_transaction(&transaction, |_| true),
+            ledger.apply_transaction(&transaction),
             Err(StateError::WrongNetwork)
         );
         assert_eq!(ledger, before);
@@ -234,8 +243,10 @@ mod tests {
     fn invalid_authorization_leaves_state_unchanged() {
         let mut ledger = funded_ledger();
         let before = ledger.clone();
+        let mut invalid = tx(0, 200, 5);
+        invalid.auth_data[0] ^= 1;
         assert_eq!(
-            ledger.apply_transaction(&tx(0, 200, 5), |_| false),
+            ledger.apply_transaction(&invalid),
             Err(StateError::InvalidAuthorization)
         );
         assert_eq!(ledger, before);
@@ -246,7 +257,7 @@ mod tests {
         let mut ledger = funded_ledger();
         let before = ledger.clone();
         assert_eq!(
-            ledger.apply_transaction(&tx(0, 999, 2), |_| true),
+            ledger.apply_transaction(&tx(0, 999, 2)),
             Err(StateError::InsufficientFunds)
         );
         assert_eq!(ledger, before);
@@ -255,16 +266,16 @@ mod tests {
     #[test]
     fn replayed_or_skipped_nonce_is_rejected() {
         let mut ledger = funded_ledger();
-        ledger.apply_transaction(&tx(0, 10, 1), |_| true).unwrap();
+        ledger.apply_transaction(&tx(0, 10, 1)).unwrap();
         assert_eq!(
-            ledger.apply_transaction(&tx(0, 10, 1), |_| true),
+            ledger.apply_transaction(&tx(0, 10, 1)),
             Err(StateError::NonceMismatch {
                 expected: 1,
                 actual: 0
             })
         );
         assert_eq!(
-            ledger.apply_transaction(&tx(2, 10, 1), |_| true),
+            ledger.apply_transaction(&tx(2, 10, 1)),
             Err(StateError::NonceMismatch {
                 expected: 1,
                 actual: 2
@@ -276,15 +287,20 @@ mod tests {
     fn missing_sender_and_overflow_are_rejected_atomically() {
         let mut ledger = AccountLedger::new(NetworkId::Regtest);
         assert_eq!(
-            ledger.apply_transaction(&tx(0, 1, 0), |_| true),
+            ledger.apply_transaction(&tx(0, 1, 0)),
             Err(StateError::UnknownSender)
         );
 
-        ledger.credit_issuance(id(1), Amount::MAX).unwrap();
+        ledger
+            .credit_issuance(
+                AccountId(signing_key().verifying_key().to_bytes()),
+                Amount::MAX,
+            )
+            .unwrap();
         ledger.credit_issuance(id(2), Amount::MAX).unwrap();
         let before = ledger.clone();
         assert!(matches!(
-            ledger.apply_transaction(&tx(0, 1, 0), |_| true),
+            ledger.apply_transaction(&tx(0, 1, 0)),
             Err(StateError::BalanceOutOfRange(_))
         ));
         assert_eq!(ledger, before);

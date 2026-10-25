@@ -15,6 +15,7 @@ publish = false
 [workspace.dependencies]
 # Dépendance externe unique du prototype : SHA-256 (RustCrypto). Voir README, section Dépendances.
 sha2 = "0.10"
+ed25519-dalek = { version = "2.1", default-features = false, features = ["std"] }
 aurora-core = { path = "crates/aurora-core" }
 
 [workspace.lints.rust]
