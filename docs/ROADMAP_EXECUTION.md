@@ -24,7 +24,7 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - La transaction de compte reste **non signée** : le registre expérimental vérifie désormais réseau, nonce, autorisation fournie par callback, solde et application atomique. Ce callback ne remplace pas encore une signature cryptographique réelle.
 - Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
-- La CI du commit observé a échoué sur rustfmt ; Clippy, compilation et tests ont donc été ignorés. Les corrections les plus récentes doivent être recontrôlées par une nouvelle exécution CI.
+- La CI a précédemment échoué sur rustfmt. Des corrections de formatage et un correctif aux tests du registre ont été poussés, mais aucune exécution CI confirmant le commit courant n'a été récupérée lors de cette vérification. Clippy, compilation et tests restent donc à confirmer.
 - Le code actuel est expérimental ; aucune sécurité de production n'est revendiquée.
 
 ## Décisions de travail
@@ -80,12 +80,13 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 **État actuel : partiellement implémenté, non terminé.** Les contrôles de base et des tests de rejet sans mutation existent dans `aurora-core::state`; l'autorisation est encore simulée par callback, et il manque les règles complètes d'émission, de frais, de bloc et de réorganisation.
 
 **Actions**
-1. Construire un état de comptes déterministe : solde et nonce.
-2. Implémenter l'application atomique d'une transaction : réseau/version, signature, nonce exact, solde suffisant pour montant + frais, destinataire, frais minimum éventuels et arithmétique vérifiée.
-3. Refuser les transactions invalides sans modifier partiellement l'état.
-4. Définir le traitement d'une transaction répétée, d'un nonce trop faible/élevé et de deux transactions concurrentes du même compte.
-5. Définir la comptabilité des frais, du burn, de la trésorerie et de la récompense de bloc ; la somme créée et distribuée doit être vérifiable.
-6. Ajouter des tests de propriétés et des cas adversariaux.
+1. [x] Prototype en mémoire d'un état de comptes déterministe : solde et nonce.
+2. [x] Contrôles préalables du réseau, nonce exact, autorisation via callback, solde pour montant + frais et arithmétique vérifiée.
+3. [x] Rejet sans mutation partielle pour les cas déjà couverts par les tests unitaires.
+4. [ ] Définir le traitement des transactions concurrentes d'un même compte et les règles du mempool.
+5. [ ] Intégrer une vraie vérification de signature avec une bibliothèque maintenue et un format de message signé spécifié.
+6. [ ] Définir frais minimums, comptabilité du burn, trésorerie et récompense de bloc.
+7. [ ] Ajouter tests de propriétés/fuzzing et confirmer l'ensemble par CI verte.
 
 **Sortie exigée**
 - Tests pour solde insuffisant, double dépense, rejeu, mauvais nonce, mauvaise signature, frais, overflow/underflow, état inchangé après rejet et invariant de conservation.
