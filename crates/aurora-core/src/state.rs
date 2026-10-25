@@ -58,7 +58,11 @@ impl std::error::Error for StateError {}
 
 impl AccountLedger {
     pub fn new(network: NetworkId) -> Self {
-        Self { network, accounts: BTreeMap::new(), issued: Amount::ZERO }
+        Self {
+            network,
+            accounts: BTreeMap::new(),
+            issued: Amount::ZERO,
+        }
     }
 
     pub fn account(&self, id: AccountId) -> AccountState {
@@ -94,7 +98,8 @@ impl AccountLedger {
             .checked_add(amount)
             .map_err(StateError::BalanceOutOfRange)?;
         // Mettre à jour l'état seulement après validation des deux sommes.
-        self.accounts.insert(recipient, AccountState { balance, ..current });
+        self.accounts
+            .insert(recipient, AccountState { balance, ..current });
         self.issued = next_issued;
         Ok(())
     }
@@ -109,7 +114,8 @@ impl AccountLedger {
     where
         F: FnOnce(&AccountTransaction) -> bool,
     {
-        tx.check_stateless().map_err(|_| StateError::InvalidTransaction)?;
+        tx.check_stateless()
+            .map_err(|_| StateError::InvalidTransaction)?;
         if tx.network != self.network {
             return Err(StateError::WrongNetwork);
         }
@@ -195,7 +201,9 @@ mod tests {
 
     fn funded_ledger() -> AccountLedger {
         let mut ledger = AccountLedger::new(NetworkId::Regtest);
-        ledger.credit_issuance(id(1), Amount::from_units(1_000).unwrap()).unwrap();
+        ledger
+            .credit_issuance(id(1), Amount::from_units(1_000).unwrap())
+            .unwrap();
         ledger
     }
 
@@ -215,7 +223,10 @@ mod tests {
         let before = ledger.clone();
         let mut transaction = tx(0, 10, 1);
         transaction.network = NetworkId::Testnet;
-        assert_eq!(ledger.apply_transaction(&transaction, |_| true), Err(StateError::WrongNetwork));
+        assert_eq!(
+            ledger.apply_transaction(&transaction, |_| true),
+            Err(StateError::WrongNetwork)
+        );
         assert_eq!(ledger, before);
     }
 
@@ -247,11 +258,17 @@ mod tests {
         ledger.apply_transaction(&tx(0, 10, 1), |_| true).unwrap();
         assert_eq!(
             ledger.apply_transaction(&tx(0, 10, 1), |_| true),
-            Err(StateError::NonceMismatch { expected: 1, actual: 0 })
+            Err(StateError::NonceMismatch {
+                expected: 1,
+                actual: 0
+            })
         );
         assert_eq!(
             ledger.apply_transaction(&tx(2, 10, 1), |_| true),
-            Err(StateError::NonceMismatch { expected: 1, actual: 2 })
+            Err(StateError::NonceMismatch {
+                expected: 1,
+                actual: 2
+            })
         );
     }
 
