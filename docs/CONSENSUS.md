@@ -1,36 +1,39 @@
-# CONSENSUS.md — AURORA
+# AURORA — règles de consensus expérimentales
 
-**Statut : prototype expérimental, aucun paramètre économique ou de consensus final n’est approuvé.** Le code a des règles exécutables, mais elles ne constituent pas encore un consensus complet ni un réseau utilisable avec des fonds.
+**Statut : testnet expérimentale locale, non auditée.** Les règles ci-dessous décrivent le code de `feature/emission-schedule-v0`; elles ne constituent ni un lancement public ni une garantie de sécurité mainnet.
 
-## Règles exécutées actuellement
+## Profil de chaîne exécuté
 
-| Sujet | Règle de prototype | Limite |
+| Sujet | Règle codée | Limite restante |
 |---|---|---|
-| Encodage | Entiers big-endian, longueurs bornées, octets excédentaires rejetés | Format versionné expérimental |
-| Transfert | Signature Ed25519 stricte, identifiant réseau, nonce, solde et frais validés | Pas de mempool ni de règle de frais minimum |
-| Bloc compte | Engagement ordonné de txids, validation d’état atomique, pas de Merkle | Aucun reward/coinbase |
-| PoW | SHA-256 avec nombre minimal de bits nuls; retarget expérimental à fenêtres, pas entiers bornés, horodatage supérieur au temps médian des 11 derniers blocs | Paramètres par chaîne; règle non simulée/auditée |
-| Sélection de branche | Plus grand travail cumulé, travail par bloc `2^difficulty_bits`; égalité départagée par la plus petite empreinte | Comptabilité u320; aucune simulation adversariale |
-| Retarget | Chaque fenêtre compare les médianes de temps à la durée cible; difficulté ajustée par pas entiers d’un bit, limite par fenêtre et bornes min/max | Règle candidate, distincte d’ASERT; vecteurs et analyse anti-manipulation à approfondir |
-| Stockage | Snapshot version 2, SHA-256, paramètres et toutes les branches rejoués/validés au chargement | Pas encore de migration de format, reprise après crash ou restauration opérée |
-| Testnet locale | `aurora-node regtest` avec difficulté 0 | Pas de P2P ni de minage |
+| Transactions | Encodage canonique; Ed25519 stricte; clé publique 32 octets comme compte; nonce exact; solde/frais validés atomiquement | Pas d’adresse texte, mempool ou frais minimums |
+| Blocs | En-tête version 0; engagement ordonné des txids et de l’identifiant mineur; SHA-256 avec bits nuls en tête | Engagement de liste, pas un arbre de Merkle; limite en octets à renforcer |
+| Temps | Horodatage de chaque bloc strictement supérieur à la médiane des 11 ancêtres (fenêtre disponible à la genèse) | Pas de borne supérieure de temps définie par consensus |
+| Difficulté | Retarget par fenêtre à partir des médianes de temps de chaque branche; pas entiers d’un bit, bornés par fenêtre et min/max | Candidat expérimental, pas de simulation indépendante/adversariale suffisante |
+| Travail | `2^difficulty_bits` par bloc dans un accumulateur u320; chaîne au plus grand travail, égalité départagée par le hash le plus petit | Pas de revue externe |
+| Récompense | Profil `fast_start_500`; plafond brut 500 M AUR, paliers et split décrits dans `EMISSION_MODEL.md` et le code | Émission basée sur l’offre courante, testnet seulement |
+| Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
+| Stockage | Snapshot version 3, checksum, paramètres difficulté/récompense et toutes les branches; rejeu/revalidation à la lecture | Pas de journal transactionnel, migration de format ou test complet de coupure disque |
+| Réseau | TCP expérimental pull-only, fingerprint de paramètres/genèse, frames bornées, pages de blocs et validation consensus | Pas de découverte, propagation spontanée, réseau multi-pairs, reconnexion ou suite DoS complète |
 
-## Règles qui manquent pour un consensus testnet complet
+Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
 
-1. Simuler la règle de difficulté candidate, vérifier les retargets longs/courts, les manipulations temporelles et les égalités; la comparer à ASERT et figer des vecteurs indépendants avant testnet.
-2. Calendrier de récompense approuvé, création atomique, frais/burn/trésorerie, plafond d’offre et limites par réorganisation.
-3. Horodatages, validation temporelle, bornes d’en-tête et politique des blocs obsolètes.
-4. Génèse et état initial reproductibles avec identifiant de chaîne non réutilisé.
-5. Protocole P2P versionné, limites anti-DoS, synchronisation, annonces et reconnexion.
-6. Persistance de branches/état, reprise après écriture interrompue, migration, sauvegarde et récupération.
+## Profil testnet local
 
-## Invariants obligatoires
+- Réseau : `NetworkId::Testnet`, genèse déterministe et vide.
+- Difficulté initiale : 8 bits nuls en tête.
+- Cible : 60 secondes; fenêtre : 10 blocs; ajustement entier borné à 2 bits par fenêtre; bornes de 4 à 20 bits.
+- Trésorerie : compte fixe de test `[0xA0; 32]`.
+- Les blocs sont minés par `aurora-node testnet mine`, sauvegardés après chaque bloc et revalidés à la reprise.
+- Synchronisation via `aurora-node testnet serve` et `aurora-node testnet sync`; seul le téléchargement pull est fourni.
 
-- Même chaîne valide et même paramètres produisent la même difficulté, état, récompense et tête canonique.
-- Aucun état partiel après rejet d’une transaction ou d’un bloc.
-- L’offre ne dépasse jamais la règle d’émission approuvée, même après réorganisation.
-- La chaîne active est celle du plus grand travail cumulé une fois le PoW variable spécifié.
-- Un encodage accepté est exactement l’encodage canonique reçu.
-- Les données d’un réseau ne sont pas valides sur un autre.
+## Invariants couverts par tests
 
-Les règles ci-dessus doivent avoir une spécification et des vecteurs indépendants avant une testnet publique. La CI confirme uniquement les contrôles automatisés du code soumis, pas la sécurité du protocole.
+- Même parent, bloc et paramètres donnent le même état validé; transaction ou bloc invalide ne produit pas d’état partiel.
+- Le plafond brut n’est pas dépassé, même au dernier palier; les frais brûlés ne réouvrent pas le plafond.
+- Le compte du mineur est inclus dans l’engagement du bloc.
+- Une branche secondaire garde son propre état et ses récompenses; une réorganisation change l’état canonique.
+- Un snapshot conserve les branches et les paramètres, puis rejoue les blocs au chargement.
+- La synchronisation rejette les fingerprints différents et revalide les blocs reçus avant sauvegarde.
+
+La CI verte confirme seulement les contrôles automatisés. Avant de qualifier la chaîne de testnet multi-nœud utilisable, il faut compléter les essais de temps et retarget, les limites de taille, les pairs hostiles, la propagation et la reconnexion, les coupures de stockage et le fuzzing. Une revue indépendante est nécessaire avant tout usage au-delà d’expériences locales.
