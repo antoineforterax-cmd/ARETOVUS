@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn missing_sender_and_overflow_are_rejected_atomically() {
-        let mut ledger = AccountLedger::new();
+        let mut ledger = AccountLedger::new(NetworkId::Regtest);
         assert_eq!(
             ledger.apply_transaction(&tx(0, 1, 0), |_| true),
             Err(StateError::UnknownSender)
@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn issuance_credit_is_bounded() {
-        let mut ledger = AccountLedger::new();
+        let mut ledger = AccountLedger::new(NetworkId::Regtest);
         ledger.credit_issuance(id(1), Amount::MAX).unwrap();
         assert!(matches!(
             ledger.credit_issuance(id(1), Amount::from_units(1).unwrap()),
