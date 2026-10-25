@@ -8,8 +8,8 @@
 |---|---|---|
 | Transactions | Encodage canonique; Ed25519 stricte; clé publique 32 octets comme compte; nonce exact; solde/frais validés atomiquement | Pas d’adresse texte, mempool ou frais minimums |
 | Blocs | En-tête version 0; engagement ordonné des txids et de l’identifiant mineur; SHA-256 avec bits nuls en tête | Engagement de liste, pas un arbre de Merkle; limite consensus de 4 MiB |
-| Temps | Horodatage de chaque bloc strictement supérieur à la médiane des 11 ancêtres (fenêtre disponible à la genèse) | Pas de borne supérieure de temps définie par consensus |
-| Difficulté | Retarget par fenêtre à partir des médianes de temps de chaque branche; pas entiers d’un bit, bornés par fenêtre et min/max | Candidat expérimental, pas de simulation indépendante/adversariale suffisante |
+| Temps | Timestamps strictement supérieurs au parent et à la médiane des 11 ancêtres disponibles | Pas de borne future définie par consensus |
+| Difficulté | Retarget candidat-dépendant sur le delta brut `timestamp_candidat - timestamp(H - intervalle)`, pas entiers bornés min/max | Simulations temporelles indépendantes encore nécessaires |
 | Travail | `2^difficulty_bits` par bloc dans un accumulateur u320; chaîne au plus grand travail, égalité départagée par le hash le plus petit | Pas de revue externe |
 | Récompense | Profil `fast_start_500`; plafond brut 500 M AUR, paliers et split décrits dans `EMISSION_MODEL.md` et le code | Émission basée sur l’offre courante, testnet seulement |
 | Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
@@ -35,5 +35,7 @@ Les constructeurs de chaîne génériques désactivent les récompenses par déf
 - Une branche secondaire garde son propre état et ses récompenses; une réorganisation change l’état canonique.
 - Un snapshot conserve les branches et les paramètres, puis rejoue les blocs au chargement.
 - La synchronisation rejette les fingerprints différents et revalide les blocs reçus avant sauvegarde.
+
+Le format de transaction v2 requiert Ed25519 et ML-DSA-65 simultanément; il n’active aucune migration de comptes. La bibliothèque RustCrypto ML-DSA n’a pas d’audit indépendant. Il s’agit d’un format de test uniquement.
 
 La CI verte confirme seulement les contrôles automatisés. Avant de qualifier la chaîne de testnet multi-nœud utilisable, il faut compléter les essais de temps et retarget, les limites de taille, les pairs hostiles, la propagation et la reconnexion, les coupures de stockage et le fuzzing. Une revue indépendante est nécessaire avant tout usage au-delà d’expériences locales.
