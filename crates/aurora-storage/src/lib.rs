@@ -288,8 +288,10 @@ mod tests {
             min_bits: 1,
             max_bits: 24,
         };
-        let genesis =
+        let mut genesis =
             AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
+        genesis.header.nonce =
+            aurora_consensus::proof_of_work::mine_nonce(&genesis.header, 8, 0, 100_000).unwrap();
         let original = AccountForkChain::new_with_params(
             genesis,
             8,
