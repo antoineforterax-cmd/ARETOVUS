@@ -139,6 +139,10 @@ impl AccountForkChain {
         path
     }
 
+    pub fn difficulty_bits(&self) -> u16 {
+        self.difficulty_bits
+    }
+
     pub fn height(&self) -> u64 {
         (self.canonical.len() - 1) as u64
     }
