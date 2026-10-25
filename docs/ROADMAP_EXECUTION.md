@@ -21,7 +21,8 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 - Workspace Rust avec crates `aurora-core`, `aurora-consensus`, `aurora-node` et `aurora-wallet`.
 - `aurora-core` contient déjà un type de montant, un encodage canonique expérimental, SHA-256 avec séparation de domaines, des identifiants de réseau et un modèle de transaction par comptes.
-- La transaction de compte reste **non signée** : le registre expérimental vérifie désormais réseau, nonce, autorisation fournie par callback, solde et application atomique. Ce callback ne remplace pas encore une signature cryptographique réelle.
+- La transaction de compte reste **non signée** : le registre expérimental vérifie réseau, nonce, autorisation fournie par callback, solde et application atomique. Ce callback ne remplace pas encore une signature cryptographique réelle.
+- Une empreinte canonique de signature (`signing_digest`) est maintenant définie pour les champs de transaction hors `auth_data`, avec un domaine de hachage distinct du txid. Elle doit encore être figée par spécification et vecteurs indépendants avant de brancher une bibliothèque de signature.
 - Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
 - La CI a précédemment échoué sur rustfmt. Des corrections de formatage et un correctif aux tests du registre ont été poussés, mais aucune exécution CI confirmant le commit courant n'a été récupérée lors de cette vérification. Clippy, compilation et tests restent donc à confirmer.
@@ -66,7 +67,7 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 **Actions**
 1. Définir le format de transaction et d'en-tête de bloc, les versions et les limites de taille.
-2. Choisir l'encodage de signatures et l'algorithme à partir de bibliothèques maintenues.
+2. Choisir l'encodage de signatures et l'algorithme à partir de bibliothèques maintenues ; valider l'empreinte de signature par spécification et vecteurs de référence.
 3. Définir précisément l'engagement sur les transactions : arbre de Merkle, ordre des feuilles, règles pour un nombre impair, preuve et vecteurs.
 4. Définir l'identifiant de chaîne/réseau, la sérialisation canonique et les erreurs de validation.
 5. Établir un modèle de menace : fausse signature, rejeu inter-réseaux, nonce, double dépense, overflow, DoS, réorganisation, spam et compromission de clés.
@@ -186,7 +187,7 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - `cargo build --workspace --locked` une fois le fichier de verrouillage commité
 - Tests Python du simulateur et vérification des invariants monétaires
 - Fuzzing du décodeur et des messages réseau
-- Vecteurs de référence pour hash, signature, transaction, bloc, difficulté et émission
+- Vecteurs de référence pour hash, empreinte de signature, transaction, bloc, difficulté et émission
 - Tests de propriétés : aucun dépassement de plafond, aucun overflow silencieux, même entrée => même résultat, rejet sans mutation d'état
 
 ## Politique de livraison
