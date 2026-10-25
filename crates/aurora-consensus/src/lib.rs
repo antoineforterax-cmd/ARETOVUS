@@ -13,6 +13,7 @@
 pub mod account_block;
 pub mod account_fork_chain;
 pub mod block_validation;
+pub mod difficulty;
 pub mod experimental;
 pub mod fork_chain;
 pub mod local_chain;
