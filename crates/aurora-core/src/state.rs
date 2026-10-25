@@ -109,6 +109,26 @@ impl AccountLedger {
         Ok(())
     }
 
+    /// Credits the miner's share of transaction fees without increasing gross issuance.
+    /// Intended for the consensus block-reward validator, never a network-facing API.
+    pub fn credit_fee_reward(
+        &mut self,
+        recipient: AccountId,
+        amount: Amount,
+    ) -> Result<(), StateError> {
+        if amount == Amount::ZERO {
+            return Ok(());
+        }
+        let current = self.account(recipient);
+        let balance = current
+            .balance
+            .checked_add(amount)
+            .map_err(StateError::BalanceOutOfRange)?;
+        self.accounts
+            .insert(recipient, AccountState { balance, ..current });
+        Ok(())
+    }
+
     /// Applique un transfert atomiquement après les contrôles d'état et d'autorisation.
     /// La signature est vérifiée avant toute mutation.
     pub fn apply_transaction(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
