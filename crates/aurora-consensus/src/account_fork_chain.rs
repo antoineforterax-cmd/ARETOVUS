@@ -146,7 +146,11 @@ impl AccountForkChain {
             .height
             .checked_add(1)
             .ok_or(AccountForkChainError::HeightOverflow)?;
-        if block.header.timestamp <= self.median_time(parent) {
+        // Each branch has strictly increasing timestamps, and every block must also
+        // advance beyond the median of up to eleven prior blocks.
+        if block.header.timestamp <= parent_node.timestamp
+            || block.header.timestamp <= self.median_time(parent)
+        {
             return Err(AccountForkChainError::InvalidTimestamp);
         }
         let expected_bits = if self.difficulty_params.adjustment_interval > 0
@@ -154,9 +158,12 @@ impl AccountForkChain {
         {
             let anchor_height = height - self.difficulty_params.adjustment_interval;
             let anchor_hash = self.ancestor_at_height(parent, anchor_height)?;
-            let elapsed = self
-                .median_time(parent)
-                .saturating_sub(self.median_time(anchor_hash))
+            // The candidate closes this window. Measuring its timestamp against the
+            // exact ancestor H-interval covers exactly `interval` block spacings.
+            let elapsed = block
+                .header
+                .timestamp
+                .saturating_sub(self.nodes[&anchor_hash].timestamp)
                 .max(1);
             self.difficulty_params
                 .retarget(parent_node.difficulty_bits, elapsed)
@@ -266,7 +273,10 @@ impl AccountForkChain {
     }
 
     /// Difficulty required for the next block on the canonical tip.
-    pub fn next_difficulty_bits(&self) -> Result<u16, AccountForkChainError> {
+    pub fn next_difficulty_bits(
+        &self,
+        candidate_timestamp: u64,
+    ) -> Result<u16, AccountForkChainError> {
         let parent = self.tip_hash();
         let node = self.nodes[&parent];
         let height = node
@@ -278,9 +288,8 @@ impl AccountForkChain {
         {
             let anchor_height = height - self.difficulty_params.adjustment_interval;
             let anchor = self.ancestor_at_height(parent, anchor_height)?;
-            let elapsed = self
-                .median_time(parent)
-                .saturating_sub(self.median_time(anchor))
+            let elapsed = candidate_timestamp
+                .saturating_sub(self.nodes[&anchor].timestamp)
                 .max(1);
             Ok(self
                 .difficulty_params
@@ -288,6 +297,11 @@ impl AccountForkChain {
         } else {
             Ok(node.difficulty_bits)
         }
+    }
+
+    /// Timestamp at the canonical tip, used by the miner to preserve monotonicity.
+    pub fn tip_timestamp(&self) -> u64 {
+        self.nodes[&self.tip_hash()].timestamp
     }
 
     /// Median timestamp of up to eleven ancestors at the canonical tip.
@@ -436,20 +450,21 @@ mod tests {
         genesis.header.nonce = mine_nonce(&genesis.header, 2, 0, 100_000).unwrap();
         let mut chain =
             AccountForkChain::new_with_params(genesis, 2, params, initial_state()).unwrap();
-        let first = block(chain.tip_hash(), 108, vec![]);
+        let first = block(chain.tip_hash(), 101, vec![]);
         let first_nonce = mine_nonce(&first.header, 2, 0, 100_000).unwrap();
         let mut first = first;
         first.header.nonce = first_nonce;
         chain.submit(first).unwrap();
         assert_eq!(chain.difficulty_bits(), 2);
 
-        let second = block(chain.tip_hash(), 120, vec![]);
+        let second = block(chain.tip_hash(), 102, vec![]);
+        assert_eq!(chain.next_difficulty_bits(102).unwrap(), 4);
         let mut rejected = None;
         for nonce in 0..100_000 {
             let mut candidate = second.clone();
             candidate.header.nonce = nonce;
-            if check_proof(&candidate.header, 2).unwrap()
-                && !check_proof(&candidate.header, 3).unwrap()
+            if check_proof(&candidate.header, 3).unwrap()
+                && !check_proof(&candidate.header, 4).unwrap()
             {
                 rejected = Some(candidate);
                 break;
@@ -462,21 +477,47 @@ mod tests {
             ))
         ));
 
-        let second = block(chain.tip_hash(), 120, vec![]);
-        let nonce = mine_nonce(&second.header, 3, 0, 100_000).unwrap();
+        let second = block(chain.tip_hash(), 102, vec![]);
+        let nonce = mine_nonce(&second.header, 4, 0, 100_000).unwrap();
         let mut second = second;
         second.header.nonce = nonce;
         chain.submit(second).unwrap();
         assert_eq!(chain.height(), 2);
-        assert_eq!(chain.difficulty_bits(), 3);
+        assert_eq!(chain.difficulty_bits(), 4);
         assert_eq!(
             chain.chain_work(),
             ChainWork::for_difficulty(2)
                 .checked_add(ChainWork::for_difficulty(2))
                 .unwrap()
-                .checked_add(ChainWork::for_difficulty(3))
+                .checked_add(ChainWork::for_difficulty(4))
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn timestamps_must_advance_parent_and_retarget_uses_candidate_time_bounded() {
+        let params = DifficultyParams {
+            target_block_seconds: 10,
+            adjustment_interval: 2,
+            max_adjustment_bits: 1,
+            min_bits: 1,
+            max_bits: 8,
+        };
+        let genesis = block(Hash256::ZERO, 100, vec![]);
+        let mut chain =
+            AccountForkChain::new_with_params(genesis, 2, params, initial_state()).unwrap();
+        let first = block(chain.tip_hash(), 101, vec![]);
+        let first_hash = first.header.hash().unwrap();
+        chain.submit(first).unwrap();
+
+        // Equality with the direct parent is invalid even if it is above the MTP.
+        assert_eq!(
+            chain.submit(block(first_hash, 101, vec![])),
+            Err(AccountForkChainError::InvalidTimestamp)
+        );
+        // A far-future candidate can move difficulty by only one bit in this window.
+        assert_eq!(chain.next_difficulty_bits(1_000_000).unwrap(), 1);
+        assert_eq!(chain.next_difficulty_bits(102).unwrap(), 3);
     }
 
     #[test]
