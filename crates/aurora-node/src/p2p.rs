@@ -27,6 +27,8 @@ const MAX_SESSION_BYTES: usize = 256 * 1024 * 1024;
 const MAX_SESSION_REQUESTS: usize = 16_384;
 const MAX_SESSION_DURATION: Duration = Duration::from_secs(15 * 60);
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
+const PEER_RETRY_ATTEMPTS: usize = 3;
+const PEER_RETRY_BASE_DELAY: Duration = Duration::from_millis(100);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
 const SUBMIT_BLOCK: u8 = 3;
@@ -354,6 +356,41 @@ pub fn serve(
     Ok(())
 }
 
+fn retryable_peer_error(error: &P2pError) -> bool {
+    matches!(
+        error,
+        P2pError::Io(io_error)
+            if matches!(
+                io_error.kind(),
+                io::ErrorKind::TimedOut
+                    | io::ErrorKind::WouldBlock
+                    | io::ErrorKind::Interrupted
+                    | io::ErrorKind::ConnectionRefused
+                    | io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::ConnectionAborted
+                    | io::ErrorKind::NotConnected
+                    | io::ErrorKind::BrokenPipe
+            )
+    )
+}
+
+fn retry_peer_operation<T>(
+    mut operation: impl FnMut() -> Result<T, P2pError>,
+) -> Result<T, P2pError> {
+    let mut delay = PEER_RETRY_BASE_DELAY;
+    for attempt in 0..PEER_RETRY_ATTEMPTS {
+        match operation() {
+            Ok(value) => return Ok(value),
+            Err(error) if retryable_peer_error(&error) && attempt + 1 < PEER_RETRY_ATTEMPTS => {
+                thread::sleep(delay);
+                delay = delay.saturating_mul(2);
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Err(P2pError::Protocol("peer retry attempts exhausted"))
+}
+
 /// Send one locally validated block to a configured peer for independent consensus validation.
 pub fn propagate_block(
     address: SocketAddr,
@@ -375,6 +412,15 @@ pub fn propagate_block(
         return Err(P2pError::Protocol("peer did not acknowledge block"));
     }
     Ok(())
+}
+
+/// Retry transient connection failures a small fixed number of times.
+pub fn propagate_block_with_retry(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+    block: &AccountBlock,
+) -> Result<(), P2pError> {
+    retry_peer_operation(|| propagate_block(address, chain, block))
 }
 
 /// Download all known blocks in bounded pages; consensus validation decides what is retained.
@@ -439,6 +485,15 @@ pub fn sync_from_peer(
         }
     }
     Ok(accepted)
+}
+
+/// Retry transient connection failures; malformed messages and consensus errors fail immediately.
+pub fn sync_from_peer_with_retry(
+    address: SocketAddr,
+    chain: &mut AccountForkChain,
+    data_dir: &Path,
+) -> Result<usize, P2pError> {
+    retry_peer_operation(|| sync_from_peer(address, chain, data_dir))
 }
 
 #[cfg(test)]
@@ -603,6 +658,32 @@ mod tests {
         assert_eq!(unchanged.height(), 0);
         assert!(fs::read_dir(&dir).unwrap().next().is_none());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn transient_peer_connection_errors_are_retried_but_protocol_errors_are_not() {
+        let mut attempts = 0;
+        let result = retry_peer_operation(|| {
+            attempts += 1;
+            if attempts < 2 {
+                Err(P2pError::Io(io::Error::new(
+                    io::ErrorKind::ConnectionRefused,
+                    "temporary refusal",
+                )))
+            } else {
+                Ok(42)
+            }
+        });
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(attempts, 2);
+
+        attempts = 0;
+        let result: Result<(), P2pError> = retry_peer_operation(|| {
+            attempts += 1;
+            Err(P2pError::Protocol("incompatible peer"))
+        });
+        assert!(result.is_err());
+        assert_eq!(attempts, 1);
     }
 
     #[test]
