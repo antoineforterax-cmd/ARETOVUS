@@ -5,6 +5,7 @@ use crate::{
     account_block::{validate_and_apply_account_block, AccountBlock, AccountBlockValidationError},
     difficulty::{ChainWork, DifficultyParams},
     fork_chain::ChainUpdate,
+    reward::{apply_block_reward, RewardError, RewardParams},
 };
 use aurora_core::{codec::EncodeError, hash::Hash256, state::AccountLedger};
 
@@ -21,6 +22,7 @@ struct Node {
 pub struct AccountForkChain {
     initial_difficulty_bits: u16,
     difficulty_params: DifficultyParams,
+    reward_params: RewardParams,
     nodes: BTreeMap<Hash256, Node>,
     blocks: BTreeMap<Hash256, AccountBlock>,
     states: BTreeMap<Hash256, AccountLedger>,
@@ -30,6 +32,7 @@ pub struct AccountForkChain {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccountForkChainError {
     InvalidGenesisParent,
+    InvalidGenesisBody,
     UnknownParent,
     DuplicateBlock,
     HeightOverflow,
@@ -37,6 +40,7 @@ pub enum AccountForkChainError {
     InvalidTimestamp,
     WorkOverflow,
     Validation(AccountBlockValidationError),
+    Reward(RewardError),
     Encoding(EncodeError),
 }
 impl fmt::Display for AccountForkChainError {
@@ -52,10 +56,11 @@ impl AccountForkChain {
         difficulty_bits: u16,
         initial_state: AccountLedger,
     ) -> Result<Self, AccountForkChainError> {
-        Self::new_with_params(
+        Self::new_with_protocol_params(
             genesis,
             difficulty_bits,
             DifficultyParams::fixed(difficulty_bits),
+            RewardParams::disabled(),
             initial_state,
         )
     }
@@ -64,10 +69,29 @@ impl AccountForkChain {
         genesis: AccountBlock,
         initial_difficulty_bits: u16,
         difficulty_params: DifficultyParams,
+        initial_state: AccountLedger,
+    ) -> Result<Self, AccountForkChainError> {
+        Self::new_with_protocol_params(
+            genesis,
+            initial_difficulty_bits,
+            difficulty_params,
+            RewardParams::disabled(),
+            initial_state,
+        )
+    }
+
+    pub fn new_with_protocol_params(
+        genesis: AccountBlock,
+        initial_difficulty_bits: u16,
+        difficulty_params: DifficultyParams,
+        reward_params: RewardParams,
         mut initial_state: AccountLedger,
     ) -> Result<Self, AccountForkChainError> {
         if genesis.header.prev_hash != Hash256::ZERO {
             return Err(AccountForkChainError::InvalidGenesisParent);
+        }
+        if genesis.miner.is_some() || !genesis.transactions.is_empty() {
+            return Err(AccountForkChainError::InvalidGenesisBody);
         }
         if !difficulty_params.validate(initial_difficulty_bits) {
             return Err(AccountForkChainError::InvalidDifficultyParams);
@@ -96,6 +120,7 @@ impl AccountForkChain {
         Ok(Self {
             initial_difficulty_bits,
             difficulty_params,
+            reward_params,
             nodes,
             blocks,
             states,
@@ -143,8 +168,10 @@ impl AccountForkChain {
             .get(&parent)
             .expect("every known block has a state snapshot")
             .clone();
-        validate_and_apply_account_block(&block, expected_bits, &mut state)
+        let total_fees = validate_and_apply_account_block(&block, expected_bits, &mut state)
             .map_err(AccountForkChainError::Validation)?;
+        apply_block_reward(&mut state, block.miner, total_fees, self.reward_params)
+            .map_err(AccountForkChainError::Reward)?;
         let chain_work = parent_node
             .chain_work
             .checked_add(ChainWork::for_difficulty(expected_bits))
@@ -246,6 +273,10 @@ impl AccountForkChain {
         self.difficulty_params
     }
 
+    pub fn reward_params(&self) -> RewardParams {
+        self.reward_params
+    }
+
     pub fn chain_work(&self) -> ChainWork {
         self.nodes[&self.tip_hash()].chain_work
     }
@@ -292,6 +323,9 @@ mod tests {
         AccountId([byte; 32])
     }
     fn tx(nonce: u64, recipient: u8, amount: u64) -> AccountTransaction {
+        tx_with_fee(nonce, recipient, amount, 1)
+    }
+    fn tx_with_fee(nonce: u64, recipient: u8, amount: u64, fee: u64) -> AccountTransaction {
         let signing_key = key();
         let mut tx = AccountTransaction {
             version: ACCOUNT_TX_VERSION,
@@ -300,7 +334,7 @@ mod tests {
             nonce,
             recipient: account(recipient),
             amount: Amount::from_units(amount).unwrap(),
-            fee: Amount::from_units(1).unwrap(),
+            fee: Amount::from_units(fee).unwrap(),
             auth_data: Vec::new(),
         };
         tx.auth_data = signing_key
@@ -412,6 +446,130 @@ mod tests {
                 .checked_add(ChainWork::for_difficulty(3))
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn block_reward_splits_issuance_fees_and_enforces_miner_commitment() {
+        let treasury = account(51);
+        let miner = account(50);
+        let genesis = block(Hash256::ZERO, 1, vec![]);
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(treasury),
+            initial_state(),
+        )
+        .unwrap();
+        let candidate = AccountBlock::build_with_miner(
+            NetworkId::Regtest,
+            chain.tip_hash(),
+            2,
+            0,
+            Some(miner),
+            vec![tx_with_fee(0, 10, 10, 5)],
+        )
+        .unwrap();
+        let mut tampered = candidate.clone();
+        tampered.miner = Some(account(52));
+        assert!(matches!(
+            chain.submit(tampered),
+            Err(AccountForkChainError::Validation(
+                AccountBlockValidationError::Stateless(AccountBlockError::CommitmentMismatch)
+            ))
+        ));
+        chain.submit(candidate).unwrap();
+        assert_eq!(
+            chain.state().account(miner).balance.to_units(),
+            475 * aurora_core::amount::UNITS_PER_COIN + 2
+        );
+        assert_eq!(
+            chain.state().account(treasury).balance.to_units(),
+            25 * aurora_core::amount::UNITS_PER_COIN
+        );
+        assert_eq!(
+            chain.state().total_issued().to_units(),
+            1_000 + 500 * aurora_core::amount::UNITS_PER_COIN
+        );
+    }
+
+    #[test]
+    fn reorganization_replays_rewards_from_the_winning_parent_state() {
+        let treasury = account(60);
+        let miner_a = account(61);
+        let miner_b = account(62);
+        let miner_c = account(63);
+        let genesis = block(Hash256::ZERO, 1, vec![]);
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(treasury),
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
+        let parent = chain.tip_hash();
+        let branch_a =
+            AccountBlock::build_with_miner(NetworkId::Regtest, parent, 2, 0, Some(miner_a), vec![])
+                .unwrap();
+        let hash_a = branch_a.header.hash().unwrap();
+        let branch_b =
+            AccountBlock::build_with_miner(NetworkId::Regtest, parent, 3, 0, Some(miner_b), vec![])
+                .unwrap();
+        let hash_b = branch_b.header.hash().unwrap();
+        chain.submit(branch_a).unwrap();
+        chain.submit(branch_b).unwrap();
+        let losing_parent = if chain.tip_hash() == hash_a {
+            hash_b
+        } else {
+            hash_a
+        };
+        let child = AccountBlock::build_with_miner(
+            NetworkId::Regtest,
+            losing_parent,
+            4,
+            0,
+            Some(miner_c),
+            vec![],
+        )
+        .unwrap();
+        let child_hash = child.header.hash().unwrap();
+        assert!(chain.submit(child).unwrap().became_best);
+        assert_eq!(chain.tip_hash(), child_hash);
+        assert_eq!(chain.height(), 2);
+        assert_eq!(
+            chain.state().total_issued().to_units(),
+            1_000 * aurora_core::amount::UNITS_PER_COIN
+        );
+        assert_eq!(
+            chain.state().account(miner_c).balance.to_units(),
+            475 * aurora_core::amount::UNITS_PER_COIN
+        );
+        assert_eq!(
+            chain.state().account(miner_a).balance.to_units()
+                + chain.state().account(miner_b).balance.to_units(),
+            475 * aurora_core::amount::UNITS_PER_COIN
+        );
+    }
+
+    #[test]
+    fn reward_enabled_chain_rejects_missing_miner_without_mutation() {
+        let genesis = block(Hash256::ZERO, 1, vec![]);
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(account(51)),
+            initial_state(),
+        )
+        .unwrap();
+        let block = block(chain.tip_hash(), 2, vec![]);
+        assert_eq!(
+            chain.submit(block),
+            Err(AccountForkChainError::Reward(RewardError::MissingMiner))
+        );
+        assert_eq!(chain.height(), 0);
+        assert_eq!(chain.state().total_issued().to_units(), 1_000);
     }
 
     #[test]
