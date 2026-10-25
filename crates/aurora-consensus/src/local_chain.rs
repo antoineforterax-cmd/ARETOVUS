@@ -181,9 +181,9 @@ mod tests {
 
     #[test]
     fn rejects_excessive_difficulty() {
-        assert_eq!(
+        assert!(matches!(
             LocalChain::new(block(Hash256::ZERO, 1), 128),
             Err(ChainError::InvalidDifficulty)
-        );
+        ));
     }
 }
