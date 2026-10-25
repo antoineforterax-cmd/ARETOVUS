@@ -22,6 +22,8 @@ use aurora_storage::save_snapshot;
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
 const MAX_SYNC_BLOCKS: usize = 100_000;
+pub const MAX_DISCOVERED_PEERS: usize = 64;
+const MAX_ADVERTISED_PEERS: usize = 32;
 /// Hard aggregate cap per peer session, independent of per-frame limits.
 const MAX_SESSION_BYTES: usize = 256 * 1024 * 1024;
 const MAX_SESSION_REQUESTS: usize = 16_384;
@@ -35,6 +37,8 @@ const SUBMIT_BLOCK: u8 = 3;
 const BLOCK_ACCEPTED: u8 = 0x83;
 const BLOCKS_REPLY: u8 = 0x82;
 const ERROR_REPLY: u8 = 0xff;
+const GET_PEERS: u8 = 4;
+const PEERS_REPLY: u8 = 0x84;
 
 #[derive(Debug)]
 pub enum P2pError {
@@ -143,6 +147,100 @@ fn add_session_request(count: &mut usize) -> Result<(), P2pError> {
     Ok(())
 }
 
+fn encode_peer_list(peers: &[SocketAddr]) -> Result<Vec<u8>, P2pError> {
+    if peers.len() > MAX_ADVERTISED_PEERS {
+        return Err(P2pError::Protocol("advertised peer list exceeds limit"));
+    }
+    let count = u16::try_from(peers.len())
+        .map_err(|_| P2pError::Protocol("advertised peer count overflow"))?;
+    let mut frame = vec![PEERS_REPLY];
+    frame.extend_from_slice(&count.to_be_bytes());
+    for peer in peers {
+        match peer {
+            SocketAddr::V4(address) => {
+                frame.push(4);
+                frame.extend_from_slice(&address.ip().octets());
+                frame.extend_from_slice(&address.port().to_be_bytes());
+            }
+            SocketAddr::V6(address) => {
+                if address.scope_id() != 0 {
+                    return Err(P2pError::Protocol("scoped IPv6 peers are not supported"));
+                }
+                frame.push(6);
+                for segment in address.ip().segments() {
+                    frame.extend_from_slice(&segment.to_be_bytes());
+                }
+                frame.extend_from_slice(&address.port().to_be_bytes());
+            }
+        }
+    }
+    Ok(frame)
+}
+
+fn decode_peer_list(frame: &[u8]) -> Result<Vec<SocketAddr>, P2pError> {
+    if frame.len() < 3 || frame[0] != PEERS_REPLY {
+        return Err(P2pError::Protocol("invalid peer list"));
+    }
+    let count = u16::from_be_bytes(frame[1..3].try_into().expect("fixed slice")) as usize;
+    if count > MAX_ADVERTISED_PEERS {
+        return Err(P2pError::Protocol("advertised peer list exceeds limit"));
+    }
+    let mut cursor = 3usize;
+    let mut peers = Vec::with_capacity(count);
+    for _ in 0..count {
+        let family = *frame
+            .get(cursor)
+            .ok_or(P2pError::Protocol("truncated peer address"))?;
+        cursor += 1;
+        let address_len = match family {
+            4 => 4,
+            6 => 16,
+            _ => return Err(P2pError::Protocol("unknown peer address family")),
+        };
+        let address_end = cursor
+            .checked_add(address_len)
+            .ok_or(P2pError::Protocol("peer address length overflow"))?;
+        let address = frame
+            .get(cursor..address_end)
+            .ok_or(P2pError::Protocol("truncated peer address"))?;
+        cursor = address_end;
+        let port_end = cursor
+            .checked_add(2)
+            .ok_or(P2pError::Protocol("peer port length overflow"))?;
+        let port_bytes = frame
+            .get(cursor..port_end)
+            .ok_or(P2pError::Protocol("truncated peer port"))?;
+        let port = u16::from_be_bytes(port_bytes.try_into().expect("fixed slice"));
+        cursor = port_end;
+        let ip = if family == 4 {
+            std::net::IpAddr::V4(std::net::Ipv4Addr::from(
+                <[u8; 4]>::try_from(address).expect("fixed IPv4 address"),
+            ))
+        } else {
+            std::net::IpAddr::V6(std::net::Ipv6Addr::from(
+                <[u8; 16]>::try_from(address).expect("fixed IPv6 address"),
+            ))
+        };
+        if port == 0
+            || ip.is_unspecified()
+            || ip.is_multicast()
+            || matches!(ip, std::net::IpAddr::V6(ipv6) if ipv6.is_unicast_link_local())
+        {
+            return Err(P2pError::Protocol(
+                "advertised peer address is not routable",
+            ));
+        }
+        let peer = SocketAddr::new(ip, port);
+        if !peers.contains(&peer) {
+            peers.push(peer);
+        }
+    }
+    if cursor != frame.len() {
+        return Err(P2pError::Protocol("trailing peer list data"));
+    }
+    Ok(peers)
+}
+
 fn send_hello(stream: &mut TcpStream, chain: &AccountForkChain) -> Result<(), P2pError> {
     let mut frame = vec![HELLO];
     frame.extend_from_slice(protocol_fingerprint(chain).as_bytes());
@@ -243,6 +341,7 @@ fn handle_peer_shared(
     mut stream: TcpStream,
     chain: &Mutex<AccountForkChain>,
     data_dir: &Path,
+    advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
     let session_started = Instant::now();
@@ -288,6 +387,15 @@ fn handle_peer_shared(
                 write_frame(&mut stream, &frame)?;
                 add_session_bytes(&mut session_bytes, sent)?;
             }
+            Some(&GET_PEERS) if request.len() == 1 => {
+                let frame = encode_peer_list(advertised_peers)?;
+                let sent = frame.len() + 4;
+                if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &frame)?;
+                add_session_bytes(&mut session_bytes, sent)?;
+            }
             Some(&SUBMIT_BLOCK) if request.len() > 1 => {
                 if 45 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
                     return Err(P2pError::Protocol("peer session byte budget exceeded"));
@@ -318,24 +426,33 @@ pub fn serve(
     address: SocketAddr,
     chain: &mut AccountForkChain,
     data_dir: &Path,
+    advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
     const PEER_WORKERS: usize = 8;
     let listener = TcpListener::bind(address)?;
     println!("testnet peer listening on {}", listener.local_addr()?);
     let chain = Arc::new(Mutex::new(chain.clone()));
     let data_dir = Arc::new(data_dir.to_path_buf());
+    let mut peers = advertised_peers.to_vec();
+    peers.sort_unstable();
+    peers.dedup();
+    peers.truncate(MAX_ADVERTISED_PEERS);
+    let advertised_peers = Arc::new(peers);
     let mut workers = Vec::with_capacity(PEER_WORKERS);
     for worker_id in 0..PEER_WORKERS {
         let listener = listener.try_clone()?;
         let chain = Arc::clone(&chain);
         let data_dir = Arc::clone(&data_dir);
+        let advertised_peers = Arc::clone(&advertised_peers);
         workers.push(
             thread::Builder::new()
                 .name(format!("aurora-peer-{worker_id}"))
                 .spawn(move || loop {
                     match listener.accept() {
                         Ok((stream, _)) => {
-                            if let Err(error) = handle_peer_shared(stream, &chain, &data_dir) {
+                            if let Err(error) =
+                                handle_peer_shared(stream, &chain, &data_dir, &advertised_peers)
+                            {
                                 eprintln!("peer rejected: {error}");
                             }
                         }
@@ -487,6 +604,35 @@ pub fn sync_from_peer(
     Ok(accepted)
 }
 
+/// Request one bounded list of bootstrap peers from a fingerprint-compatible peer.
+pub fn discover_peers(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+) -> Result<Vec<SocketAddr>, P2pError> {
+    let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
+    set_timeouts(&stream)?;
+    let mut session_bytes = 77usize;
+    send_hello(&mut stream, chain)?;
+    let hello = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, hello.len() + 4)?;
+    if hello.first() == Some(&ERROR_REPLY) {
+        return Err(P2pError::Protocol("peer rejected network identity"));
+    }
+    check_hello(&hello, chain)?;
+    write_frame(&mut stream, &[GET_PEERS])?;
+    add_session_bytes(&mut session_bytes, 5)?;
+    let frame = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, frame.len() + 4)?;
+    decode_peer_list(&frame)
+}
+
+pub fn discover_peers_with_retry(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+) -> Result<Vec<SocketAddr>, P2pError> {
+    retry_peer_operation(|| discover_peers(address, chain))
+}
+
 /// Retry transient connection failures; malformed messages and consensus errors fail immediately.
 pub fn sync_from_peer_with_retry(
     address: SocketAddr,
@@ -530,7 +676,7 @@ mod tests {
         let thread = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
             tx.send(result.is_ok()).unwrap();
         });
         let mut client = chain();
@@ -565,7 +711,7 @@ mod tests {
                 let chain = Arc::clone(&server_chain);
                 let data_dir = server_dir.clone();
                 workers.push(thread::spawn(move || {
-                    handle_peer_shared(stream, &chain, &data_dir)
+                    handle_peer_shared(stream, &chain, &data_dir, &advertised_peers)
                 }));
             }
             workers
@@ -608,7 +754,7 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
             (result, shared_chain.into_inner().unwrap())
         });
         let mut client = chain();
@@ -639,7 +785,7 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
             (result, shared_chain.into_inner().unwrap())
         });
         let client = chain();
@@ -658,6 +804,47 @@ mod tests {
         assert_eq!(unchanged.height(), 0);
         assert!(fs::read_dir(&dir).unwrap().next().is_none());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn peer_list_encoding_roundtrips_and_rejects_malformed_addresses() {
+        let peers = vec![
+            "127.0.0.1:18444".parse().unwrap(),
+            "[::1]:18445".parse().unwrap(),
+        ];
+        assert_eq!(
+            decode_peer_list(&encode_peer_list(&peers).unwrap()).unwrap(),
+            peers
+        );
+
+        let mut invalid = vec![PEERS_REPLY];
+        invalid.extend_from_slice(&1u16.to_be_bytes());
+        invalid.push(4);
+        invalid.extend_from_slice(&[0, 0, 0, 0]);
+        invalid.extend_from_slice(&18444u16.to_be_bytes());
+        assert!(decode_peer_list(&invalid).is_err());
+
+        let excessive = vec!["127.0.0.1:18444".parse().unwrap(); MAX_ADVERTISED_PEERS + 1];
+        assert!(encode_peer_list(&excessive).is_err());
+        let mut excessive_count = vec![PEERS_REPLY];
+        excessive_count.extend_from_slice(&((MAX_ADVERTISED_PEERS as u16) + 1).to_be_bytes());
+        assert!(decode_peer_list(&excessive_count).is_err());
+    }
+
+    #[test]
+    fn peer_can_discover_bounded_static_bootstrap_addresses() {
+        let server_chain = chain();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let advertised = vec!["127.0.0.1:18444".parse().unwrap()];
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let shared_chain = Mutex::new(server_chain);
+            handle_peer_shared(stream, &shared_chain, Path::new("."), &advertised)
+        });
+        let discovered = discover_peers(address, &chain()).unwrap();
+        assert_eq!(discovered, advertised);
+        assert!(server.join().unwrap().is_ok());
     }
 
     #[test]
