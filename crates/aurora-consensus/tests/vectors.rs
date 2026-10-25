@@ -6,7 +6,9 @@
 use aurora_consensus::experimental::{compute_tx_commitment, Block};
 use aurora_core::amount::Amount;
 use aurora_core::codec::CanonicalEncode;
-use aurora_core::experimental::{OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION};
+use aurora_core::experimental::{
+    OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION,
+};
 use aurora_core::hash::Hash256;
 use aurora_core::network::NetworkId;
 
@@ -70,7 +72,14 @@ fn commitments_match_reference() {
 
 #[test]
 fn empty_block_header_matches_reference() {
-    let block = Block::build(NetworkId::Regtest, Hash256::ZERO, 1_000_000, 42, vec![]).unwrap();
+    let block = Block::build(
+        NetworkId::Regtest,
+        Hash256::ZERO,
+        1_000_000,
+        42,
+        vec![],
+    )
+    .unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
         "00000000010000000000000000000000000000000000000000000000000000000000000000f8c2cae75a91f9d2df0fc9d26ec0de98b103bb072049407ebde0b4cafa58951600000000000f4240000000000000002a"
@@ -83,7 +92,14 @@ fn empty_block_header_matches_reference() {
 
 #[test]
 fn one_transaction_block_header_matches_reference() {
-    let block = Block::build(NetworkId::Regtest, Hash256::ZERO, 1_000_000, 42, vec![tx1()]).unwrap();
+    let block = Block::build(
+        NetworkId::Regtest,
+        Hash256::ZERO,
+        1_000_000,
+        42,
+        vec![tx1()],
+    )
+    .unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
         "0000000001000000000000000000000000000000000000000000000000000000000000000071b23551dbdcc79a762605698484299b6ba5c0dca1c261fa7b80568327b1b02d00000000000f4240000000000000002a"
