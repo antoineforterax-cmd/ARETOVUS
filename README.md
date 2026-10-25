@@ -11,7 +11,7 @@ Le profil post-quantique hybride v2 est expérimental et facultatif; aucun compt
 | `aurora-core` | Montants entiers, encodage canonique, signatures v1 Ed25519 et profil hybride expérimental v2 Ed25519 + ML-DSA-65. |
 | `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
 | `aurora-storage` | Snapshots `AURORSNP` version 3 avec checksum, paramètres de consensus et toutes les branches; chargement par rejeu et revalidation. |
-| `aurora-node` | Minage local testnet, persistance, TCP push/pull vers pairs statiques, avec limites cumulées de 256 MiB, 16 384 requêtes et 15 minutes par session. |
+| `aurora-node` | Minage local testnet, persistance, TCP push/pull vers pairs statiques, 8 sessions serveur simultanées, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
 | `aurora-wallet` | Réservé; aucun portefeuille ou gestion de clés utilisateur. |
 
 ## Règles économiques exécutées
