@@ -428,6 +428,38 @@ mod tests {
     }
 
     #[test]
+    fn invalid_reward_block_from_peer_is_rejected_without_persistence() {
+        let dir = std::env::temp_dir().join(format!("aurora-p2p-invalid-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let mut server_chain = chain();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server_dir = dir.clone();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let result = handle_peer(stream, &mut server_chain, &server_dir);
+            (result, server_chain)
+        });
+        let client = chain();
+        let bad = AccountBlock::build_with_miner(
+            NetworkId::Regtest,
+            client.tip_hash(),
+            2,
+            0,
+            Some(aurora_core::accounts::AccountId([0x77; 32])),
+            vec![],
+        )
+        .unwrap();
+        assert!(propagate_block(address, &client, &bad).is_err());
+        let (result, unchanged) = server.join().unwrap();
+        assert!(result.is_err());
+        assert_eq!(unchanged.height(), 0);
+        assert!(fs::read_dir(&dir).unwrap().next().is_none());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn malformed_or_oversized_peer_inventories_are_rejected() {
         let mut oversized = vec![BLOCKS_REPLY];
         oversized.extend_from_slice(&((MAX_SYNC_BLOCKS as u32) + 1).to_be_bytes());
