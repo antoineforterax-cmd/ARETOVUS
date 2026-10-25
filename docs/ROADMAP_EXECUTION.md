@@ -124,11 +124,14 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 ### Phase 5 — Stockage et nœud local
 
+**État : socle expérimental ajouté, critères de sortie non atteints.** `aurora-storage` écrit des snapshots versionnés et checksummés de la seule branche canonique. Le chargement rejoue les blocs contre l’état de genèse fourni. `aurora-node regtest --data-dir PATH` crée ou relit le snapshot. Les tests de roundtrip et corruption sont écrits; l’exécution locale actuelle est bloquée par l’absence de `link.exe`, CI requise.
+
 **Actions**
-1. Ajouter une persistance avec format versionné et migrations explicites.
-2. Reconstruire l'état depuis la chaîne et vérifier le résultat contre l'état stocké.
-3. Gérer arrêt brutal, corruption, disque plein, base incohérente et reprise.
-4. Fournir des commandes locales pour créer un réseau de développement, miner des blocs et envoyer des transactions de test.
+1. [x] Ajouter un format de snapshot versionné avec checksum; [ ] définir les migrations avant toute incompatibilité.
+2. [x] Reconstruire l’état de comptes par rejeu de la branche canonique.
+3. [ ] Gérer explicitement crash au cours d’écriture, disque plein, snapshots contradictoires, sauvegarde et restauration.
+4. [ ] Persister les branches secondaires ou documenter une resynchronisation complète après redémarrage.
+5. Fournir des commandes locales pour créer un réseau de développement, miner des blocs et envoyer des transactions de test.
 
 **Sortie exigée**
 - Tests de redémarrage et de reconstruction, fixtures de chaînes, erreurs de stockage traitées sans corruption silencieuse.
