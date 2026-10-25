@@ -68,9 +68,26 @@ impl fmt::Display for AccountTxError {
 impl std::error::Error for AccountTxError {}
 
 impl AccountTransaction {
-    /// Identifiant déterministe des octets canoniques complets.
+    /// Identifiant déterministe des octets canoniques complets, autorisation incluse.
     pub fn txid(&self) -> Result<Hash256, EncodeError> {
         Ok(tagged_hash(Domain::TxId, &self.to_canonical_bytes()?))
+    }
+
+    /// Empreinte des champs qu'une signature doit autoriser.
+    ///
+    /// `auth_data` est volontairement exclu pour éviter une dépendance circulaire entre la
+    /// signature et les octets de la signature elle-même. Le domaine est versionné et distinct
+    /// du txid. Ce format est expérimental : ne pas signer de fonds réels avec cette version.
+    pub fn signing_digest(&self) -> Result<Hash256, EncodeError> {
+        let mut enc = Encoder::new();
+        enc.put_u32(self.version);
+        self.network.encode(&mut enc)?;
+        self.sender.encode(&mut enc)?;
+        enc.put_u64(self.nonce);
+        self.recipient.encode(&mut enc)?;
+        self.amount.encode(&mut enc)?;
+        self.fee.encode(&mut enc)?;
+        Ok(tagged_hash(Domain::TxSigning, &enc.into_bytes()))
     }
 
     /// Contrôles indépendants de l'état et de la cryptographie.
@@ -161,6 +178,35 @@ mod tests {
         let mut changed = tx.clone();
         changed.nonce += 1;
         assert_ne!(changed.txid().unwrap(), id);
+    }
+
+    #[test]
+    fn signing_digest_excludes_authorization_but_commits_to_transaction_fields() {
+        let tx = sample();
+        let digest = tx.signing_digest().unwrap();
+
+        let mut different_auth = tx.clone();
+        different_auth.auth_data = vec![9, 8, 7];
+        assert_eq!(different_auth.signing_digest().unwrap(), digest);
+        assert_ne!(different_auth.txid().unwrap(), tx.txid().unwrap());
+
+        let mut different_amount = tx.clone();
+        different_amount.amount = Amount::from_units(101).unwrap();
+        assert_ne!(different_amount.signing_digest().unwrap(), digest);
+
+        let mut different_network = tx.clone();
+        different_network.network = NetworkId::Testnet;
+        assert_ne!(different_network.signing_digest().unwrap(), digest);
+
+        let mut different_fee = tx.clone();
+        different_fee.fee = Amount::from_units(4).unwrap();
+        assert_ne!(different_fee.signing_digest().unwrap(), digest);
+    }
+
+    #[test]
+    fn signing_digest_is_distinct_from_transaction_id() {
+        let tx = sample();
+        assert_ne!(tx.signing_digest().unwrap(), tx.txid().unwrap());
     }
 
     #[test]
