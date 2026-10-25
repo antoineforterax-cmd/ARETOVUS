@@ -496,6 +496,7 @@ mod tests {
 
     #[test]
     fn timestamps_must_advance_parent_and_retarget_uses_candidate_time_bounded() {
+        use crate::proof_of_work::mine_nonce;
         let params = DifficultyParams {
             target_block_seconds: 10,
             adjustment_interval: 2,
@@ -503,10 +504,12 @@ mod tests {
             min_bits: 1,
             max_bits: 8,
         };
-        let genesis = block(Hash256::ZERO, 100, vec![]);
+        let mut genesis = block(Hash256::ZERO, 100, vec![]);
+        genesis.header.nonce = mine_nonce(&genesis.header, 2, 0, 100_000).unwrap();
         let mut chain =
             AccountForkChain::new_with_params(genesis, 2, params, initial_state()).unwrap();
-        let first = block(chain.tip_hash(), 101, vec![]);
+        let mut first = block(chain.tip_hash(), 101, vec![]);
+        first.header.nonce = mine_nonce(&first.header, 2, 0, 100_000).unwrap();
         let first_hash = first.header.hash().unwrap();
         chain.submit(first).unwrap();
 
