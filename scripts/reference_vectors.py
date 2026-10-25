@@ -48,7 +48,7 @@ c1 = tagged(TL, u32(1) + id1)
 c2 = tagged(TL, u32(2) + id1 + id2)
 
 values = {
-    "MAX_UNITS_BE": u64(105_000_000 * 10**8).hex(),
+    "MAX_UNITS_BE": u64(500_000_000 * 10**8).hex(),
     "SHA_EMPTY": sha(b"").hex(),
     "SHA_ABC": sha(b"abc").hex(),
     "TAG_TXID_EMPTY": tagged(TX, b"").hex(),
