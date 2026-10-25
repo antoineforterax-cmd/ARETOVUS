@@ -17,9 +17,9 @@ use aurora_core::{
     state::{AccountLedger, StateError},
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub const MAX_ACCOUNT_BLOCK_BYTES: usize = 4 * 1024 * 1024 - 16;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountBlock {
     pub header: BlockHeader,
     pub transactions: Vec<AccountTransaction>,
