@@ -10,12 +10,12 @@
 | Crate | Contenu actuel |
 |---|---|
 | `aurora-core` | montants entiers, sérialisation canonique, SHA-256 à domaines, transferts par comptes et vérification Ed25519 expérimentale |
-| `aurora-consensus` | blocs de comptes signés, application atomique, PoW à difficulté fixe et réorganisation en mémoire |
-| `aurora-storage` | snapshots canoniques versionnés et contrôlés par checksum ; reconstruction par rejeu des blocs |
+| `aurora-consensus` | blocs de comptes signés, application atomique, retarget expérimental et sélection par travail cumulé |
+| `aurora-storage` | snapshots versionnés et contrôlés par checksum de toutes les branches acceptées ; reconstruction par rejeu |
 | `aurora-node` | commande locale regtest, snapshots optionnels avec `--data-dir`, aucun service réseau ni minage |
 | `aurora-wallet` | crate vide et réservée (aucune clé) |
 
-La persistance ne conserve que la branche canonique ; les forks secondaires sont perdus au redémarrage. Le profil fixe de regtest et les paramètres de retarget sont enregistrés afin de rejouer les mêmes contrôles après redémarrage. La règle de retarget est expérimentale, par fenêtres et par pas entiers bornés; elle n’est pas une règle validée pour réseau public. Aucun reward de bloc n’est encore appliqué.
+La persistance conserve les blocs acceptés de toutes les branches et les rejoue au redémarrage; le format reste un snapshot simple, pas une base optimisée. Le profil fixe de regtest et les paramètres de retarget sont enregistrés afin de rejouer les mêmes contrôles après redémarrage. La règle de retarget est expérimentale, par fenêtres et par pas entiers bornés; elle n’est pas une règle validée pour réseau public. Aucun reward de bloc n’est encore appliqué.
 
 ## Commandes
 
@@ -34,7 +34,7 @@ python3 scripts/reference_vectors.py   # recalcule les valeurs attendues des vec
 
 ## Persistance expérimentale
 
-Le format `AURORSNP` version 1 contient la difficulté fixe, le nombre de blocs, leurs encodages canoniques et un SHA-256 de contrôle. Chaque snapshot est écrit sous un nom déterminé par la hauteur et l’empreinte de tête. Au chargement, les blocs sont rejoués depuis la genèse avec l’état initial fourni par le réseau. Les snapshots corrompus ou de version inconnue sont rejetés. Cette première version ne migre pas les formats, ne persiste pas les branches secondaires et ne remplace pas une base de données durable.
+Le format `AURORSNP` version 2 contient les paramètres de difficulté, tous les blocs acceptés en ordre topologique, leurs encodages canoniques et un SHA-256 de contrôle. Chaque snapshot immuable est écrit sous un nom déterminé par la hauteur, l’empreinte de tête et le checksum. Au chargement, les blocs sont rejoués et revalidés depuis la genèse avec l’état initial fourni par le réseau. Les snapshots corrompus ou de version inconnue sont rejetés. Il reste à éprouver les pannes, sauvegardes et migrations; ce format ne remplace pas une base de données optimisée.
 
 ## Dépendances
 
