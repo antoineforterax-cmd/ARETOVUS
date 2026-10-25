@@ -1,7 +1,11 @@
-//! `aurora-consensus` : bloc **expérimental** et vérifications sans état.
+//! `aurora-consensus` : bloc expérimental et premières expériences de preuve de travail.
 //!
-//! **Ce crate n'implémente pas encore de consensus.** Il n'y a ni preuve de travail, ni difficulté,
-//! ni récompense, ni règles temporelles, ni sélection de chaîne : ces décisions (POW-01 à POW-12,
-//! MON-01 à MON-05) sont ouvertes dans `docs/DECISION_REGISTER.md`.
+//! **Ce crate n'implémente toujours pas un consensus complet.** Le helper PoW est un outil de
+//! laboratoire : aucune difficulté de chaîne, récompense, règle temporelle, sélection par travail
+//! cumulé, validation d'état, ni réseau pair-à-pair n'est implémenté. Les décisions restent ouvertes
+//! dans `docs/DECISION_REGISTER.md`.
+//!
+//! Ne pas utiliser avec de vrais fonds.
 
 pub mod experimental;
+pub mod proof_of_work;
