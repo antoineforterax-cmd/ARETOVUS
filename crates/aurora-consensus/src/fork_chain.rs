@@ -193,7 +193,10 @@ mod tests {
                 reorg_from_height: None
             }
         );
-        let b1 = mined(block(genesis_hash, 3), 0);
+        let b1 = (3..100)
+            .map(|timestamp| mined(block(genesis_hash, timestamp), 0))
+            .find(|candidate| candidate.header.hash().unwrap() > a1_hash)
+            .expect("a deterministic candidate with a higher hash exists in the search range");
         let b1_hash = b1.header.hash().unwrap();
         assert!(!chain.submit(b1).unwrap().became_best);
         let b2 = mined(block(b1_hash, 4), 0);
