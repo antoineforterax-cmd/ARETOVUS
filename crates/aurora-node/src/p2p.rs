@@ -3,7 +3,7 @@ use std::{
     error::Error,
     io::{self, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    path::{Path, PathBuf},
+    path::Path,
     sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant},
@@ -294,7 +294,9 @@ fn handle_peer_shared(
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
                 let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                 match chain.submit(block) {
-                    Ok(_) => save_snapshot(data_dir, &chain)?,
+                    Ok(_) => {
+                        save_snapshot(data_dir, &chain)?;
+                    }
                     Err(AccountForkChainError::DuplicateBlock) => {}
                     Err(error) => return Err(P2pError::Chain(error)),
                 }
@@ -543,7 +545,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("aurora-p2p-push-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        let mut server_chain = chain();
+        let server_chain = chain();
         let server_genesis = server_chain.tip_hash();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
@@ -575,7 +577,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("aurora-p2p-invalid-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        let mut server_chain = chain();
+        let server_chain = chain();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
         let server_dir = dir.clone();
