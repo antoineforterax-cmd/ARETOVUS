@@ -1,6 +1,6 @@
 //! Versioned, checksummed snapshots for the experimental account chain.
 //!
-//! Snapshots persist canonical blocks only. Loading replays every block against the
+//! Snapshots persist accepted blocks from all branches. Loading replays every block against the
 //! caller-provided deterministic genesis state. This is not a database or a backup
 //! strategy; side branches are discarded on restart.
 use std::{
@@ -76,9 +76,10 @@ pub fn save_snapshot(
     fs::create_dir_all(dir)?;
     let bytes = encode_snapshot(chain)?;
     let destination = dir.join(format!(
-        "snapshot-{:020}-{}.aurora",
+        "snapshot-{:020}-{}-{}.aurora",
         chain.height(),
-        chain.tip_hash()
+        chain.tip_hash(),
+        sha256_plain(&bytes)
     ));
     if destination.exists() {
         let existing = read_bounded(&destination)?;
@@ -123,7 +124,10 @@ pub fn load_latest_snapshot(
         let chain = decode_snapshot(&bytes, initial_state.clone())?;
         if best.as_ref().is_none_or(|current| {
             chain.height() > current.height()
-                || (chain.height() == current.height() && chain.tip_hash() < current.tip_hash())
+                || (chain.height() == current.height()
+                    && (chain.tip_hash() < current.tip_hash()
+                        || (chain.tip_hash() == current.tip_hash()
+                            && chain.known_block_count() > current.known_block_count())))
         }) {
             best = Some(chain);
         }
@@ -147,7 +151,7 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 }
 
 fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
-    let blocks = chain.blocks().collect::<Vec<_>>();
+    let blocks = chain.all_blocks_by_height();
     if blocks.len() > MAX_BLOCKS {
         return Err(StorageError::InvalidFormat("too many blocks"));
     }
@@ -278,6 +282,23 @@ mod tests {
         assert_eq!(restored.state(), original.state());
         fs::remove_dir_all(path).unwrap();
     }
+    #[test]
+    fn snapshot_roundtrip_keeps_secondary_branches_for_reorganization() {
+        let path = dir();
+        let mut original = chain();
+        let genesis = original.tip_hash();
+        let branch_a = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
+        let branch_b = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
+        original.submit(branch_a).unwrap();
+        original.submit(branch_b).unwrap();
+        assert_eq!(original.known_block_count(), 3);
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), 3);
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn snapshot_roundtrip_preserves_difficulty_parameters() {
         let path = dir();
