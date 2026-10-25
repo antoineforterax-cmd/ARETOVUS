@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn cap_fits_in_u64_with_room() {
-        assert_eq!(MAX_UNITS, 10_500_000_000_000_000);
+        assert_eq!(MAX_UNITS, 50_000_000_000_000_000);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
             Amount::from_units(150_000_000).unwrap().to_string(),
             "1.50000000"
         );
-        assert_eq!(Amount::MAX.to_string(), "105000000.00000000");
+        assert_eq!(Amount::MAX.to_string(), "500000000.00000000");
     }
 
     #[test]
