@@ -9,4 +9,5 @@
 
 pub mod block_validation;
 pub mod experimental;
+pub mod local_chain;
 pub mod proof_of_work;
