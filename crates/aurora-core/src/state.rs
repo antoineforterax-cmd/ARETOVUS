@@ -106,7 +106,7 @@ impl AccountLedger {
     }
 
     /// Applique un transfert atomiquement après les contrôles d'état et d'autorisation.
-    /// Le callback doit être un vérificateur cryptographique réel avant tout usage réseau.
+    /// La signature est vérifiée avant toute mutation.
     pub fn apply_transaction(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
         tx.check_stateless()
             .map_err(|_| StateError::InvalidTransaction)?;
@@ -167,6 +167,24 @@ impl AccountLedger {
         );
         // Le validateur de bloc doit comptabiliser ces frais puis appliquer la règle de partage.
         Ok(tx.fee)
+    }
+
+    /// Applique un lot dans l'ordre, sans mutation partielle si une transaction échoue.
+    /// Retourne la somme des frais pour le validateur de bloc appelant.
+    pub fn apply_batch(
+        &mut self,
+        transactions: &[AccountTransaction],
+    ) -> Result<Amount, StateError> {
+        let mut candidate = self.clone();
+        let mut total_fees = Amount::ZERO;
+        for tx in transactions {
+            let fee = candidate.apply_transaction(tx)?;
+            total_fees = total_fees
+                .checked_add(fee)
+                .map_err(StateError::BalanceOutOfRange)?;
+        }
+        *self = candidate;
+        Ok(total_fees)
     }
 }
 
@@ -321,6 +339,32 @@ mod tests {
         assert!(matches!(
             ledger.credit_issuance(id(2), Amount::from_units(1).unwrap()),
             Err(StateError::BalanceOutOfRange(_))
+        ));
+        assert_eq!(ledger, before);
+    }
+
+    #[test]
+    fn batch_applies_in_order_and_returns_total_fees() {
+        let mut ledger = funded_ledger();
+        let transactions = [tx(0, 20, 2), tx(1, 30, 3)];
+        assert_eq!(ledger.apply_batch(&transactions).unwrap().to_units(), 5);
+        let sender = transactions[0].sender;
+        assert_eq!(ledger.account(sender).balance.to_units(), 945);
+        assert_eq!(ledger.account(sender).next_nonce, 2);
+        assert_eq!(ledger.account(id(2)).balance.to_units(), 50);
+    }
+
+    #[test]
+    fn failed_batch_does_not_apply_earlier_transactions() {
+        let mut ledger = funded_ledger();
+        let before = ledger.clone();
+        let transactions = [tx(0, 20, 2), tx(2, 30, 3)];
+        assert!(matches!(
+            ledger.apply_batch(&transactions),
+            Err(StateError::NonceMismatch {
+                expected: 1,
+                actual: 2
+            })
         ));
         assert_eq!(ledger, before);
     }
