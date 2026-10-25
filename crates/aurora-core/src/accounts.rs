@@ -11,8 +11,16 @@ use crate::network::NetworkId;
 use std::fmt;
 
 pub const ACCOUNT_TX_VERSION: u32 = 1;
+/// Experimental hybrid Ed25519 + FIPS 204 ML-DSA-65 transaction version.
+pub const HYBRID_ACCOUNT_TX_VERSION: u32 = 2;
 pub const ACCOUNT_ID_LEN: usize = 32;
-pub const MAX_AUTH_BYTES: usize = 4_096;
+/// ML-DSA-65 encoded public key and signature sizes from FIPS 204.
+pub const ML_DSA_65_PUBLIC_KEY_BYTES: usize = 1_952;
+pub const ML_DSA_65_SIGNATURE_BYTES: usize = 3_309;
+/// Fixed v2 payload: Ed25519 public key, ML-DSA key, Ed25519 signature, ML-DSA signature.
+pub const HYBRID_AUTH_BYTES: usize =
+    32 + ML_DSA_65_PUBLIC_KEY_BYTES + 64 + ML_DSA_65_SIGNATURE_BYTES;
+pub const MAX_AUTH_BYTES: usize = 8_192;
 
 /// Identifiant de compte brut. Le format d'adresse lisible reste à définir.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -95,8 +103,11 @@ impl AccountTransaction {
 
     /// Contrôles indépendants de l'état et de la cryptographie.
     pub fn check_stateless(&self) -> Result<(), AccountTxError> {
-        if self.version != ACCOUNT_TX_VERSION {
+        if !matches!(self.version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION) {
             return Err(AccountTxError::UnsupportedVersion);
+        }
+        if self.version == HYBRID_ACCOUNT_TX_VERSION && self.auth_data.len() != HYBRID_AUTH_BYTES {
+            return Err(AccountTxError::AuthDataTooLarge);
         }
         if self.amount == Amount::ZERO {
             return Err(AccountTxError::ZeroAmount);
@@ -130,7 +141,7 @@ impl CanonicalEncode for AccountTransaction {
 impl CanonicalDecode for AccountTransaction {
     fn decode(dec: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         let version = dec.get_u32()?;
-        if version != ACCOUNT_TX_VERSION {
+        if !matches!(version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION) {
             return Err(DecodeError::InvalidValue("version de transaction inconnue"));
         }
         Ok(Self {
@@ -234,6 +245,21 @@ mod tests {
             tx.check_stateless(),
             Err(AccountTxError::TotalOutOfRange(AmountError::AboveCap))
         ));
+    }
+
+    #[test]
+    fn hybrid_version_has_a_fixed_canonical_authorization_size() {
+        let mut tx = sample();
+        tx.version = HYBRID_ACCOUNT_TX_VERSION;
+        tx.auth_data = vec![0; HYBRID_AUTH_BYTES];
+        assert_eq!(tx.check_stateless(), Ok(()));
+        let encoded = tx.to_canonical_bytes().unwrap();
+        assert_eq!(
+            AccountTransaction::from_canonical_bytes(&encoded).unwrap(),
+            tx
+        );
+        tx.auth_data.pop();
+        assert_eq!(tx.check_stateless(), Err(AccountTxError::AuthDataTooLarge));
     }
 
     #[test]
