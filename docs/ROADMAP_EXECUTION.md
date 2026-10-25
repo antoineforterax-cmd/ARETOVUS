@@ -24,6 +24,7 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - Le registre expérimental vérifie maintenant Ed25519 strictement via `ed25519-dalek`; `sender` est la clé publique brute et `auth_data` la signature de 64 octets.
 - L'empreinte canonique `signing_digest` couvre les champs hors `auth_data`, avec un domaine distinct du txid. Un profil de format est documenté; des vecteurs indépendants et la confirmation CI restent requis.
 - Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
+- Un sélecteur en mémoire accepte des branches PoW concurrentes à difficulté fixe, choisit la plus longue et utilise le hash de sommet comme départage déterministe. Il ne valide pas l'état et n'est pas une règle de consensus à difficulté variable.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
 - La CI a précédemment échoué sur rustfmt. Des corrections de formatage et un correctif aux tests du registre ont été poussés, mais aucune exécution CI confirmant le commit courant n'a été récupérée lors de cette vérification. Clippy, compilation et tests restent donc à confirmer.
 - Le code actuel est expérimental ; aucune sécurité de production n'est revendiquée.
