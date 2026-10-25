@@ -350,6 +350,20 @@ mod tests {
     }
 
     #[test]
+    fn malformed_or_oversized_peer_inventories_are_rejected() {
+        let mut oversized = vec![BLOCKS_REPLY];
+        oversized.extend_from_slice(&((MAX_SYNC_BLOCKS as u32) + 1).to_be_bytes());
+        oversized.extend_from_slice(&0u32.to_be_bytes());
+        assert!(read_blocks(&oversized).is_err());
+
+        let mut trailing = vec![BLOCKS_REPLY];
+        trailing.extend_from_slice(&1u32.to_be_bytes());
+        trailing.extend_from_slice(&0u32.to_be_bytes());
+        trailing.push(0);
+        assert!(read_blocks(&trailing).is_err());
+    }
+
+    #[test]
     fn handshake_rejects_a_different_consensus_fingerprint() {
         let local = chain();
         let mut peer = local.clone();
