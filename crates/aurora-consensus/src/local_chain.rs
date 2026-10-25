@@ -185,9 +185,9 @@ mod tests {
         genesis.header.tx_commitment = Hash256::from_bytes([9; 32]);
         assert!(matches!(
             LocalChain::new(genesis, 0),
-            Err(ChainError::InvalidBlock(
-                BlockPowError::Stateless(crate::experimental::BlockError::CommitmentMismatch)
-            ))
+            Err(ChainError::InvalidBlock(BlockPowError::Stateless(
+                crate::experimental::BlockError::CommitmentMismatch
+            )))
         ));
     }
 
