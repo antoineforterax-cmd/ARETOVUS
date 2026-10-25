@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn hybrid_v2_requires_both_ed25519_and_ml_dsa_65_signatures() {
         use crate::accounts::{HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES};
-        use ml_dsa::{MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
 
         let ed = SigningKey::from_bytes(&[31; 32]);
         let ml_seed = ml_dsa::Seed::default();
