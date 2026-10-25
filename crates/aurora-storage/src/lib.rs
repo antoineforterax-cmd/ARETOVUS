@@ -13,7 +13,7 @@ use std::{
 };
 
 use aurora_consensus::{
-    account_block::AccountBlock,
+    account_block::{AccountBlock, MAX_ACCOUNT_BLOCK_BYTES},
     account_fork_chain::{AccountForkChain, AccountForkChainError},
     difficulty::DifficultyParams,
     reward::RewardParams,
@@ -239,6 +239,9 @@ fn decode_snapshot(
             .get(cursor..end_len)
             .ok_or(StorageError::InvalidFormat("truncated block length"))?;
         let len = u32::from_be_bytes(raw_len.try_into().expect("fixed slice")) as usize;
+        if len > MAX_ACCOUNT_BLOCK_BYTES {
+            return Err(StorageError::InvalidFormat("block exceeds byte limit"));
+        }
         cursor = end_len;
         let end = cursor
             .checked_add(len)
