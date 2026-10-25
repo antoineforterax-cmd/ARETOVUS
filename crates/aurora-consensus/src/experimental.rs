@@ -329,6 +329,16 @@ mod tests {
     }
 
     #[test]
+    fn too_many_transactions_are_rejected_even_in_memory() {
+        let mut block = block_of(vec![]);
+        block.transactions = vec![tx(1, NetworkId::Regtest); MAX_BLOCK_TXS + 1];
+        assert_eq!(
+            block.check_stateless(),
+            Err(BlockError::TooManyTransactions)
+        );
+    }
+
+    #[test]
     fn unknown_header_version_is_rejected() {
         let block = block_of(vec![]);
         let mut bytes = block.to_canonical_bytes().unwrap();
