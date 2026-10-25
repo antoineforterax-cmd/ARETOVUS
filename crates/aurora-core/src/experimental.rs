@@ -80,6 +80,12 @@ pub struct Transaction {
 pub enum TxError {
     /// Version de transaction non prise en charge.
     UnsupportedVersion,
+    /// Trop d'entrées pour le format expérimental.
+    TooManyInputs,
+    /// Trop de sorties pour le format expérimental.
+    TooManyOutputs,
+    /// Données d'autorisation trop volumineuses.
+    AuthDataTooLarge,
     /// Aucune sortie.
     NoOutputs,
     /// La même sortie est dépensée deux fois dans la transaction.
@@ -92,6 +98,9 @@ impl fmt::Display for TxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TxError::UnsupportedVersion => write!(f, "version de transaction non prise en charge"),
+            TxError::TooManyInputs => write!(f, "trop d'entrées"),
+            TxError::TooManyOutputs => write!(f, "trop de sorties"),
+            TxError::AuthDataTooLarge => write!(f, "données d'autorisation trop volumineuses"),
             TxError::NoOutputs => write!(f, "aucune sortie"),
             TxError::DuplicateInput => write!(f, "entrée dupliquée"),
             TxError::TotalOutOfRange(err) => write!(f, "total hors limites : {err}"),
@@ -112,6 +121,15 @@ impl Transaction {
     pub fn check_stateless(&self) -> Result<(), TxError> {
         if self.version != TX_VERSION {
             return Err(TxError::UnsupportedVersion);
+        }
+        if self.inputs.len() > MAX_INPUTS {
+            return Err(TxError::TooManyInputs);
+        }
+        if self.outputs.len() > MAX_OUTPUTS {
+            return Err(TxError::TooManyOutputs);
+        }
+        if self.auth_data.len() > MAX_AUTH_BYTES {
+            return Err(TxError::AuthDataTooLarge);
         }
         if self.outputs.is_empty() {
             return Err(TxError::NoOutputs);
@@ -252,6 +270,29 @@ mod tests {
         let mut tx = base_tx();
         tx.version = TX_VERSION + 1;
         assert_eq!(tx.check_stateless(), Err(TxError::UnsupportedVersion));
+    }
+
+    #[test]
+    fn too_many_inputs_are_rejected_even_in_memory() {
+        let mut tx = base_tx();
+        tx.inputs = (0..=MAX_INPUTS)
+            .map(|index| input(1, index as u32))
+            .collect();
+        assert_eq!(tx.check_stateless(), Err(TxError::TooManyInputs));
+    }
+
+    #[test]
+    fn too_many_outputs_are_rejected_even_in_memory() {
+        let mut tx = base_tx();
+        tx.outputs = vec![out(1); MAX_OUTPUTS + 1];
+        assert_eq!(tx.check_stateless(), Err(TxError::TooManyOutputs));
+    }
+
+    #[test]
+    fn oversized_auth_data_is_rejected_even_in_memory() {
+        let mut tx = base_tx();
+        tx.auth_data = vec![0; MAX_AUTH_BYTES + 1];
+        assert_eq!(tx.check_stateless(), Err(TxError::AuthDataTooLarge));
     }
 
     #[test]
