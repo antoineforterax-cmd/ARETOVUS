@@ -180,6 +180,38 @@ mod tests {
     }
 
     #[test]
+    fn rejects_invalid_genesis_commitment() {
+        let mut genesis = block(Hash256::ZERO, 1);
+        genesis.header.tx_commitment = Hash256::from_bytes([9; 32]);
+        assert!(matches!(
+            LocalChain::new(genesis, 0),
+            Err(ChainError::InvalidBlock(
+                BlockPowError::Stateless(crate::experimental::BlockError::CommitmentMismatch)
+            ))
+        ));
+    }
+
+    #[test]
+    fn invalid_append_does_not_change_chain_state() {
+        let genesis = block(Hash256::ZERO, 1);
+        let mut chain = LocalChain::new(genesis, 0).unwrap();
+        let old_tip = chain.tip_hash();
+        let old_work = chain.cumulative_work();
+        let mut invalid = block(old_tip.unwrap(), 2);
+        invalid.header.tx_commitment = Hash256::from_bytes([9; 32]);
+
+        assert!(matches!(
+            chain.append(invalid),
+            Err(ChainError::InvalidBlock(
+                BlockPowError::Stateless(crate::experimental::BlockError::CommitmentMismatch)
+            ))
+        ));
+        assert_eq!(chain.len(), 1);
+        assert_eq!(chain.tip_hash(), old_tip);
+        assert_eq!(chain.cumulative_work(), old_work);
+    }
+
+    #[test]
     fn rejects_excessive_difficulty() {
         assert!(matches!(
             LocalChain::new(block(Hash256::ZERO, 1), 128),
