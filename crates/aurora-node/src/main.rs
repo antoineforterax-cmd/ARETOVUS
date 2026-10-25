@@ -74,7 +74,7 @@ fn run_testnet_peer(
 ) -> Result<(), Box<dyn Error>> {
     let mut args = args;
     let mut data_dir: Option<PathBuf> = None;
-    let mut endpoint: Option<String> = None;
+    let mut endpoints = Vec::<String>::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--data-dir" => {
@@ -88,19 +88,26 @@ fn run_testnet_peer(
         }
     }
     let dir = data_dir.ok_or("testnet peer command requires --data-dir PATH")?;
-    let endpoint: std::net::SocketAddr = endpoint
-        .ok_or("missing --listen or --peer endpoint")?
-        .parse()?;
+    if endpoints.is_empty() || (server && endpoints.len() != 1) {
+        return Err(if server {
+            "testnet serve requires exactly one --listen IP:PORT"
+        } else {
+            "testnet sync requires at least one --peer IP:PORT"
+        }
+        .into());
+    }
     let mut chain = load_testnet_chain(&dir)?;
     if server {
-        serve_peers(endpoint, &mut chain, &dir)?;
+        serve_peers(endpoints[0].parse()?, &mut chain, &dir)?;
     } else {
-        let accepted = sync_from_peer(endpoint, &mut chain, &dir)?;
-        println!(
-            "peer sync complete: accepted={accepted} height={} tip={}",
-            chain.height(),
-            chain.tip_hash()
-        );
+        for endpoint in endpoints {
+            let accepted = sync_from_peer(endpoint.parse()?, &mut chain, &dir)?;
+            println!(
+                "peer sync complete: accepted={accepted} height={} tip={}",
+                chain.height(),
+                chain.tip_hash()
+            );
+        }
     }
     Ok(())
 }
