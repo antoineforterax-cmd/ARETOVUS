@@ -120,7 +120,7 @@ pub fn load_latest_snapshot(
     for path in paths {
         let bytes = read_bounded(&path)?;
         let chain = decode_snapshot(&bytes, initial_state.clone())?;
-        if best.as_ref().map_or(true, |current| {
+        if best.as_ref().is_none_or(|current| {
             chain.height() > current.height()
                 || (chain.height() == current.height() && chain.tip_hash() < current.tip_hash())
         }) {
