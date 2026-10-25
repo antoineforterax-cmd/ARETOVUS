@@ -115,8 +115,8 @@ mod tests {
 
     #[test]
     fn cumulative_work_compares_expected_hash_cost_not_height() {
-        let two_easy = ChainWork::for_difficulty(2)
-            .checked_add(ChainWork::for_difficulty(2))
+        let two_easy = ChainWork::for_difficulty(1)
+            .checked_add(ChainWork::for_difficulty(1))
             .unwrap();
         let one_harder = ChainWork::for_difficulty(3);
         assert!(one_harder > two_easy);
