@@ -265,6 +265,36 @@ impl AccountForkChain {
         self.nodes[&self.tip_hash()].difficulty_bits
     }
 
+    /// Difficulty required for the next block on the canonical tip.
+    pub fn next_difficulty_bits(&self) -> Result<u16, AccountForkChainError> {
+        let parent = self.tip_hash();
+        let node = self.nodes[&parent];
+        let height = node
+            .height
+            .checked_add(1)
+            .ok_or(AccountForkChainError::HeightOverflow)?;
+        if self.difficulty_params.adjustment_interval > 0
+            && height % self.difficulty_params.adjustment_interval == 0
+        {
+            let anchor_height = height - self.difficulty_params.adjustment_interval;
+            let anchor = self.ancestor_at_height(parent, anchor_height)?;
+            let elapsed = self
+                .median_time(parent)
+                .saturating_sub(self.median_time(anchor))
+                .max(1);
+            Ok(self
+                .difficulty_params
+                .retarget(node.difficulty_bits, elapsed))
+        } else {
+            Ok(node.difficulty_bits)
+        }
+    }
+
+    /// Median timestamp of up to eleven ancestors at the canonical tip.
+    pub fn median_time_past(&self) -> u64 {
+        self.median_time(self.tip_hash())
+    }
+
     pub fn initial_difficulty_bits(&self) -> u16 {
         self.initial_difficulty_bits
     }
