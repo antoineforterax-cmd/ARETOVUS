@@ -95,13 +95,13 @@ Passage normal : PROPOSÉ → (À COMPARER / À SIMULER / À TESTER) → VALIDÉ
 
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
-| MON-01 | Plafond monétaire | À SIMULER | 105 000 000 AUR (hypothèse) | Calcul par le code + vérification par un outil indépendant | 3 | MON-03, TX-06 | C V1 |
-| MON-02 | Récompense initiale | À SIMULER | 50 AUR (hypothèse) | Scénarios du cahier §7.3 | 3 | — | C V1 |
-| MON-03 | Calendrier de réduction | À COMPARER | Moitié tous les 1 050 000 blocs comme exemple ; alternatives plus courtes ou courbes différentes. Voir F-05 | Simulateur | 3 | POW-04 | C V1 |
-| MON-04 | Règles d'arrondi et dernière récompense | À COMPARER | Pas de récompense finale artificielle pour atteindre le chiffre affiché | Calcul indépendant | 3 | TX-06 | C V1 |
-| MON-05 | Distribution initiale et bloc de genèse | À COMPARER | Voir F-06 | Distribution publiée et vérifiable | 0b | — | C V1 |
-| MON-06 | Partage des frais (mineur / fonds éventuel) | À COMPARER | | Simulation | 3 | OPT-02 | C V1 |
-| MON-07 | Simulateur : méthode, hypothèses publiées | PROPOSÉ | Reproductible, scénarios défavorables inclus | Hypothèses et commandes publiées | 0b | — | O V1 |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au palier initial, selon l’offre brute avant bloc | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Paliers liés à l’offre : 500/100/60/30/10/1 AUR aux seuils codés dans `EMISSION_MODEL.md` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)`, reliquat au mineur; émission tronquée au plafond | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
+| MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
+| MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
 
 ### FEE — Frais, poids, capacité
 
@@ -411,13 +411,13 @@ Chaque ligne du tableau maître. « Justification » explique pourquoi on part d
 | POW-11 | Checkpoints ou exceptions de consensus | PROPOSÉ | Un checkpoint centralisé est un pouvoir de décision | Aucun test ; réexamen seulement après étude |
 | POW-12 | Mesures pour un réseau naissant (hashrate initial faible) | À SIMULER | Un réseau naissant est vulnérable à une majorité de hashrate | Simulations à 10, 25, 40, 50 % ; hypothèses publiées ; aucune garantie de sécurité réelle |
 | POW-13 | Démarrage du réseau : qui mine au début, nœuds de départ | À COMPARER | Les premiers blocs concentrent la production | Plan de démarrage documenté |
-| MON-01 | Plafond monétaire | À SIMULER | Hypothèse du cahier, sans valeur économique propre | Calcul par le code + outil indépendant ; total exact publié |
-| MON-02 | Récompense initiale | À SIMULER | Hypothèse expérimentale | Comparaison de scénarios d'émission |
-| MON-03 | Calendrier de réduction | À COMPARER | L'exemple de 1 050 000 blocs (≈ 20 ans) étale très fortement l'émission | Simulateur : émission par année, part distribuée |
-| MON-04 | Règles d'arrondi et dernière récompense | À COMPARER | Les troncatures rendent le total légèrement inférieur au plafond | Deux calculs indépendants identiques |
-| MON-05 | Distribution initiale et bloc de genèse | À COMPARER | La genèse fixe qui détient quoi dès le départ | Distribution publiée et vérifiable dans le bloc de genèse |
-| MON-06 | Partage des frais (mineur / fonds éventuel) | À COMPARER | Dépend de l'existence d'un fonds | Simulation |
-| MON-07 | Simulateur : méthode, hypothèses publiées | PROPOSÉ | Les décisions monétaires doivent reposer sur des scénarios reproductibles | Hypothèses et commandes publiées ; scénarios défavorables inclus |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au palier initial, selon l’offre brute avant bloc | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Paliers liés à l’offre : 500/100/60/30/10/1 AUR aux seuils codés dans `EMISSION_MODEL.md` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)`, reliquat au mineur; émission tronquée au plafond | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
+| MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
+| MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
 | FEE-01 | Poids d'une transaction (octets, coût de validation) | À COMPARER | Les signatures post-quantiques sont lourdes : le coût doit refléter les ressources réelles | Benchmarks de taille et de vérification |
 | FEE-02 | Taille maximale d'un bloc | À TESTER | 1 Mio est une valeur héritée servant de point de comparaison | Tests de charge et de propagation ; matériel modeste |
 | FEE-03 | Taille maximale d'une transaction | À TESTER | Idem | Idem |
