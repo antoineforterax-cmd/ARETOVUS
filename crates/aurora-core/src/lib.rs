@@ -11,6 +11,7 @@
 //! jamais être utilisé avec de vrais fonds. Les choix qu'il contient sont des hypothèses listées
 //! dans `docs/DECISION_REGISTER.md` (annexe B).
 
+pub mod accounts;
 pub mod amount;
 pub mod codec;
 pub mod experimental;
