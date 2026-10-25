@@ -78,6 +78,8 @@ pub struct Transaction {
 /// Erreur de validation sans état.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TxError {
+    /// Version de transaction non prise en charge.
+    UnsupportedVersion,
     /// Aucune sortie.
     NoOutputs,
     /// La même sortie est dépensée deux fois dans la transaction.
@@ -89,6 +91,7 @@ pub enum TxError {
 impl fmt::Display for TxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            TxError::UnsupportedVersion => write!(f, "version de transaction non prise en charge"),
             TxError::NoOutputs => write!(f, "aucune sortie"),
             TxError::DuplicateInput => write!(f, "entrée dupliquée"),
             TxError::TotalOutOfRange(err) => write!(f, "total hors limites : {err}"),
@@ -107,6 +110,9 @@ impl Transaction {
 
     /// Vérifications sans état. Ne vérifie ni les signatures, ni l'existence des fonds.
     pub fn check_stateless(&self) -> Result<(), TxError> {
+        if self.version != TX_VERSION {
+            return Err(TxError::UnsupportedVersion);
+        }
         if self.outputs.is_empty() {
             return Err(TxError::NoOutputs);
         }
@@ -239,6 +245,13 @@ mod tests {
     #[test]
     fn valid_transaction_passes_stateless_check() {
         assert_eq!(base_tx().check_stateless(), Ok(()));
+    }
+
+    #[test]
+    fn unsupported_version_is_rejected_even_for_in_memory_transactions() {
+        let mut tx = base_tx();
+        tx.version = TX_VERSION + 1;
+        assert_eq!(tx.check_stateless(), Err(TxError::UnsupportedVersion));
     }
 
     #[test]
