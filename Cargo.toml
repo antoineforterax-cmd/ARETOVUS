@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/aurora-core",
     "crates/aurora-consensus",
+    "crates/aurora-storage",
     "crates/aurora-node",
     "crates/aurora-wallet",
 ]
