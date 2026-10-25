@@ -70,9 +70,11 @@ impl CanonicalDecode for Hash256 {
 }
 
 const TAG_TXID: &[u8] = b"AURORA/exp/v0/txid";
+const TAG_ACCOUNT_TXID: &[u8] = b"AURORA/exp/v0/account-txid";
 const TAG_TX_SIGNING: &[u8] = b"AURORA/exp/v0/tx-signing";
 const TAG_BLOCK_HEADER: &[u8] = b"AURORA/exp/v0/block-header";
 const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
+const TAG_ACCOUNT_TX_LIST: &[u8] = b"AURORA/exp/v0/account-tx-list";
 
 /// Domaine de hachage : deux domaines différents ne produisent jamais le même condensat
 /// pour les mêmes données.
@@ -80,12 +82,16 @@ const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 pub enum Domain {
     /// Identifiant de transaction.
     TxId,
+    /// Account transaction identifier.
+    AccountTxId,
     /// Empreinte des champs signés d'une transaction, sans les données d'autorisation.
     TxSigning,
     /// En-tête de bloc.
     BlockHeader,
     /// Engagement sur la liste des transactions d'un bloc (pas un arbre de Merkle : TX-04 ouvert).
     TxList,
+    /// Ordered commitment for experimental account transactions.
+    AccountTxList,
 }
 
 impl Domain {
@@ -93,9 +99,11 @@ impl Domain {
     pub fn tag(self) -> &'static [u8] {
         match self {
             Domain::TxId => TAG_TXID,
+            Domain::AccountTxId => TAG_ACCOUNT_TXID,
             Domain::TxSigning => TAG_TX_SIGNING,
             Domain::BlockHeader => TAG_BLOCK_HEADER,
             Domain::TxList => TAG_TX_LIST,
+            Domain::AccountTxList => TAG_ACCOUNT_TX_LIST,
         }
     }
 }
@@ -128,11 +136,13 @@ pub fn tagged_hash(domain: Domain, data: &[u8]) -> Hash256 {
 mod tests {
     use super::*;
 
-    const ALL_DOMAINS: [Domain; 4] = [
+    const ALL_DOMAINS: [Domain; 6] = [
         Domain::TxId,
+        Domain::AccountTxId,
         Domain::TxSigning,
         Domain::BlockHeader,
         Domain::TxList,
+        Domain::AccountTxList,
     ];
 
     #[test]

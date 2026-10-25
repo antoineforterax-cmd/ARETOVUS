@@ -7,6 +7,7 @@
 //!
 //! Ne pas utiliser avec de vrais fonds.
 
+pub mod account_block;
 pub mod block_validation;
 pub mod experimental;
 pub mod fork_chain;

@@ -70,6 +70,10 @@ impl AccountLedger {
         self.accounts.get(&id).copied().unwrap_or_default()
     }
 
+    pub fn network(&self) -> NetworkId {
+        self.network
+    }
+
     pub fn account_count(&self) -> usize {
         self.accounts.len()
     }

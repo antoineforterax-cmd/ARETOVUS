@@ -70,7 +70,10 @@ impl std::error::Error for AccountTxError {}
 impl AccountTransaction {
     /// Identifiant déterministe des octets canoniques complets, autorisation incluse.
     pub fn txid(&self) -> Result<Hash256, EncodeError> {
-        Ok(tagged_hash(Domain::TxId, &self.to_canonical_bytes()?))
+        Ok(tagged_hash(
+            Domain::AccountTxId,
+            &self.to_canonical_bytes()?,
+        ))
     }
 
     /// Empreinte des champs qu'une signature doit autoriser.

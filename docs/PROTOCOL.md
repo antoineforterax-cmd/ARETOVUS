@@ -25,6 +25,8 @@ sender, nonce, recipient, amount, and fee in canonical encoding, under the disti
 canonical encoding, including the signature. The maintained `ed25519-dalek` crate performs strict
 signature verification before any ledger mutation.
 
+Account blocks use a separate account-tx-list commitment domain and the same version-0 header layout. The account-block validator checks the ordered commitment and PoW, then applies the signed transaction batch atomically against the supplied ledger. It returns the aggregate fees, which are debited from senders; no block reward or miner fee credit is created by this profile. A failed transaction leaves the ledger unchanged.
+
 This profile exists to make a local experimental node coherent; it does not settle the repository's
 open UTXO-vs-account decision or define user-facing addresses. Keys, wire format, economics, block
 state validation, difficulty adjustment, and chain reorganization remain experimental or incomplete.
