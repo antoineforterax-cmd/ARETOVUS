@@ -7,6 +7,7 @@ name = "aurora-consensus"
 version = "0.0.1"
 dependencies = [
  "aurora-core",
+ "ed25519-dalek",
 ]
 
 [[package]]
@@ -20,6 +21,19 @@ dependencies = [
 [[package]]
 name = "aurora-node"
 version = "0.0.1"
+dependencies = [
+ "aurora-consensus",
+ "aurora-core",
+ "aurora-storage",
+]
+
+[[package]]
+name = "aurora-storage"
+version = "0.0.1"
+dependencies = [
+ "aurora-consensus",
+ "aurora-core",
+]
 
 [[package]]
 name = "aurora-wallet"
