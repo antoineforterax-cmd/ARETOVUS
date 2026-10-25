@@ -357,7 +357,7 @@ mod tests {
     fn latest_snapshot_uses_cumulative_work_even_when_winning_chain_is_shorter() {
         use aurora_consensus::{
             account_fork_chain::AccountForkChain, difficulty::DifficultyParams,
-            proof_of_work::mine_nonce, reward::RewardParams,
+            proof_of_work::mine_nonce,
         };
         let path = dir();
         let params = DifficultyParams {
