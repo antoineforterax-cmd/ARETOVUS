@@ -29,7 +29,7 @@ Prérequis : Rust stable, dépendances disponibles via crates.io. Les commandes 
 cargo run -p aurora-node -- --help
 
 # Miner 10 blocs, avec une identité de mineur de 32 octets écrite en hexadécimal
-cargo run -p aurora-node -- testnet mine --data-dir ./aurora-node-a --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10
+cargo run -p aurora-node -- testnet mine --data-dir ./aurora-node-a --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10 --peer 127.0.0.1:18444
 
 # Servir la chaîne locale sur TCP
 cargo run -p aurora-node -- testnet serve --data-dir ./aurora-node-a --listen 0.0.0.0:18444
@@ -46,7 +46,7 @@ cargo test --workspace --locked
 
 Paramètres testnet codés : difficulté initiale 8 bits nuls en tête, cible 60 secondes, ajustement tous les 10 blocs par pas entiers bornés, min 4/max 20 bits; la trésorerie a l’identifiant fixe de test `[0xA0; 32]`. Le minage examine les nonces de manière déterministe. `--miner` est un identifiant public fourni par l’utilisateur, pas une clé privée.
 
-Le protocole TCP est expérimental et pull-only : empreinte de genèse/paramètres, messages de taille bornée, pages jusqu’à 64 blocs, timeout d’E/S de 10 secondes, plafond d’inventaire de 100 000 blocs et validation consensus de chaque bloc. `serve` répond aux demandes; `sync` récupère une seule fois l’inventaire annoncé. Il n’y a pas encore de découverte automatique, propagation spontanée, réseau multi-pairs, mempool, reprise automatique de connexion ni test contre une suite complète de pairs hostiles. Ne pas exposer ce service à Internet.
+Le protocole TCP est expérimental : empreinte genèse/paramètres, frames de 4 MiB maximum, blocs consensus limités à 4 MiB, pages jusqu’à 64 blocs, timeout d’E/S de 10 secondes et inventaire maximal de 100 000 blocs. `serve` répond aux demandes et accepte les blocs envoyés; `sync` télécharge l’inventaire une fois; `mine --peer` pousse chaque bloc miné à un pair configuré. Chaque bloc reçu est revalidé par le consensus. Il n’y a pas encore de découverte automatique, propagation vers une liste durable de pairs, réseau multi-pairs simultané, mempool, reprise automatique, quotas cumulés de session ni suite complète de tests de pairs hostiles. Ne pas exposer ce service à Internet.
 
 Les tests Rust sont exécutés en CI GitHub Actions. Sur l’environnement Windows de développement, la compilation locale peut échouer si `link.exe` (Visual C++ Build Tools) manque; cela ne remplace pas la CI.
 
