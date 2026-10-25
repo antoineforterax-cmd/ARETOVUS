@@ -7,5 +7,6 @@
 //!
 //! Ne pas utiliser avec de vrais fonds.
 
+pub mod block_validation;
 pub mod experimental;
 pub mod proof_of_work;
