@@ -6,7 +6,7 @@ use crate::{
     proof_of_work::{check_proof, PowError},
 };
 use aurora_core::{
-    accounts::{AccountTransaction, AccountTxError},
+    accounts::{AccountId, AccountTransaction, AccountTxError},
     amount::Amount,
     codec::{
         decode_vec, encode_vec, CanonicalDecode, CanonicalEncode, DecodeError, Decoder,
@@ -21,6 +21,8 @@ use aurora_core::{
 pub struct AccountBlock {
     pub header: BlockHeader,
     pub transactions: Vec<AccountTransaction>,
+    /// Miner payout identity, committed by `header.tx_commitment`.
+    pub miner: Option<AccountId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,10 +58,25 @@ impl fmt::Display for AccountBlockValidationError {
 impl std::error::Error for AccountBlockValidationError {}
 
 pub fn compute_account_tx_commitment(txs: &[AccountTransaction]) -> Result<Hash256, EncodeError> {
+    compute_account_block_commitment(txs, None)
+}
+
+/// Commits both ordered transaction IDs and the miner identity into the PoW header.
+pub fn compute_account_block_commitment(
+    txs: &[AccountTransaction],
+    miner: Option<AccountId>,
+) -> Result<Hash256, EncodeError> {
     let mut enc = Encoder::new();
     enc.put_len(txs.len(), MAX_BLOCK_TXS)?;
     for tx in txs {
         tx.txid()?.encode(&mut enc)?;
+    }
+    match miner {
+        None => enc.put_u8(0),
+        Some(account) => {
+            enc.put_u8(1);
+            account.encode(&mut enc)?;
+        }
     }
     Ok(tagged_hash(Domain::AccountTxList, &enc.into_bytes()))
 }
@@ -72,7 +89,18 @@ impl AccountBlock {
         nonce: u64,
         transactions: Vec<AccountTransaction>,
     ) -> Result<Self, EncodeError> {
-        let tx_commitment = compute_account_tx_commitment(&transactions)?;
+        Self::build_with_miner(network, prev_hash, timestamp, nonce, None, transactions)
+    }
+
+    pub fn build_with_miner(
+        network: NetworkId,
+        prev_hash: Hash256,
+        timestamp: u64,
+        nonce: u64,
+        miner: Option<AccountId>,
+        transactions: Vec<AccountTransaction>,
+    ) -> Result<Self, EncodeError> {
+        let tx_commitment = compute_account_block_commitment(&transactions, miner)?;
         Ok(Self {
             header: BlockHeader {
                 version: HEADER_VERSION,
@@ -83,6 +111,7 @@ impl AccountBlock {
                 nonce,
             },
             transactions,
+            miner,
         })
     }
 
@@ -104,7 +133,8 @@ impl AccountBlock {
                 return Err(AccountBlockError::DuplicateTransaction);
             }
         }
-        if compute_account_tx_commitment(&self.transactions).map_err(AccountBlockError::Encoding)?
+        if compute_account_block_commitment(&self.transactions, self.miner)
+            .map_err(AccountBlockError::Encoding)?
             != self.header.tx_commitment
         {
             return Err(AccountBlockError::CommitmentMismatch);
@@ -146,14 +176,28 @@ pub fn validate_and_apply_account_block(
 impl CanonicalEncode for AccountBlock {
     fn encode(&self, enc: &mut Encoder) -> Result<(), EncodeError> {
         self.header.encode(enc)?;
+        match self.miner {
+            None => enc.put_u8(0),
+            Some(account) => {
+                enc.put_u8(1);
+                account.encode(enc)?;
+            }
+        }
         encode_vec(&self.transactions, MAX_BLOCK_TXS, enc)
     }
 }
 impl CanonicalDecode for AccountBlock {
     fn decode(dec: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+        let header = BlockHeader::decode(dec)?;
+        let miner = match dec.get_u8()? {
+            0 => None,
+            1 => Some(AccountId::decode(dec)?),
+            _ => return Err(DecodeError::InvalidValue("invalid miner option tag")),
+        };
         Ok(Self {
-            header: BlockHeader::decode(dec)?,
+            header,
             transactions: decode_vec(dec, MAX_BLOCK_TXS)?,
+            miner,
         })
     }
 }
@@ -218,6 +262,24 @@ mod tests {
         assert_eq!(ledger.account(account(8)).balance.to_units(), 20);
         assert_eq!(ledger.account(account(9)).balance.to_units(), 30);
         assert_eq!(ledger.total_issued().to_units(), 1_000);
+    }
+
+    #[test]
+    fn miner_identity_is_committed_by_the_pow_header() {
+        let mut block = AccountBlock::build_with_miner(
+            NetworkId::Regtest,
+            Hash256::ZERO,
+            10,
+            0,
+            Some(account(7)),
+            Vec::new(),
+        )
+        .unwrap();
+        block.miner = Some(account(8));
+        assert_eq!(
+            block.check_stateless(),
+            Err(AccountBlockError::CommitmentMismatch)
+        );
     }
 
     #[test]
