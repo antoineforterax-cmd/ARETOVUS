@@ -80,10 +80,8 @@ fn run_testnet_peer(
             "--data-dir" => {
                 data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into())
             }
-            "--listen" if server => {
-                endpoint = Some(args.next().ok_or("--listen requires IP:PORT")?)
-            }
-            "--peer" if !server => endpoint = Some(args.next().ok_or("--peer requires IP:PORT")?),
+            "--listen" if server => endpoints.push(args.next().ok_or("--listen requires IP:PORT")?),
+            "--peer" if !server => endpoints.push(args.next().ok_or("--peer requires IP:PORT")?),
             _ => return Err(format!("unknown testnet option: {arg}").into()),
         }
     }
