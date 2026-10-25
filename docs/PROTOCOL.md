@@ -31,9 +31,9 @@ Le nœud construit une genèse testnet vide et déterministe. Paramètres actuel
 
 ## Réseau expérimental
 
-Le transport actuel est TCP pull-only : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs et délai d’E/S de 10 secondes. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte. `serve` répond aux pages de blocs; `sync` récupère l’état annoncé une fois.
+Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs et délai d’E/S de 10 secondes. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-Ne sont pas implémentés : découverte automatique de pairs, annonces/propagation spontanées, synchronisation bidirectionnelle, plusieurs pairs, reprise automatique, mempool, limite totale de session et défense éprouvée contre les attaques DoS. Ne pas exposer ce transport à un réseau non fiable.
+Ne sont pas implémentés : découverte automatique de pairs, annonces spontanées, connexions multi-pairs simultanées, reprise automatique, mempool, limite totale de session et défense éprouvée contre les attaques DoS. Ne pas exposer ce transport à un réseau non fiable.
 
 ## Commandes
 
@@ -45,9 +45,9 @@ cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18
 
 ## Travaux de finalisation
 
-1. Ajouter une limite consensus sur les octets par bloc et des plafonds globaux aux ressources/temps des sessions.
+1. Compléter les plafonds globaux aux ressources/temps des sessions et tester la cohérence des limites de blocs dans tous les chemins de décodage.
 2. Faire des tests d’intégration multi-processus et des tests de pairs adversariaux : frames malformées, inventaire menteur, bloc invalide, coupure et reprise de sync.
-3. Compléter découverte, annonces, propagation et reconnexion multi-pairs, ou définir explicitement un testnet supervisé à pairs statiques.
+3. Compléter découverte, annonces, reconnexion et gestion de plusieurs pairs, ou définir explicitement un testnet supervisé à pairs statiques.
 4. Simuler et comparer le retarget avec vecteurs indépendants, dérive temporelle, longues pauses, rafales et réorganisations.
 5. Éprouver interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
 6. Ajouter fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
