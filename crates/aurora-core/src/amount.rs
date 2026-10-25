@@ -130,7 +130,10 @@ mod tests {
     fn from_units_accepts_bounds_and_rejects_above() {
         assert_eq!(Amount::from_units(0).unwrap(), Amount::ZERO);
         assert_eq!(Amount::from_units(MAX_UNITS).unwrap(), Amount::MAX);
-        assert_eq!(Amount::from_units(MAX_UNITS + 1), Err(AmountError::AboveCap));
+        assert_eq!(
+            Amount::from_units(MAX_UNITS + 1),
+            Err(AmountError::AboveCap)
+        );
         assert_eq!(Amount::from_units(u64::MAX), Err(AmountError::AboveCap));
     }
 
