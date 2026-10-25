@@ -5,9 +5,7 @@
 //! Ces contrôles appartiennent au validateur d'état, qui sera implémenté séparément.
 
 use crate::amount::{Amount, AmountError};
-use crate::codec::{
-    CanonicalDecode, CanonicalEncode, DecodeError, Decoder, EncodeError, Encoder,
-};
+use crate::codec::{CanonicalDecode, CanonicalEncode, DecodeError, Decoder, EncodeError, Encoder};
 use crate::hash::{tagged_hash, Domain, Hash256};
 use crate::network::NetworkId;
 use std::fmt;
@@ -90,8 +88,8 @@ impl AccountTransaction {
             return Err(AccountTxError::AuthDataTooLarge);
         }
         self.amount
-        .checked_add(self.fee)
-        .map_err(AccountTxError::TotalOutOfRange)?;
+            .checked_add(self.fee)
+            .map_err(AccountTxError::TotalOutOfRange)?;
         Ok(())
     }
 }
@@ -149,7 +147,10 @@ mod tests {
     fn canonical_roundtrip() {
         let tx = sample();
         let bytes = tx.to_canonical_bytes().unwrap();
-        assert_eq!(AccountTransaction::from_canonical_bytes(&bytes).unwrap(), tx);
+        assert_eq!(
+            AccountTransaction::from_canonical_bytes(&bytes).unwrap(),
+            tx
+        );
     }
 
     #[test]
@@ -170,9 +171,9 @@ mod tests {
         let mut tx = sample();
         tx.recipient = tx.sender;
         assert_eq!(
-        tx.check_stateless(),
-        Err(AccountTxError::SameSenderAndRecipient)
-    );
+            tx.check_stateless(),
+            Err(AccountTxError::SameSenderAndRecipient)
+        );
     }
 
     #[test]
@@ -181,9 +182,9 @@ mod tests {
         tx.amount = Amount::MAX;
         tx.fee = Amount::from_units(1).unwrap();
         assert!(matches!(
-        tx.check_stateless(),
-        Err(AccountTxError::TotalOutOfRange(AmountError::AboveCap))
-    ));
+            tx.check_stateless(),
+            Err(AccountTxError::TotalOutOfRange(AmountError::AboveCap))
+        ));
     }
 
     #[test]
@@ -203,8 +204,8 @@ mod tests {
         let mut bytes = tx.to_canonical_bytes().unwrap();
         bytes.push(0);
         assert!(matches!(
-        AccountTransaction::from_canonical_bytes(&bytes),
-        Err(DecodeError::TrailingBytes { remaining: 1 })
-    ));
+            AccountTransaction::from_canonical_bytes(&bytes),
+            Err(DecodeError::TrailingBytes { remaining: 1 })
+        ));
     }
 }
