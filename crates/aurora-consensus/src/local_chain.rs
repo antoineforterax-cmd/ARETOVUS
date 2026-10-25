@@ -174,8 +174,8 @@ mod tests {
     fn rejects_a_block_from_another_network() {
         let genesis = block(Hash256::ZERO, 1);
         let mut chain = LocalChain::new(genesis, 0).unwrap();
-        let other = Block::build(NetworkId::Testnet, chain.tip_hash().unwrap(), 2, 0, vec![])
-            .unwrap();
+        let other =
+            Block::build(NetworkId::Testnet, chain.tip_hash().unwrap(), 2, 0, vec![]).unwrap();
         assert_eq!(chain.append(other), Err(ChainError::WrongNetwork));
     }
 
