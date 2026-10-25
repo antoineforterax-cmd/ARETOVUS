@@ -15,6 +15,7 @@ use std::{
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
+    difficulty::DifficultyParams,
 };
 use aurora_core::{
     codec::{CanonicalDecode, CanonicalEncode},
@@ -23,7 +24,7 @@ use aurora_core::{
 };
 
 const MAGIC: &[u8; 8] = b"AURORSNP";
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_BLOCKS: usize = 100_000;
@@ -153,7 +154,13 @@ fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
     let mut body = Vec::new();
     body.extend_from_slice(MAGIC);
     body.extend_from_slice(&FORMAT_VERSION.to_be_bytes());
-    body.extend_from_slice(&chain.difficulty_bits().to_be_bytes());
+    body.extend_from_slice(&chain.initial_difficulty_bits().to_be_bytes());
+    let params = chain.difficulty_params();
+    body.extend_from_slice(&params.target_block_seconds.to_be_bytes());
+    body.extend_from_slice(&params.adjustment_interval.to_be_bytes());
+    body.extend_from_slice(&params.max_adjustment_bits.to_be_bytes());
+    body.extend_from_slice(&params.min_bits.to_be_bytes());
+    body.extend_from_slice(&params.max_bits.to_be_bytes());
     body.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
     for block in blocks {
         let bytes = block.to_canonical_bytes()?;
@@ -174,7 +181,9 @@ fn decode_snapshot(
     bytes: &[u8],
     initial_state: AccountLedger,
 ) -> Result<AccountForkChain, StorageError> {
-    if bytes.len() < 8 + 4 + 2 + 4 + CHECKSUM_LEN || bytes.len() > MAX_SNAPSHOT_BYTES {
+    if bytes.len() < 8 + 4 + 2 + 8 + 8 + 2 + 2 + 2 + 4 + CHECKSUM_LEN
+        || bytes.len() > MAX_SNAPSHOT_BYTES
+    {
         return Err(StorageError::InvalidFormat("invalid snapshot length"));
     }
     let body_len = bytes.len() - CHECKSUM_LEN;
@@ -189,12 +198,19 @@ fn decode_snapshot(
     if version != FORMAT_VERSION {
         return Err(StorageError::InvalidFormat("unsupported snapshot version"));
     }
-    let difficulty = u16::from_be_bytes(body[12..14].try_into().expect("fixed slice"));
-    let count = u32::from_be_bytes(body[14..18].try_into().expect("fixed slice")) as usize;
+    let initial_difficulty = u16::from_be_bytes(body[12..14].try_into().expect("fixed slice"));
+    let params = DifficultyParams {
+        target_block_seconds: u64::from_be_bytes(body[14..22].try_into().expect("fixed slice")),
+        adjustment_interval: u64::from_be_bytes(body[22..30].try_into().expect("fixed slice")),
+        max_adjustment_bits: u16::from_be_bytes(body[30..32].try_into().expect("fixed slice")),
+        min_bits: u16::from_be_bytes(body[32..34].try_into().expect("fixed slice")),
+        max_bits: u16::from_be_bytes(body[34..36].try_into().expect("fixed slice")),
+    };
+    let count = u32::from_be_bytes(body[36..40].try_into().expect("fixed slice")) as usize;
     if count == 0 || count > MAX_BLOCKS {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
-    let mut cursor = 18usize;
+    let mut cursor = 40usize;
     let mut blocks = Vec::with_capacity(count);
     for _ in 0..count {
         let end_len = cursor
@@ -221,7 +237,8 @@ fn decode_snapshot(
     let genesis = iter
         .next()
         .ok_or(StorageError::InvalidFormat("missing genesis"))?;
-    let mut chain = AccountForkChain::new(genesis, difficulty, initial_state)?;
+    let mut chain =
+        AccountForkChain::new_with_params(genesis, initial_difficulty, params, initial_state)?;
     for block in iter {
         chain.submit(block)?;
     }
@@ -261,6 +278,32 @@ mod tests {
         assert_eq!(restored.state(), original.state());
         fs::remove_dir_all(path).unwrap();
     }
+    #[test]
+    fn snapshot_roundtrip_preserves_difficulty_parameters() {
+        let path = dir();
+        let params = DifficultyParams {
+            target_block_seconds: 120,
+            adjustment_interval: 60,
+            max_adjustment_bits: 2,
+            min_bits: 1,
+            max_bits: 24,
+        };
+        let genesis =
+            AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
+        let original = AccountForkChain::new_with_params(
+            genesis,
+            8,
+            params,
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.initial_difficulty_bits(), 8);
+        assert_eq!(restored.difficulty_params(), params);
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();
