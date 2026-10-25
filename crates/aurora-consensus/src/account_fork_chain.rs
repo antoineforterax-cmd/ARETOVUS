@@ -262,6 +262,17 @@ impl AccountForkChain {
     pub fn blocks(&self) -> impl Iterator<Item = &AccountBlock> {
         self.canonical.iter().map(|hash| &self.blocks[hash])
     }
+
+    /// All accepted branches in deterministic topological order.
+    pub fn all_blocks_by_height(&self) -> Vec<&AccountBlock> {
+        let mut hashes = self.blocks.keys().copied().collect::<Vec<_>>();
+        hashes.sort_by_key(|hash| (self.nodes[hash].height, *hash));
+        hashes.iter().map(|hash| &self.blocks[hash]).collect()
+    }
+
+    pub fn known_block_count(&self) -> usize {
+        self.blocks.len()
+    }
 }
 
 #[cfg(test)]
