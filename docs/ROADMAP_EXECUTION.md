@@ -21,7 +21,8 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 - Workspace Rust avec crates `aurora-core`, `aurora-consensus`, `aurora-node` et `aurora-wallet`.
 - `aurora-core` contient déjà un type de montant, un encodage canonique expérimental, SHA-256 avec séparation de domaines, des identifiants de réseau et un modèle de transaction par comptes.
-- La transaction de compte est **non signée** et ne vérifie pas encore soldes, nonce contre l'état, signatures, minimum de frais ou application atomique à l'état.
+- La transaction de compte reste **non signée** : le registre expérimental vérifie désormais réseau, nonce, autorisation fournie par callback, solde et application atomique. Ce callback ne remplace pas encore une signature cryptographique réelle.
+- Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
 - La CI du commit observé a échoué sur rustfmt ; Clippy, compilation et tests ont donc été ignorés. Les corrections les plus récentes doivent être recontrôlées par une nouvelle exécution CI.
 - Le code actuel est expérimental ; aucune sécurité de production n'est revendiquée.
@@ -75,6 +76,8 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - Aucune règle critique laissée à l'interprétation du code.
 
 ### Phase 2 — Registre d'état et transactions valides
+
+**État actuel : partiellement implémenté, non terminé.** Les contrôles de base et des tests de rejet sans mutation existent dans `aurora-core::state`; l'autorisation est encore simulée par callback, et il manque les règles complètes d'émission, de frais, de bloc et de réorganisation.
 
 **Actions**
 1. Construire un état de comptes déterministe : solde et nonce.
