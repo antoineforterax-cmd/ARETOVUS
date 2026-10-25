@@ -1,8 +1,8 @@
 //! Versioned, checksummed snapshots for the experimental account chain.
 //!
 //! Snapshots persist accepted blocks from all branches. Loading replays every block against the
-//! caller-provided deterministic genesis state. This is not a database or a backup
-//! strategy; side branches are discarded on restart.
+//! caller-provided deterministic genesis state. This is not an optimized database or
+//! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
     error::Error,
     fmt,
@@ -16,15 +16,17 @@ use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
     difficulty::DifficultyParams,
+    reward::RewardParams,
 };
 use aurora_core::{
+    accounts::AccountId,
     codec::{CanonicalDecode, CanonicalEncode},
     hash::sha256_plain,
     state::AccountLedger,
 };
 
 const MAGIC: &[u8; 8] = b"AURORSNP";
-const FORMAT_VERSION: u32 = 2;
+const FORMAT_VERSION: u32 = 3;
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_BLOCKS: usize = 100_000;
@@ -165,6 +167,9 @@ fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
     body.extend_from_slice(&params.max_adjustment_bits.to_be_bytes());
     body.extend_from_slice(&params.min_bits.to_be_bytes());
     body.extend_from_slice(&params.max_bits.to_be_bytes());
+    let rewards = chain.reward_params();
+    body.push(u8::from(rewards.enabled));
+    body.extend_from_slice(&rewards.treasury_account.0);
     body.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
     for block in blocks {
         let bytes = block.to_canonical_bytes()?;
@@ -185,7 +190,7 @@ fn decode_snapshot(
     bytes: &[u8],
     initial_state: AccountLedger,
 ) -> Result<AccountForkChain, StorageError> {
-    if bytes.len() < 8 + 4 + 2 + 8 + 8 + 2 + 2 + 2 + 4 + CHECKSUM_LEN
+    if bytes.len() < 8 + 4 + 2 + 8 + 8 + 2 + 2 + 2 + 1 + 32 + 4 + CHECKSUM_LEN
         || bytes.len() > MAX_SNAPSHOT_BYTES
     {
         return Err(StorageError::InvalidFormat("invalid snapshot length"));
@@ -210,11 +215,21 @@ fn decode_snapshot(
         min_bits: u16::from_be_bytes(body[32..34].try_into().expect("fixed slice")),
         max_bits: u16::from_be_bytes(body[34..36].try_into().expect("fixed slice")),
     };
-    let count = u32::from_be_bytes(body[36..40].try_into().expect("fixed slice")) as usize;
+    let reward_enabled = match body[36] {
+        0 => false,
+        1 => true,
+        _ => return Err(StorageError::InvalidFormat("invalid reward flag")),
+    };
+    let treasury_account = AccountId(body[37..69].try_into().expect("fixed account id slice"));
+    let rewards = RewardParams {
+        enabled: reward_enabled,
+        treasury_account,
+    };
+    let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
     if count == 0 || count > MAX_BLOCKS {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
-    let mut cursor = 40usize;
+    let mut cursor = 73usize;
     let mut blocks = Vec::with_capacity(count);
     for _ in 0..count {
         let end_len = cursor
@@ -241,8 +256,13 @@ fn decode_snapshot(
     let genesis = iter
         .next()
         .ok_or(StorageError::InvalidFormat("missing genesis"))?;
-    let mut chain =
-        AccountForkChain::new_with_params(genesis, initial_difficulty, params, initial_state)?;
+    let mut chain = AccountForkChain::new_with_protocol_params(
+        genesis,
+        initial_difficulty,
+        params,
+        rewards,
+        initial_state,
+    )?;
     for block in iter {
         chain.submit(block)?;
     }
@@ -313,10 +333,12 @@ mod tests {
             AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
         genesis.header.nonce =
             aurora_consensus::proof_of_work::mine_nonce(&genesis.header, 8, 0, 100_000).unwrap();
-        let original = AccountForkChain::new_with_params(
+        let rewards = RewardParams::experimental_testnet(AccountId([7; 32]));
+        let original = AccountForkChain::new_with_protocol_params(
             genesis,
             8,
             params,
+            rewards,
             AccountLedger::new(NetworkId::Regtest),
         )
         .unwrap();
@@ -324,6 +346,7 @@ mod tests {
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.initial_difficulty_bits(), 8);
         assert_eq!(restored.difficulty_params(), params);
+        assert_eq!(restored.reward_params(), rewards);
         fs::remove_dir_all(path).unwrap();
     }
 
