@@ -1,53 +1,35 @@
 # CONSENSUS.md — AURORA
 
-**Statut : aucune règle de consensus n'est validée.** Ce document liste ce qui est défini dans le
-prototype v0.0.1 (hypothèses), ce qui reste à spécifier, et les invariants qu'un futur consensus
-devra respecter. Les décisions sont suivies dans `DECISION_REGISTER.md` ; en cas de désaccord, le
-registre fait foi.
+**Statut : prototype expérimental, aucun paramètre économique ou de consensus final n’est approuvé.** Le code a des règles exécutables, mais elles ne constituent pas encore un consensus complet ni un réseau utilisable avec des fonds.
 
-## 1. Ce que le code fait aujourd'hui
+## Règles exécutées actuellement
 
-| Sujet | Comportement du prototype | Statut | Référence |
-|---|---|---|---|
-| Montants | Entiers 64 bits non signés, 8 décimales, plafond de garde 105 000 000 AUR | Hypothèse | TX-06, TX-07, MON-01 |
-| Encodage | Entiers big-endian largeur fixe ; longueurs bornées ; rejet des octets en trop | Hypothèse | TX-02 |
-| Hachage | SHA-256 de `longueur(tag) ‖ tag ‖ données`, trois domaines | Hypothèse | TX-03 |
-| Identifiant de transaction | Hachage de l'encodage complet, `auth_data` inclus | Hypothèse | TX-05 |
-| Engagement du bloc | Hachage de `nombre ‖ identifiants` (pas un Merkle) | Hypothèse | TX-04 |
-| Validation d'un bloc | **Sans état seulement** : réseau identique, transactions valides sans état, pas de doublon, engagement correct | Hypothèse | — |
+| Sujet | Règle de prototype | Limite |
+|---|---|---|
+| Encodage | Entiers big-endian, longueurs bornées, octets excédentaires rejetés | Format versionné expérimental |
+| Transfert | Signature Ed25519 stricte, identifiant réseau, nonce, solde et frais validés | Pas de mempool ni de règle de frais minimum |
+| Bloc compte | Engagement ordonné de txids, validation d’état atomique, pas de Merkle | Aucun reward/coinbase |
+| PoW | SHA-256 avec nombre minimal de bits nuls paramétré | Difficulté constante par chaîne |
+| Sélection de branche | La chaîne la plus longue; égalité départagée par la plus petite empreinte | Incorrect pour difficulté variable; aucun calcul de travail cumulé |
+| Stockage | Snapshot version 1, SHA-256, relecture des blocs et validation au chargement | Branche canonique seulement; état initial fourni par le profil réseau |
+| Testnet locale | `aurora-node regtest` avec difficulté 0 | Pas de P2P ni de minage |
 
-## 2. Ce que le code ne fait PAS (donc aucun consensus)
+## Règles qui manquent pour un consensus testnet complet
 
-Preuve de travail, difficulté, cible, travail cumulé, sélection de chaîne, horodatages, récompenses,
-émission, maturité, existence des fonds (état), signatures, doubles dépenses entre blocs, frais,
-taille maximale en octets, réorganisations, réseau.
+1. Ajustement de difficulté déterministe (ancre, fenêtre/algorithme, bornes, timestamps, vecteurs) et comparaison par travail cumulé.
+2. Calendrier de récompense approuvé, création atomique, frais/burn/trésorerie, plafond d’offre et limites par réorganisation.
+3. Horodatages, validation temporelle, bornes d’en-tête et politique des blocs obsolètes.
+4. Génèse et état initial reproductibles avec identifiant de chaîne non réutilisé.
+5. Protocole P2P versionné, limites anti-DoS, synchronisation, annonces et reconnexion.
+6. Persistance de branches/état, reprise après écriture interrompue, migration, sauvegarde et récupération.
 
-## 3. Règles à spécifier (par ordre de la chaîne de dépendances du registre)
+## Invariants obligatoires
 
-1. Modèle de transaction (TX-01) puis format canonique définitif (TX-02), hachage (TX-03), Merkle (TX-04).
-2. Signatures et format d'adresse (CRY-01 à CRY-06, TX-08).
-3. Poids et capacité (FEE-01 à FEE-03).
-4. PoW et en-tête (POW-01 à POW-03).
-5. Difficulté et règles temporelles (POW-04 à POW-07) ; sélection de chaîne (POW-08) ; maturité (POW-09).
-6. Unité, calendrier d'émission, arrondis, plafond (TX-06, MON-01 à MON-04) ; genèse (MON-05).
+- Même chaîne valide et même paramètres produisent la même difficulté, état, récompense et tête canonique.
+- Aucun état partiel après rejet d’une transaction ou d’un bloc.
+- L’offre ne dépasse jamais la règle d’émission approuvée, même après réorganisation.
+- La chaîne active est celle du plus grand travail cumulé une fois le PoW variable spécifié.
+- Un encodage accepté est exactement l’encodage canonique reçu.
+- Les données d’un réseau ne sont pas valides sur un autre.
 
-Pour chaque règle : formule exacte, bornes, arrondis, cas limites, vecteurs de test indépendants.
-
-## 4. Invariants que tout consensus futur doit garantir (à transformer en tests)
-
-- **Déterminisme :** deux nœuds avec le même historique valide calculent le même état et la même difficulté.
-- **Aucune création monétaire hors règle :** la somme émise ne dépasse jamais le calendrier d'émission.
-- **Canonicité :** si une donnée est acceptée, son encodage canonique est exactement les octets reçus.
-- **Aucune dépense non autorisée, aucune double dépense** dans la chaîne active.
-- **Chaîne choisie :** la chaîne valide au plus grand travail cumulé, pas la plus longue.
-- **Séparation des réseaux :** une donnée d'un réseau n'est pas valide sur un autre.
-
-## 5. Critères de décision du PoW avant tout testnet public
-
-Voir `DECISION_REGISTER.md`, fiche F-02 (six conditions). Une simulation ne garantit pas la sécurité réelle.
-
-## 6. Journal
-
-| Date | Changement |
-|---|---|
-| 2026-10-25 | Création : état du prototype v0.0.1, aucune règle validée |
+Les règles ci-dessus doivent avoir une spécification et des vecteurs indépendants avant une testnet publique. La CI confirme uniquement les contrôles automatisés du code soumis, pas la sécurité du protocole.
