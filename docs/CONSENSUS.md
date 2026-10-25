@@ -14,7 +14,7 @@
 | Récompense | Profil `fast_start_500`; plafond brut 500 M AUR, paliers et split décrits dans `EMISSION_MODEL.md` et le code | Émission basée sur l’offre courante, testnet seulement |
 | Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
 | Stockage | Snapshot version 3, checksum, paramètres difficulté/récompense et toutes les branches; rejeu/revalidation à la lecture | Pas de journal transactionnel, migration de format ou test complet de coupure disque |
-| Réseau | TCP expérimental push/pull vers pairs configurés, fingerprint paramètres/genèse, frames bornées, pages de blocs et validation consensus | Pas de découverte automatique, propagation spontanée, connexions simultanées, reconnexion ou suite DoS complète |
+| Réseau | TCP expérimental push/pull vers pairs configurés, fingerprint paramètres/genèse, frames bornées, budget de 256 MiB/16 384 requêtes/15 minutes par session, pages de blocs et validation consensus | Pas de découverte automatique, propagation spontanée, connexions simultanées, reconnexion ou suite DoS complète |
 
 Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
 
