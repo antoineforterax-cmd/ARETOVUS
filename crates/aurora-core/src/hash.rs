@@ -75,6 +75,7 @@ const TAG_TX_SIGNING: &[u8] = b"AURORA/exp/v0/tx-signing";
 const TAG_BLOCK_HEADER: &[u8] = b"AURORA/exp/v0/block-header";
 const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 const TAG_ACCOUNT_TX_LIST: &[u8] = b"AURORA/exp/v0/account-tx-list";
+const TAG_HYBRID_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/hybrid-account-id";
 
 /// Domaine de hachage : deux domaines différents ne produisent jamais le même condensat
 /// pour les mêmes données.
@@ -92,6 +93,8 @@ pub enum Domain {
     TxList,
     /// Ordered commitment for experimental account transactions.
     AccountTxList,
+    /// Account identifier committing to both hybrid public keys.
+    HybridAccountId,
 }
 
 impl Domain {
@@ -104,6 +107,7 @@ impl Domain {
             Domain::BlockHeader => TAG_BLOCK_HEADER,
             Domain::TxList => TAG_TX_LIST,
             Domain::AccountTxList => TAG_ACCOUNT_TX_LIST,
+            Domain::HybridAccountId => TAG_HYBRID_ACCOUNT_ID,
         }
     }
 }
@@ -136,13 +140,14 @@ pub fn tagged_hash(domain: Domain, data: &[u8]) -> Hash256 {
 mod tests {
     use super::*;
 
-    const ALL_DOMAINS: [Domain; 6] = [
+    const ALL_DOMAINS: [Domain; 7] = [
         Domain::TxId,
         Domain::AccountTxId,
         Domain::TxSigning,
         Domain::BlockHeader,
         Domain::TxList,
         Domain::AccountTxList,
+        Domain::HybridAccountId,
     ];
 
     #[test]
