@@ -1,7 +1,7 @@
 # AURORA — prototype expérimental
 
 > **Statut : base expérimentale. Ce n'est PAS une blockchain utilisable, PAS sécurisée, PAS auditée.**
-> Le prototype inclut une vérification Ed25519 de transferts par comptes, mais aucun réseau P2P ni portefeuille. Ne jamais utiliser
+> Le prototype inclut une vérification Ed25519 de transferts par comptes et des snapshots de chaîne validés, mais aucun réseau P2P ni portefeuille. Ne jamais utiliser
 > avec de vrais fonds. Toutes les règles ici sont des **hypothèses** listées dans
 > `docs/DECISION_REGISTER.md` (annexe B) ; aucune décision n'est validée.
 
@@ -10,12 +10,12 @@
 | Crate | Contenu actuel |
 |---|---|
 | `aurora-core` | montants entiers, sérialisation canonique, SHA-256 à domaines, transferts par comptes et vérification Ed25519 expérimentale |
-| `aurora-consensus` | bloc expérimental, engagement sur les transactions (pas un Merkle), validation **sans état** |
-| aurora-node | vérification locale regtest en mémoire, sans service réseau ni persistance |
+| `aurora-consensus` | blocs de comptes signés, application atomique, PoW à difficulté fixe et réorganisation en mémoire |
+| `aurora-storage` | snapshots canoniques versionnés et contrôlés par checksum ; reconstruction par rejeu des blocs |
+| `aurora-node` | commande locale regtest, snapshots optionnels avec `--data-dir`, aucun service réseau ni minage |
 | `aurora-wallet` | crate vide et réservée (aucune clé) |
 
-Le stockage sera extrait en premier dans une crate indépendante quand sa complexité et ses tests le
-justifieront (pas avant).
+La persistance ne conserve que la branche canonique ; les forks secondaires sont perdus au redémarrage. Le consensus reste à difficulté fixe et sans récompense de bloc.
 
 ## Commandes
 
@@ -25,12 +25,16 @@ Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour téléc
 cargo fmt --all            # première fois : formate le code (le code a été écrit sans rustfmt)
 ./scripts/check.sh         # fmt --check + clippy + build + tests
 cargo test --workspace     # tests seuls
-cargo run -p aurora-node -- regtest  # valide la genèse locale déterministe, sans lancer de réseau
+cargo run -p aurora-node -- regtest  # valide la genèse locale en mémoire
+cargo run -p aurora-node -- regtest --data-dir ./aurora-regtest-data  # charge ou sauvegarde un snapshot
 python3 scripts/reference_vectors.py   # recalcule les valeurs attendues des vecteurs (Python indépendant)
 ```
 
-Après le premier build réussi : committer `Cargo.lock` et figer la version de Rust dans
-`rust-toolchain.toml` (GOV-01).
+`aurora-node regtest --data-dir` crée le snapshot de genèse s’il n’existe pas, puis revalide les blocs enregistrés au redémarrage. Ce mode ne démarre aucun pair et n’ajoute pas de blocs.
+
+## Persistance expérimentale
+
+Le format `AURORSNP` version 1 contient la difficulté fixe, le nombre de blocs, leurs encodages canoniques et un SHA-256 de contrôle. Chaque snapshot est écrit sous un nom déterminé par la hauteur et l’empreinte de tête. Au chargement, les blocs sont rejoués depuis la genèse avec l’état initial fourni par le réseau. Les snapshots corrompus ou de version inconnue sont rejetés. Cette première version ne migre pas les formats, ne persiste pas les branches secondaires et ne remplace pas une base de données durable.
 
 ## Dépendances
 
