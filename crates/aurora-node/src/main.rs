@@ -1,4 +1,5 @@
 //! Commandes du nœud local AURORA : regtest et testnet expérimental.
+mod p2p;
 use std::{
     error::Error,
     fs,
@@ -13,6 +14,7 @@ use aurora_consensus::{
 };
 use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
+use p2p::{serve as serve_peers, sync_from_peer};
 
 const TESTNET_INITIAL_BITS: u16 = 8;
 const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
@@ -44,6 +46,63 @@ fn testnet_chain() -> Result<AccountForkChain, Box<dyn Error>> {
         RewardParams::experimental_testnet(TESTNET_TREASURY),
         AccountLedger::new(NetworkId::Testnet),
     )?)
+}
+
+fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn Error>> {
+    fs::create_dir_all(dir)?;
+    let chain = match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Testnet)) {
+        Ok(chain) => chain,
+        Err(StorageError::NoSnapshot) => {
+            let chain = testnet_chain()?;
+            save_snapshot(dir, &chain)?;
+            chain
+        }
+        Err(error) => return Err(error.into()),
+    };
+    if chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
+        || chain.difficulty_params() != TESTNET_DIFFICULTY
+        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
+    {
+        return Err("stored chain uses different testnet consensus parameters".into());
+    }
+    Ok(chain)
+}
+
+fn run_testnet_peer(
+    args: impl Iterator<Item = String>,
+    server: bool,
+) -> Result<(), Box<dyn Error>> {
+    let mut args = args;
+    let mut data_dir: Option<PathBuf> = None;
+    let mut endpoint: Option<String> = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--data-dir" => {
+                data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into())
+            }
+            "--listen" if server => {
+                endpoint = Some(args.next().ok_or("--listen requires IP:PORT")?)
+            }
+            "--peer" if !server => endpoint = Some(args.next().ok_or("--peer requires IP:PORT")?),
+            _ => return Err(format!("unknown testnet option: {arg}").into()),
+        }
+    }
+    let dir = data_dir.ok_or("testnet peer command requires --data-dir PATH")?;
+    let endpoint: std::net::SocketAddr = endpoint
+        .ok_or("missing --listen or --peer endpoint")?
+        .parse()?;
+    let mut chain = load_testnet_chain(&dir)?;
+    if server {
+        serve_peers(endpoint, &mut chain, &dir)?;
+    } else {
+        let accepted = sync_from_peer(endpoint, &mut chain, &dir)?;
+        println!(
+            "peer sync complete: accepted={accepted} height={} tip={}",
+            chain.height(),
+            chain.tip_hash()
+        );
+    }
+    Ok(())
 }
 
 fn parse_account(value: &str) -> Result<AccountId, Box<dyn Error>> {
@@ -148,28 +207,47 @@ fn run() -> Result<(), Box<dyn Error>> {
         Some("regtest") => {
             let mut data_dir: Option<PathBuf> = None;
             while let Some(arg) = args.next() {
-                if arg == "--data-dir" { data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into()); }
-                else { return Err(format!("unknown regtest option: {arg}").into()); }
+                if arg == "--data-dir" {
+                    data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into());
+                } else {
+                    return Err(format!("unknown regtest option: {arg}").into());
+                }
             }
             let chain = if let Some(dir) = &data_dir {
                 fs::create_dir_all(dir)?;
                 match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Regtest)) {
                     Ok(chain) => chain,
-                    Err(StorageError::NoSnapshot) => { let chain = regtest_chain()?; save_snapshot(dir, &chain)?; chain }
+                    Err(StorageError::NoSnapshot) => {
+                        let chain = regtest_chain()?;
+                        save_snapshot(dir, &chain)?;
+                        chain
+                    }
                     Err(error) => return Err(error.into()),
                 }
-            } else { regtest_chain()? };
+            } else {
+                regtest_chain()?
+            };
             println!("AURORA local regtest (experimental)");
-            println!("network: regtest\ndifficulty_bits: {}\nheight: {}\ngenesis: {}", chain.difficulty_bits(), chain.height(), chain.tip_hash());
-            println!("validated snapshot loaded from disk; {} accepted block(s)", chain.known_block_count());
+            println!(
+                "network: regtest\ndifficulty_bits: {}\nheight: {}\ngenesis: {}",
+                chain.difficulty_bits(),
+                chain.height(),
+                chain.tip_hash()
+            );
+            println!(
+                "validated snapshot loaded from disk; {} accepted block(s)",
+                chain.known_block_count()
+            );
         }
         Some("testnet") => match args.next().as_deref() {
             Some("mine") => run_testnet_miner(args),
-            _ => Err("Usage: aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]".into()),
+            Some("serve") => run_testnet_peer(args, true),
+            Some("sync") => run_testnet_peer(args, false),
+            _ => Err("Usage: aurora-node testnet mine|serve|sync ...".into()),
         }?,
         Some("--help") | Some("-h") => {
-            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]");
-            println!("Experimental local testnet: 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap; snapshots are validated on load.");
+            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT");
+            println!("Experimental testnet: TCP pull sync with bounded frames and consensus fingerprint; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
         }
         _ => return Err("Run aurora-node --help for available commands".into()),
     }
