@@ -6,7 +6,9 @@
 
 use aurora_core::amount::{Amount, MAX_UNITS};
 use aurora_core::codec::{CanonicalDecode, CanonicalEncode};
-use aurora_core::experimental::{OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION};
+use aurora_core::experimental::{
+    OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION,
+};
 use aurora_core::hash::{sha256_plain, tagged_hash, Domain, Hash256};
 use aurora_core::network::NetworkId;
 
