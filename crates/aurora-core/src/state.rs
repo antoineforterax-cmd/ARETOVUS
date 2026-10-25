@@ -92,7 +92,7 @@ impl AccountLedger {
         &mut self,
         tx: &AccountTransaction,
         verify_authorization: F,
-    ) -> Result<(), StateError>
+    ) -> Result<Amount, StateError>
     where
         F: FnOnce(&AccountTransaction) -> bool,
     {
@@ -152,7 +152,8 @@ impl AccountLedger {
                 ..recipient_state
             },
         );
-        Ok(())
+        // Le validateur de bloc doit comptabiliser ces frais puis appliquer la règle de partage.
+        Ok(tx.fee)
     }
 }
 
@@ -193,6 +194,16 @@ mod tests {
         assert_eq!(ledger.account(id(1)).next_nonce, 1);
         assert_eq!(ledger.account(id(2)).balance.to_units(), 200);
         assert_eq!(ledger.account(id(2)).next_nonce, 0);
+    }
+
+    #[test]
+    fn wrong_network_is_rejected_without_mutation() {
+        let mut ledger = funded_ledger();
+        let before = ledger.clone();
+        let mut transaction = tx(0, 10, 1);
+        transaction.network = NetworkId::Testnet;
+        assert_eq!(ledger.apply_transaction(&transaction, |_| true), Err(StateError::WrongNetwork));
+        assert_eq!(ledger, before);
     }
 
     #[test]
