@@ -309,6 +309,7 @@ impl AccountForkChain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::account_block::AccountBlockError;
     use aurora_core::{
         accounts::{AccountId, AccountTransaction, ACCOUNT_TX_VERSION},
         amount::Amount,
