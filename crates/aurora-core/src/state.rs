@@ -21,6 +21,8 @@ pub struct AccountState {
 pub struct AccountLedger {
     network: NetworkId,
     accounts: BTreeMap<AccountId, AccountState>,
+    /// Cumul des unités émises par genèse/récompenses, indépendant des transferts.
+    issued: Amount,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,7 +58,7 @@ impl std::error::Error for StateError {}
 
 impl AccountLedger {
     pub fn new(network: NetworkId) -> Self {
-        Self { network, accounts: BTreeMap::new() }
+        Self { network, accounts: BTreeMap::new(), issued: Amount::ZERO }
     }
 
     pub fn account(&self, id: AccountId) -> AccountState {
@@ -65,6 +67,11 @@ impl AccountLedger {
 
     pub fn account_count(&self) -> usize {
         self.accounts.len()
+    }
+
+    /// Total cumulatif émis. Les frais brûlés ne sont pas encore traités par ce registre.
+    pub fn total_issued(&self) -> Amount {
+        self.issued
     }
 
     /// Crédit réservé à l'émission/genèse contrôlée par le nœud.
@@ -77,12 +84,18 @@ impl AccountLedger {
         if amount == Amount::ZERO {
             return Ok(());
         }
+        let next_issued = self
+            .issued
+            .checked_add(amount)
+            .map_err(StateError::BalanceOutOfRange)?;
         let current = self.account(recipient);
         let balance = current
             .balance
             .checked_add(amount)
             .map_err(StateError::BalanceOutOfRange)?;
+        // Mettre à jour l'état seulement après validation des deux sommes.
         self.accounts.insert(recipient, AccountState { balance, ..current });
+        self.issued = next_issued;
         Ok(())
     }
 
@@ -261,12 +274,22 @@ mod tests {
     }
 
     #[test]
-    fn issuance_credit_is_bounded() {
+    fn issuance_credit_is_bounded_per_account_and_globally() {
         let mut ledger = AccountLedger::new(NetworkId::Regtest);
         ledger.credit_issuance(id(1), Amount::MAX).unwrap();
+        assert_eq!(ledger.total_issued(), Amount::MAX);
+        let before = ledger.clone();
         assert!(matches!(
             ledger.credit_issuance(id(1), Amount::from_units(1).unwrap()),
             Err(StateError::BalanceOutOfRange(_))
         ));
+        assert_eq!(ledger, before);
+
+        // Le plafond s'applique à l'offre totale, pas seulement à chaque compte.
+        assert!(matches!(
+            ledger.credit_issuance(id(2), Amount::from_units(1).unwrap()),
+            Err(StateError::BalanceOutOfRange(_))
+        ));
+        assert_eq!(ledger, before);
     }
 }
