@@ -18,6 +18,8 @@ use aurora_core::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub const MAX_ACCOUNT_BLOCK_BYTES: usize = 4 * 1024 * 1024 - 16;
+
 pub struct AccountBlock {
     pub header: BlockHeader,
     pub transactions: Vec<AccountTransaction>,
@@ -33,6 +35,7 @@ pub enum AccountBlockError {
     InvalidTransaction(AccountTxError),
     DuplicateTransaction,
     CommitmentMismatch,
+    BlockTooLarge,
     Encoding(EncodeError),
 }
 
@@ -139,6 +142,14 @@ impl AccountBlock {
         {
             return Err(AccountBlockError::CommitmentMismatch);
         }
+        if self
+            .to_canonical_bytes()
+            .map_err(AccountBlockError::Encoding)?
+            .len()
+            > MAX_ACCOUNT_BLOCK_BYTES
+        {
+            return Err(AccountBlockError::BlockTooLarge);
+        }
         Ok(())
     }
 }
@@ -188,6 +199,12 @@ impl CanonicalEncode for AccountBlock {
 }
 impl CanonicalDecode for AccountBlock {
     fn decode(dec: &mut Decoder<'_>) -> Result<Self, DecodeError> {
+        if dec.remaining() > MAX_ACCOUNT_BLOCK_BYTES {
+            return Err(DecodeError::LengthTooLarge {
+                len: dec.remaining() as u64,
+                max: MAX_ACCOUNT_BLOCK_BYTES,
+            });
+        }
         let header = BlockHeader::decode(dec)?;
         let miner = match dec.get_u8()? {
             0 => None,
@@ -262,6 +279,30 @@ mod tests {
         assert_eq!(ledger.account(account(8)).balance.to_units(), 20);
         assert_eq!(ledger.account(account(9)).balance.to_units(), 30);
         assert_eq!(ledger.total_issued().to_units(), 1_000);
+    }
+
+    #[test]
+    fn oversized_account_blocks_are_rejected_by_validation_and_decode() {
+        let mut txs = Vec::with_capacity(1100);
+        for nonce in 0..1100 {
+            txs.push(AccountTransaction {
+                version: ACCOUNT_TX_VERSION,
+                network: NetworkId::Regtest,
+                sender: account(1),
+                nonce,
+                recipient: account(2),
+                amount: Amount::from_units(1).unwrap(),
+                fee: Amount::ZERO,
+                auth_data: vec![0; 4096],
+            });
+        }
+        let block = AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, txs).unwrap();
+        assert!(matches!(
+            block.check_stateless(),
+            Err(AccountBlockError::BlockTooLarge)
+        ));
+        let encoded = block.to_canonical_bytes().unwrap();
+        assert!(AccountBlock::from_canonical_bytes(&encoded).is_err());
     }
 
     #[test]
