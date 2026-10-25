@@ -14,7 +14,7 @@ use aurora_consensus::{
 };
 use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
-use p2p::{propagate_block, serve as serve_peers, sync_from_peer};
+use p2p::{propagate_block_with_retry, serve as serve_peers, sync_from_peer_with_retry};
 
 const TESTNET_INITIAL_BITS: u16 = 8;
 const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
@@ -99,7 +99,7 @@ fn run_testnet_peer(
         serve_peers(endpoints[0].parse()?, &mut chain, &dir)?;
     } else {
         for endpoint in endpoints {
-            let accepted = sync_from_peer(endpoint.parse()?, &mut chain, &dir)?;
+            let accepted = sync_from_peer_with_retry(endpoint.parse()?, &mut chain, &dir)?;
             println!(
                 "peer sync complete: accepted={accepted} height={} tip={}",
                 chain.height(),
@@ -184,7 +184,7 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
         let block = mine_one(&mut chain, miner, now)?;
         save_snapshot(&dir, &chain)?;
         for peer in &peers {
-            propagate_block(*peer, &chain, &block)?;
+            propagate_block_with_retry(*peer, &chain, &block)?;
         }
         println!(
             "height={} tip={} difficulty_bits={} issued_units={} miner_balance_units={}",
