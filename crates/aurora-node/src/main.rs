@@ -3,6 +3,8 @@ use std::{error::Error, process};
 
 use aurora_consensus::{account_block::AccountBlock, account_fork_chain::AccountForkChain};
 use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
+use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
+use std::path::PathBuf;
 
 fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
     let network = NetworkId::Regtest;
@@ -17,20 +19,44 @@ fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
 fn run() -> Result<(), Box<dyn Error>> {
     match std::env::args().nth(1).as_deref() {
         Some("regtest") => {
-            let chain = regtest_chain()?;
+            let mut args = std::env::args().skip(2);
+            let mut data_dir: Option<PathBuf> = None;
+            while let Some(arg) = args.next() {
+                if arg == "--data-dir" {
+                    data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into());
+                } else {
+                    return Err(format!("unknown regtest option: {arg}").into());
+                }
+            }
+            let chain = if let Some(dir) = &data_dir {
+                match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Regtest)) {
+                    Ok(chain) => chain,
+                    Err(StorageError::NoSnapshot) => {
+                        let chain = regtest_chain()?;
+                        save_snapshot(dir, &chain)?;
+                        chain
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            } else {
+                regtest_chain()?
+            };
             println!("AURORA local regtest (experimental)");
             println!("network: regtest");
             println!("difficulty_bits: {}", 0);
             println!("height: {}", chain.height());
             println!("genesis: {}", chain.tip_hash());
-            println!(
-                "state is in memory and will be discarded at exit; no peer network is started"
-            );
+            if data_dir.is_some() {
+                println!("validated snapshot loaded from disk; canonical blocks only");
+            } else {
+                println!("state is in memory and will be discarded at exit");
+            }
+            println!("no peer network is started");
         }
         Some("--help") | Some("-h") => {
-            println!("Usage: aurora-node regtest");
-            println!("Build and validate the deterministic empty in-memory regtest genesis.");
-            println!("This command does not start a peer network or write persistent data.");
+            println!("Usage: aurora-node regtest [--data-dir PATH]");
+            println!("Validate a deterministic local regtest chain. --data-dir stores versioned, checksummed canonical block snapshots.");
+            println!("This command does not start a peer network or mine blocks.");
         }
         _ => {
             println!("AURORA experimental node; no network service is available.");
