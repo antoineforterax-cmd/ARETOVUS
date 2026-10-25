@@ -1,8 +1,10 @@
 //! Commandes du nœud local AURORA : regtest et testnet expérimental.
 mod p2p;
 use std::{
+    collections::{HashSet, VecDeque},
     error::Error,
     fs,
+    net::SocketAddr,
     path::PathBuf,
     process,
     time::{SystemTime, UNIX_EPOCH},
@@ -14,7 +16,10 @@ use aurora_consensus::{
 };
 use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
-use p2p::{propagate_block_with_retry, serve as serve_peers, sync_from_peer_with_retry};
+use p2p::{
+    discover_peers_with_retry, propagate_block_with_retry, serve as serve_peers,
+    sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
+};
 
 const TESTNET_INITIAL_BITS: u16 = 8;
 const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
@@ -74,38 +79,85 @@ fn run_testnet_peer(
 ) -> Result<(), Box<dyn Error>> {
     let mut args = args;
     let mut data_dir: Option<PathBuf> = None;
-    let mut endpoints = Vec::<String>::new();
+    let mut listen: Option<SocketAddr> = None;
+    let mut peers = Vec::<SocketAddr>::new();
+    let mut discover = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--data-dir" => {
                 data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into())
             }
-            "--listen" if server => endpoints.push(args.next().ok_or("--listen requires IP:PORT")?),
-            "--peer" if !server => endpoints.push(args.next().ok_or("--peer requires IP:PORT")?),
+            "--listen" if server => {
+                listen = Some(args.next().ok_or("--listen requires IP:PORT")?.parse()?);
+            }
+            "--peer" => peers.push(args.next().ok_or("--peer requires IP:PORT")?.parse()?),
+            "--discover" if !server => discover = true,
             _ => return Err(format!("unknown testnet option: {arg}").into()),
         }
     }
     let dir = data_dir.ok_or("testnet peer command requires --data-dir PATH")?;
-    if endpoints.is_empty() || (server && endpoints.len() != 1) {
-        return Err(if server {
-            "testnet serve requires exactly one --listen IP:PORT"
-        } else {
-            "testnet sync requires at least one --peer IP:PORT"
-        }
-        .into());
-    }
-    let mut chain = load_testnet_chain(&dir)?;
     if server {
-        serve_peers(endpoints[0].parse()?, &mut chain, &dir)?;
-    } else {
-        for endpoint in endpoints {
-            let accepted = sync_from_peer_with_retry(endpoint.parse()?, &mut chain, &dir)?;
-            println!(
-                "peer sync complete: accepted={accepted} height={} tip={}",
-                chain.height(),
-                chain.tip_hash()
-            );
+        let listen = listen.ok_or("testnet serve requires --listen IP:PORT")?;
+        if peers.len() > 32 {
+            return Err("testnet serve accepts at most 32 advertised --peer addresses".into());
         }
+        let mut chain = load_testnet_chain(&dir)?;
+        serve_peers(listen, &mut chain, &dir, &peers)?;
+        return Ok(());
+    }
+    if peers.is_empty() {
+        return Err("testnet sync requires at least one --peer IP:PORT".into());
+    }
+    if peers.len() > MAX_DISCOVERED_PEERS {
+        return Err("testnet sync accepts at most 64 initial peers".into());
+    }
+
+    let mut chain = load_testnet_chain(&dir)?;
+    let mut queue = VecDeque::from(peers);
+    let mut contacted = HashSet::new();
+    let mut successful = 0usize;
+    let mut last_error = None;
+    while let Some(endpoint) = queue.pop_front() {
+        if !contacted.insert(endpoint) {
+            continue;
+        }
+        if contacted.len() > MAX_DISCOVERED_PEERS {
+            break;
+        }
+        match sync_from_peer_with_retry(endpoint, &mut chain, &dir) {
+            Ok(accepted) => {
+                successful += 1;
+                println!(
+                    "peer sync complete: peer={endpoint} accepted={accepted} height={} tip={}",
+                    chain.height(),
+                    chain.tip_hash()
+                );
+                if discover {
+                    match discover_peers_with_retry(endpoint, &chain) {
+                        Ok(discovered) => {
+                            for peer in discovered {
+                                if !contacted.contains(&peer)
+                                    && queue.len() + contacted.len() < MAX_DISCOVERED_PEERS
+                                {
+                                    queue.push_back(peer);
+                                }
+                            }
+                        }
+                        Err(error) => eprintln!("peer discovery failed for {endpoint}: {error}"),
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("peer sync failed for {endpoint}: {error}");
+                last_error = Some(error.to_string());
+            }
+        }
+    }
+    if successful == 0 {
+        if let Some(error) = last_error {
+            return Err(format!("all configured testnet peers failed: {error}").into());
+        }
+        return Err("no testnet peer was contacted".into());
     }
     Ok(())
 }
@@ -243,8 +295,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             _ => Err("Usage: aurora-node testnet mine|serve|sync ...".into()),
         }?,
         Some("--help") | Some("-h") => {
-            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT");
-            println!("Experimental testnet: TCP pull sync with bounded frames and consensus fingerprint; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
+            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]");
+            println!("Experimental testnet: bounded TCP push/pull and opt-in one-hop peer discovery; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
         }
         _ => return Err("Run aurora-node --help for available commands".into()),
     }
