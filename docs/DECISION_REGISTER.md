@@ -1,7 +1,7 @@
 # DECISION_REGISTER.md — AURORA
 
 **Version du registre :** 1.1 (cahier des charges v4.0 + corrections v4.1)
-**Dernière mise à jour :** 2026-10-24
+**Dernière mise à jour :** 2026-10-25
 **Décideur unique :** le porteur du projet.
 
 > **Aucun résultat de benchmark, de simulation ou d'audit n'existe à ce jour.**
@@ -494,7 +494,7 @@ Ces choix existent **dans le code** pour pouvoir avancer ; ce ne sont pas des d�
 ### État des tests (honnêteté)
 
 - **Écrits :** tests unitaires dans les modules, tests de vecteurs (`tests/vectors.rs`, valeurs issues du script Python indépendant `scripts/reference_vectors.py`), tests de « propriétés » (`tests/properties.rs`, générateur déterministe maison, sans `proptest`).
-- **Exécutés :** **aucun test Rust.** Rust n'était pas installé dans l'environnement de rédaction et il n'y avait pas d'accès réseau pour l'installer.
-- **Vérifié autrement :** le script Python tourne ; les 19 valeurs attendues qu'il produit figurent bien dans les fichiers de test Rust.
+- **Exécutés en CI :** le workflow GitHub Actions `ci` a réussi sur le commit `9dbae4af228aea85701d6ef3f4042b64a54ae081` (run #34, 2026-10-25) : formatage `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, compilation `cargo build --workspace --locked`, tests `cargo test --workspace --locked`.
+- **Portée de ce résultat :** cela confirme que ces contrôles automatisés passent sur ce commit ; cela ne constitue ni un audit de sécurité, ni une validation du protocole, ni une preuve de sûreté économique ou cryptographique.
 - **Prévus :** `proptest`, `cargo-fuzz`, tests différentiels, `cargo audit`, `cargo deny`.
-- **Non vérifié :** compilation, `rustfmt`, `clippy`. Le code peut contenir des erreurs de compilation.
+- **Non vérifié :** comportement en réseau, état des fonds, signatures, doubles dépenses entre blocs, preuve de travail, réorganisations, émission et audit indépendant.
