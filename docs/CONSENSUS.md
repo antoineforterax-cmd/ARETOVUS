@@ -9,14 +9,15 @@
 | Encodage | Entiers big-endian, longueurs bornées, octets excédentaires rejetés | Format versionné expérimental |
 | Transfert | Signature Ed25519 stricte, identifiant réseau, nonce, solde et frais validés | Pas de mempool ni de règle de frais minimum |
 | Bloc compte | Engagement ordonné de txids, validation d’état atomique, pas de Merkle | Aucun reward/coinbase |
-| PoW | SHA-256 avec nombre minimal de bits nuls paramétré | Difficulté constante par chaîne |
-| Sélection de branche | La chaîne la plus longue; égalité départagée par la plus petite empreinte | Incorrect pour difficulté variable; aucun calcul de travail cumulé |
+| PoW | SHA-256 avec nombre minimal de bits nuls; retarget expérimental à fenêtres, pas entiers bornés, horodatage supérieur au temps médian des 11 derniers blocs | Paramètres par chaîne; règle non simulée/auditée |
+| Sélection de branche | Plus grand travail cumulé, travail par bloc `2^difficulty_bits`; égalité départagée par la plus petite empreinte | Comptabilité u320; aucune simulation adversariale |
+| Retarget | Chaque fenêtre compare les médianes de temps à la durée cible; difficulté ajustée par pas entiers d’un bit, limite par fenêtre et bornes min/max | Règle candidate, distincte d’ASERT; vecteurs et analyse anti-manipulation à approfondir |
 | Stockage | Snapshot version 1, SHA-256, relecture des blocs et validation au chargement | Branche canonique seulement; état initial fourni par le profil réseau |
 | Testnet locale | `aurora-node regtest` avec difficulté 0 | Pas de P2P ni de minage |
 
 ## Règles qui manquent pour un consensus testnet complet
 
-1. Ajustement de difficulté déterministe (ancre, fenêtre/algorithme, bornes, timestamps, vecteurs) et comparaison par travail cumulé.
+1. Simuler la règle de difficulté candidate, vérifier les retargets longs/courts, les manipulations temporelles et les égalités; la comparer à ASERT et figer des vecteurs indépendants avant testnet.
 2. Calendrier de récompense approuvé, création atomique, frais/burn/trésorerie, plafond d’offre et limites par réorganisation.
 3. Horodatages, validation temporelle, bornes d’en-tête et politique des blocs obsolètes.
 4. Génèse et état initial reproductibles avec identifiant de chaîne non réutilisé.
