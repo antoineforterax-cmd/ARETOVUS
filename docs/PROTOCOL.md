@@ -31,16 +31,16 @@ Le nœud construit une genèse testnet vide et déterministe. Paramètres actuel
 
 ## Réseau expérimental
 
-Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
+Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-Ne sont pas implémentés : découverte automatique de pairs, annonces spontanées et reprise automatique; le serveur accepte plusieurs sessions simultanées mais la synchronisation côté client reste séquentielle. Le mempool n’est pas implémenté; découverte/reconnexion, mais le protocole borne désormais le trafic cumulé, le nombre de demandes et la durée de chaque session; une défense éprouvée contre les attaques DoS reste à faire. Ne pas exposer ce transport à un réseau non fiable.
+Ne sont pas implémentés : annonces spontanées, reprise automatique de sessions déjà établies et découverte non supervisée; la découverte actuelle est opt-in, à un seul saut, et repose sur des bootstrap peers statiques. Le mempool n’est pas implémenté; découverte/reconnexion, mais le protocole borne désormais le trafic cumulé, le nombre de demandes et la durée de chaque session; une défense éprouvée contre les attaques DoS reste à faire. Ne pas exposer ce transport à un réseau non fiable.
 
 ## Commandes
 
 ```bash
 cargo run -p aurora-node -- testnet mine --data-dir ./node-a --miner <64 caractères hex> --count 10
-cargo run -p aurora-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:18444
-cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444
+cargo run -p aurora-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:18444 --peer 192.0.2.20:18444
+cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444 --discover
 ```
 
 ## Travaux de finalisation
