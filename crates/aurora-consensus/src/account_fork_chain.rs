@@ -356,7 +356,8 @@ mod tests {
             min_bits: 1,
             max_bits: 8,
         };
-        let genesis = block(Hash256::ZERO, 100, vec![]);
+        let mut genesis = block(Hash256::ZERO, 100, vec![]);
+        genesis.header.nonce = mine_nonce(&genesis.header, 2, 0, 100_000).unwrap();
         let mut chain =
             AccountForkChain::new_with_params(genesis, 2, params, initial_state()).unwrap();
         let first = block(chain.tip_hash(), 108, vec![]);
