@@ -17,8 +17,8 @@ use aurora_consensus::{
     account_fork_chain::{AccountForkChain, AccountForkChainError},
 };
 use aurora_core::{
-    codec::CanonicalDecode,
-    hash::{sha256_plain, Hash256},
+    codec::{CanonicalDecode, CanonicalEncode},
+    hash::sha256_plain,
     state::AccountLedger,
 };
 
@@ -135,7 +135,7 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
     if metadata.len() > MAX_SNAPSHOT_BYTES as u64 {
         return Err(StorageError::InvalidFormat("snapshot exceeds byte limit"));
     }
-    let mut file = File::open(path)?;
+    let file = File::open(path)?;
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take((MAX_SNAPSHOT_BYTES + 1) as u64)
         .read_to_end(&mut bytes)?;
@@ -275,3 +275,4 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 }
+
