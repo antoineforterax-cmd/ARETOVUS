@@ -4,7 +4,7 @@ use std::{
     io::{self, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     path::Path,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use aurora_consensus::{
@@ -20,6 +20,10 @@ use aurora_storage::save_snapshot;
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
 const MAX_SYNC_BLOCKS: usize = 100_000;
+/// Hard aggregate cap per peer session, independent of per-frame limits.
+const MAX_SESSION_BYTES: usize = 256 * 1024 * 1024;
+const MAX_SESSION_REQUESTS: usize = 16_384;
+const MAX_SESSION_DURATION: Duration = Duration::from_secs(15 * 60);
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
@@ -112,6 +116,27 @@ fn write_frame(stream: &mut TcpStream, frame: &[u8]) -> Result<(), P2pError> {
     stream.flush()?;
     Ok(())
 }
+
+fn add_session_bytes(total: &mut usize, bytes: usize) -> Result<(), P2pError> {
+    *total = total
+        .checked_add(bytes)
+        .ok_or(P2pError::Protocol("session byte counter overflow"))?;
+    if *total > MAX_SESSION_BYTES {
+        return Err(P2pError::Protocol("peer session byte budget exceeded"));
+    }
+    Ok(())
+}
+
+fn add_session_request(count: &mut usize) -> Result<(), P2pError> {
+    *count = count
+        .checked_add(1)
+        .ok_or(P2pError::Protocol("session request counter overflow"))?;
+    if *count > MAX_SESSION_REQUESTS {
+        return Err(P2pError::Protocol("peer session request limit exceeded"));
+    }
+    Ok(())
+}
+
 fn send_hello(stream: &mut TcpStream, chain: &AccountForkChain) -> Result<(), P2pError> {
     let mut frame = vec![HELLO];
     frame.extend_from_slice(protocol_fingerprint(chain).as_bytes());
@@ -146,7 +171,8 @@ fn respond_blocks(
     stream: &mut TcpStream,
     chain: &AccountForkChain,
     start: usize,
-) -> Result<(), P2pError> {
+    session_bytes: usize,
+) -> Result<usize, P2pError> {
     let blocks = chain.all_blocks_by_height();
     if start > blocks.len() {
         return Err(P2pError::Protocol("block cursor out of range"));
@@ -171,7 +197,12 @@ fn respond_blocks(
         return Err(P2pError::Protocol("block exceeds transport frame limit"));
     }
     frame[count_offset..count_offset + 4].copy_from_slice(&count.to_be_bytes());
-    write_frame(stream, &frame)
+    let wire_bytes = 4 + frame.len();
+    if wire_bytes > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+        return Err(P2pError::Protocol("peer session byte budget exceeded"));
+    }
+    write_frame(stream, &frame)?;
+    Ok(wire_bytes)
 }
 fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
     if frame.len() < 9 || frame[0] != BLOCKS_REPLY {
@@ -218,25 +249,42 @@ pub fn handle_peer(
     data_dir: &Path,
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
+    let session_started = Instant::now();
+    let mut session_bytes = 0usize;
+    let mut session_requests = 0usize;
     let hello = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, hello.len() + 4)?;
     if let Err(error) = check_hello(&hello, chain) {
         let _ = write_frame(&mut stream, &[ERROR_REPLY]);
         return Err(error);
     }
+    if 77 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+        return Err(P2pError::Protocol("peer session byte budget exceeded"));
+    }
     send_hello(&mut stream, chain)?;
+    add_session_bytes(&mut session_bytes, 77)?;
     loop {
+        if session_started.elapsed() > MAX_SESSION_DURATION {
+            return Err(P2pError::Protocol("peer session duration exceeded"));
+        }
         let request = match read_frame(&mut stream) {
             Ok(frame) => frame,
             Err(P2pError::Io(e)) if e.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
             Err(e) => return Err(e),
         };
+        add_session_request(&mut session_requests)?;
+        add_session_bytes(&mut session_bytes, request.len() + 4)?;
         match request.first() {
             Some(&GET_BLOCKS) if request.len() == 5 => {
                 let start =
                     u32::from_be_bytes(request[1..5].try_into().expect("fixed slice")) as usize;
-                respond_blocks(&mut stream, chain, start)?;
+                let sent = respond_blocks(&mut stream, chain, start, session_bytes)?;
+                add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&SUBMIT_BLOCK) if request.len() > 1 => {
+                if 45 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
                 let block = AccountBlock::from_canonical_bytes(&request[1..])
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
                 match chain.submit(block) {
@@ -250,6 +298,7 @@ pub fn handle_peer(
                 reply.extend_from_slice(&chain.height().to_be_bytes());
                 reply.extend_from_slice(chain.tip_hash().as_bytes());
                 write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, 45)?;
             }
             _ => return Err(P2pError::Protocol("unknown or malformed request")),
         }
@@ -307,8 +356,12 @@ pub fn sync_from_peer(
 ) -> Result<usize, P2pError> {
     let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
     set_timeouts(&stream)?;
+    let session_started = Instant::now();
+    let mut session_bytes = 77usize;
+    let mut session_requests = 0usize;
     send_hello(&mut stream, chain)?;
     let reply = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, reply.len() + 4)?;
     if reply.first() == Some(&ERROR_REPLY) {
         return Err(P2pError::Protocol("peer rejected network identity"));
     }
@@ -316,13 +369,20 @@ pub fn sync_from_peer(
     let mut cursor = 1usize;
     let mut accepted = 0;
     loop {
+        if session_started.elapsed() > MAX_SESSION_DURATION {
+            return Err(P2pError::Protocol("peer session duration exceeded"));
+        }
+        add_session_request(&mut session_requests)?;
+        add_session_bytes(&mut session_bytes, 9)?;
         let mut request = vec![GET_BLOCKS];
         request.extend_from_slice(
             &(u32::try_from(cursor).map_err(|_| P2pError::Protocol("chain too long"))?)
                 .to_be_bytes(),
         );
         write_frame(&mut stream, &request)?;
-        let (total, blocks) = read_blocks(&read_frame(&mut stream)?)?;
+        let page = read_frame(&mut stream)?;
+        add_session_bytes(&mut session_bytes, page.len() + 4)?;
+        let (total, blocks) = read_blocks(&page)?;
         if total < cursor || blocks.len() > total.saturating_sub(cursor) {
             return Err(P2pError::Protocol("peer block inventory is inconsistent"));
         }
@@ -457,6 +517,17 @@ mod tests {
         assert_eq!(unchanged.height(), 0);
         assert!(fs::read_dir(&dir).unwrap().next().is_none());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn session_limits_bound_aggregate_bytes_and_request_count() {
+        let mut bytes = MAX_SESSION_BYTES - 1;
+        assert!(add_session_bytes(&mut bytes, 1).is_ok());
+        assert!(add_session_bytes(&mut bytes, 1).is_err());
+
+        let mut requests = MAX_SESSION_REQUESTS - 1;
+        assert!(add_session_request(&mut requests).is_ok());
+        assert!(add_session_request(&mut requests).is_err());
     }
 
     #[test]
