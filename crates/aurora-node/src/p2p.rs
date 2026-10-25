@@ -19,6 +19,7 @@ use aurora_storage::save_snapshot;
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
+const MAX_SYNC_BLOCKS: usize = 100_000;
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
@@ -172,10 +173,10 @@ fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
     }
     let total = u32::from_be_bytes(frame[1..5].try_into().expect("fixed slice")) as usize;
     let count = u32::from_be_bytes(frame[5..9].try_into().expect("fixed slice")) as usize;
-    if count > PAGE_BLOCKS {
-        return Err(P2pError::Protocol("too many blocks in page"));
+    if count > PAGE_BLOCKS || total > MAX_SYNC_BLOCKS {
+        return Err(P2pError::Protocol("peer inventory exceeds limit"));
     }
-    let mut cursor = 9;
+    let mut cursor: usize = 9;
     let mut blocks = Vec::with_capacity(count);
     for _ in 0..count {
         let len_end = cursor
@@ -204,7 +205,7 @@ fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
     Ok((total, blocks))
 }
 
-/// Handle one bounded peer session. Unknown and invalid blocks are never trusted or persisted.
+/// Handle one bounded pull-only peer session; this server never trusts remote state.
 pub fn handle_peer(
     mut stream: TcpStream,
     chain: &mut AccountForkChain,
@@ -275,10 +276,15 @@ pub fn sync_from_peer(
         );
         write_frame(&mut stream, &request)?;
         let (total, blocks) = read_blocks(&read_frame(&mut stream)?)?;
-        if total < cursor {
-            return Err(P2pError::Protocol("peer block inventory shrank"));
+        if total < cursor || blocks.len() > total.saturating_sub(cursor) {
+            return Err(P2pError::Protocol("peer block inventory is inconsistent"));
         }
         if blocks.is_empty() {
+            if cursor < total {
+                return Err(P2pError::Protocol(
+                    "peer returned an empty page before end of inventory",
+                ));
+            }
             break;
         }
         cursor = cursor
