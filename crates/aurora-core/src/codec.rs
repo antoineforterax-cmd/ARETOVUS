@@ -308,7 +308,10 @@ mod tests {
     fn trailing_bytes_are_rejected() {
         let mut dec = Decoder::new(&[0x01, 0x02]);
         assert_eq!(dec.get_u8().unwrap(), 1);
-        assert_eq!(dec.finish(), Err(DecodeError::TrailingBytes { remaining: 1 }));
+        assert_eq!(
+            dec.finish(),
+            Err(DecodeError::TrailingBytes { remaining: 1 })
+        );
     }
 
     #[test]
@@ -338,7 +341,10 @@ mod tests {
         // Annonce 1 000 000 d'octets alors qu'il n'y en a aucun.
         let bytes = [0x00, 0x0F, 0x42, 0x40];
         let mut dec = Decoder::new(&bytes);
-        assert_eq!(dec.get_var_bytes(2_000_000), Err(DecodeError::UnexpectedEof));
+        assert_eq!(
+            dec.get_var_bytes(2_000_000),
+            Err(DecodeError::UnexpectedEof)
+        );
     }
 
     #[test]
