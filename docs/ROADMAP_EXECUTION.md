@@ -15,7 +15,7 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - Les règles de consensus doivent être déterministes, explicites, versionnées et couvertes par des vecteurs de test.
 - Les tests, Clippy et rustfmt doivent passer en CI avant de considérer une étape logicielle comme intégrée.
 - Une CI verte ne prouve ni la sécurité ni l'absence de vulnérabilités ; revue indépendante et audit restent nécessaires.
-- Les décisions économiques et protocolaires sont enregistrées comme PROPOSÉES jusqu'à confirmation et résultats suffisants.
+- Les paramètres économiques déjà arrêtés par le porteur doivent être repris comme source de vérité dans les documents et intégrés aux règles de récompense; cette implémentation reste à faire.
 
 ## État observé du dépôt au début de ce plan
 
@@ -25,9 +25,9 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 - L'empreinte canonique `signing_digest` couvre les champs hors `auth_data`, avec un domaine distinct du txid. Un profil de format est documenté; des vecteurs indépendants et la confirmation CI restent requis.
 - Des blocs de comptes dédiés valident l’engagement, le réseau, le PoW et appliquent le lot Ed25519 atomiquement au registre; les frais sont retournés et aucune récompense n’est créée par ce profil. Le sélecteur conserve un instantané d’état pour chaque branche connue et réorganise aussi l’état canonique lorsque la branche gagnante change.
 - Le registre suit aussi le cumul des unités émises et refuse les crédits d'émission dépassant le plafond global du type (`Amount::MAX`). Ce contrôle local ne remplace pas encore une comptabilité complète des récompenses, frais brûlés et réorganisations de chaîne.
-- Un sélecteur en mémoire accepte des branches PoW concurrentes à difficulté fixe, choisit la plus longue et utilise le hash de sommet comme départage déterministe. Il ne valide pas l'état et n'est pas une règle de consensus à difficulté variable.
+- Le sélecteur de comptes retargete par branche, conserve un travail cumulé u320 et départage le travail égal par hash. Cette règle candidate reste à simuler et comparer.
 - La simulation d'émission existe dans `scripts/emission_sim.py`, mais ses sorties doivent être produites et revues de manière reproductible avant de figer une courbe.
-- La CI a précédemment échoué sur rustfmt. Des corrections de formatage et un correctif aux tests du registre ont été poussés, mais aucune exécution CI confirmant le commit courant n'a été récupérée lors de cette vérification. Clippy, compilation et tests restent donc à confirmer.
+- La CI passe sur le dernier commit vérifié du lot précédent; les nouveaux changements de difficulté et de stockage sont en attente de leur propre CI.
 - Le code actuel est expérimental ; aucune sécurité de production n'est revendiquée.
 
 ## Décisions de travail
@@ -42,9 +42,9 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 | Cible de bloc | 120 secondes en moyenne | PROPOSÉ |
 | Consensus | Proof of Work SHA-256 | À SPÉCIFIER / TESTER |
 | Difficulté | ASERT candidate, paramètres et vecteurs de référence obligatoires | À TESTER |
-| Frais | 50 % mineur / 50 % burn, arrondis en unités minimales définis explicitement | À SIMULER |
-| Trésorerie | 5 % de la récompense brute, incluse dans la récompense et non ajoutée au-dessus | À SIMULER ; gouvernance BLOQUANTE |
-| Courbe d'émission | Scénarios 50 / 100 / 500 AUR, paliers inférieurs puis queue finale | À SIMULER |
+| Frais | Règle déterminée par les paramètres économiques déjà arrêtés par le porteur | À intégrer et tester |
+| Trésorerie | Règle déterminée par les paramètres économiques déjà arrêtés par le porteur | À intégrer et tester |
+| Courbe d'émission | Calendrier déterminé par les paramètres économiques déjà arrêtés par le porteur | À intégrer et tester |
 | Signatures | Comparer bibliothèques éprouvées, format et coûts avant choix | BLOQUANT avant transactions signées |
 | Post-quantique | Étude et format versionné ; aucune promesse de résistance quantique en v1 | RECHERCHE |
 | Récupération | Facultative, consentie par le propriétaire, jamais par simple inactivité | HORS MVP ; modèle de menace requis |
@@ -126,13 +126,14 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 ### Phase 5 — Stockage et nœud local
 
-**État : socle expérimental ajouté, critères de sortie non atteints.** `aurora-storage` écrit des snapshots versionnés et checksummés de la seule branche canonique. Le chargement rejoue les blocs contre l’état de genèse fourni. `aurora-node regtest --data-dir PATH` crée ou relit le snapshot. Les tests de roundtrip et corruption sont écrits; l’exécution locale actuelle est bloquée par l’absence de `link.exe`, CI requise.
+**État : socle expérimental ajouté, critères de sortie non atteints.** `aurora-storage` écrit des snapshots versionnés et checksummés de toutes les branches acceptées ainsi que les paramètres de difficulté. Le chargement rejoue les blocs contre l’état de genèse fourni. `aurora-node regtest --data-dir PATH` crée ou relit le snapshot. Les tests de roundtrip et corruption sont écrits; l’exécution locale actuelle est bloquée par l’absence de `link.exe`, CI requise.
 
 **Actions**
 1. [x] Ajouter un format de snapshot versionné avec checksum; [ ] définir les migrations avant toute incompatibilité.
 2. [x] Reconstruire l’état de comptes par rejeu de la branche canonique.
 3. [ ] Gérer explicitement crash au cours d’écriture, disque plein, snapshots contradictoires, sauvegarde et restauration.
-4. [ ] Persister les branches secondaires ou documenter une resynchronisation complète après redémarrage.
+4. [x] Persister et revalider les branches secondaires au redémarrage.
+5. [ ] Tester arrêt brutal, disque plein, restauration externe et migration des formats.
 5. Fournir des commandes locales pour créer un réseau de développement, miner des blocs et envoyer des transactions de test.
 
 **Sortie exigée**
