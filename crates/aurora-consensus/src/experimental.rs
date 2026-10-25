@@ -133,7 +133,8 @@ impl Block {
             if tx.network != self.header.network {
                 return Err(BlockError::NetworkMismatch);
             }
-            tx.check_stateless().map_err(BlockError::InvalidTransaction)?;
+            tx.check_stateless()
+                .map_err(BlockError::InvalidTransaction)?;
             let id = tx.txid().map_err(BlockError::Encoding)?;
             if !seen.insert(id) {
                 return Err(BlockError::DuplicateTransaction);
