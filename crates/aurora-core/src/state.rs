@@ -9,6 +9,7 @@ use std::fmt;
 
 use crate::accounts::{AccountId, AccountTransaction};
 use crate::amount::{Amount, AmountError};
+use crate::network::NetworkId;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AccountState {
@@ -16,14 +17,16 @@ pub struct AccountState {
     pub next_nonce: u64,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountLedger {
+    network: NetworkId,
     accounts: BTreeMap<AccountId, AccountState>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateError {
     InvalidTransaction,
+    WrongNetwork,
     InvalidAuthorization,
     UnknownSender,
     NonceMismatch { expected: u64, actual: u64 },
@@ -36,6 +39,7 @@ impl fmt::Display for StateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidTransaction => write!(f, "transaction invalide sans état"),
+            Self::WrongNetwork => write!(f, "transaction destinée à un autre réseau"),
             Self::InvalidAuthorization => write!(f, "autorisation invalide"),
             Self::UnknownSender => write!(f, "compte expéditeur inconnu ou non financé"),
             Self::NonceMismatch { expected, actual } => {
@@ -51,8 +55,8 @@ impl fmt::Display for StateError {
 impl std::error::Error for StateError {}
 
 impl AccountLedger {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(network: NetworkId) -> Self {
+        Self { network, accounts: BTreeMap::new() }
     }
 
     pub fn account(&self, id: AccountId) -> AccountState {
@@ -93,6 +97,9 @@ impl AccountLedger {
         F: FnOnce(&AccountTransaction) -> bool,
     {
         tx.check_stateless().map_err(|_| StateError::InvalidTransaction)?;
+        if tx.network != self.network {
+            return Err(StateError::WrongNetwork);
+        }
 
         let sender_state = self
             .accounts
@@ -173,7 +180,7 @@ mod tests {
     }
 
     fn funded_ledger() -> AccountLedger {
-        let mut ledger = AccountLedger::new();
+        let mut ledger = AccountLedger::new(NetworkId::Regtest);
         ledger.credit_issuance(id(1), Amount::from_units(1_000).unwrap()).unwrap();
         ledger
     }
