@@ -202,9 +202,9 @@ mod tests {
 
         assert!(matches!(
             chain.append(invalid),
-            Err(ChainError::InvalidBlock(
-                BlockPowError::Stateless(crate::experimental::BlockError::CommitmentMismatch)
-            ))
+            Err(ChainError::InvalidBlock(BlockPowError::Stateless(
+                crate::experimental::BlockError::CommitmentMismatch
+            )))
         ));
         assert_eq!(chain.len(), 1);
         assert_eq!(chain.tip_hash(), old_tip);
