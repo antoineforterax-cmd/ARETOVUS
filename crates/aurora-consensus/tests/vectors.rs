@@ -72,14 +72,7 @@ fn commitments_match_reference() {
 
 #[test]
 fn empty_block_header_matches_reference() {
-    let block = Block::build(
-        NetworkId::Regtest,
-        Hash256::ZERO,
-        1_000_000,
-        42,
-        vec![],
-    )
-    .unwrap();
+    let block = Block::build(NetworkId::Regtest, Hash256::ZERO, 1_000_000, 42, vec![]).unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
         "00000000010000000000000000000000000000000000000000000000000000000000000000f8c2cae75a91f9d2df0fc9d26ec0de98b103bb072049407ebde0b4cafa58951600000000000f4240000000000000002a"
