@@ -40,7 +40,7 @@ impl std::error::Error for AccountForkChainError {}
 
 impl AccountForkChain {
     pub fn new(
-        mut genesis: AccountBlock,
+        genesis: AccountBlock,
         difficulty_bits: u16,
         mut initial_state: AccountLedger,
     ) -> Result<Self, AccountForkChainError> {
