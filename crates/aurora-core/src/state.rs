@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_sender_and_overflow_are_rejected_atomically() {
+    fn missing_sender_and_global_issuance_overflow_are_rejected_atomically() {
         let mut ledger = AccountLedger::new(NetworkId::Regtest);
         assert_eq!(
             ledger.apply_transaction(&tx(0, 1, 0)),
@@ -297,12 +297,11 @@ mod tests {
                 Amount::MAX,
             )
             .unwrap();
-        ledger.credit_issuance(id(2), Amount::MAX).unwrap();
         let before = ledger.clone();
-        assert!(matches!(
-            ledger.apply_transaction(&tx(0, 1, 0)),
-            Err(StateError::BalanceOutOfRange(_))
-        ));
+        assert_eq!(
+            ledger.credit_issuance(id(2), Amount::from_units(1).unwrap()),
+            Err(StateError::BalanceOutOfRange(AmountError::AboveCap))
+        );
         assert_eq!(ledger, before);
     }
 

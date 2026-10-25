@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn account_id_must_be_a_valid_ed25519_public_key() {
         let (_, mut tx) = signed_transaction();
-        tx.sender = AccountId([0; 32]);
+        tx.sender = AccountId([0xff; 32]);
         assert_eq!(
             verify_account_transaction(&tx),
             Err(SignatureError::InvalidPublicKey)
