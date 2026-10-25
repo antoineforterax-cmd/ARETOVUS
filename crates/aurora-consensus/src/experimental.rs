@@ -52,6 +52,8 @@ pub struct Block {
 /// Erreur de validation sans état d'un bloc.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlockError {
+    /// Version d'en-tête non prise en charge.
+    UnsupportedHeaderVersion,
     /// Trop de transactions.
     TooManyTransactions,
     /// Une transaction ne vise pas le même réseau que le bloc.
@@ -69,6 +71,7 @@ pub enum BlockError {
 impl fmt::Display for BlockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            BlockError::UnsupportedHeaderVersion => write!(f, "version d'en-tête non prise en charge"),
             BlockError::TooManyTransactions => write!(f, "trop de transactions"),
             BlockError::NetworkMismatch => write!(f, "réseau de transaction différent du bloc"),
             BlockError::InvalidTransaction(err) => write!(f, "transaction invalide : {err}"),
@@ -125,6 +128,9 @@ impl Block {
     /// Vérifications sans état. Ne vérifie ni preuve de travail, ni lien avec la chaîne, ni
     /// signatures, ni existence des fonds.
     pub fn check_stateless(&self) -> Result<(), BlockError> {
+        if self.header.version != HEADER_VERSION {
+            return Err(BlockError::UnsupportedHeaderVersion);
+        }
         if self.transactions.len() > MAX_BLOCK_TXS {
             return Err(BlockError::TooManyTransactions);
         }
@@ -227,6 +233,16 @@ mod tests {
 
     fn block_of(txs: Vec<Transaction>) -> Block {
         Block::build(NetworkId::Regtest, Hash256::ZERO, 1_000, 0, txs).unwrap()
+    }
+
+    #[test]
+    fn unsupported_header_version_is_rejected_in_memory() {
+        let mut block = block_of(vec![]);
+        block.header.version = HEADER_VERSION + 1;
+        assert_eq!(
+            block.check_stateless(),
+            Err(BlockError::UnsupportedHeaderVersion)
+        );
     }
 
     #[test]
