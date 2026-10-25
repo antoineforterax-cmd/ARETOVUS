@@ -4,8 +4,8 @@
 **Dernière mise à jour :** 2026-10-25
 **Décideur unique :** le porteur du projet.
 
-> **Aucun résultat de benchmark, de simulation ou d'audit n'existe à ce jour.**
-> **Aucun test du prototype n'a été exécuté à ce jour** (Rust n'était pas installé dans l'environnement de rédaction) : voir annexe B.
+> **Aucun résultat de benchmark, de simulation ou d'audit indépendant n'existe à ce jour.**
+> Les contrôles automatisés Rust (formatage, Clippy, compilation et tests) ont passé sur le commit `e3b9102f3308c4bedc4dfa28b5681b1adaccd144` via GitHub Actions ; cela ne constitue pas un audit de sécurité. Voir annexe B pour la portée exacte.
 > Ce registre ne contient que des décisions à prendre, des hypothèses et des méthodes de vérification.
 > Les chiffres marqués « calcul indicatif » sont de l'arithmétique, pas des mesures.
 
