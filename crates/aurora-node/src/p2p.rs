@@ -23,7 +23,6 @@ const MAX_SYNC_BLOCKS: usize = 100_000;
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
-const HELLO_REPLY: u8 = 0x81;
 const BLOCKS_REPLY: u8 = 0x82;
 const ERROR_REPLY: u8 = 0xff;
 
@@ -36,7 +35,12 @@ pub enum P2pError {
 }
 impl std::fmt::Display for P2pError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        match self {
+            Self::Io(error) => write!(f, "peer I/O failed: {error}"),
+            Self::Protocol(message) => write!(f, "peer protocol error: {message}"),
+            Self::Chain(error) => write!(f, "peer block rejected by consensus: {error}"),
+            Self::Storage(error) => write!(f, "cannot persist peer sync: {error}"),
+        }
     }
 }
 impl Error for P2pError {}
