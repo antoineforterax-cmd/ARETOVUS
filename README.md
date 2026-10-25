@@ -11,7 +11,7 @@
 |---|---|
 | `aurora-core` | montants entiers, sérialisation canonique, SHA-256 à domaines, transferts par comptes et vérification Ed25519 expérimentale |
 | `aurora-consensus` | bloc expérimental, engagement sur les transactions (pas un Merkle), validation **sans état** |
-| `aurora-node` | exécutable qui affiche un avertissement, rien d'autre |
+| aurora-node | vérification locale regtest en mémoire, sans service réseau ni persistance |
 | `aurora-wallet` | crate vide et réservée (aucune clé) |
 
 Le stockage sera extrait en premier dans une crate indépendante quand sa complexité et ses tests le
@@ -25,7 +25,7 @@ Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour téléc
 cargo fmt --all            # première fois : formate le code (le code a été écrit sans rustfmt)
 ./scripts/check.sh         # fmt --check + clippy + build + tests
 cargo test --workspace     # tests seuls
-cargo run -p aurora-node   # affiche l'avertissement
+cargo run -p aurora-node -- regtest  # valide la genèse locale déterministe, sans lancer de réseau
 python3 scripts/reference_vectors.py   # recalcule les valeurs attendues des vecteurs (Python indépendant)
 ```
 
