@@ -111,6 +111,8 @@ Construire d'abord une chaîne expérimentale minimale, déterministe et testabl
 
 ### Phase 4 — Consensus PoW et difficulté
 
+**État : première implémentation de travail ajoutée, sortie toujours non atteinte.** Le sélecteur suit désormais le travail cumulé (`2^bits` par bloc), chaque branche retargete à ses propres ancêtres et les timestamps doivent dépasser la médiane des 11 derniers blocs de la branche. La règle expérimentale ajuste par pas entiers d’un bit à chaque fenêtre, avec bornes min/max et pas maximum. Ce candidat n’est pas ASERT et n’a pas de simulation adversariale ni de revue indépendante.
+
 **Actions**
 1. Spécifier les champs de l'en-tête et exactement quels octets sont hachés.
 2. Définir la conversion cible/difficulté, le calcul du travail, les limites et la comparaison des chaînes.
