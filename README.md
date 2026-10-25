@@ -4,10 +4,12 @@
 
 ## État actuel
 
+Le profil post-quantique hybride v2 est expérimental et facultatif; aucun compte v1 n’est migré automatiquement. La bibliothèque ML-DSA-65 utilisée n’a pas d’audit indépendant. Voir `docs/POST_QUANTUM.md`.
+
 | Composant | Fonctionnement présent |
 |---|---|
-| `aurora-core` | Montants entiers à 8 décimales, encodage canonique, transferts de comptes signés et vérifiés par Ed25519 (`ed25519-dalek`). |
-| `aurora-consensus` | Validation atomique des transactions/blocs, PoW SHA-256, timestamps au-dessus de la médiane des 11 ancêtres, retarget expérimental, travail cumulé u320, choix de branche et réorganisation de l’état/récompenses. |
+| `aurora-core` | Montants entiers, encodage canonique, signatures v1 Ed25519 et profil hybride expérimental v2 Ed25519 + ML-DSA-65. |
+| `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
 | `aurora-storage` | Snapshots `AURORSNP` version 3 avec checksum, paramètres de consensus et toutes les branches; chargement par rejeu et revalidation. |
 | `aurora-node` | Minage local testnet, persistance à chaque bloc, serveur TCP de synchronisation pull et commande client de synchronisation. |
 | `aurora-wallet` | Réservé; aucun portefeuille ou gestion de clés utilisateur. |
