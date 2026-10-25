@@ -31,7 +31,7 @@ Le nœud construit une genèse testnet vide et déterministe. Paramètres actuel
 
 ## Réseau expérimental
 
-Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs et délai d’E/S de 10 secondes. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
+Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs et délai d’E/S de 10 secondes. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
 Ne sont pas implémentés : découverte automatique de pairs, annonces spontanées, connexions multi-pairs simultanées, reprise automatique, mempool, limite totale de session et défense éprouvée contre les attaques DoS. Ne pas exposer ce transport à un réseau non fiable.
 
