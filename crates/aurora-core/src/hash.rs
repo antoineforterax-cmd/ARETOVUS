@@ -70,6 +70,7 @@ impl CanonicalDecode for Hash256 {
 }
 
 const TAG_TXID: &[u8] = b"AURORA/exp/v0/txid";
+const TAG_TX_SIGNING: &[u8] = b"AURORA/exp/v0/tx-signing";
 const TAG_BLOCK_HEADER: &[u8] = b"AURORA/exp/v0/block-header";
 const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 
@@ -79,6 +80,8 @@ const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 pub enum Domain {
     /// Identifiant de transaction.
     TxId,
+    /// Empreinte des champs signés d'une transaction, sans les données d'autorisation.
+    TxSigning,
     /// En-tête de bloc.
     BlockHeader,
     /// Engagement sur la liste des transactions d'un bloc (pas un arbre de Merkle : TX-04 ouvert).
@@ -90,6 +93,7 @@ impl Domain {
     pub fn tag(self) -> &'static [u8] {
         match self {
             Domain::TxId => TAG_TXID,
+            Domain::TxSigning => TAG_TX_SIGNING,
             Domain::BlockHeader => TAG_BLOCK_HEADER,
             Domain::TxList => TAG_TX_LIST,
         }
@@ -124,7 +128,12 @@ pub fn tagged_hash(domain: Domain, data: &[u8]) -> Hash256 {
 mod tests {
     use super::*;
 
-    const ALL_DOMAINS: [Domain; 3] = [Domain::TxId, Domain::BlockHeader, Domain::TxList];
+    const ALL_DOMAINS: [Domain; 4] = [
+        Domain::TxId,
+        Domain::TxSigning,
+        Domain::BlockHeader,
+        Domain::TxList,
+    ];
 
     #[test]
     fn domain_tags_fit_in_one_byte_length() {
