@@ -11,3 +11,4 @@ workspace = true
 [dependencies]
 sha2.workspace = true
 ed25519-dalek.workspace = true
+ml-dsa.workspace = true
