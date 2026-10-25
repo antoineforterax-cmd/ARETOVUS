@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aurora-core",
+    "crates/aurora-consensus",
+    "crates/aurora-node",
+    "crates/aurora-wallet",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+# Dépendance externe unique du prototype : SHA-256 (RustCrypto). Voir README, section Dépendances.
+sha2 = "0.10"
+aurora-core = { path = "crates/aurora-core" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
