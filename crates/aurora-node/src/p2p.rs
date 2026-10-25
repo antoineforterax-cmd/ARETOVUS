@@ -12,7 +12,7 @@ use aurora_consensus::{
     account_fork_chain::{AccountForkChain, AccountForkChainError},
 };
 use aurora_core::{
-    codec::CanonicalDecode,
+    codec::{CanonicalDecode, CanonicalEncode},
     hash::{sha256_plain, Hash256},
 };
 use aurora_storage::save_snapshot;
