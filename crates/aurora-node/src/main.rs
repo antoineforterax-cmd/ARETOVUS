@@ -1,10 +1,28 @@
-//! Commandes locales de diagnostic pour le prototype AURORA.
-use std::{error::Error, process};
+//! Commandes du nœud local AURORA : regtest et testnet expérimental.
+use std::{
+    error::Error,
+    fs,
+    path::PathBuf,
+    process,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use aurora_consensus::{account_block::AccountBlock, account_fork_chain::AccountForkChain};
-use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
+use aurora_consensus::{
+    account_block::AccountBlock, account_fork_chain::AccountForkChain,
+    difficulty::DifficultyParams, proof_of_work::mine_nonce, reward::RewardParams,
+};
+use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
-use std::path::PathBuf;
+
+const TESTNET_INITIAL_BITS: u16 = 8;
+const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
+const TESTNET_DIFFICULTY: DifficultyParams = DifficultyParams {
+    target_block_seconds: 60,
+    adjustment_interval: 10,
+    max_adjustment_bits: 2,
+    min_bits: 4,
+    max_bits: 20,
+};
 
 fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
     let network = NetworkId::Regtest;
@@ -16,52 +34,144 @@ fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
     )?)
 }
 
+fn testnet_chain() -> Result<AccountForkChain, Box<dyn Error>> {
+    let mut genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, Vec::new())?;
+    genesis.header.nonce = mine_nonce(&genesis.header, TESTNET_INITIAL_BITS, 0, 1_000_000)?;
+    Ok(AccountForkChain::new_with_protocol_params(
+        genesis,
+        TESTNET_INITIAL_BITS,
+        TESTNET_DIFFICULTY,
+        RewardParams::experimental_testnet(TESTNET_TREASURY),
+        AccountLedger::new(NetworkId::Testnet),
+    )?)
+}
+
+fn parse_account(value: &str) -> Result<AccountId, Box<dyn Error>> {
+    if value.len() != 64 {
+        return Err("--miner requires exactly 64 hexadecimal characters (32 bytes)".into());
+    }
+    let mut bytes = [0u8; 32];
+    for (i, slot) in bytes.iter_mut().enumerate() {
+        *slot = u8::from_str_radix(&value[i * 2..i * 2 + 2], 16)
+            .map_err(|_| "--miner contains a non-hexadecimal character")?;
+    }
+    Ok(AccountId(bytes))
+}
+
+fn mine_one(
+    chain: &mut AccountForkChain,
+    miner: AccountId,
+    timestamp: u64,
+) -> Result<(), Box<dyn Error>> {
+    let timestamp = timestamp.max(chain.median_time_past().saturating_add(1));
+    let difficulty = chain.next_difficulty_bits()?;
+    let mut block = AccountBlock::build_with_miner(
+        NetworkId::Testnet,
+        chain.tip_hash(),
+        timestamp,
+        0,
+        Some(miner),
+        Vec::new(),
+    )?;
+    block.header.nonce = mine_nonce(&block.header, difficulty, 0, u64::MAX)?;
+    let update = chain.submit(block)?;
+    if !update.became_best {
+        return Err("mined block did not become the best chain".into());
+    }
+    Ok(())
+}
+
+fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
+    let mut args = args;
+    let mut data_dir: Option<PathBuf> = None;
+    let mut miner: Option<AccountId> = None;
+    let mut count = 1u64;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--data-dir" => {
+                data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into())
+            }
+            "--miner" => {
+                miner = Some(parse_account(
+                    &args.next().ok_or("--miner requires an account id")?,
+                )?)
+            }
+            "--count" => {
+                count = args
+                    .next()
+                    .ok_or("--count requires a positive integer")?
+                    .parse()?
+            }
+            _ => return Err(format!("unknown testnet option: {arg}").into()),
+        }
+    }
+    if count == 0 || count > 10_000 {
+        return Err("--count must be between 1 and 10000".into());
+    }
+    let miner = miner.ok_or("testnet mine requires --miner <64 hex characters>")?;
+    let dir = data_dir.ok_or("testnet mine requires --data-dir <path>")?;
+    fs::create_dir_all(&dir)?;
+    let mut chain = match load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet)) {
+        Ok(chain) => chain,
+        Err(StorageError::NoSnapshot) => {
+            let chain = testnet_chain()?;
+            save_snapshot(&dir, &chain)?;
+            chain
+        }
+        Err(error) => return Err(error.into()),
+    };
+    if chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
+        || chain.difficulty_params() != TESTNET_DIFFICULTY
+        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
+    {
+        return Err("stored chain uses different testnet consensus parameters".into());
+    }
+    for _ in 0..count {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        mine_one(&mut chain, miner, now)?;
+        save_snapshot(&dir, &chain)?;
+        println!(
+            "height={} tip={} difficulty_bits={} issued_units={} miner_balance_units={}",
+            chain.height(),
+            chain.tip_hash(),
+            chain.difficulty_bits(),
+            chain.state().total_issued().to_units(),
+            chain.state().account(miner).balance.to_units()
+        );
+    }
+    Ok(())
+}
+
 fn run() -> Result<(), Box<dyn Error>> {
-    match std::env::args().nth(1).as_deref() {
+    let mut args = std::env::args().skip(1);
+    match args.next().as_deref() {
         Some("regtest") => {
-            let mut args = std::env::args().skip(2);
             let mut data_dir: Option<PathBuf> = None;
             while let Some(arg) = args.next() {
-                if arg == "--data-dir" {
-                    data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into());
-                } else {
-                    return Err(format!("unknown regtest option: {arg}").into());
-                }
+                if arg == "--data-dir" { data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into()); }
+                else { return Err(format!("unknown regtest option: {arg}").into()); }
             }
             let chain = if let Some(dir) = &data_dir {
+                fs::create_dir_all(dir)?;
                 match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Regtest)) {
                     Ok(chain) => chain,
-                    Err(StorageError::NoSnapshot) => {
-                        let chain = regtest_chain()?;
-                        save_snapshot(dir, &chain)?;
-                        chain
-                    }
+                    Err(StorageError::NoSnapshot) => { let chain = regtest_chain()?; save_snapshot(dir, &chain)?; chain }
                     Err(error) => return Err(error.into()),
                 }
-            } else {
-                regtest_chain()?
-            };
+            } else { regtest_chain()? };
             println!("AURORA local regtest (experimental)");
-            println!("network: regtest");
-            println!("difficulty_bits: {}", 0);
-            println!("height: {}", chain.height());
-            println!("genesis: {}", chain.tip_hash());
-            if data_dir.is_some() {
-                println!("validated snapshot loaded from disk; canonical blocks only");
-            } else {
-                println!("state is in memory and will be discarded at exit");
-            }
-            println!("no peer network is started");
+            println!("network: regtest\ndifficulty_bits: {}\nheight: {}\ngenesis: {}", chain.difficulty_bits(), chain.height(), chain.tip_hash());
+            println!("validated snapshot loaded from disk; {} accepted block(s)", chain.known_block_count());
         }
+        Some("testnet") => match args.next().as_deref() {
+            Some("mine") => run_testnet_miner(args),
+            _ => Err("Usage: aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]".into()),
+        }?,
         Some("--help") | Some("-h") => {
-            println!("Usage: aurora-node regtest [--data-dir PATH]");
-            println!("Validate a deterministic local regtest chain. --data-dir stores versioned, checksummed canonical block snapshots.");
-            println!("This command does not start a peer network or mine blocks.");
+            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]");
+            println!("Experimental local testnet: 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap; snapshots are validated on load.");
         }
-        _ => {
-            println!("AURORA experimental node; no network service is available.");
-            println!("Run aurora-node --help for the local regtest smoke check.");
-        }
+        _ => return Err("Run aurora-node --help for available commands".into()),
     }
     Ok(())
 }
@@ -76,13 +186,37 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
 
     #[test]
-    fn regtest_genesis_is_deterministic_and_empty() {
-        let first = regtest_chain().unwrap();
-        let second = regtest_chain().unwrap();
-        assert_eq!(first.height(), 0);
-        assert_eq!(first.tip_hash(), second.tip_hash());
-        assert_eq!(first.state().total_issued().to_units(), 0);
+    fn testnet_mining_reward_and_snapshot_restart_are_reproducible() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-node-{}-{}",
+            process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let miner = AccountId([0x42; 32]);
+        let mut chain = testnet_chain().unwrap();
+        mine_one(&mut chain, miner, 2).unwrap();
+        assert_eq!(chain.height(), 1);
+        assert!(chain.state().total_issued().to_units() > 0);
+        let expected_tip = chain.tip_hash();
+        let expected_state = chain.state().clone();
+        save_snapshot(&dir, &chain).unwrap();
+        let restored = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        assert_eq!(restored.tip_hash(), expected_tip);
+        assert_eq!(restored.state(), &expected_state);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn testnet_miner_identity_parser_is_strict() {
+        assert_eq!(
+            parse_account(&"ab".repeat(32)).unwrap(),
+            AccountId([0xab; 32])
+        );
+        assert!(parse_account("abcd").is_err());
+        assert!(parse_account(&"gg".repeat(32)).is_err());
     }
 }
