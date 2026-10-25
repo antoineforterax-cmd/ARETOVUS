@@ -108,7 +108,7 @@ Passage normal : PROPOSÉ → (À COMPARER / À SIMULER / À TESTER) → VALIDÉ
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
 | FEE-01 | Poids d'une transaction (octets, coût de validation) | À COMPARER | Pas de rabais artificiel sur les signatures (cahier §8.2). Voir F-07 | Benchmarks | 0b → 3 | CRY-01 | C V1 |
-| FEE-02 | Taille maximale d'un bloc | À TESTER | 1 Mio = point de comparaison seulement | Tests de charge et de propagation | 3 | FEE-01 | C V1 |
+| FEE-02 | Taille maximale d’un bloc | VALIDÉ POUR LE PROTOTYPE | 4 MiB d’octets canoniques, plafonds synchronisés transport/stockage | Tests de frontière et coûts de validation | 3 | FEE-01 | C V1 |
 | FEE-03 | Taille maximale d'une transaction | À TESTER | Idem | Idem | 3 | FEE-01 | C V1 |
 | FEE-04 | Modèle de frais | À COMPARER | | Simulation | 3 | FEE-01 | C P V1 |
 | FEE-05 | Politique de mempool (taille, expiration, dépendances) | À COMPARER | Cahier §8.4 | Tests | 3 | FEE-04 | P V1 |
@@ -419,7 +419,7 @@ Chaque ligne du tableau maître. « Justification » explique pourquoi on part d
 | MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
 | MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
 | FEE-01 | Poids d'une transaction (octets, coût de validation) | À COMPARER | Les signatures post-quantiques sont lourdes : le coût doit refléter les ressources réelles | Benchmarks de taille et de vérification |
-| FEE-02 | Taille maximale d'un bloc | À TESTER | 1 Mio est une valeur héritée servant de point de comparaison | Tests de charge et de propagation ; matériel modeste |
+| FEE-02 | Taille maximale d’un bloc | VALIDÉ POUR LE PROTOTYPE | 4 MiB d’octets canoniques, plafonds synchronisés transport/stockage | Tests de frontière et coûts de validation | 3 | FEE-01 | C V1 |
 | FEE-03 | Taille maximale d'une transaction | À TESTER | Idem | Idem |
 | FEE-04 | Modèle de frais | À COMPARER | Les frais doivent dépendre de la taille et de la demande | Simulation sous faible et forte demande |
 | FEE-05 | Politique de mempool (taille, expiration, dépendances) | À COMPARER | Une mempool sans limite est un vecteur de déni de service | Tests de limites mémoire et d'expiration |
