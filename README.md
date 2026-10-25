@@ -15,7 +15,7 @@
 | `aurora-node` | commande locale regtest, snapshots optionnels avec `--data-dir`, aucun service réseau ni minage |
 | `aurora-wallet` | crate vide et réservée (aucune clé) |
 
-La persistance ne conserve que la branche canonique ; les forks secondaires sont perdus au redémarrage. Le consensus reste à difficulté fixe et sans récompense de bloc.
+La persistance ne conserve que la branche canonique ; les forks secondaires sont perdus au redémarrage. Le profil fixe de regtest et les paramètres de retarget sont enregistrés afin de rejouer les mêmes contrôles après redémarrage. La règle de retarget est expérimentale, par fenêtres et par pas entiers bornés; elle n’est pas une règle validée pour réseau public. Aucun reward de bloc n’est encore appliqué.
 
 ## Commandes
 
