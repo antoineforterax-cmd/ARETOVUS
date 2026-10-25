@@ -11,3 +11,4 @@ workspace = true
 [dependencies]
 aurora-core.workspace = true
 aurora-consensus = { path = "../aurora-consensus" }
+aurora-storage = { path = "../aurora-storage" }
