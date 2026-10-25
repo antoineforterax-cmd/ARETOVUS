@@ -14,7 +14,7 @@ use aurora_consensus::{
 };
 use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
-use p2p::{serve as serve_peers, sync_from_peer};
+use p2p::{propagate_block, serve as serve_peers, sync_from_peer};
 
 const TESTNET_INITIAL_BITS: u16 = 8;
 const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
@@ -121,7 +121,7 @@ fn mine_one(
     chain: &mut AccountForkChain,
     miner: AccountId,
     timestamp: u64,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<AccountBlock, Box<dyn Error>> {
     let timestamp = timestamp.max(chain.median_time_past().saturating_add(1));
     let difficulty = chain.next_difficulty_bits()?;
     let mut block = AccountBlock::build_with_miner(
@@ -133,11 +133,11 @@ fn mine_one(
         Vec::new(),
     )?;
     block.header.nonce = mine_nonce(&block.header, difficulty, 0, u64::MAX)?;
-    let update = chain.submit(block)?;
+    let update = chain.submit(block.clone())?;
     if !update.became_best {
         return Err("mined block did not become the best chain".into());
     }
-    Ok(())
+    Ok(block)
 }
 
 fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
@@ -145,6 +145,7 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
     let mut data_dir: Option<PathBuf> = None;
     let mut miner: Option<AccountId> = None;
     let mut count = 1u64;
+    let mut peers = Vec::<std::net::SocketAddr>::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--data-dir" => {
@@ -161,6 +162,7 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
                     .ok_or("--count requires a positive integer")?
                     .parse()?
             }
+            "--peer" => peers.push(args.next().ok_or("--peer requires IP:PORT")?.parse()?),
             _ => return Err(format!("unknown testnet option: {arg}").into()),
         }
     }
@@ -169,26 +171,14 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
     }
     let miner = miner.ok_or("testnet mine requires --miner <64 hex characters>")?;
     let dir = data_dir.ok_or("testnet mine requires --data-dir <path>")?;
-    fs::create_dir_all(&dir)?;
-    let mut chain = match load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet)) {
-        Ok(chain) => chain,
-        Err(StorageError::NoSnapshot) => {
-            let chain = testnet_chain()?;
-            save_snapshot(&dir, &chain)?;
-            chain
-        }
-        Err(error) => return Err(error.into()),
-    };
-    if chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
-        || chain.difficulty_params() != TESTNET_DIFFICULTY
-        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
-    {
-        return Err("stored chain uses different testnet consensus parameters".into());
-    }
+    let mut chain = load_testnet_chain(&dir)?;
     for _ in 0..count {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-        mine_one(&mut chain, miner, now)?;
+        let block = mine_one(&mut chain, miner, now)?;
         save_snapshot(&dir, &chain)?;
+        for peer in &peers {
+            propagate_block(*peer, &chain, &block)?;
+        }
         println!(
             "height={} tip={} difficulty_bits={} issued_units={} miner_balance_units={}",
             chain.height(),
@@ -246,7 +236,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             _ => Err("Usage: aurora-node testnet mine|serve|sync ...".into()),
         }?,
         Some("--help") | Some("-h") => {
-            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT");
+            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT");
             println!("Experimental testnet: TCP pull sync with bounded frames and consensus fingerprint; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
         }
         _ => return Err("Run aurora-node --help for available commands".into()),
@@ -276,7 +266,7 @@ mod tests {
         ));
         let miner = AccountId([0x42; 32]);
         let mut chain = testnet_chain().unwrap();
-        mine_one(&mut chain, miner, 2).unwrap();
+        let _mined = mine_one(&mut chain, miner, 2).unwrap();
         assert_eq!(chain.height(), 1);
         assert!(chain.state().total_issued().to_units() > 0);
         let expected_tip = chain.tip_hash();
