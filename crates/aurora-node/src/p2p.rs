@@ -3,7 +3,9 @@ use std::{
     error::Error,
     io::{self, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    path::Path,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -38,6 +40,7 @@ pub enum P2pError {
     Protocol(&'static str),
     Chain(AccountForkChainError),
     Storage(aurora_storage::StorageError),
+    ChainLockPoisoned,
 }
 impl std::fmt::Display for P2pError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,6 +49,7 @@ impl std::fmt::Display for P2pError {
             Self::Protocol(message) => write!(f, "peer protocol error: {message}"),
             Self::Chain(error) => write!(f, "peer block rejected by consensus: {error}"),
             Self::Storage(error) => write!(f, "cannot persist peer sync: {error}"),
+            Self::ChainLockPoisoned => write!(f, "peer chain state lock poisoned"),
         }
     }
 }
@@ -167,12 +171,7 @@ fn check_hello(frame: &[u8], chain: &AccountForkChain) -> Result<(), P2pError> {
     }
     Ok(())
 }
-fn respond_blocks(
-    stream: &mut TcpStream,
-    chain: &AccountForkChain,
-    start: usize,
-    session_bytes: usize,
-) -> Result<usize, P2pError> {
+fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, P2pError> {
     let blocks = chain.all_blocks_by_height();
     if start > blocks.len() {
         return Err(P2pError::Protocol("block cursor out of range"));
@@ -197,12 +196,7 @@ fn respond_blocks(
         return Err(P2pError::Protocol("block exceeds transport frame limit"));
     }
     frame[count_offset..count_offset + 4].copy_from_slice(&count.to_be_bytes());
-    let wire_bytes = 4 + frame.len();
-    if wire_bytes > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
-        return Err(P2pError::Protocol("peer session byte budget exceeded"));
-    }
-    write_frame(stream, &frame)?;
-    Ok(wire_bytes)
+    Ok(frame)
 }
 fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
     if frame.len() < 9 || frame[0] != BLOCKS_REPLY {
@@ -243,9 +237,9 @@ fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
 }
 
 /// Handle one bounded pull-only peer session; this server never trusts remote state.
-pub fn handle_peer(
+fn handle_peer_shared(
     mut stream: TcpStream,
-    chain: &mut AccountForkChain,
+    chain: &Mutex<AccountForkChain>,
     data_dir: &Path,
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
@@ -254,14 +248,17 @@ pub fn handle_peer(
     let mut session_requests = 0usize;
     let hello = read_frame(&mut stream)?;
     add_session_bytes(&mut session_bytes, hello.len() + 4)?;
-    if let Err(error) = check_hello(&hello, chain) {
-        let _ = write_frame(&mut stream, &[ERROR_REPLY]);
-        return Err(error);
+    {
+        let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+        if let Err(error) = check_hello(&hello, &chain) {
+            let _ = write_frame(&mut stream, &[ERROR_REPLY]);
+            return Err(error);
+        }
+        if 77 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+            return Err(P2pError::Protocol("peer session byte budget exceeded"));
+        }
+        send_hello(&mut stream, &chain)?;
     }
-    if 77 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
-        return Err(P2pError::Protocol("peer session byte budget exceeded"));
-    }
-    send_hello(&mut stream, chain)?;
     add_session_bytes(&mut session_bytes, 77)?;
     loop {
         if session_started.elapsed() > MAX_SESSION_DURATION {
@@ -278,7 +275,15 @@ pub fn handle_peer(
             Some(&GET_BLOCKS) if request.len() == 5 => {
                 let start =
                     u32::from_be_bytes(request[1..5].try_into().expect("fixed slice")) as usize;
-                let sent = respond_blocks(&mut stream, chain, start, session_bytes)?;
+                let frame = {
+                    let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                    build_blocks_page(&chain, start)?
+                };
+                let sent = 4 + frame.len();
+                if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &frame)?;
                 add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&SUBMIT_BLOCK) if request.len() > 1 => {
@@ -287,16 +292,16 @@ pub fn handle_peer(
                 }
                 let block = AccountBlock::from_canonical_bytes(&request[1..])
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
+                let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                 match chain.submit(block) {
-                    Ok(_) => {
-                        save_snapshot(data_dir, chain)?;
-                    }
+                    Ok(_) => save_snapshot(data_dir, &chain)?,
                     Err(AccountForkChainError::DuplicateBlock) => {}
                     Err(error) => return Err(P2pError::Chain(error)),
                 }
                 let mut reply = vec![BLOCK_ACCEPTED];
                 reply.extend_from_slice(&chain.height().to_be_bytes());
                 reply.extend_from_slice(chain.tip_hash().as_bytes());
+                drop(chain);
                 write_frame(&mut stream, &reply)?;
                 add_session_bytes(&mut session_bytes, 45)?;
             }
@@ -310,17 +315,39 @@ pub fn serve(
     chain: &mut AccountForkChain,
     data_dir: &Path,
 ) -> Result<(), P2pError> {
+    const PEER_WORKERS: usize = 8;
     let listener = TcpListener::bind(address)?;
     println!("testnet peer listening on {}", listener.local_addr()?);
-    for incoming in listener.incoming() {
-        match incoming {
-            Ok(stream) => {
-                if let Err(error) = handle_peer(stream, chain, data_dir) {
-                    eprintln!("peer rejected: {error}");
-                }
-            }
-            Err(error) => eprintln!("accept failed: {error}"),
-        }
+    let chain = Arc::new(Mutex::new(chain.clone()));
+    let data_dir = Arc::new(data_dir.to_path_buf());
+    let mut workers = Vec::with_capacity(PEER_WORKERS);
+    for worker_id in 0..PEER_WORKERS {
+        let listener = listener.try_clone()?;
+        let chain = Arc::clone(&chain);
+        let data_dir = Arc::clone(&data_dir);
+        workers.push(
+            thread::Builder::new()
+                .name(format!("aurora-peer-{worker_id}"))
+                .spawn(move || loop {
+                    match listener.accept() {
+                        Ok((stream, _)) => {
+                            if let Err(error) = handle_peer_shared(stream, &chain, &data_dir) {
+                                eprintln!("peer rejected: {error}");
+                            }
+                        }
+                        Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                        Err(error) => {
+                            eprintln!("peer accept failed: {error}");
+                            break;
+                        }
+                    }
+                })?,
+        );
+    }
+    for worker in workers {
+        worker
+            .join()
+            .map_err(|_| P2pError::Protocol("peer worker panicked"))?;
     }
     Ok(())
 }
@@ -445,7 +472,8 @@ mod tests {
         let server_dir = dir.clone();
         let thread = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            let result = handle_peer(stream, &mut server_chain, &server_dir);
+            let shared_chain = Mutex::new(server_chain);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
             tx.send(result.is_ok()).unwrap();
         });
         let mut client = chain();
@@ -453,6 +481,60 @@ mod tests {
         assert_eq!(client.height(), 1);
         assert!(rx.recv_timeout(Duration::from_secs(2)).unwrap());
         thread.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn concurrent_peer_sessions_share_chain_without_serializing_network_io() {
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-concurrent-{}", std::process::id()));
+        let dir_a = dir.join("a");
+        let dir_b = dir.join("b");
+        fs::create_dir_all(&dir_a).unwrap();
+        fs::create_dir_all(&dir_b).unwrap();
+        let mut server_chain = chain();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![]).unwrap();
+        server_chain.submit(block).unwrap();
+        let shared_chain = Arc::new(Mutex::new(server_chain));
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server_dir = dir.clone();
+        let server_chain = Arc::clone(&shared_chain);
+        let server = thread::spawn(move || {
+            let mut workers = Vec::new();
+            for _ in 0..2 {
+                let (stream, _) = listener.accept().unwrap();
+                let chain = Arc::clone(&server_chain);
+                let data_dir = server_dir.clone();
+                workers.push(thread::spawn(move || {
+                    handle_peer_shared(stream, &chain, &data_dir)
+                }));
+            }
+            workers
+                .into_iter()
+                .all(|worker| worker.join().unwrap().is_ok())
+        });
+
+        let peer_a = thread::spawn({
+            let dir_a = dir_a.clone();
+            move || {
+                let mut client = chain();
+                sync_from_peer(address, &mut client, &dir_a).unwrap();
+                client.height()
+            }
+        });
+        let peer_b = thread::spawn({
+            let dir_b = dir_b.clone();
+            move || {
+                let mut client = chain();
+                sync_from_peer(address, &mut client, &dir_b).unwrap();
+                client.height()
+            }
+        });
+        assert_eq!(peer_a.join().unwrap(), 1);
+        assert_eq!(peer_b.join().unwrap(), 1);
+        assert!(server.join().unwrap());
         fs::remove_dir_all(dir).unwrap();
     }
 
@@ -468,8 +550,9 @@ mod tests {
         let server_dir = dir.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            let result = handle_peer(stream, &mut server_chain, &server_dir);
-            (result, server_chain)
+            let shared_chain = Mutex::new(server_chain);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
+            (result, shared_chain.into_inner().unwrap())
         });
         let mut client = chain();
         let block =
@@ -498,8 +581,9 @@ mod tests {
         let server_dir = dir.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            let result = handle_peer(stream, &mut server_chain, &server_dir);
-            (result, server_chain)
+            let shared_chain = Mutex::new(server_chain);
+            let result = handle_peer_shared(stream, &shared_chain, &server_dir);
+            (result, shared_chain.into_inner().unwrap())
         });
         let client = chain();
         let bad = AccountBlock::build_with_miner(
