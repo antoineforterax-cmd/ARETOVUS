@@ -121,9 +121,35 @@ pub fn load_latest_snapshot(
         .collect::<Vec<_>>();
     paths.sort();
     let mut best: Option<AccountForkChain> = None;
+    let mut rejected_snapshot: Option<StorageError> = None;
     for path in paths {
-        let bytes = read_bounded(&path)?;
-        let chain = decode_snapshot(&bytes, initial_state.clone())?;
+        let bytes = match read_bounded(&path) {
+            Ok(bytes) => bytes,
+            Err(error @ StorageError::Io(_)) => return Err(error),
+            Err(error) => {
+                eprintln!(
+                    "ignoring invalid AURORA snapshot {}: {error}",
+                    path.display()
+                );
+                if rejected_snapshot.is_none() {
+                    rejected_snapshot = Some(error);
+                }
+                continue;
+            }
+        };
+        let chain = match decode_snapshot(&bytes, initial_state.clone()) {
+            Ok(chain) => chain,
+            Err(error) => {
+                eprintln!(
+                    "ignoring invalid AURORA snapshot {}: {error}",
+                    path.display()
+                );
+                if rejected_snapshot.is_none() {
+                    rejected_snapshot = Some(error);
+                }
+                continue;
+            }
+        };
         if best.as_ref().is_none_or(|current| {
             chain.chain_work() > current.chain_work()
                 || (chain.chain_work() == current.chain_work()
@@ -134,7 +160,7 @@ pub fn load_latest_snapshot(
             best = Some(chain);
         }
     }
-    best.ok_or(StorageError::NoSnapshot)
+    best.ok_or_else(|| rejected_snapshot.unwrap_or(StorageError::NoSnapshot))
 }
 
 fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
@@ -409,6 +435,25 @@ mod tests {
         assert_eq!(restored.height(), 2);
         assert_eq!(restored.tip_hash(), chain.tip_hash());
         assert!(restored.chain_work() > old_work);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn corrupted_latest_snapshot_recovers_previous_valid_chain() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        original.submit(next).unwrap();
+        let latest_file = save_snapshot(&path, &original).unwrap();
+        let mut bytes = fs::read(&latest_file).unwrap();
+        bytes[10] ^= 1;
+        fs::write(latest_file, bytes).unwrap();
+
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), previous_tip);
         fs::remove_dir_all(path).unwrap();
     }
 
