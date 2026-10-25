@@ -125,8 +125,8 @@ pub fn load_latest_snapshot(
         let bytes = read_bounded(&path)?;
         let chain = decode_snapshot(&bytes, initial_state.clone())?;
         if best.as_ref().is_none_or(|current| {
-            chain.height() > current.height()
-                || (chain.height() == current.height()
+            chain.chain_work() > current.chain_work()
+                || (chain.chain_work() == current.chain_work()
                     && (chain.tip_hash() < current.tip_hash()
                         || (chain.tip_hash() == current.tip_hash()
                             && chain.known_block_count() > current.known_block_count())))
@@ -350,6 +350,65 @@ mod tests {
         assert_eq!(restored.initial_difficulty_bits(), 8);
         assert_eq!(restored.difficulty_params(), params);
         assert_eq!(restored.reward_params(), rewards);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn latest_snapshot_uses_cumulative_work_even_when_winning_chain_is_shorter() {
+        use aurora_consensus::{
+            account_fork_chain::AccountForkChain, difficulty::DifficultyParams,
+            proof_of_work::mine_nonce, reward::RewardParams,
+        };
+        let path = dir();
+        let params = DifficultyParams {
+            target_block_seconds: 10,
+            adjustment_interval: 2,
+            max_adjustment_bits: 2,
+            min_bits: 1,
+            max_bits: 6,
+        };
+        let mut genesis =
+            AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 100, 0, vec![]).unwrap();
+        genesis.header.nonce = mine_nonce(&genesis.header, 2, 0, 100_000).unwrap();
+        let mut chain = AccountForkChain::new_with_params(
+            genesis,
+            2,
+            params,
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
+        let genesis_hash = chain.tip_hash();
+        let mut a1 =
+            AccountBlock::build(NetworkId::Regtest, genesis_hash, 1_000, 0, vec![]).unwrap();
+        a1.header.nonce = mine_nonce(&a1.header, 2, 0, 100_000).unwrap();
+        chain.submit(a1).unwrap();
+        let mut a2 =
+            AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), 2_000, 0, vec![]).unwrap();
+        a2.header.nonce = mine_nonce(&a2.header, 1, 0, 100_000).unwrap();
+        chain.submit(a2).unwrap();
+        let mut a3 =
+            AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), 3_000, 0, vec![]).unwrap();
+        a3.header.nonce = mine_nonce(&a3.header, 1, 0, 100_000).unwrap();
+        chain.submit(a3).unwrap();
+        assert_eq!(chain.height(), 3);
+        let old_work = chain.chain_work();
+        save_snapshot(&path, &chain).unwrap();
+
+        let mut b1 = AccountBlock::build(NetworkId::Regtest, genesis_hash, 101, 0, vec![]).unwrap();
+        b1.header.nonce = mine_nonce(&b1.header, 2, 0, 100_000).unwrap();
+        let b1_hash = b1.header.hash().unwrap();
+        chain.submit(b1).unwrap();
+        let mut b2 = AccountBlock::build(NetworkId::Regtest, b1_hash, 102, 0, vec![]).unwrap();
+        b2.header.nonce = mine_nonce(&b2.header, 4, 0, 100_000).unwrap();
+        chain.submit(b2).unwrap();
+        assert_eq!(chain.height(), 2);
+        assert!(chain.chain_work() > old_work);
+        save_snapshot(&path, &chain).unwrap();
+
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 2);
+        assert_eq!(restored.tip_hash(), chain.tip_hash());
+        assert!(restored.chain_work() > old_work);
         fs::remove_dir_all(path).unwrap();
     }
 
