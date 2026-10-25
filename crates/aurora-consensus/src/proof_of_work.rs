@@ -127,7 +127,10 @@ mod tests {
 
     #[test]
     fn rejects_out_of_range_difficulty() {
-        assert_eq!(check_proof(&header(), 256), Err(PowError::InvalidDifficulty));
+        assert_eq!(
+            check_proof(&header(), 256),
+            Err(PowError::InvalidDifficulty)
+        );
         assert_eq!(
             mine_nonce(&header(), 256, 0, 10),
             Err(PowError::InvalidDifficulty)
@@ -141,7 +144,10 @@ mod tests {
         let mut candidate = original;
         candidate.nonce = nonce;
         assert_eq!(check_proof(&candidate, 8), Ok(true));
-        assert_eq!(original.nonce, 0, "la fonction ne doit pas modifier l'en-tête original");
+        assert_eq!(
+            original.nonce, 0,
+            "la fonction ne doit pas modifier l'en-tête original"
+        );
     }
 
     #[test]
