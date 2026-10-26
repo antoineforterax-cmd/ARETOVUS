@@ -903,10 +903,7 @@ mod tests {
 
     #[test]
     fn oversized_untrusted_frame_is_rejected_before_session_processing() {
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-oversized-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("aurora-p2p-oversized-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
@@ -922,7 +919,10 @@ mod tests {
             .write_all(&((MAX_FRAME as u32) + 1).to_be_bytes())
             .unwrap();
         let result = server.join().unwrap();
-        assert!(matches!(result, Err(P2pError::Protocol("frame length outside limit"))));
+        assert!(matches!(
+            result,
+            Err(P2pError::Protocol("frame length outside limit"))
+        ));
         assert!(fs::read_dir(&dir).unwrap().next().is_none());
         fs::remove_dir_all(&dir).unwrap();
     }
