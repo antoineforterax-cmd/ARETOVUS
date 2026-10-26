@@ -22,8 +22,8 @@ use aurora_core::{
 };
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
 use p2p::{
-    discover_peers_with_retry, fetch_mempool, propagate_block_with_retry,
-    serve as serve_peers, sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
+    discover_peers_with_retry, fetch_mempool, propagate_block_with_retry, serve as serve_peers,
+    sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
 };
 
 const TESTNET_INITIAL_BITS: u16 = 8;
