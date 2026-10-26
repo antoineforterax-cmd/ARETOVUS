@@ -325,9 +325,18 @@ mod tests {
         ));
         let miner = AccountId([0x42; 32]);
         let mut chain = testnet_chain().unwrap();
+        assert_eq!(chain.height(), 0);
+        assert_eq!(chain.state().total_issued().to_units(), 0);
         let _mined = mine_one(&mut chain, miner, 2).unwrap();
         assert_eq!(chain.height(), 1);
-        assert!(chain.state().total_issued().to_units() > 0);
+        assert_eq!(
+            chain.state().total_issued().to_units(),
+            500 * aurora_core::amount::UNITS_PER_COIN
+        );
+        assert_eq!(
+            chain.state().account(miner).balance.to_units(),
+            475 * aurora_core::amount::UNITS_PER_COIN
+        );
         let expected_tip = chain.tip_hash();
         let expected_state = chain.state().clone();
         save_snapshot(&dir, &chain).unwrap();
