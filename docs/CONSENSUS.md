@@ -14,7 +14,7 @@
 | Récompense | `max(1, floor(offre_restante / 1 000 000))` unités, plafonnée au reliquat; 5 % trésorerie / 95 % mineur | Émission lissée; paramètres encore expérimentaux |
 | Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
 | Stockage | Snapshot version 3, checksum, paramètres difficulté/récompense et toutes les branches; rejeu/revalidation à la lecture | Pas de journal transactionnel, migration de format ou test complet de coupure disque |
-| Réseau | TCP push/pull vers pairs statiques; 8 workers concurrents; budgets par session de trafic, requêtes et durée; frames bornées et validation consensus | Pas de découverte automatique, annonces spontanées, reconnexion ni suite DoS complète |
+| Réseau | TCP push/pull vers pairs statiques; 8 workers concurrents; budgets par session de trafic, requêtes et durée; frames bornées et validation consensus | Découverte opt-in d’un saut; pas de reconnexion continue, annonces spontanées multi-sauts ni suite DoS complète |
 
 Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, l’identifiant de la règle d’émission, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
 
@@ -25,7 +25,7 @@ Les constructeurs de chaîne génériques désactivent les récompenses par déf
 - Cible : 60 secondes; fenêtre : 10 blocs; ajustement entier borné à 2 bits par fenêtre; bornes de 4 à 20 bits.
 - Trésorerie : compte fixe de test `[0xA0; 32]`.
 - Les blocs sont minés par `aurora-node testnet mine`, sauvegardés après chaque bloc et revalidés à la reprise.
-- Synchronisation via `aurora-node testnet serve` et `aurora-node testnet sync`; seul le téléchargement pull est fourni.
+- Synchronisation via `aurora-node testnet serve` et `aurora-node testnet sync`; le transport accepte le push des blocs minés, le pull paginé et la découverte opt-in d’un saut.
 
 ## Invariants couverts par tests
 
