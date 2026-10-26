@@ -464,8 +464,7 @@ mod tests {
 
     #[test]
     fn testnet_rejects_legacy_ed25519_and_hybrid_transaction_profiles() {
-        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
-            .unwrap();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
         let mut chain =
             AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
 
