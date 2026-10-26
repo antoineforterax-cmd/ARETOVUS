@@ -50,6 +50,14 @@ pub enum HeaderChainError {
     Encoding,
 }
 
+impl std::fmt::Display for HeaderChainError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl std::error::Error for HeaderChainError {}
+
 impl LightHeaderChain {
     pub fn new(
         genesis: BlockHeader,
