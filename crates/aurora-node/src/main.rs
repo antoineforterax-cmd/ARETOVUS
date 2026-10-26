@@ -1,5 +1,4 @@
 //! Commandes du nœud local AURORA : regtest et testnet expérimental.
-mod p2p;
 use std::{
     collections::{HashSet, VecDeque},
     error::Error,
@@ -10,6 +9,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use aurora_node::p2p;
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::AccountForkChain,
