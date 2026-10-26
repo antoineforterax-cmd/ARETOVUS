@@ -13,6 +13,8 @@ use std::fmt;
 pub const ACCOUNT_TX_VERSION: u32 = 1;
 /// Experimental hybrid Ed25519 + FIPS 204 ML-DSA-65 transaction version.
 pub const HYBRID_ACCOUNT_TX_VERSION: u32 = 2;
+/// Native post-quantum ML-DSA-65 transaction profile for the experimental testnet.
+pub const POST_QUANTUM_ACCOUNT_TX_VERSION: u32 = 3;
 pub const ACCOUNT_ID_LEN: usize = 32;
 /// ML-DSA-65 encoded public key and signature sizes from FIPS 204.
 pub const ML_DSA_65_PUBLIC_KEY_BYTES: usize = 1_952;
@@ -20,6 +22,8 @@ pub const ML_DSA_65_SIGNATURE_BYTES: usize = 3_309;
 /// Fixed v2 payload: Ed25519 public key, ML-DSA key, Ed25519 signature, ML-DSA signature.
 pub const HYBRID_AUTH_BYTES: usize =
     32 + ML_DSA_65_PUBLIC_KEY_BYTES + 64 + ML_DSA_65_SIGNATURE_BYTES;
+/// Fixed v3 payload: ML-DSA-65 public key followed by its signature.
+pub const POST_QUANTUM_AUTH_BYTES: usize = ML_DSA_65_PUBLIC_KEY_BYTES + ML_DSA_65_SIGNATURE_BYTES;
 pub const MAX_AUTH_BYTES: usize = 8_192;
 
 /// Identifiant de compte brut. Le format d'adresse lisible reste à définir.
@@ -103,10 +107,13 @@ impl AccountTransaction {
 
     /// Contrôles indépendants de l'état et de la cryptographie.
     pub fn check_stateless(&self) -> Result<(), AccountTxError> {
-        if !matches!(self.version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION) {
+        if !matches!(self.version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION | POST_QUANTUM_ACCOUNT_TX_VERSION) {
             return Err(AccountTxError::UnsupportedVersion);
         }
-        if self.version == HYBRID_ACCOUNT_TX_VERSION && self.auth_data.len() != HYBRID_AUTH_BYTES {
+        if (self.version == HYBRID_ACCOUNT_TX_VERSION && self.auth_data.len() != HYBRID_AUTH_BYTES)
+            || (self.version == POST_QUANTUM_ACCOUNT_TX_VERSION
+                && self.auth_data.len() != POST_QUANTUM_AUTH_BYTES)
+        {
             return Err(AccountTxError::AuthDataTooLarge);
         }
         if self.amount == Amount::ZERO {
@@ -141,7 +148,7 @@ impl CanonicalEncode for AccountTransaction {
 impl CanonicalDecode for AccountTransaction {
     fn decode(dec: &mut Decoder<'_>) -> Result<Self, DecodeError> {
         let version = dec.get_u32()?;
-        if !matches!(version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION) {
+        if !matches!(version, ACCOUNT_TX_VERSION | HYBRID_ACCOUNT_TX_VERSION | POST_QUANTUM_ACCOUNT_TX_VERSION) {
             return Err(DecodeError::InvalidValue("version de transaction inconnue"));
         }
         Ok(Self {
