@@ -13,3 +13,4 @@ aurora-core.workspace = true
 
 [dev-dependencies]
 ed25519-dalek.workspace = true
+ml-dsa.workspace = true
