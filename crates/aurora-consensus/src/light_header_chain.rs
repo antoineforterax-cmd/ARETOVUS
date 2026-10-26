@@ -296,6 +296,40 @@ mod tests {
     }
 
     #[test]
+    fn selects_heavier_header_fork_and_updates_confirmations() {
+        let genesis = testnet_genesis_block();
+        let mut chain = LightHeaderChain::new(
+            genesis.header,
+            TESTNET_GENESIS_HASH,
+            TESTNET_INITIAL_BITS,
+            TESTNET_DIFFICULTY,
+        )
+        .unwrap();
+        let a1 = child(TESTNET_GENESIS_HASH, 61, TESTNET_INITIAL_BITS);
+        let a1_hash = a1.hash().unwrap();
+        chain.submit(a1).unwrap();
+        let a2 = child(a1_hash, 121, TESTNET_INITIAL_BITS);
+        let a2_hash = a2.hash().unwrap();
+        chain.submit(a2).unwrap();
+
+        let b1 = child(TESTNET_GENESIS_HASH, 62, TESTNET_INITIAL_BITS);
+        let b1_hash = b1.hash().unwrap();
+        chain.submit(b1).unwrap();
+        let b2 = child(b1_hash, 122, TESTNET_INITIAL_BITS);
+        let b2_hash = b2.hash().unwrap();
+        chain.submit(b2).unwrap();
+        let b3 = child(b2_hash, 182, TESTNET_INITIAL_BITS);
+        let b3_hash = b3.hash().unwrap();
+        assert!(chain.submit(b3).unwrap());
+
+        assert_eq!(chain.tip_hash(), b3_hash);
+        assert!(chain.is_canonical(b1_hash));
+        assert!(!chain.is_canonical(a2_hash));
+        assert_eq!(chain.confirmations(a2_hash), None);
+        assert_eq!(chain.confirmations(b1_hash), Some(3));
+    }
+
+    #[test]
     fn enforces_retarget_timestamps_and_rejects_bad_genesis() {
         let genesis = testnet_genesis_block();
         let mut chain = LightHeaderChain::new(
