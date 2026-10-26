@@ -129,6 +129,8 @@ cargo run --locked -p aurora-wallet -- address --key-file ./wallet.aurkey
 cargo run --locked -p aurora-wallet -- send --key-file ./wallet.aurkey --to <adresse-hex> --amount 1.25 --fee 0.01 --node 127.0.0.1:18444
 ```
 
+Pour sauvegarder la clé chiffrée, copie `wallet.aurkey` vers un support distinct et garde le mot de passe séparément. Pour éprouver la restauration, recopie la sauvegarde sous un **nouveau** nom (par exemple `wallet-restaure.aurkey`), puis exécute `aurora-wallet address --key-file wallet-restaure.aurkey`. Saisis le mot de passe et compare l’adresse obtenue à celle d’origine. Le CLI refuse de remplacer un fichier de clé existant; une sauvegarde du seul répertoire du nœud ne contient pas cette clé. Sans le fichier ou sans le mot de passe, la récupération est impossible.
+
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
 
 ```sh
