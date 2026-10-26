@@ -13,16 +13,18 @@ use std::{
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
-    reward::EMISSION_SCHEDULE_ID,
 };
 use aurora_core::{
     accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
-    hash::{sha256_plain, Hash256},
+    hash::Hash256,
     merkle::merkle_proof,
     network::NetworkId,
 };
 use aurora_storage::save_snapshot;
+pub use aurora_consensus::testnet::protocol_fingerprint;
+#[cfg(test)]
+use aurora_core::hash::sha256_plain;
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
@@ -100,34 +102,6 @@ impl From<aurora_storage::StorageError> for P2pError {
     fn from(e: aurora_storage::StorageError) -> Self {
         Self::Storage(e)
     }
-}
-
-/// Fingerprint binds peers to the same genesis, retarget and reward configuration.
-pub fn protocol_fingerprint(chain: &AccountForkChain) -> Hash256 {
-    let mut bytes = Vec::with_capacity(128);
-    let genesis = chain.blocks().next().expect("genesis exists");
-    bytes.push(genesis.header.network.to_byte());
-    bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
-    // Deliberately separates the native-PQ testnet from the earlier hybrid testnet.
-    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v3");
-    bytes.extend_from_slice(
-        genesis
-            .header
-            .hash()
-            .expect("genesis header encodes")
-            .as_bytes(),
-    );
-    bytes.extend_from_slice(&chain.initial_difficulty_bits().to_be_bytes());
-    let d = chain.difficulty_params();
-    bytes.extend_from_slice(&d.target_block_seconds.to_be_bytes());
-    bytes.extend_from_slice(&d.adjustment_interval.to_be_bytes());
-    bytes.extend_from_slice(&d.max_adjustment_bits.to_be_bytes());
-    bytes.extend_from_slice(&d.min_bits.to_be_bytes());
-    bytes.extend_from_slice(&d.max_bits.to_be_bytes());
-    let r = chain.reward_params();
-    bytes.push(u8::from(r.enabled));
-    bytes.extend_from_slice(&r.treasury_account.0);
-    sha256_plain(&bytes)
 }
 
 fn set_timeouts(stream: &TcpStream) -> io::Result<()> {

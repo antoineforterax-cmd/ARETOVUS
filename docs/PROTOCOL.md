@@ -39,7 +39,7 @@ La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiq
 
 ## Portefeuille et RPC testnet
 
-Le CLI `aurora-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet.
+Le CLI `aurora-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet et compare le fingerprint reçu au profil P2P v3 et aux paramètres de consensus testnet épinglés dans `aurora-consensus`. Un nœud utilisant d’autres paramètres est refusé avant toute requête de solde ou d’envoi.
 
 Les commandes utilisent les messages suivants :
 

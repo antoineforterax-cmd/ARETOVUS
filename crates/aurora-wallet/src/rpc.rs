@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use aurora_consensus::experimental::BlockHeader;
+use aurora_consensus::{experimental::BlockHeader, testnet::testnet_protocol_fingerprint};
 use aurora_core::{
     accounts::{AccountId, AccountTransaction},
     amount::Amount,
@@ -194,6 +194,9 @@ pub(super) fn connect(node: SocketAddr) -> Result<TcpStream, Box<dyn Error>> {
     if hello.len() != 74 || hello[0] != WALLET_HELLO_REPLY || hello[1] != 2 {
         return Err("node rejected wallet RPC or is not the AURORA testnet".into());
     }
+    if &hello[2..34] != testnet_protocol_fingerprint().as_bytes() {
+        return Err("node uses different testnet consensus or peer protocol rules".into());
+    }
     Ok(stream)
 }
 
@@ -288,5 +291,31 @@ pub fn transaction_status(
         1 => Ok(TransactionStatus::Pending),
         2 => Ok(TransactionStatus::Confirmed),
         _ => Err("node returned an unknown transaction status".into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        net::{Ipv4Addr, TcpListener},
+        thread,
+    };
+
+    #[test]
+    fn wallet_rejects_a_node_with_different_protocol_fingerprint() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            assert_eq!(read_frame(&mut stream).unwrap(), vec![WALLET_HELLO]);
+            let mut reply = vec![WALLET_HELLO_REPLY, 2];
+            reply.extend_from_slice(&[0; 32]);
+            reply.extend_from_slice(&0u64.to_be_bytes());
+            reply.extend_from_slice(&[0; 32]);
+            write_frame(&mut stream, &reply).unwrap();
+        });
+        assert!(connect(address).is_err());
+        server.join().unwrap();
     }
 }

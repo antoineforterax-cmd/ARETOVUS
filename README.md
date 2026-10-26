@@ -11,8 +11,8 @@ Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v
 | `aurora-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
 | `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
 | `aurora-storage` | Blocs immuables et index checksummés `AURORIDX` v5, trois points de reprise, toutes les branches; lecture des snapshots v4 et revalidation au chargement. |
-| `aurora-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull et rattrapage périodique depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
-| `aurora-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aurora://` via bibliothèque. Clé en clair, testnet uniquement. |
+| `aurora-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull, rattrapage périodique et relais validé des transactions en attente depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
+| `aurora-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aurora://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
 
 ## Règles économiques exécutées
 
@@ -23,9 +23,10 @@ Cinq pour cent de chaque émission vont au compte testnet fixe `[0xA0; 32]`, et 
 Le compte de trésorerie est actuellement crédité automatiquement mais n’a pas de logique de smart contract, de gouvernance ou de dépense. Les gardiens/time-locks et le recyclage des comptes inactifs ne sont pas encore implémentés; ils changent les règles de propriété et doivent être spécifiés et testés séparément avant d’entrer au consensus. Voir `docs/EMISSION_MODEL.md`.
 
 Un changement de règle d’émission crée un réseau incompatible. Utilise un nouveau dossier `--data-dir` pour cette version de testnet; conserve ou sauvegarde tes anciens snapshots au lieu de les supprimer.
+
 ## Testnet expérimentale locale
 
-Le guide [docs/TESTNET_GUIDE.md](docs/TESTNET_GUIDE.md) explique comment compiler le nœud sous Linux, macOS ou Windows, synchroniser un pair, lancer un serveur et miner en testnet. Sur Windows, Rust Build Tools doit fournir `link.exe`. Utilise seulement des pairs connus sur localhost ou un réseau privé. Arrête `serve` avant d’exécuter `mine` ou `sync` sur le même dossier de données, puis redémarre le serveur pour recharger le snapshot.
+Le guide [docs/TESTNET_GUIDE.md](docs/TESTNET_GUIDE.md) explique comment télécharger les archives CI testnet privées pour Linux, macOS ou Windows, ou compiler le nœud, synchroniser un pair, lancer un serveur et miner en testnet. Sur Windows, Rust Build Tools et `link.exe` ne servent qu’à la compilation depuis les sources. Utilise seulement des pairs connus sur localhost ou un réseau privé. Arrête `serve` avant d’exécuter `mine` ou `sync` sur le même dossier de données, puis redémarre le serveur pour recharger le snapshot.
 
 Vérification reproductible :
 
@@ -37,7 +38,7 @@ cargo build --workspace --locked
 cargo test --workspace --locked
 ```
 
-Le smoke test démarre plusieurs processus, vérifie les récompenses, envoie et confirme un paiement wallet avec preuve SPV, traverse deux fenêtres de retarget jusqu’à 20 blocs, redémarre un pair puis synchronise un dossier neuf. Il force aussi l’arrêt d’un mineur entre deux sauvegardes et simule une erreur d’écriture avec une limite de taille de fichier sous Linux. GitHub Actions exécute ces vérifications. Les tests fuzz déterministes tournent dans la CI principale; les cibles libFuzzer sont dans le workflow séparé et exécutées pour 5 minutes chacune. Voir le [rapport d’essais](docs/TESTNET_VALIDATION_REPORT.md), [guide fuzzing](docs/FUZZING.md), [procédures de sauvegarde et reprise](docs/TESTNET_OPERATIONS.md), [décisions testnet](docs/TESTNET_DECISIONS.md) et [feuille de route](docs/ROADMAP_EXECUTION.md) pour les résultats, les limites et les étapes qui restent. Le service TCP rattrape périodiquement ses pairs configurés, mais n’annonce pas spontanément des blocs à plusieurs sauts; garde-le sur un réseau contrôlé. Le RPC wallet/mempool et les RPC d’en-têtes/preuves sont disponibles seulement sur le testnet.
+Le smoke test démarre plusieurs processus, vérifie les récompenses, envoie et confirme un paiement wallet avec preuve SPV, traverse deux fenêtres de retarget jusqu’à 20 blocs, redémarre un pair, synchronise un dossier neuf et vérifie le relais d’une transaction en attente jusqu’à son minage par un autre pair. Il force aussi l’arrêt d’un mineur entre deux sauvegardes et simule une erreur d’écriture avec une limite de taille de fichier sous Linux. GitHub Actions exécute ces vérifications. Les tests fuzz déterministes tournent dans la CI principale; les cibles libFuzzer sont dans le workflow séparé et exécutées pour 5 minutes chacune. Voir le [rapport d’essais](docs/TESTNET_VALIDATION_REPORT.md), [guide fuzzing](docs/FUZZING.md), [procédures de sauvegarde et reprise](docs/TESTNET_OPERATIONS.md), [décisions testnet](docs/TESTNET_DECISIONS.md) et [feuille de route](docs/ROADMAP_EXECUTION.md) pour les résultats, les limites et les étapes qui restent. Le service TCP rattrape périodiquement ses pairs configurés et leurs transactions en attente, mais n’annonce pas spontanément des blocs à plusieurs sauts; garde-le sur un réseau contrôlé. Le RPC wallet/mempool et les RPC d’en-têtes/preuves sont disponibles seulement sur le testnet.
 
 ## Limites avant de parler d’une blockchain terminée
 
