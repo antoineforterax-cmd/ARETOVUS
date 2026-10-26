@@ -436,12 +436,48 @@ def main() -> int:
                 raise AssertionError(f"active miner did not extend to height 22:\n{next_block}")
             wait_live_tip(22, next_tip.group(1))
 
+            # A wallet submits to C; D must learn the pending transaction via
+            # its configured peer and serve it to a miner without contacting C.
+            relayed = run_wallet(
+                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--node", f"{addr_c[0]}:{addr_c[1]}",
+            )
+            relay_match = re.search(r"transaction_id=([0-9a-f]{64})", relayed)
+            if relay_match is None:
+                raise AssertionError(f"source peer rejected relayed wallet transaction:\n{relayed}")
+            relay_id = relay_match.group(1)
+            deadline = time.monotonic() + 35
+            while time.monotonic() < deadline:
+                relay_status = run_wallet(
+                    wallet, "status", "--node", f"{addr_d[0]}:{addr_d[1]}",
+                    "--txid", relay_id,
+                )
+                if "Pending" in relay_status:
+                    break
+                time.sleep(0.5)
+            else:
+                raise TimeoutError(f"live peer did not relay pending transaction: {relay_status}")
+            relayed_block = run_node(
+                binary, "testnet", "mine", "--data-dir", str(active_miner),
+                "--miner", miner, "--count", "1",
+                "--peer", f"{addr_d[0]}:{addr_d[1]}",
+            )
+            if not re.search(r"height=23\b.*transactions=1", relayed_block):
+                raise AssertionError(f"miner did not include relayed transaction:\n{relayed_block}")
+            relayed_confirmed = run_wallet(
+                wallet, "status", "--node", f"{addr_d[0]}:{addr_d[1]}",
+                "--txid", relay_id,
+            )
+            if "Confirmed" not in relayed_confirmed:
+                raise AssertionError("gossip receiver did not confirm relayed transaction")
+
             crash_height = crash_recovery_test(binary, base / "crash-node", miner)
             size_limit_height = write_limit_recovery_test(
                 binary, base / "write-limit-node", miner
             )
             print(
-                "wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, forced-stop "
+                "wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"
