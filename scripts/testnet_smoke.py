@@ -80,9 +80,9 @@ def main() -> int:
                 binary, "testnet", "mine", "--data-dir", str(node_a),
                 "--miner", MINER, "--count", "3", "--peer", f"{addr_b[0]}:{addr_b[1]}",
             )
-            mined_tip = re.search(r"height=3\\s+tip=([0-9a-f]{64})", mined)
+            mined_tip = re.search(r"height=3\b.*\btip=([0-9a-f]{64})", mined)
             if mined_tip is None:
-                raise AssertionError(f"miner did not report the expected three-block tip:\\n{mined}")
+                raise AssertionError(f"miner did not report the expected three-block tip:\n{mined}")
 
             # Restart A after mining so its server loads the persisted height-3 chain.
             for server in servers[:2]:
@@ -103,21 +103,21 @@ def main() -> int:
                 binary, "testnet", "sync", "--data-dir", str(fresh_node),
                 "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", synced)
-            accepted = re.search(r"accepted=(\\d+)", synced)
+            tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", synced)
+            accepted = re.search(r"accepted=(\d+)", synced)
             if not tips or tips[-1][0] != "3" or accepted is None or accepted.group(1) != "3":
-                raise AssertionError(f"fresh node did not pull all three blocks:\\n{synced}")
+                raise AssertionError(f"fresh node did not pull all three blocks:\n{synced}")
             if tips[-1][1] != mined_tip.group(1):
-                raise AssertionError(f"fresh node did not converge to the mined tip:\\n{mined}\\n{synced}")
+                raise AssertionError(f"fresh node did not converge to the mined tip:\n{mined}\n{synced}")
 
             # A separate process reopens B's persisted snapshot and checks the same peer tip.
             restored = run_node(
                 binary, "testnet", "sync", "--data-dir", str(node_b),
                 "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            restored_tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", restored)
+            restored_tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", restored)
             if not restored_tips or restored_tips[-1] != tips[-1]:
-                raise AssertionError(f"pushed node did not restore the same tip:\\n{restored}")
+                raise AssertionError(f"pushed node did not restore the same tip:\n{restored}")
             print(f"multi-process testnet smoke passed: height=3 tip={tips[-1][1]}")
         finally:
             for server in servers:
