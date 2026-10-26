@@ -29,6 +29,7 @@ pub struct AccountForkChain {
     nodes: BTreeMap<Hash256, Node>,
     blocks: BTreeMap<Hash256, AccountBlock>,
     ordered: Vec<Hash256>,
+    arrival_order: Vec<Hash256>,
     states: BTreeMap<Hash256, AccountLedger>,
     canonical: Vec<Hash256>,
     canonical_tx_index: BTreeMap<Hash256, (u64, usize)>,
@@ -130,6 +131,7 @@ impl AccountForkChain {
             nodes,
             blocks,
             ordered: vec![hash],
+            arrival_order: vec![hash],
             states,
             canonical: vec![hash],
             canonical_tx_index: BTreeMap::new(),
@@ -218,6 +220,7 @@ impl AccountForkChain {
             .binary_search_by(|known| (self.nodes[known].height, *known).cmp(&(height, hash)))
             .unwrap_or_else(|position| position);
         self.ordered.insert(position, hash);
+        self.arrival_order.push(hash);
 
         let current_tip = *self.canonical.last().expect("genesis always exists");
         let current = self.nodes[&current_tip];
@@ -391,6 +394,18 @@ impl AccountForkChain {
             return Vec::new();
         }
         self.ordered[start..]
+            .iter()
+            .take(limit)
+            .map(|hash| &self.blocks[hash])
+            .collect()
+    }
+
+    /// Stable local inventory page: accepting a late side branch only appends to this order.
+    pub fn arrival_block_page(&self, start: usize, limit: usize) -> Vec<&AccountBlock> {
+        if start >= self.arrival_order.len() {
+            return Vec::new();
+        }
+        self.arrival_order[start..]
             .iter()
             .take(limit)
             .map(|hash| &self.blocks[hash])
@@ -655,6 +670,37 @@ mod tests {
         // A far-future candidate can move difficulty by only one bit in this window.
         assert_eq!(chain.next_difficulty_bits(1_000_000).unwrap(), 1);
         assert_eq!(chain.next_difficulty_bits(102).unwrap(), 3);
+    }
+
+    #[test]
+    fn late_side_branch_does_not_shift_arrival_inventory_cursor() {
+        let genesis = block(Hash256::ZERO, 1, vec![]);
+        let genesis_hash = genesis.header.hash().unwrap();
+        let mut chain = AccountForkChain::new(genesis, 0, initial_state()).unwrap();
+        let first = block(genesis_hash, 2, vec![]);
+        let first_hash = first.header.hash().unwrap();
+        chain.submit(first).unwrap();
+        let second = block(first_hash, 3, vec![]);
+        let second_hash = second.header.hash().unwrap();
+        chain.submit(second).unwrap();
+        let prefix: Vec<_> = chain
+            .arrival_block_page(0, 3)
+            .iter()
+            .map(|block| block.header.hash().unwrap())
+            .collect();
+        assert_eq!(prefix, vec![genesis_hash, first_hash, second_hash]);
+
+        let late = block(genesis_hash, 4, vec![]);
+        let late_hash = late.header.hash().unwrap();
+        chain.submit(late).unwrap();
+        let after: Vec<_> = chain
+            .arrival_block_page(0, 4)
+            .iter()
+            .map(|block| block.header.hash().unwrap())
+            .collect();
+        assert_eq!(&after[..3], prefix.as_slice());
+        assert_eq!(after[3], late_hash);
+        assert!(chain.arrival_block_page(4, 64).is_empty());
     }
 
     #[test]
