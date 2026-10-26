@@ -28,6 +28,7 @@ pub struct AccountForkChain {
     reward_params: RewardParams,
     nodes: BTreeMap<Hash256, Node>,
     blocks: BTreeMap<Hash256, AccountBlock>,
+    ordered: Vec<Hash256>,
     states: BTreeMap<Hash256, AccountLedger>,
     canonical: Vec<Hash256>,
     canonical_tx_index: BTreeMap<Hash256, (u64, usize)>,
@@ -128,6 +129,7 @@ impl AccountForkChain {
             reward_params,
             nodes,
             blocks,
+            ordered: vec![hash],
             states,
             canonical: vec![hash],
             canonical_tx_index: BTreeMap::new(),
@@ -211,6 +213,13 @@ impl AccountForkChain {
         );
         self.blocks.insert(hash, block);
         self.states.insert(hash, state);
+        let position = self
+            .ordered
+            .binary_search_by(|known| {
+                (self.nodes[known].height, *known).cmp(&(height, hash))
+            })
+            .unwrap_or_else(|position| position);
+        self.ordered.insert(position, hash);
 
         let current_tip = *self.canonical.last().expect("genesis always exists");
         let current = self.nodes[&current_tip];
@@ -375,9 +384,19 @@ impl AccountForkChain {
 
     /// All accepted branches in deterministic topological order.
     pub fn all_blocks_by_height(&self) -> Vec<&AccountBlock> {
-        let mut hashes = self.blocks.keys().copied().collect::<Vec<_>>();
-        hashes.sort_by_key(|hash| (self.nodes[hash].height, *hash));
-        hashes.iter().map(|hash| &self.blocks[hash]).collect()
+        self.ordered.iter().map(|hash| &self.blocks[hash]).collect()
+    }
+
+    /// A bounded page without sorting or scanning all prior blocks.
+    pub fn block_page(&self, start: usize, limit: usize) -> Vec<&AccountBlock> {
+        if start >= self.ordered.len() {
+            return Vec::new();
+        }
+        self.ordered[start..]
+            .iter()
+            .take(limit)
+            .map(|hash| &self.blocks[hash])
+            .collect()
     }
 
     pub fn known_block_count(&self) -> usize {
