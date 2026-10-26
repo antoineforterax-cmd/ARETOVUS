@@ -1,9 +1,9 @@
 //! Small bounded TCP sync protocol for the experimental testnet.
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     error::Error,
     io::{self, Read, Write},
-    net::{SocketAddr, TcpListener, TcpStream},
+    net::{IpAddr, SocketAddr, TcpListener, TcpStream},
     path::Path,
     sync::{Arc, Mutex},
     thread,
@@ -36,6 +36,8 @@ const MAX_SESSION_BYTES: usize = 256 * 1024 * 1024;
 const MAX_SESSION_REQUESTS: usize = 16_384;
 const MAX_SESSION_DURATION: Duration = Duration::from_secs(15 * 60);
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
+const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(2);
+const MAX_ACTIVE_PER_IP: usize = 4;
 /// Local admission window. Future blocks are retried after wall time catches up.
 pub const MAX_FUTURE_BLOCK_SECS: u64 = 2 * 60 * 60;
 const PEER_RETRY_ATTEMPTS: usize = 3;
@@ -123,6 +125,41 @@ pub fn reject_future_block_timestamp(timestamp: u64) -> Result<(), P2pError> {
         .map_err(|_| P2pError::Protocol("local clock is before UNIX epoch"))?
         .as_secs();
     check_block_timestamp_at(timestamp, now)
+}
+
+type PeerCounts = Arc<Mutex<HashMap<IpAddr, usize>>>;
+
+struct PeerLease {
+    ip: IpAddr,
+    counts: PeerCounts,
+}
+
+impl PeerLease {
+    fn acquire(ip: IpAddr, counts: &PeerCounts) -> Result<Option<Self>, P2pError> {
+        let mut active = counts.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+        let count = active.entry(ip).or_default();
+        if *count >= MAX_ACTIVE_PER_IP {
+            return Ok(None);
+        }
+        *count += 1;
+        Ok(Some(Self {
+            ip,
+            counts: Arc::clone(counts),
+        }))
+    }
+}
+
+impl Drop for PeerLease {
+    fn drop(&mut self) {
+        if let Ok(mut active) = self.counts.lock() {
+            if let Some(count) = active.get_mut(&self.ip) {
+                *count -= 1;
+                if *count == 0 {
+                    active.remove(&self.ip);
+                }
+            }
+        }
+    }
 }
 
 fn set_timeouts(stream: &TcpStream) -> io::Result<()> {
@@ -453,6 +490,7 @@ fn handle_peer_shared(
     advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
+    stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT))?;
     let session_started = Instant::now();
     let mut session_bytes = 0usize;
     let mut session_requests = 0usize;
@@ -486,6 +524,7 @@ fn handle_peer_shared(
             add_session_bytes(&mut session_bytes, 77)?;
         }
     }
+    stream.set_read_timeout(Some(IO_TIMEOUT))?;
     loop {
         if session_started.elapsed() > MAX_SESSION_DURATION {
             return Err(P2pError::Protocol("peer session duration exceeded"));
@@ -894,6 +933,7 @@ pub fn serve(
     peers.dedup();
     peers.truncate(MAX_ADVERTISED_PEERS);
     let advertised_peers = Arc::new(peers);
+    let peer_counts: PeerCounts = Arc::new(Mutex::new(HashMap::new()));
     if !advertised_peers.is_empty() {
         let sync_chain = Arc::clone(&chain);
         let sync_mempool = Arc::clone(&mempool);
@@ -922,12 +962,21 @@ pub fn serve(
         let mempool = Arc::clone(&mempool);
         let data_dir = Arc::clone(&data_dir);
         let advertised_peers = Arc::clone(&advertised_peers);
+        let peer_counts = Arc::clone(&peer_counts);
         workers.push(
             thread::Builder::new()
                 .name(format!("aurora-peer-{worker_id}"))
                 .spawn(move || loop {
                     match listener.accept() {
-                        Ok((stream, _)) => {
+                        Ok((stream, remote)) => {
+                            let _lease = match PeerLease::acquire(remote.ip(), &peer_counts) {
+                                Ok(Some(lease)) => lease,
+                                Ok(None) => continue,
+                                Err(error) => {
+                                    eprintln!("peer admission failed: {error}");
+                                    continue;
+                                }
+                            };
                             if let Err(error) = handle_peer_shared(
                                 stream,
                                 &chain,
@@ -1235,6 +1284,20 @@ mod tests {
             ))
         ));
         assert!(check_block_timestamp_at(u64::MAX, u64::MAX).is_ok());
+    }
+
+    #[test]
+    fn per_ip_admission_reserves_workers_for_other_peers() {
+        let counts: PeerCounts = Arc::new(Mutex::new(HashMap::new()));
+        let ip: IpAddr = "192.0.2.1".parse().unwrap();
+        let other: IpAddr = "192.0.2.2".parse().unwrap();
+        let leases: Vec<_> = (0..MAX_ACTIVE_PER_IP)
+            .map(|_| PeerLease::acquire(ip, &counts).unwrap().unwrap())
+            .collect();
+        assert!(PeerLease::acquire(ip, &counts).unwrap().is_none());
+        assert!(PeerLease::acquire(other, &counts).unwrap().is_some());
+        drop(leases);
+        assert!(PeerLease::acquire(ip, &counts).unwrap().is_some());
     }
 
     fn chain() -> AccountForkChain {
