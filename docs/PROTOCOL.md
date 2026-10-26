@@ -19,9 +19,9 @@ L’en-tête version 0 porte l’identifiant réseau, le hash parent, l’engage
 
 ## Émission et frais
 
-Le profil testnet sélectionne `fast_start_500` selon l’offre brute déjà émise au début du bloc. Plafond : 500 000 000 AUR. Récompenses : 500 AUR avant 5 M émis; 100 avant 25 M; 60 avant 75 M; 30 avant 175 M; 10 avant 350 M; 1 ensuite jusqu’au plafond. La dernière émission est tronquée au reliquat.
+Le testnet applique l’émission `proportional-remaining-1e6-v1` : en unités minimales, `R = min(cap - issued, max(1, floor((cap - issued) / 1_000_000)))`. Le plafond est 500 000 000 AUR et la genèse vide ne crée aucun jeton. Le premier bloc émet 500 AUR; ensuite l’émission décroît proportionnellement au reliquat, avec arrondis entiers et un plancher d’une unité.
 
-Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au compte trésorerie testnet `[0xA0; 32]`; le mineur reçoit le reste. La moitié des frais (arrondi inférieur) va au mineur, le reliquat des frais est brûlé. L’offre brute ne dépasse pas le plafond. Les récompenses sont incluses dans l’état par branche et recalculées lors d’une réorganisation. Les chaînes génériques désactivent les récompenses par défaut.
+Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au compte trésorerie testnet `[0xA0; 32]`; le mineur reçoit le reste. La moitié des frais (arrondi inférieur) va au mineur, le reliquat des frais est brûlé. L’offre brute ne dépasse pas le plafond. Les récompenses sont incluses dans l’état par branche et recalculées lors d’une réorganisation. Les chaînes génériques désactivent les récompenses par défaut. Une fois le plafond atteint, l’émission est nulle et le revenu du mineur vient des frais; le partage de frais reste 50 % mineur / 50 % brûlé.
 
 ## Configuration testnet et persistance
 
