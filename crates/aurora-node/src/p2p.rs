@@ -704,6 +704,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let server_dir = dir.clone();
         let server_chain = Arc::clone(&shared_chain);
+        let advertised_peers = Vec::new();
         let server = thread::spawn(move || {
             let mut workers = Vec::new();
             for _ in 0..2 {
@@ -837,13 +838,14 @@ mod tests {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
         let advertised = vec!["127.0.0.1:18444".parse().unwrap()];
+        let expected = advertised.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
             handle_peer_shared(stream, &shared_chain, Path::new("."), &advertised)
         });
         let discovered = discover_peers(address, &chain()).unwrap();
-        assert_eq!(discovered, advertised);
+        assert_eq!(discovered, expected);
         assert!(server.join().unwrap().is_ok());
     }
 
