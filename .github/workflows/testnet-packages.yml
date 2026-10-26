@@ -1,7 +1,8 @@
 name: testnet-packages
 
 on:
-  pull_request:
+  push:
+    branches: [feature/emission-schedule-v0]
     paths:
       - "Cargo.toml"
       - "Cargo.lock"
@@ -11,7 +12,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: testnet-packages-${{ github.event.pull_request.number || github.ref }}
+  group: testnet-packages-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
