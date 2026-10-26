@@ -388,12 +388,60 @@ def main() -> int:
             if "Confirmed" in post_reorg_status:
                 raise AssertionError("wallet still reports the orphaned transaction as confirmed")
 
+            # A running peer must catch up without a manual sync command.
+            addr_d = free_address()
+            while addr_d[1] in (addr_a[1], addr_b[1], addr_c[1]):
+                addr_d = free_address()
+            live_node = base / "node-live"
+            live_log = base / "live.log"
+            stream = live_log.open("w", encoding="utf-8")
+            server_d = subprocess.Popen(
+                [str(binary), "testnet", "serve", "--data-dir", str(live_node),
+                 "--listen", f"{addr_d[0]}:{addr_d[1]}",
+                 "--peer", f"{addr_c[0]}:{addr_c[1]}"],
+                cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
+            )
+            server_d._aurora_log_stream = stream  # type: ignore[attr-defined]
+            servers.append(server_d)
+            wait_listening(server_d, addr_d, live_log)
+
+            def wait_live_tip(height: int, tip: str) -> None:
+                deadline = time.monotonic() + 30
+                last = ""
+                while time.monotonic() < deadline:
+                    if server_d.poll() is not None:
+                        raise RuntimeError(f"background-sync peer exited: {live_log.read_text(errors='replace')}")
+                    last = run_node(binary, "testnet", "verify", "--data-dir", str(live_node))
+                    if f"height={height} tip={tip}" in last:
+                        return
+                    time.sleep(0.2)
+                raise TimeoutError(
+                    f"background-sync peer did not reach {height}/{tip}: {last}\n"
+                    f"log: {live_log.read_text(errors='replace')}"
+                )
+
+            wait_live_tip(21, competing_tip.group(1))
+            active_miner = base / "node-active-miner"
+            run_node(
+                binary, "testnet", "sync", "--data-dir", str(active_miner),
+                "--peer", f"{addr_c[0]}:{addr_c[1]}",
+            )
+            next_block = run_node(
+                binary, "testnet", "mine", "--data-dir", str(active_miner),
+                "--miner", miner, "--count", "1",
+                "--peer", f"{addr_c[0]}:{addr_c[1]}",
+            )
+            next_tip = re.search(r"height=22\b.*\btip=([0-9a-f]{64})", next_block)
+            if next_tip is None:
+                raise AssertionError(f"active miner did not extend to height 22:\n{next_block}")
+            wait_live_tip(22, next_tip.group(1))
+
             crash_height = crash_recovery_test(binary, base / "crash-node", miner)
             size_limit_height = write_limit_recovery_test(
                 binary, base / "write-limit-node", miner
             )
             print(
-                "wallet, SPV, 20-block soak, heavier-branch reorganization, forced-stop "
+                "wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"
