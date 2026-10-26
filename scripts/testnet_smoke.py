@@ -57,6 +57,49 @@ def wait_listening(process: subprocess.Popen[str], address: tuple[str, int], log
     raise TimeoutError(f"testnet server did not listen at {address}; log: {log.read_text(errors='replace')}")
 
 
+def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
+    process = subprocess.Popen(
+        [str(binary), "testnet", "mine", "--data-dir", str(data_dir),
+         "--miner", miner, "--count", "10000"],
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    deadline = time.monotonic() + 30
+    saved_height = -1
+    try:
+        while time.monotonic() < deadline:
+            snapshots = list(data_dir.glob("snapshot-*.aurora"))
+            heights = [
+                int(match.group(1))
+                for snapshot in snapshots
+                if (match := re.match(r"snapshot-(\\d{20})-", snapshot.name))
+            ]
+            if heights and max(heights) >= 2:
+                saved_height = max(heights)
+                process.kill()
+                process.wait(timeout=5)
+                break
+            if process.poll() is not None:
+                raise RuntimeError("miner exited before the forced-stop checkpoint")
+            time.sleep(0.005)
+        else:
+            raise TimeoutError("miner did not create snapshots before the forced-stop deadline")
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+    resumed = run_node(
+        binary, "testnet", "mine", "--data-dir", str(data_dir),
+        "--miner", miner, "--count", "1",
+    )
+    heights = [int(value) for value in re.findall(r"height=(\\d+)\\b", resumed)]
+    if not heights or max(heights) <= saved_height:
+        raise AssertionError(
+            f"node did not resume above the last committed snapshot (height {saved_height}):\\n{resumed}"
+        )
+    return max(heights)
+
+
 def main() -> int:
     subprocess.run([CARGO, "build", "--locked", "-p", "aurora-node"], cwd=ROOT, check=True)
     subprocess.run([CARGO, "build", "--locked", "-p", "aurora-wallet"], cwd=ROOT, check=True)
@@ -244,7 +287,11 @@ def main() -> int:
             ):
                 raise AssertionError(f"fresh node did not recover and sync the 20-block chain:\n{long_sync}")
 
-            print(f"wallet, SPV and multi-process testnet soak passed: height=20 tip={long_tips[-1][1]}")
+            crash_height = crash_recovery_test(binary, base / "crash-node", miner)
+            print(
+                "wallet, SPV, 20-block multi-process soak and forced-stop recovery passed: "
+                f"height=20 tip={long_tips[-1][1]} crash_recovery_height={crash_height}"
+            )
         finally:
             for server in servers:
                 if server.poll() is None:
