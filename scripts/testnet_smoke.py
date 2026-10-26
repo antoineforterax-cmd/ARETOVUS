@@ -213,9 +213,9 @@ def main() -> int:
                 binary, "testnet", "mine", "--data-dir", str(node_b),
                 "--miner", miner, "--count", "16", "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            extended_tip_match = re.search(r"height=20\\b.*\\btip=([0-9a-f]{64})", extended)
+            extended_tip_match = re.search(r"height=20\b.*\btip=([0-9a-f]{64})", extended)
             if extended_tip_match is None:
-                raise AssertionError(f"extended testnet did not pass retarget windows:\\n{extended}")
+                raise AssertionError(f"extended testnet did not pass retarget windows:\n{extended}")
 
             server_a.terminate()
             server_a.wait(timeout=5)
@@ -233,8 +233,8 @@ def main() -> int:
                 binary, "testnet", "sync", "--data-dir", str(fresh_node),
                 "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            long_tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", long_sync)
-            long_accepted = re.search(r"accepted=(\\d+)", long_sync)
+            long_tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", long_sync)
+            long_accepted = re.search(r"accepted=(\d+)", long_sync)
             if (
                 not long_tips
                 or long_tips[-1][0] != "20"
@@ -242,7 +242,7 @@ def main() -> int:
                 or long_accepted is None
                 or long_accepted.group(1) != "16"
             ):
-                raise AssertionError(f"fresh node did not recover and sync the 20-block chain:\\n{long_sync}")
+                raise AssertionError(f"fresh node did not recover and sync the 20-block chain:\n{long_sync}")
 
             print(f"wallet, SPV and multi-process testnet soak passed: height=20 tip={long_tips[-1][1]}")
         finally:
