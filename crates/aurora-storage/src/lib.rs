@@ -463,7 +463,11 @@ mod tests {
         let original = chain();
         let expected_tip = original.tip_hash();
         save_snapshot(&path, &original).unwrap();
-        fs::write(path.join(".snapshot-interrupted.tmp"), b"incomplete snapshot").unwrap();
+        fs::write(
+            path.join(".snapshot-interrupted.tmp"),
+            b"incomplete snapshot",
+        )
+        .unwrap();
 
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), expected_tip);
