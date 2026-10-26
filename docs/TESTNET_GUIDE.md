@@ -10,6 +10,33 @@ Ces binaires évitent de compiler Rust localement. Sur Linux ou macOS, rends le 
 
 Le logiciel ne contient pas une copie figée de la blockchain. Chaque nœud conserve son propre dossier `--data-dir` et récupère puis valide les blocs depuis une adresse de pair `--peer` configurée. Le protocole P2P courant est `v3` : des binaires plus anciens peuvent être incompatibles entre pairs; sauvegarde ton dossier de données avant de les remplacer. Pour l’instant il n’existe pas de pair public officiel; utilise une testnet locale ou des machines d’un même réseau privé selon les exemples ci-dessous.
 
+## Démarrage rapide avec l’archive Windows (PowerShell)
+
+Dans le dossier extrait qui contient `bin`, utilise trois fenêtres PowerShell. Remplace `<adresse-affichée>` par la valeur `address=` affichée par le wallet.
+
+**Fenêtre 1 — wallet et premiers blocs :**
+
+```powershell
+.\bin\aurora-wallet.exe keygen --out .\wallet.aurkey
+.\bin\aurora-node.exe testnet mine --data-dir .\node-data --miner <adresse-affichée> --count 3
+```
+
+**Fenêtre 2 — serveur local (laisse cette fenêtre ouverte) :**
+
+```powershell
+.\bin\aurora-node.exe testnet serve --data-dir .\node-data --listen 127.0.0.1:18444
+```
+
+**Fenêtre 3 — wallet et second nœud :**
+
+```powershell
+.\bin\aurora-wallet.exe balance --key-file .\wallet.aurkey --node 127.0.0.1:18444
+.\bin\aurora-node.exe testnet sync --data-dir .\node-peer --peer 127.0.0.1:18444
+.\bin\aurora-node.exe testnet verify --data-dir .\node-peer
+```
+
+Une erreur Windows `os error 10048` au lancement de `serve` signifie que le port est déjà occupé, souvent par la première fenêtre serveur. Arrête ce serveur avec `Ctrl+C` avant de le relancer. Si tu mines de nouveaux blocs dans `node-data` après avoir lancé le serveur, arrête et redémarre celui-ci pour qu’il recharge le dossier; puis répète `sync` sur `node-peer`. Ne lance pas `mine`, `sync` et `serve` simultanément sur le même dossier de données.
+
 ## Prérequis
 
 - Pour compiler les sources : Rust stable et Cargo, avec accès aux dépendances. Sous Windows, Visual C++ Build Tools fournit l’éditeur de liens `link.exe`. Les archives CI ci-dessus n’exigent pas ces outils.
