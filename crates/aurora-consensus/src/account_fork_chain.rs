@@ -420,6 +420,56 @@ mod tests {
     }
 
     #[test]
+    fn testnet_accepts_and_applies_a_native_ml_dsa_transaction() {
+        use aurora_core::accounts::{
+            ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
+            POST_QUANTUM_AUTH_BYTES,
+        };
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+
+        let key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = key.verifying_key().encode();
+        let sender = aurora_core::signature::post_quantum_account_id(public_key.as_slice());
+        let mut state = AccountLedger::new(NetworkId::Testnet);
+        state
+            .credit_issuance(sender, Amount::from_units(10).unwrap())
+            .unwrap();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
+            .unwrap();
+        let mut chain = AccountForkChain::new(genesis, 0, state).unwrap();
+        let mut transaction = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender,
+            nonce: 0,
+            recipient: account(77),
+            amount: Amount::from_units(4).unwrap(),
+            fee: Amount::from_units(1).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        transaction.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES]
+            .copy_from_slice(public_key.as_slice());
+        let signature = key
+            .sign(transaction.signing_digest().unwrap().as_bytes())
+            .encode();
+        transaction.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..]
+            .copy_from_slice(signature.as_slice());
+        let block = AccountBlock::build(
+            NetworkId::Testnet,
+            chain.tip_hash(),
+            2,
+            0,
+            vec![transaction],
+        )
+        .unwrap();
+
+        chain.submit(block).unwrap();
+        assert_eq!(chain.state().account(sender).balance.to_units(), 5);
+        assert_eq!(chain.state().account(sender).next_nonce, 1);
+        assert_eq!(chain.state().account(account(77)).balance.to_units(), 4);
+    }
+
+    #[test]
     fn testnet_rejects_legacy_ed25519_and_hybrid_transaction_profiles() {
         let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
             .unwrap();
