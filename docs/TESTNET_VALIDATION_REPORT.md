@@ -1,13 +1,13 @@
 # Rapport d’essais automatisés du testnet AURORA
 
-**Commit de code et CI multi-nœuds :** `b8a7626f1f8ad2a8018687783153601249123c8b`  
+**Commit de code et CI multi-nœuds :** `424e83773be7ced0108f71ecd015fd4ef3ba943a`  
 **Date des workflows :** 26 octobre 2026  
 **Branche :** `feature/emission-schedule-v0`  
 **Verdict :** les contrôles automatisés ciblés passent; ce résultat ne constitue ni un audit indépendant ni une garantie pour des fonds réels.
 
 ## Contrôles de compilation et tests
 
-- [CI de la révision courante](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333486589) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- [CI de la révision avec archives testnet](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40354257266) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
 - [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
 - [Campagne libFuzzer](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40326204232) sur le commit `390eb1d9517ffd61f560ba5dff065a4c9136c36f` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Les changements de stockage et de rattrapage ultérieurs sont couverts par les tests/CI courants; cette campagne fuzz ne les couvre pas directement.
 
@@ -26,6 +26,11 @@ Le smoke test utilise plusieurs processus isolés et des dossiers temporaires :
 
 Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, forced-stop and write-limit recovery passed ». Résultat : succès sur le commit indiqué.
 
+## Essai prolongé et archives testnet
+
+- [Essai à trois nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40336219707) : 36 blocs propagés et vérifiés sur trois processus en **415,9 secondes**; le pair intermédiaire a été arrêté puis redémarré quatre fois, et une copie complète de son dossier a été restaurée et vérifiée au même sommet — succès. Cet essai est local au runner CI; il ne prouve pas un fonctionnement continu sur plusieurs hôtes ou pendant des jours.
+- [Construction des archives](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40354257044) : compilation Rust release et empaquetage du nœud et du wallet réussis sur Windows, Linux et macOS. Chaque archive contient les binaires, la documentation et `SHA256SUMS.txt`, vérifié pendant l’empaquetage. Ces artefacts privés non signés expirent après 14 jours; aucun installateur ni publication publique n’existe encore.
+
 ## Campagnes fuzz
 
 Les trois cibles ont été exécutées pendant 301 secondes chacune sur le commit indiqué :
@@ -39,9 +44,9 @@ Aucun crash n’a été rapporté pendant ces campagnes. Les journaux de campagn
 ## Ce que ces essais ne valident pas
 
 - Une saturation réelle du disque, une panne électrique, la durabilité après redémarrage matériel, ou une restauration interversion.
-- Une campagne longue sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou réseau multi-hôtes public.
+- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. L’essai local de 415,9 secondes ne couvre pas ces cas.
 - La résistance à une attaque d’éclipse contre le client SPV.
 - Une revue indépendante du consensus, de la cryptographie, du portefeuille ou du réseau. Aucun reviewer n’est encore désigné.
-- Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles et les clés du wallet CLI sont en clair.
+- Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles. Les clés nouvelles du wallet CLI sont chiffrées par défaut, mais son stockage, son UX et ses sauvegardes n’ont pas subi de revue indépendante.
 
 Le plan et les portes restantes sont dans [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md). Le dossier de revue est dans [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md).
