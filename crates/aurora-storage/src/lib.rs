@@ -308,8 +308,8 @@ fn decode_index(
         return Err(StorageError::InvalidFormat("invalid index block count"));
     }
     let mut blocks = Vec::with_capacity(count);
-    for digest_bytes in body[73..].chunks_exact(32) {
-        let block_id = Hash256::from_bytes(digest_bytes.try_into().expect("fixed hash"));
+    for &digest_bytes in body[73..].as_chunks::<32>().0 {
+        let block_id = Hash256::from_bytes(digest_bytes);
         let block_path = dir
             .join(BLOCK_DIRECTORY)
             .join(format!("{block_id}.{BLOCK_EXTENSION}"));
@@ -347,6 +347,7 @@ fn replay_blocks(
     Ok(chain)
 }
 
+#[cfg(test)]
 fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
     let blocks = chain.all_blocks_by_height();
     if blocks.len() > MAX_BLOCKS {
