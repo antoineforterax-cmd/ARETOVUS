@@ -1667,6 +1667,45 @@ mod tests {
     }
 
     #[test]
+    fn disconnected_peer_does_not_publish_a_partial_sync_page() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-p2p-truncated-page-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let mut server_chain = chain();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![])
+                .unwrap();
+        server_chain.submit(block).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            set_timeouts(&stream).unwrap();
+            read_frame(&mut stream).unwrap();
+            send_hello(&mut stream, &server_chain).unwrap();
+            read_frame(&mut stream).unwrap();
+            let page = build_blocks_page(&server_chain, 1).unwrap();
+            stream.write_all(&(page.len() as u32).to_be_bytes()).unwrap();
+            stream.write_all(&page[..page.len() - 1]).unwrap();
+        });
+
+        let mut client = chain();
+        let original_tip = client.tip_hash();
+        assert!(matches!(
+            sync_from_peer(address, &mut client, &dir),
+            Err(P2pError::Io(ref error)) if error.kind() == io::ErrorKind::UnexpectedEof
+        ));
+        assert_eq!(client.height(), 0);
+        assert_eq!(client.tip_hash(), original_tip);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn failed_snapshot_does_not_publish_a_synced_page() {
         let path = std::env::temp_dir().join(format!(
             "aurora-p2p-snapshot-failure-{}",
