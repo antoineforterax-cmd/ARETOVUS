@@ -328,12 +328,9 @@ mod tests {
         let key = WalletKey::from_seed_bytes([44; 32]);
         key.save_encrypted_testnet_file(&source, "another long test password")
             .unwrap();
-        let account = WalletKey::copy_encrypted_testnet_file(
-            &source,
-            &backup,
-            "another long test password",
-        )
-        .unwrap();
+        let account =
+            WalletKey::copy_encrypted_testnet_file(&source, &backup, "another long test password")
+                .unwrap();
         assert_eq!(account, key.account_id());
         assert_ne!(fs::read(&source).unwrap(), fs::read(&backup).unwrap());
         assert!(WalletKey::copy_encrypted_testnet_file(
@@ -342,24 +339,15 @@ mod tests {
             "another long test password"
         )
         .is_err());
-        assert!(WalletKey::copy_encrypted_testnet_file(
-            &backup,
-            &restored,
-            "wrong password"
-        )
-        .is_err());
+        assert!(
+            WalletKey::copy_encrypted_testnet_file(&backup, &restored, "wrong password").is_err()
+        );
         assert!(!restored.exists());
-        WalletKey::copy_encrypted_testnet_file(
-            &backup,
-            &restored,
-            "another long test password",
-        )
-        .unwrap();
-        let loaded = WalletKey::load_encrypted_testnet_file(
-            &restored,
-            "another long test password",
-        )
-        .unwrap();
+        WalletKey::copy_encrypted_testnet_file(&backup, &restored, "another long test password")
+            .unwrap();
+        let loaded =
+            WalletKey::load_encrypted_testnet_file(&restored, "another long test password")
+                .unwrap();
         assert_eq!(loaded.account_id(), key.account_id());
         for path in [source, backup, restored] {
             fs::remove_file(path).unwrap();
