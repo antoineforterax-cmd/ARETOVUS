@@ -16,12 +16,13 @@ Le profil post-quantique hybride v2 est expérimental et facultatif; aucun compt
 
 ## Règles économiques exécutées
 
-Le nœud testnet utilise le profil existant `fast_start_500` : plafond brut de 500 000 000 AUR et 8 décimales. La récompense par bloc est choisie avec l’offre émise au début du bloc : 500 AUR jusqu’à 5 M émis, 100 jusqu’à 25 M, 60 jusqu’à 75 M, 30 jusqu’à 175 M, 10 jusqu’à 350 M, puis 1 AUR jusqu’au plafond. L’émission du dernier bloc est tronquée au reliquat exact.
+Le testnet utilise le plafond brut strict de **500 000 000 AUR**, avec 8 décimales et une genèse sans préminage. Pour chaque bloc, l’émission est calculée en unités minimales comme `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Le premier bloc crée 500 AUR; l’émission décroît ensuite continûment avec l’offre restante et finit par atteindre le plafond grâce au plancher d’une unité. La règle de consensus s’identifie comme `proportional-remaining-1e6-v1`.
 
-Cinq pour cent de l’émission vont à la trésorerie (arrondi inférieur en unités minimales); le reste au mineur. La moitié des frais va au mineur (arrondi inférieur), le reste est brûlé. L’identité du mineur est engagée dans le bloc. Les récompenses sont recalculées sur l’état du parent de chaque branche; une réorganisation remplace donc aussi l’offre et les soldes canoniques.
+Cinq pour cent de chaque émission vont au compte testnet fixe `[0xA0; 32]`, et 95 % au mineur. La moitié des frais va au mineur, l’autre moitié est brûlée; le burn ne libère jamais du plafond. Une fois le plafond atteint, le mineur est rémunéré uniquement par les frais, selon le même partage 50/50.
 
-Ces constantes sont exécutées par le profil de testnet du dépôt; elles n’impliquent aucune approbation de lancement ou valeur monétaire. Les constructeurs génériques de chaîne gardent les récompenses désactivées par défaut.
+Le compte de trésorerie est actuellement crédité automatiquement mais n’a pas de logique de smart contract, de gouvernance ou de dépense. Les gardiens/time-locks et le recyclage des comptes inactifs ne sont pas encore implémentés; ils changent les règles de propriété et doivent être spécifiés et testés séparément avant d’entrer au consensus. Voir `docs/EMISSION_MODEL.md`.
 
+Un changement de règle d’émission crée un réseau incompatible. Utilise un nouveau dossier `--data-dir` pour cette version de testnet; conserve ou sauvegarde tes anciens snapshots au lieu de les supprimer.
 ## Testnet expérimentale locale
 
 Prérequis : Rust stable, dépendances disponibles via crates.io. Les commandes ci-dessous sont des nœuds autonomes sur la même machine ou des hôtes joignables.
