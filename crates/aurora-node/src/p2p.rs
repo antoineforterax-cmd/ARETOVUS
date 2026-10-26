@@ -1107,8 +1107,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let mut remote = chain();
         let genesis = remote.tip_hash();
-        let remote_block =
-            AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, vec![]).unwrap();
+        let remote_block = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, vec![]).unwrap();
         remote.submit(remote_block).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
