@@ -8,7 +8,7 @@ Les archives **expérimentales et non signées** sont créées par la [CI `testn
 
 Ces binaires évitent de compiler Rust localement. Sur Linux ou macOS, rends le binaire exécutable si l’extraction a perdu cette permission (`chmod +x bin/aurora-node bin/aurora-wallet`). Sous Windows, `link.exe` est requis pour **compiler** depuis les sources, pas pour lancer le binaire fourni.
 
-Le logiciel ne contient pas une copie figée de la blockchain. Chaque nœud conserve son propre dossier `--data-dir` et récupère puis valide les blocs depuis une adresse de pair `--peer` configurée. Pour l’instant il n’existe pas de pair public officiel; utilise une testnet locale ou des machines d’un même réseau privé selon les exemples ci-dessous.
+Le logiciel ne contient pas une copie figée de la blockchain. Chaque nœud conserve son propre dossier `--data-dir` et récupère puis valide les blocs depuis une adresse de pair `--peer` configurée. Le protocole P2P courant est `v3` : des binaires plus anciens peuvent être incompatibles entre pairs; sauvegarde ton dossier de données avant de les remplacer. Pour l’instant il n’existe pas de pair public officiel; utilise une testnet locale ou des machines d’un même réseau privé selon les exemples ci-dessous.
 
 ## Prérequis
 
@@ -60,7 +60,7 @@ cargo run --locked -p aurora-node -- testnet mine --data-dir ./aurora-miner --mi
 
 Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec `testnet sync`, puis lance `testnet serve` avec ce dossier et ses `--peer` statiques. Le serveur réinterroge ces pairs en arrière-plan après son démarrage. Le serveur et les commandes `mine`/`sync` ne doivent pas utiliser simultanément le même dossier : une commande lit son snapshot au démarrage. Arrête `serve` avant de miner ou synchroniser ce dossier, puis redémarre le serveur pour qu’il recharge le snapshot mis à jour.
 
-Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud a un mempool local borné et, en mode `serve --peer`, rattrape périodiquement les pairs configurés. Il ne maintient pas de minage continu ni de gossip des transactions. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
+Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud a un mempool local borné et, en mode `serve --peer`, rattrape périodiquement les pairs configurés. Il ne maintient pas de minage continu. Les transactions en attente sont interrogées périodiquement auprès des pairs `--peer` configurés et revalidées localement; elles ne sont pas annoncées spontanément et le mempool n’est pas persistant. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
 
 ## Portefeuille CLI experimental
 
@@ -103,7 +103,7 @@ Depuis la racine du dépôt :
 python3 scripts/testnet_smoke.py
 ```
 
-Le scénario démarre des processus séparés, crée un wallet, soumet une transaction ML-DSA au mempool, vérifie son inclusion, la preuve Merkle et le partage des frais. Il atteint la hauteur 20 à travers deux retargets, provoque une réorganisation vers une branche plus lourde et teste la reprise après arrêt forcé ou erreur d’écriture simulée. GitHub Actions exécute le même scénario.
+Le scénario démarre des processus séparés, crée un wallet, soumet une transaction ML-DSA au mempool, vérifie son inclusion, la preuve Merkle et le partage des frais. Il atteint la hauteur 20 à travers deux retargets, provoque une réorganisation vers une branche plus lourde, vérifie le relais d’une transaction entre nœuds puis son minage par un autre pair, et teste la reprise après arrêt forcé ou erreur d’écriture simulée. GitHub Actions exécute le même scénario.
 
 ## Vérifier, sauvegarder et restaurer les données
 
