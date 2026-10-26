@@ -14,17 +14,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CARGO = shutil.which("cargo") or str(Path.home() / ".cargo" / "bin" / "cargo")
-MINER = "42" * 32
+RECIPIENT = "43" * 32
 
 
-def run_node(binary: Path, *args: str) -> str:
+def run_command(binary: Path, *args: str) -> str:
     result = subprocess.run(
         [str(binary), *args], cwd=ROOT, text=True, capture_output=True, timeout=120
     )
     output = result.stdout + result.stderr
     if result.returncode:
-        raise RuntimeError(f"node command failed ({result.returncode}): {output}")
+        raise RuntimeError(f"command failed ({result.returncode}): {output}")
     return output
+
+
+def run_node(binary: Path, *args: str) -> str:
+    return run_command(binary, *args)
+
+
+def run_wallet(binary: Path, *args: str) -> str:
+    return run_command(binary, *args)
+
+
+
 
 
 def free_address() -> tuple[str, int]:
@@ -48,13 +59,22 @@ def wait_listening(process: subprocess.Popen[str], address: tuple[str, int], log
 
 def main() -> int:
     subprocess.run([CARGO, "build", "--locked", "-p", "aurora-node"], cwd=ROOT, check=True)
-    binary = ROOT / "target" / "debug" / ("aurora-node.exe" if os.name == "nt" else "aurora-node")
-    if not binary.is_file():
-        raise FileNotFoundError(f"built node executable not found: {binary}")
+    subprocess.run([CARGO, "build", "--locked", "-p", "aurora-wallet"], cwd=ROOT, check=True)
+    suffix = ".exe" if os.name == "nt" else ""
+    binary = ROOT / "target" / "debug" / f"aurora-node{suffix}"
+    wallet = ROOT / "target" / "debug" / f"aurora-wallet{suffix}"
+    if not binary.is_file() or not wallet.is_file():
+        raise FileNotFoundError("built node or wallet executable is missing")
 
     with tempfile.TemporaryDirectory(prefix="aurora-p2p-smoke-") as temporary:
         base = Path(temporary)
         node_a, node_b = base / "node-a", base / "node-b"
+        keyfile = base / "miner.aurkey"
+        key_output = run_wallet(wallet, "keygen", "--out", str(keyfile))
+        miner_match = re.search(r"address=([0-9a-f]{64})", key_output)
+        if miner_match is None:
+            raise AssertionError(f"wallet did not print its testnet address:\\n{key_output}")
+        miner = miner_match.group(1)
         addr_a, addr_b = free_address(), free_address()
         while addr_b[1] == addr_a[1]:
             addr_b = free_address()
@@ -78,7 +98,7 @@ def main() -> int:
 
             mined = run_node(
                 binary, "testnet", "mine", "--data-dir", str(node_a),
-                "--miner", MINER, "--count", "3", "--peer", f"{addr_b[0]}:{addr_b[1]}",
+                "--miner", miner, "--count", "3", "--peer", f"{addr_b[0]}:{addr_b[1]}",
             )
             mined_tip = re.search(r"height=3\b.*\btip=([0-9a-f]{64})", mined)
             if mined_tip is None:
@@ -105,7 +125,54 @@ def main() -> int:
                     f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
                 )
 
-            # Restart A after mining so its server loads the persisted height-3 chain.
+            if mined_rows != expected_rows:
+                raise AssertionError(
+                    f"mined blocks do not follow smooth emission and 95/5 split:\\n{mined}"
+                )
+
+            sent = run_wallet(
+                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            tx_match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
+            if tx_match is None or "mempool=pending" not in sent:
+                raise AssertionError(f"wallet did not submit transaction to mempool:\\n{sent}")
+            pending = run_wallet(
+                wallet, "status", "--node", f"{addr_b[0]}:{addr_b[1]}",
+                "--txid", tx_match.group(1),
+            )
+            if "Pending" not in pending:
+                raise AssertionError(f"submitted transaction was not pending:\\n{pending}")
+
+            mined_payment = run_node(
+                binary, "testnet", "mine", "--data-dir", str(node_a),
+                "--miner", miner, "--count", "1", "--peer", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if not re.search(r"height=4\\b.*transactions=1", mined_payment):
+                raise AssertionError(f"miner did not include the pending wallet transaction:\\n{mined_payment}")
+            remaining = cap_units - expected_issued
+            issuance = min(remaining, max(1, remaining // 1_000_000))
+            expected_issued += issuance
+            expected_miner += issuance - issuance // 20
+            expected_miner -= 100_000_000 + 3
+            expected_miner += 1
+            payment_row = re.search(
+                r"height=4 tip=[0-9a-f]{64} .*issued_units=(\\d+) miner_balance_units=(\\d+)",
+                mined_payment,
+            )
+            if payment_row is None or (int(payment_row.group(1)), int(payment_row.group(2))) != (
+                expected_issued, expected_miner
+            ):
+                raise AssertionError(f"mined wallet payment reward accounting was incorrect:\\n{mined_payment}")
+            confirmed = run_wallet(
+                wallet, "status", "--node", f"{addr_b[0]}:{addr_b[1]}",
+                "--txid", tx_match.group(1),
+            )
+            if "Confirmed" not in confirmed:
+                raise AssertionError(f"transaction was not confirmed after mining:\\n{confirmed}")
+
+            # Restart A after mining so its server loads the persisted height-4 chain.
             for server in servers[:2]:
                 server.terminate()
                 server.wait(timeout=5)
@@ -126,7 +193,7 @@ def main() -> int:
             )
             tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", synced)
             accepted = re.search(r"accepted=(\d+)", synced)
-            if not tips or tips[-1][0] != "3" or accepted is None or accepted.group(1) != "3":
+            if not tips or tips[-1][0] != "4" or accepted is None or accepted.group(1) != "4":
                 raise AssertionError(f"fresh node did not pull all three blocks:\n{synced}")
             if tips[-1][1] != mined_tip.group(1):
                 raise AssertionError(f"fresh node did not converge to the mined tip:\n{mined}\n{synced}")
@@ -139,7 +206,7 @@ def main() -> int:
             restored_tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", restored)
             if not restored_tips or restored_tips[-1] != tips[-1]:
                 raise AssertionError(f"pushed node did not restore the same tip:\n{restored}")
-            print(f"multi-process testnet smoke passed: height=3 tip={tips[-1][1]}")
+            print(f"wallet and multi-process testnet smoke passed: height=4 tip={tips[-1][1]}")
         finally:
             for server in servers:
                 if server.poll() is None:
