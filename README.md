@@ -25,34 +25,20 @@ Le compte de trésorerie est actuellement crédité automatiquement mais n’a p
 Un changement de règle d’émission crée un réseau incompatible. Utilise un nouveau dossier `--data-dir` pour cette version de testnet; conserve ou sauvegarde tes anciens snapshots au lieu de les supprimer.
 ## Testnet expérimentale locale
 
-Prérequis : Rust stable, dépendances disponibles via crates.io. Les commandes ci-dessous sont des nœuds autonomes sur la même machine ou des hôtes joignables.
+Le guide [docs/TESTNET_GUIDE.md](docs/TESTNET_GUIDE.md) explique comment compiler le nœud sous Linux, macOS ou Windows, synchroniser un pair, lancer un serveur et miner en testnet. Sur Windows, Rust Build Tools doit fournir `link.exe`. Utilise seulement des pairs connus sur localhost ou un réseau privé. Arrête `serve` avant d’exécuter `mine` ou `sync` sur le même dossier de données, puis redémarre le serveur pour recharger le snapshot.
+
+Vérification reproductible :
 
 ```bash
-# Afficher les commandes disponibles
-cargo run -p aurora-node -- --help
-
-# Miner 10 blocs, avec une identité de mineur de 32 octets écrite en hexadécimal
-cargo run -p aurora-node -- testnet mine --data-dir ./aurora-node-a --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10 --peer 127.0.0.1:18444
-
-# Servir la chaîne locale sur TCP
-cargo run -p aurora-node -- testnet serve --data-dir ./aurora-node-a --listen 0.0.0.0:18444
-
-# Synchroniser un second répertoire depuis le pair
-cargo run -p aurora-node -- testnet sync --data-dir ./aurora-node-b --peer 127.0.0.1:18444
-
-# Vérification CI locale (si l’environnement Rust possède l’éditeur de liens requis)
+python3 scripts/testnet_smoke.py
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace --locked
 cargo test --workspace --locked
 ```
 
-Paramètres testnet codés : difficulté initiale 8 bits nuls en tête, cible 60 secondes, ajustement tous les 10 blocs par pas entiers bornés, min 4/max 20 bits; la trésorerie a l’identifiant fixe de test `[0xA0; 32]`. Le minage examine les nonces de manière déterministe. `--miner` est un identifiant public fourni par l’utilisateur, pas une clé privée.
-
-Le protocole TCP est expérimental : empreinte genèse/paramètres, frames de 4 MiB maximum, pages jusqu’à 64 blocs, timeout d’E/S de 10 secondes, inventaire maximal de 100 000 blocs et limites cumulées par session (256 MiB, 16 384 requêtes, 15 minutes). Le serveur accepte jusqu’à huit sessions concurrentes. `serve` répond aux demandes et accepte les blocs envoyés; `sync` peut synchroniser une liste de pairs et, avec `--discover`, explorer un saut de pairs annoncés (32 annonces au plus, 64 pairs contactés au total); `mine --peer` pousse chaque bloc miné aux pairs indiqués. Chaque bloc reçu est validé par le consensus et sauvegardé. `python3 scripts/testnet_smoke.py` construit le nœud, démarre des pairs locaux, pousse trois blocs, redémarre un pair pour charger son snapshot, synchronise un répertoire neuf et compare les sommets; la CI l’exécute. Cette version ne maintient pas de reconnexion ou de propagation automatique en arrière-plan, n’a pas de mempool, et n’inclut pas encore une campagne complète contre des pairs hostiles, du fuzzing ni une revue indépendante. Garder le service sur un réseau de test contrôlé.
-
-Les tests Rust sont exécutés en CI GitHub Actions. Sur l’environnement Windows de développement, la compilation locale peut échouer si `link.exe` (Visual C++ Build Tools) manque; cela ne remplace pas la CI.
+Le smoke test démarre des processus séparés, vérifie l’émission exacte des trois premiers blocs, la répartition 95/5, la propagation push, le rechargement d’un snapshot et le téléchargement pull vers un nouveau dossier. GitHub Actions exécute ces vérifications. Le service TCP reste expérimental, sans reconnexion continue, annonces spontanées multi-sauts ni mempool; garde-le sur un réseau contrôlé.
 
 ## Limites avant de parler d’une blockchain terminée
 
-Il reste notamment : synchronisation et propagation multi-pairs robustes, découverte/reconnexion, messages malveillants et tests DoS, simulation indépendante des retargets et horodatages, tests de crash/coupure disque et migrations de stockage, fuzzing, tests multi-nœuds reproductibles et revue de sécurité indépendante. L’interface portefeuille, l’explorateur Web et le site de présentation sont volontairement hors de cette étape.
+Il reste des tests prolongés de pairs hostiles, reconnexion automatique, fuzzing, retarget indépendant, arrêts brutaux et revue de sécurité indépendante. La trésorerie créditée n’a pas encore de gouvernance ou de règles de dépense; gardiens/time-locks et recyclage des soldes inactifs sont des changements de propriété à spécifier séparément. Le portefeuille, l’explorateur et le site viennent après l’évaluation du réseau et la stabilisation du consensus; la vente ou cotation vient plus tard, après sécurité et gouvernance.
