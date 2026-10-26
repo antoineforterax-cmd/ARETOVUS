@@ -66,6 +66,9 @@ fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn
     {
         return Err("stored chain uses different testnet consensus parameters".into());
     }
+    for block in chain.all_blocks_by_height() {
+        p2p::reject_future_block_timestamp(block.header.timestamp)?;
+    }
     Ok(chain)
 }
 
@@ -236,6 +239,7 @@ fn mine_one(
     let timestamp = timestamp
         .max(chain.median_time_past().saturating_add(1))
         .max(chain.tip_timestamp().saturating_add(1));
+    p2p::reject_future_block_timestamp(timestamp)?;
     let difficulty = chain.next_difficulty_bits(timestamp)?;
     let mut block = AccountBlock::build_with_miner(
         NetworkId::Testnet,
