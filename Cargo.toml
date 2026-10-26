@@ -20,6 +20,7 @@ ed25519-dalek = { version = "2.1", default-features = false, features = ["std"] 
 ml-dsa = "=0.1.1"
 getrandom = "=0.2.17"
 aurora-core = { path = "crates/aurora-core" }
+aurora-consensus = { path = "crates/aurora-consensus" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
