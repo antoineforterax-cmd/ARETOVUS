@@ -1657,10 +1657,8 @@ mod tests {
 
     #[test]
     fn future_block_in_sync_page_is_rejected_before_persistence() {
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-future-page-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-future-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
@@ -1693,7 +1691,9 @@ mod tests {
         let original_tip = client.tip_hash();
         assert!(matches!(
             sync_from_peer(address, &mut client, &dir),
-            Err(P2pError::Protocol("block timestamp exceeds local future allowance"))
+            Err(P2pError::Protocol(
+                "block timestamp exceeds local future allowance"
+            ))
         ));
         assert_eq!(client.tip_hash(), original_tip);
         assert_eq!(client.height(), 0);
