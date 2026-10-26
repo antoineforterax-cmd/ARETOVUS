@@ -23,7 +23,6 @@ struct HeaderNode {
 #[derive(Clone, Debug)]
 pub struct LightHeaderChain {
     network: NetworkId,
-    initial_difficulty_bits: u16,
     difficulty_params: DifficultyParams,
     nodes: BTreeMap<Hash256, HeaderNode>,
     headers: BTreeMap<Hash256, BlockHeader>,
@@ -93,7 +92,6 @@ impl LightHeaderChain {
         headers.insert(expected_genesis_hash, genesis);
         Ok(Self {
             network,
-            initial_difficulty_bits,
             difficulty_params,
             nodes,
             headers,
