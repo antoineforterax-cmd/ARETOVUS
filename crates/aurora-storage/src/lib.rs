@@ -26,7 +26,7 @@ use aurora_core::{
 };
 
 const MAGIC: &[u8; 8] = b"AURORSNP";
-const FORMAT_VERSION: u32 = 3;
+const FORMAT_VERSION: u32 = 4;
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_BLOCKS: usize = 100_000;
