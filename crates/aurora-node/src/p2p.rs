@@ -7,7 +7,7 @@ use std::{
     path::Path,
     sync::{Arc, Mutex},
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 pub use aurora_consensus::testnet::protocol_fingerprint;
@@ -36,6 +36,8 @@ const MAX_SESSION_BYTES: usize = 256 * 1024 * 1024;
 const MAX_SESSION_REQUESTS: usize = 16_384;
 const MAX_SESSION_DURATION: Duration = Duration::from_secs(15 * 60);
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
+/// Local admission window. Future blocks are retried after wall time catches up.
+pub const MAX_FUTURE_BLOCK_SECS: u64 = 2 * 60 * 60;
 const PEER_RETRY_ATTEMPTS: usize = 3;
 const PEER_RETRY_BASE_DELAY: Duration = Duration::from_millis(100);
 const PEER_POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -102,6 +104,23 @@ impl From<aurora_storage::StorageError> for P2pError {
     fn from(e: aurora_storage::StorageError) -> Self {
         Self::Storage(e)
     }
+}
+
+fn check_block_timestamp_at(timestamp: u64, now: u64) -> Result<(), P2pError> {
+    if timestamp > now.saturating_add(MAX_FUTURE_BLOCK_SECS) {
+        return Err(P2pError::Protocol("block timestamp exceeds local future allowance"));
+    }
+    Ok(())
+}
+
+/// Reject a testnet block whose claimed time is too far ahead of this node's clock.
+/// This is a time-dependent network admission rule; persisted replay remains deterministic.
+pub fn reject_future_block_timestamp(timestamp: u64) -> Result<(), P2pError> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| P2pError::Protocol("local clock is before UNIX epoch"))?
+        .as_secs();
+    check_block_timestamp_at(timestamp, now)
 }
 
 fn set_timeouts(stream: &TcpStream) -> io::Result<()> {
@@ -718,6 +737,7 @@ fn handle_peer_shared(
                 }
                 let block = AccountBlock::from_canonical_bytes(&request[1..])
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
+                reject_future_block_timestamp(block.header.timestamp)?;
                 let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                 let mut candidate = chain.clone();
                 match candidate.submit(block) {
@@ -1061,6 +1081,7 @@ fn sync_from_peer_inner(
         let mut candidate = chain.clone();
         let mut page_accepted = 0usize;
         for block in blocks {
+            reject_future_block_timestamp(block.header.timestamp)?;
             match candidate.submit(block) {
                 Ok(_) => page_accepted += 1,
                 Err(AccountForkChainError::DuplicateBlock) => {}
@@ -1200,6 +1221,17 @@ mod tests {
     use aurora_consensus::{difficulty::DifficultyParams, reward::RewardParams};
     use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
     use std::{fs, net::Ipv4Addr, sync::mpsc, thread};
+
+    #[test]
+    fn future_block_admission_has_exact_boundary_and_handles_overflow() {
+        let now = 1_700_000_000;
+        assert!(check_block_timestamp_at(now + MAX_FUTURE_BLOCK_SECS, now).is_ok());
+        assert!(matches!(
+            check_block_timestamp_at(now + MAX_FUTURE_BLOCK_SECS + 1, now),
+            Err(P2pError::Protocol("block timestamp exceeds local future allowance"))
+        ));
+        assert!(check_block_timestamp_at(u64::MAX, u64::MAX).is_ok());
+    }
 
     fn chain() -> AccountForkChain {
         let genesis = AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, vec![]).unwrap();
