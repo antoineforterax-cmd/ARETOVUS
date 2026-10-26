@@ -69,6 +69,43 @@ fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn
     Ok(chain)
 }
 
+fn run_testnet_verify(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
+    let mut args = args;
+    let mut data_dir: Option<PathBuf> = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--data-dir" => {
+                data_dir = Some(args.next().ok_or("--data-dir requires a path")?.into())
+            }
+            _ => return Err(format!("unknown testnet verify option: {arg}").into()),
+        }
+    }
+    let dir = data_dir.ok_or("testnet verify requires --data-dir PATH")?;
+    let chain = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))?;
+    let expected_genesis = testnet_genesis_block().header.hash()?;
+    let stored_genesis = chain
+        .blocks()
+        .next()
+        .ok_or("stored chain has no genesis")?
+        .header
+        .hash()?;
+    if stored_genesis != expected_genesis
+        || chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
+        || chain.difficulty_params() != TESTNET_DIFFICULTY
+        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
+    {
+        return Err("stored chain uses different testnet consensus parameters".into());
+    }
+    println!(
+        "verified testnet data: height={} tip={} known_blocks={} work={:?}",
+        chain.height(),
+        chain.tip_hash(),
+        chain.known_block_count(),
+        chain.chain_work()
+    );
+    Ok(())
+}
+
 fn run_testnet_peer(
     args: impl Iterator<Item = String>,
     server: bool,
@@ -297,10 +334,11 @@ fn run() -> Result<(), Box<dyn Error>> {
             Some("mine") => run_testnet_miner(args),
             Some("serve") => run_testnet_peer(args, true),
             Some("sync") => run_testnet_peer(args, false),
-            _ => Err("Usage: aurora-node testnet mine|serve|sync ...".into()),
+            Some("verify") => run_testnet_verify(args),
+            _ => Err("Usage: aurora-node testnet mine|serve|sync|verify ...".into()),
         }?,
         Some("--help") | Some("-h") => {
-            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]");
+            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]\n  aurora-node testnet verify --data-dir PATH");
             println!("Experimental testnet: bounded TCP push/pull and opt-in one-hop peer discovery; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
         }
         _ => return Err("Run aurora-node --help for available commands".into()),
@@ -348,6 +386,21 @@ mod tests {
         let restored = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet)).unwrap();
         assert_eq!(restored.tip_hash(), expected_tip);
         assert_eq!(restored.state(), &expected_state);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn testnet_verify_rejects_missing_data_and_accepts_saved_chain() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-node-verify-{}-{}",
+            process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let args = || ["--data-dir".to_string(), dir.display().to_string()].into_iter();
+        assert!(run_testnet_verify(args()).is_err());
+        let chain = testnet_chain().unwrap();
+        save_snapshot(&dir, &chain).unwrap();
+        assert!(run_testnet_verify(args()).is_ok());
         fs::remove_dir_all(dir).unwrap();
     }
 
