@@ -41,7 +41,7 @@ CANDIDATES = {
         Tier(175_000_000, 10),
         Tier(CAP_AUR, 1),
     ],
-    "fast_start_500": [
+    "historical_fast_start_500": [
         Tier(5_000_000, 500),
         Tier(25_000_000, 100),
         Tier(75_000_000, 60),
