@@ -586,8 +586,8 @@ fn handle_peer_shared(
                 add_session_bytes(&mut session_bytes, reply.len() + 4)?;
             }
             Some(&GET_MEMPOOL) if request.len() == 5 => {
-                let offset = u32::from_be_bytes(request[1..5].try_into().expect("fixed offset"))
-                    as usize;
+                let offset =
+                    u32::from_be_bytes(request[1..5].try_into().expect("fixed offset")) as usize;
                 if offset > MAX_MEMPOOL_TXS {
                     return Err(P2pError::Protocol("mempool offset exceeds limit"));
                 }
@@ -1145,7 +1145,8 @@ pub fn fetch_mempool(
             let length_bytes = frame
                 .get(cursor..length_end)
                 .ok_or(P2pError::Protocol("truncated mempool transaction length"))?;
-            let length = u32::from_be_bytes(length_bytes.try_into().expect("fixed length")) as usize;
+            let length =
+                u32::from_be_bytes(length_bytes.try_into().expect("fixed length")) as usize;
             cursor = length_end;
             let end = cursor
                 .checked_add(length)
