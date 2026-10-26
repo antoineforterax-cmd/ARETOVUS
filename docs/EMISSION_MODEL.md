@@ -20,7 +20,7 @@ issuance  = min(remaining, max(1, floor(remaining / 1_000_000)))
 
 Le taux théorique est un millionième de l’offre restante par bloc (0,0001 %), calculé uniquement avec des entiers. L’arrondi inférieur donne une baisse graduelle sans paliers ni halvings. Le plancher d’une unité (0,00000001 AUR) permet au calendrier d’atteindre exactement le plafond; l’émission du dernier bloc est toujours tronquée au reliquat. Le premier bloc émet 500 AUR. Chaque branche calcule son émission à partir de l’offre de son propre parent, y compris pendant une réorganisation.
 
-À titre indicatif, avec la cible testnet actuelle de 60 secondes, la formule diminue jusqu’au plancher d’une unité après environ 24,6 millions de blocs; le reliquat sous 0,01 AUR demande ensuite au plus un million de blocs. Cela correspond à plusieurs décennies à la cadence cible, mais ce n’est pas une prévision de temps réel : les horodatages, forks, blocs orphelins et cadence réelle changent la durée écoulée.
+À titre indicatif, avec la cible testnet actuelle de 60 secondes, la formule diminue jusqu’au plancher d’une unité après environ 25,2 millions de blocs; le reliquat sous 0,01 AUR demande ensuite au plus un million de blocs. Cela correspond à plusieurs décennies à la cadence cible, mais ce n’est pas une prévision de temps réel : les horodatages, forks, blocs orphelins et cadence réelle changent la durée écoulée.
 
 ## Trésorerie et frais
 
