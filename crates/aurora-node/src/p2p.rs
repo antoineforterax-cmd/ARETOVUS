@@ -1252,6 +1252,34 @@ mod tests {
     }
 
     #[test]
+    fn partial_frame_from_slow_peer_obeys_read_timeout() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_millis(200)))
+                .unwrap();
+            let started = Instant::now();
+            let result = read_frame(&mut stream);
+            (result, started.elapsed())
+        });
+
+        let mut client = TcpStream::connect(address).unwrap();
+        client.write_all(&[0, 0]).unwrap();
+        let (result, elapsed) = server.join().unwrap();
+        assert!(matches!(
+            result,
+            Err(P2pError::Io(ref error))
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+                )
+        ));
+        assert!(elapsed < Duration::from_secs(2));
+    }
+
+    #[test]
     fn deterministic_decoder_fuzz_smoke_rejects_arbitrary_bytes_without_panicking() {
         use aurora_consensus::experimental::BlockHeader;
 
