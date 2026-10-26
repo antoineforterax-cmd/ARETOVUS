@@ -76,9 +76,10 @@ def main() -> int:
             if mined_tip is None:
                 raise AssertionError(f"miner did not report the expected three-block tip:\\n{mined}")
 
-            # Stop B, then restart A's server after mining so it serves its persisted height-3 chain.
-            servers[1].terminate()
-            servers[1].wait(timeout=5)
+            # Restart A after mining so its server loads the persisted height-3 chain.
+            for server in servers[:2]:
+                server.terminate()
+                server.wait(timeout=5)
             addr_a = ("127.0.0.1", 28441)
             stream = logs[0].open("a", encoding="utf-8")
             server_a = subprocess.Popen(
@@ -113,7 +114,8 @@ def main() -> int:
             print(f"multi-process testnet smoke passed: height=3 tip={tips[-1][1]}")
         finally:
             for server in servers:
-                server.terminate()
+                if server.poll() is None:
+                    server.terminate()
             for server in servers:
                 try:
                     server.wait(timeout=5)
