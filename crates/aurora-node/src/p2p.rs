@@ -1135,7 +1135,9 @@ mod tests {
         );
         let current = shared.lock().unwrap();
         assert_eq!(current.known_block_count(), 3);
-        let restored = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restored =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+                .unwrap();
         assert_eq!(restored.known_block_count(), 3);
         assert_eq!(restored.tip_hash(), current.tip_hash());
         drop(current);
