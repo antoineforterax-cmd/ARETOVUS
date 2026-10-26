@@ -2,14 +2,21 @@
 
 Cette procédure utilise des pairs connus sur la même machine ou un réseau privé. La testnet est expérimentale, sans audit ni garantie de résistance aux attaques; n’ouvre pas le port à Internet et n’utilise pas de fonds réels.
 
+## Télécharger les binaires testnet
+
+Les archives **expérimentales et non signées** sont créées par la [CI `testnet-packages`](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml) pour Windows, Linux et macOS. Le dépôt étant privé, il faut y avoir accès sur GitHub. Ouvre une exécution verte, puis télécharge l’artefact correspondant à ton système dans **Artifacts**. GitHub fournit d’abord une archive ZIP contenant `aurora-testnet-...zip` : extrais les deux niveaux. Dans la seconde archive se trouvent `bin/aurora-node` (ou `.exe`), `bin/aurora-wallet`, le guide et `SHA256SUMS.txt`. Compare les sommes SHA-256 avant utilisation. Les artefacts CI expirent après 14 jours; ils ne constituent pas encore une publication GitHub Release ni un installateur.
+
+Ces binaires évitent de compiler Rust localement. Sur Linux ou macOS, rends le binaire exécutable si l’extraction a perdu cette permission (`chmod +x bin/aurora-node bin/aurora-wallet`). Sous Windows, `link.exe` est requis pour **compiler** depuis les sources, pas pour lancer le binaire fourni.
+
+Le logiciel ne contient pas une copie figée de la blockchain. Chaque nœud conserve son propre dossier `--data-dir` et récupère puis valide les blocs depuis une adresse de pair `--peer` configurée. Pour l’instant il n’existe pas de pair public officiel; utilise une testnet locale ou des machines d’un même réseau privé selon les exemples ci-dessous.
+
 ## Prérequis
 
-- Rust stable et Cargo, avec accès aux dépendances.
-- Sous Windows, Visual C++ Build Tools avec l’éditeur de liens `link.exe`.
+- Pour compiler les sources : Rust stable et Cargo, avec accès aux dépendances. Sous Windows, Visual C++ Build Tools fournit l’éditeur de liens `link.exe`. Les archives CI ci-dessus n’exigent pas ces outils.
 - Pour le profil testnet natif ML-DSA-65 v3 et l’émission lissée, choisis un nouveau dossier de données. Les anciens réseaux de consensus sont incompatibles; conserve une copie de leurs données. Les snapshots v4 du **même** profil peuvent être relus puis enregistrés en v5.
 - Le mineur passé à `--miner` est un identifiant public de 32 octets en hexadécimal, pas une clé privée.
 
-Construis le nœud :
+Si tu utilises le code source, construis le nœud :
 
 ```sh
 cargo build --locked -p aurora-node
