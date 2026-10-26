@@ -763,6 +763,63 @@ pub fn sync_from_peer(
     Ok(accepted)
 }
 
+/// Fetch one bounded batch of pending transactions from a compatible testnet peer.
+pub fn fetch_mempool(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+) -> Result<Vec<AccountTransaction>, P2pError> {
+    let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
+    set_timeouts(&stream)?;
+    let mut session_bytes = 77usize;
+    let mut session_requests = 0usize;
+    send_hello(&mut stream, chain)?;
+    let hello = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, hello.len() + 4)?;
+    if hello.first() == Some(&ERROR_REPLY) {
+        return Err(P2pError::Protocol("peer rejected network identity"));
+    }
+    check_hello(&hello, chain)?;
+    add_session_request(&mut session_requests)?;
+    add_session_bytes(&mut session_bytes, 5)?;
+    write_frame(&mut stream, &[GET_MEMPOOL])?;
+    let frame = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, frame.len() + 4)?;
+    if frame.len() < 3 || frame[0] != MEMPOOL_REPLY {
+        return Err(P2pError::Protocol("invalid mempool page"));
+    }
+    let count = u16::from_be_bytes(frame[1..3].try_into().expect("fixed count")) as usize;
+    if count > MAX_MEMPOOL_PAGE_TXS {
+        return Err(P2pError::Protocol("mempool page exceeds transaction limit"));
+    }
+    let mut cursor = 3usize;
+    let mut transactions = Vec::with_capacity(count);
+    for _ in 0..count {
+        let length_end = cursor
+            .checked_add(4)
+            .ok_or(P2pError::Protocol("mempool length overflow"))?;
+        let length_bytes = frame
+            .get(cursor..length_end)
+            .ok_or(P2pError::Protocol("truncated mempool transaction length"))?;
+        let length = u32::from_be_bytes(length_bytes.try_into().expect("fixed length")) as usize;
+        cursor = length_end;
+        let end = cursor
+            .checked_add(length)
+            .ok_or(P2pError::Protocol("mempool length overflow"))?;
+        let encoded = frame
+            .get(cursor..end)
+            .ok_or(P2pError::Protocol("truncated mempool transaction"))?;
+        transactions.push(
+            AccountTransaction::from_canonical_bytes(encoded)
+                .map_err(|_| P2pError::Protocol("invalid canonical mempool transaction"))?,
+        );
+        cursor = end;
+    }
+    if cursor != frame.len() {
+        return Err(P2pError::Protocol("trailing mempool page data"));
+    }
+    Ok(transactions)
+}
+
 /// Request one bounded list of bootstrap peers from a fingerprint-compatible peer.
 pub fn discover_peers(
     address: SocketAddr,
