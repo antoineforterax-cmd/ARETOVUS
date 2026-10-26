@@ -163,21 +163,20 @@ impl LightHeaderChain {
         if work < current_work || (work == current_work && hash >= current_tip) {
             return Ok(false);
         }
-        let mut path = Vec::with_capacity(height as usize + 1);
+        let mut path = Vec::new();
         let mut cursor = hash;
-        loop {
+        while !self.is_canonical(cursor) {
             path.push(cursor);
-            let node = self
+            cursor = self
                 .nodes
                 .get(&cursor)
-                .expect("inserted header path is complete");
-            if node.height == 0 {
-                break;
-            }
-            cursor = node.parent;
+                .expect("inserted header path is complete")
+                .parent;
         }
+        let fork_height = self.nodes[&cursor].height as usize;
+        self.canonical.truncate(fork_height + 1);
         path.reverse();
-        self.canonical = path;
+        self.canonical.extend(path);
         Ok(true)
     }
 
@@ -334,13 +333,16 @@ mod tests {
         )
         .unwrap()
         .header;
-        wrong_bits.nonce = (0..u64::MAX)
-            .find(|nonce| {
-                wrong_bits.nonce = *nonce;
-                check_proof(&wrong_bits, TESTNET_INITIAL_BITS).unwrap()
-                    && !check_proof(&wrong_bits, TESTNET_INITIAL_BITS + 2).unwrap()
-            })
-            .unwrap();
+        let mut nonce = 0;
+        loop {
+            wrong_bits.nonce = nonce;
+            if check_proof(&wrong_bits, TESTNET_INITIAL_BITS).unwrap()
+                && !check_proof(&wrong_bits, TESTNET_INITIAL_BITS + 2).unwrap()
+            {
+                break;
+            }
+            nonce += 1;
+        }
         assert_eq!(
             chain.submit(wrong_bits),
             Err(HeaderChainError::InsufficientWork)
