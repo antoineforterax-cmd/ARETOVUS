@@ -7,9 +7,8 @@
 use ed25519_dalek::{Signature, VerifyingKey as VerifyingKeyEd25519};
 
 use crate::accounts::{
-    AccountTransaction, HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES,
-    ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
-    POST_QUANTUM_AUTH_BYTES,
+    AccountTransaction, HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES, ML_DSA_65_PUBLIC_KEY_BYTES,
+    ML_DSA_65_SIGNATURE_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
 };
 use crate::hash::{tagged_hash, Domain};
 
@@ -59,9 +58,7 @@ pub fn post_quantum_account_id(ml_dsa_65_public_key: &[u8]) -> crate::accounts::
     )
 }
 
-fn verify_post_quantum_account_transaction(
-    tx: &AccountTransaction,
-) -> Result<(), SignatureError> {
+fn verify_post_quantum_account_transaction(tx: &AccountTransaction) -> Result<(), SignatureError> {
     use ml_dsa::{MlDsa65, Signature as MlDsaSignature, Verifier, VerifyingKey};
 
     if tx.auth_data.len() != POST_QUANTUM_AUTH_BYTES {
@@ -192,9 +189,7 @@ mod tests {
 
     #[test]
     fn native_post_quantum_v3_uses_only_ml_dsa_65() {
-        use crate::accounts::{
-            POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
-        };
+        use crate::accounts::{POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES};
         use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
 
         let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
