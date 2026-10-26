@@ -23,7 +23,7 @@ impl WalletKey {
     /// Generate a fresh seed using the operating system CSPRNG.
     pub fn generate() -> Result<Self, Box<dyn Error>> {
         let mut seed = [0u8; 32];
-        getrandom::getrandom(&mut seed)?;
+        getrandom::getrandom(&mut seed).map_err(|error| format!("OS CSPRNG failed: {error}"))?;
         Ok(Self::from_seed(seed))
     }
 
