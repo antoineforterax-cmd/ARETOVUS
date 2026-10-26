@@ -3,7 +3,7 @@ use std::fmt;
 
 use aurora_core::{
     accounts::AccountId,
-    amount::{Amount, AmountError, MAX_UNITS, UNITS_PER_COIN},
+    amount::{Amount, AmountError, MAX_UNITS},
     state::{AccountLedger, StateError},
 };
 
@@ -112,7 +112,7 @@ pub fn apply_block_reward(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::network::NetworkId;
+    use aurora_core::{amount::UNITS_PER_COIN, network::NetworkId};
 
     #[test]
     fn proportional_emission_starts_at_500_and_slows_with_remaining_supply() {
