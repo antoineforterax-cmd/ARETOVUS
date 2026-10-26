@@ -123,7 +123,55 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
     return {"name": name, "issued": issued, "blocks": blocks, "years": years_for_blocks(blocks)}
 
 
+
+def simulate_proportional_remaining() -> dict[str, int | float | str]:
+    """Simulate the current integer consensus rule at the 60-second testnet target."""
+    denominator = 1_000_000
+    target_seconds = 60
+    issued = 0
+    blocks = 0
+    treasury = 0
+    miner_issuance = 0
+    milestones = [CAP // 2, CAP * 9 // 10, CAP - 1_000_000]
+    reached: list[tuple[int, int]] = []
+    first_reward = 0
+
+    while issued < CAP:
+        remaining = CAP - issued
+        reward = min(remaining, max(1, remaining // denominator))
+        if blocks == 0:
+            first_reward = reward
+        treasury_part = reward // 20
+        issued += reward
+        treasury += treasury_part
+        miner_issuance += reward - treasury_part
+        blocks += 1
+        while milestones and issued >= milestones[0]:
+            reached.append((milestones.pop(0), blocks))
+
+    years = blocks * target_seconds / SECONDS_PER_YEAR
+    print("\\n## Current consensus: proportional remaining supply")
+    print(f"first block reward: {first_reward / DECIMALS:.8f} AUR")
+    for supply, milestone_blocks in reached:
+        print(
+            f"reached {supply / DECIMALS:.8f} issued AUR after "
+            f"{milestone_blocks:,} blocks ({years_for_blocks(milestone_blocks) if False else milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
+        )
+    print(
+        f"cap: {issued / DECIMALS:.8f} AUR after {blocks:,} blocks "
+        f"({years:.2f} years at 60 seconds/block)"
+    )
+    print(
+        f"treasury={treasury / DECIMALS:.8f} AUR; "
+        f"miner issuance={miner_issuance / DECIMALS:.8f} AUR"
+    )
+    assert issued == CAP
+    assert treasury + miner_issuance == CAP
+    return {"name": "proportional-remaining", "issued": issued, "blocks": blocks, "years": years}
+
+
 def main() -> None:
+    current = simulate_proportional_remaining()
     results = [simulate(name, tiers) for name, tiers in CANDIDATES.items()]
     print("\n## Comparison")
     for result in results:
