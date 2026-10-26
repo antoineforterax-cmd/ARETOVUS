@@ -6,7 +6,7 @@
 
 - Encodage canonique des transactions/blocs, signatures Ed25519 vérifiées, nonce, solde et lot atomique.
 - État par branche, validation de blocs, horodatage médian, retarget déterministe borné, travail cumulé u320 et réorganisation selon le travail.
-- Émission `fast_start_500`, partage trésorerie/mineur et frais, plafond strict; identité mineur engagée et récompenses réorganisées avec l’état.
+- Émission lissée `proportional-remaining-1e6-v1`, plafond brut strict de 500 M AUR, genèse sans préminage, répartition trésorerie 5 % / mineur 95 % et frais 50 % mineur / 50 % brûlés; réorganisations recalculent l’état.
 - Snapshot `AURORSNP` v3 avec toutes les branches et paramètres de difficulté/récompense; checksum, rejeu/revalidation et choix du dernier snapshot par travail cumulé (même si la chaîne gagnante est plus courte).
 - Commande de minage testnet avec identité publique en argument, sauvegarde à chaque bloc et test de reprise après rechargement.
 - TCP expérimental push/pull vers pairs statiques : sync paginée, réception et sauvegarde de blocs, propagation explicite par `mine --peer`, handshake d’empreinte consensus, découverte opt-in d’un saut, huit sessions concurrentes et quotas cumulés par session.
@@ -23,6 +23,14 @@
 5. **Testnet reproductible** : le smoke test à deux processus est en CI; ajouter scénarios multi-hôtes prolongés, synchronisation après redémarrage, forks concurrents et réorganisations observées entre processus.
 6. **Robustesse** : fuzzing du décodage et de l’application de blocs, analyse de dépendances, revue humaine du code et revue indépendante du protocole.
 
-## Étape suivante
+## Après l’évaluation testnet
 
-La CI doit maintenant valider le transport TCP et son smoke test multi-processus; poursuivre les scénarios de coupure, redémarrage, réorganisation et messages hostiles. Le réseau fourni fonctionne pour une testnet expérimentale à pairs connus, sans promesse de disponibilité continue. La revue indépendante reste nécessaire avant toute finalisation publique ou tout usage avec valeur.
+Le réseau expérimental fonctionne pour une testnet supervisée à pairs connus; les scénarios prolongés, le retarget indépendant, le fuzzing, les coupures disque et une revue indépendante restent avant tout usage public.
+
+Ordre recommandé après ce jalon :
+1. Évaluer le testnet à plusieurs nœuds et régler les erreurs de disponibilité, convergence, difficulté et restauration.
+2. Simuler l’émission proportionnelle sur la durée et faire relire indépendamment la formule et ses incitations. La CI teste l’arithmétique, pas sa valeur économique.
+3. Définir comment la trésorerie `[0xA0; 32]` peut dépenser : le compte actuel n’est pas un smart contract et ne porte pas de gouvernance ou de politique d’audit.
+4. Concevoir les gardiens/time-locks avec les formats de clés et le portefeuille, puis tester récupération, révocation, délais et attaques de gardiens avant de les ajouter au consensus.
+5. Traiter le recyclage des comptes inactifs comme une décision de propriété distincte : aucune saisie automatique n’est codée, et son seuil, les preuves d’inactivité, l’appel et les recours doivent être spécifiés avant prototypage.
+6. Après stabilisation et revue indépendante du protocole, commencer le portefeuille, l’explorateur et le site explicatif. La vente ou la cotation vient bien plus tard, après sécurité, conformité et gouvernance du projet.
