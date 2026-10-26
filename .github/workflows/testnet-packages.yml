@@ -1,0 +1,46 @@
+name: testnet-packages
+
+on:
+  pull_request:
+    paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/**"
+      - "scripts/package_testnet.py"
+      - ".github/workflows/testnet-packages.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: testnet-packages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust stable
+        run: rustup toolchain install stable --profile minimal
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Construire les binaires du testnet
+        run: cargo build --workspace --release --locked
+      - name: Créer l’archive et vérifier ses sommes de contrôle
+        run: python scripts/package_testnet.py
+      - name: Publier l’archive comme artefact CI privé
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-testnet-${{ matrix.os }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
