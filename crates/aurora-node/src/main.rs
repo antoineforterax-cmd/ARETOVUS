@@ -4,7 +4,7 @@ use std::{
     error::Error,
     fs,
     net::SocketAddr,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -69,6 +69,25 @@ fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn
     Ok(chain)
 }
 
+// Keep this file handle alive for the entire command. The OS releases the lock
+// after a normal exit or a crash; a stale lock file needs no manual cleanup.
+fn lock_data_dir(dir: &Path) -> Result<fs::File, Box<dyn Error>> {
+    fs::create_dir_all(dir)?;
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(dir.join(".aurora.lock"))?;
+    lock.try_lock().map_err(|error| {
+        format!(
+            "data directory {} is already in use or cannot be locked: {error}",
+            dir.display()
+        )
+    })?;
+    Ok(lock)
+}
+
 fn run_testnet_verify(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
     let mut args = args;
     let mut data_dir: Option<PathBuf> = None;
@@ -129,6 +148,7 @@ fn run_testnet_peer(
         }
     }
     let dir = data_dir.ok_or("testnet peer command requires --data-dir PATH")?;
+    let _data_dir_lock = lock_data_dir(&dir)?;
     if server {
         let listen = listen.ok_or("testnet serve requires --listen IP:PORT")?;
         if peers.len() > 32 {
@@ -264,6 +284,7 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
     }
     let miner = miner.ok_or("testnet mine requires --miner <64 hex characters>")?;
     let dir = data_dir.ok_or("testnet mine requires --data-dir <path>")?;
+    let _data_dir_lock = lock_data_dir(&dir)?;
     let mut chain = load_testnet_chain(&dir)?;
     for peer in &peers {
         sync_from_peer_with_retry(*peer, &mut chain, &dir)?;
