@@ -11,6 +11,7 @@ use aurora_core::hash::Hash256;
 use aurora_wallet::{
     account_id_hex, build_signed_transaction, parse_account_id, parse_amount, rpc, WalletKey,
 };
+use zeroize::Zeroize;
 
 fn option<'a>(args: &'a [String], name: &str) -> Result<&'a str, Box<dyn Error>> {
     args.windows(2)
@@ -28,6 +29,23 @@ fn txid(value: &str) -> Result<Hash256, Box<dyn Error>> {
     Ok(Hash256::from_bytes(account.0))
 }
 
+fn flag(args: &[String], name: &str) -> bool {
+    args.iter().any(|arg| arg == name)
+}
+
+fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
+    let path = Path::new(option(args, "--key-file")?);
+    if WalletKey::file_is_encrypted(path)? {
+        let mut password = rpassword::prompt_password("Wallet password: ")?;
+        let result = WalletKey::load_encrypted_testnet_file(path, &password);
+        password.zeroize();
+        result
+    } else {
+        eprintln!("WARNING: reading unencrypted testnet key file");
+        WalletKey::load_plain_testnet_file(path)
+    }
+}
+
 fn run() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
     let command = args.next().ok_or("Use aurora-wallet --help")?;
@@ -37,20 +55,32 @@ fn run() -> Result<(), Box<dyn Error>> {
         "keygen" => {
             let path = Path::new(option(&args, "--out")?);
             let key = WalletKey::generate()?;
-            key.save_plain_testnet_file(path)?;
-            println!(
-                "AURORA TESTNET ONLY: key saved unencrypted at {}",
-                path.display()
-            );
+            if flag(&args, "--plain-testnet") {
+                key.save_plain_testnet_file(path)?;
+                println!("AURORA TESTNET ONLY: unencrypted key saved at {}", path.display());
+            } else {
+                let mut password = rpassword::prompt_password("New wallet password (at least 12 characters): ")?;
+                let mut confirmation = rpassword::prompt_password("Confirm wallet password: ")?;
+                if password != confirmation {
+                    password.zeroize();
+                    confirmation.zeroize();
+                    return Err("passwords do not match".into());
+                }
+                confirmation.zeroize();
+                let result = key.save_encrypted_testnet_file(path, &password);
+                password.zeroize();
+                result?;
+                println!("Encrypted testnet key saved at {}", path.display());
+            }
             println!("address={}", account_id_hex(key.account_id()));
-            println!("Keep this file private. It is not encrypted.");
+            println!("Back up the key file and password separately.");
         }
         "address" => {
-            let key = WalletKey::load_plain_testnet_file(Path::new(option(&args, "--key-file")?))?;
+            let key = load_key(&args)?;
             println!("{}", account_id_hex(key.account_id()));
         }
         "balance" => {
-            let key = WalletKey::load_plain_testnet_file(Path::new(option(&args, "--key-file")?))?;
+            let key = load_key(&args)?;
             let account = rpc::get_account(node_address(&args)?, key.account_id())?;
             println!(
                 "address={} confirmed_balance={} next_nonce={}",
@@ -60,7 +90,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             );
         }
         "send" => {
-            let key = WalletKey::load_plain_testnet_file(Path::new(option(&args, "--key-file")?))?;
+            let key = load_key(&args)?;
             let recipient = parse_account_id(option(&args, "--to")?)?;
             let amount = parse_amount(option(&args, "--amount")?)?;
             let fee = parse_amount(option(&args, "--fee")?)?;
@@ -125,8 +155,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
         }
         "--help" | "-h" | "help" => {
-            println!("AURORA ML-DSA-65 testnet wallet (experimental; plain key files)");
-            println!("  aurora-wallet keygen --out FILE");
+            println!("AURORA ML-DSA-65 testnet wallet (experimental)");
+            println!("  aurora-wallet keygen --out FILE [--plain-testnet]");
             println!("  aurora-wallet address --key-file FILE");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT");
