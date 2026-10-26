@@ -23,8 +23,7 @@ pub const ML_DSA_65_SIGNATURE_BYTES: usize = 3_309;
 pub const HYBRID_AUTH_BYTES: usize =
     32 + ML_DSA_65_PUBLIC_KEY_BYTES + 64 + ML_DSA_65_SIGNATURE_BYTES;
 /// Fixed v3 payload: ML-DSA-65 public key followed by its signature.
-pub const POST_QUANTUM_AUTH_BYTES: usize =
-    ML_DSA_65_PUBLIC_KEY_BYTES + ML_DSA_65_SIGNATURE_BYTES;
+pub const POST_QUANTUM_AUTH_BYTES: usize = ML_DSA_65_PUBLIC_KEY_BYTES + ML_DSA_65_SIGNATURE_BYTES;
 pub const MAX_AUTH_BYTES: usize = 8_192;
 
 /// Identifiant de compte brut. Le format d'adresse lisible reste à définir.
@@ -283,7 +282,10 @@ mod tests {
         tx.auth_data = vec![0; POST_QUANTUM_AUTH_BYTES];
         assert_eq!(tx.check_stateless(), Ok(()));
         let encoded = tx.to_canonical_bytes().unwrap();
-        assert_eq!(AccountTransaction::from_canonical_bytes(&encoded).unwrap(), tx);
+        assert_eq!(
+            AccountTransaction::from_canonical_bytes(&encoded).unwrap(),
+            tx
+        );
         tx.auth_data.pop();
         assert_eq!(tx.check_stateless(), Err(AccountTxError::AuthDataTooLarge));
     }
