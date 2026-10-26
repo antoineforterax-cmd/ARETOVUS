@@ -46,6 +46,15 @@ fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
     }
 }
 
+fn copy_encrypted_key(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
+    let mut password = rpassword::prompt_password("Wallet password: ")?;
+    let result = WalletKey::copy_encrypted_testnet_file(source, destination, &password);
+    password.zeroize();
+    let account = result?;
+    println!("encrypted_key={} address={}", destination.display(), account_id_hex(account));
+    Ok(())
+}
+
 fn run() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
     let command = args.next().ok_or("Use aurora-wallet --help")?;
@@ -78,6 +87,16 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             println!("address={}", account_id_hex(key.account_id()));
             println!("Back up the key file and password separately.");
+        }
+        "backup" => {
+            let source = Path::new(option(&args, "--key-file")?);
+            let destination = Path::new(option(&args, "--out")?);
+            copy_encrypted_key(source, destination)?;
+        }
+        "restore" => {
+            let source = Path::new(option(&args, "--from")?);
+            let destination = Path::new(option(&args, "--out")?);
+            copy_encrypted_key(source, destination)?;
         }
         "address" => {
             let key = load_key(&args)?;
@@ -161,6 +180,8 @@ fn run() -> Result<(), Box<dyn Error>> {
         "--help" | "-h" | "help" => {
             println!("AURORA ML-DSA-65 testnet wallet (experimental)");
             println!("  aurora-wallet keygen --out FILE [--plain-testnet]");
+            println!("  aurora-wallet backup --key-file FILE --out BACKUP_FILE");
+            println!("  aurora-wallet restore --from BACKUP_FILE --out NEW_FILE");
             println!("  aurora-wallet address --key-file FILE");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT");
