@@ -711,6 +711,7 @@ mod tests {
                 let (stream, _) = listener.accept().unwrap();
                 let chain = Arc::clone(&server_chain);
                 let data_dir = server_dir.clone();
+                let advertised_peers = advertised_peers.clone();
                 workers.push(thread::spawn(move || {
                     handle_peer_shared(stream, &chain, &data_dir, &advertised_peers)
                 }));
