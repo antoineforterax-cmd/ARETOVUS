@@ -128,7 +128,8 @@ mod tests {
             (CAP_UNITS / 2) / EMISSION_DENOMINATOR
         );
         assert!(
-            scheduled_issuance(half_issued).to_units() < scheduled_issuance(Amount::ZERO).to_units()
+            scheduled_issuance(half_issued).to_units()
+                < scheduled_issuance(Amount::ZERO).to_units()
         );
     }
 
