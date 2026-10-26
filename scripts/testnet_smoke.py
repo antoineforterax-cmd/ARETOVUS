@@ -155,7 +155,7 @@ def main() -> int:
         base = Path(temporary)
         node_a, node_b = base / "node-a", base / "node-b"
         keyfile = base / "miner.aurkey"
-        key_output = run_wallet(wallet, "keygen", "--out", str(keyfile))
+        key_output = run_wallet(wallet, "keygen", "--out", str(keyfile), "--plain-testnet")
         miner_match = re.search(r"address=([0-9a-f]{64})", key_output)
         if miner_match is None:
             raise AssertionError(f"wallet did not print its testnet address:\n{key_output}")
