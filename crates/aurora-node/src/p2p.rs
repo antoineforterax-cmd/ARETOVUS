@@ -108,7 +108,9 @@ impl From<aurora_storage::StorageError> for P2pError {
 
 fn check_block_timestamp_at(timestamp: u64, now: u64) -> Result<(), P2pError> {
     if timestamp > now.saturating_add(MAX_FUTURE_BLOCK_SECS) {
-        return Err(P2pError::Protocol("block timestamp exceeds local future allowance"));
+        return Err(P2pError::Protocol(
+            "block timestamp exceeds local future allowance",
+        ));
     }
     Ok(())
 }
@@ -1228,7 +1230,9 @@ mod tests {
         assert!(check_block_timestamp_at(now + MAX_FUTURE_BLOCK_SECS, now).is_ok());
         assert!(matches!(
             check_block_timestamp_at(now + MAX_FUTURE_BLOCK_SECS + 1, now),
-            Err(P2pError::Protocol("block timestamp exceeds local future allowance"))
+            Err(P2pError::Protocol(
+                "block timestamp exceeds local future allowance"
+            ))
         ));
         assert!(check_block_timestamp_at(u64::MAX, u64::MAX).is_ok());
     }
