@@ -6,7 +6,11 @@ use std::{
     time::Duration,
 };
 
-use aurora_core::{accounts::{AccountId, AccountTransaction}, amount::Amount, hash::Hash256};
+use aurora_core::{
+    accounts::{AccountId, AccountTransaction},
+    amount::Amount,
+    hash::Hash256,
+};
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
