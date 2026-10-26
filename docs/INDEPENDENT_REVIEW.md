@@ -45,6 +45,12 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 - Les tests de snapshot ne simulent pas une panne électrique réelle, le disque plein, ni une restauration interversion.
 - Le SHA-256 utilisé pour les identifiants et le PoW n’est pas une construction résistante aux ordinateurs quantiques.
 
+## Voie pratique sans engager d’audit payant
+
+Le dépôt appartient à un compte personnel GitHub. Selon la [documentation GitHub sur les collaborateurs d’un dépôt personnel](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/inviting-collaborators-to-a-personal-repository), GitHub Free permet d’inviter des collaborateurs dans un dépôt privé. Une personne compétente et extérieure au développement peut donc recevoir l’accès au dépôt, examiner cette PR et remettre ses constats sans qu’une société d’audit soit nécessairement engagée. Cette voie dépend de sa disponibilité et ne garantit ni une revue gratuite ni sa qualité.
+
+Étapes quand le porteur aura choisi cette personne : lui communiquer le périmètre ci-dessus, épingler le commit à examiner, lui donner accès au dépôt privé par les réglages GitHub, puis [demander sa revue de la PR](https://docs.github.com/en/pull-requests/how-tos/create-pull-requests/requesting-a-pull-request-review). Conserver les constats écrits, corriger les défauts et demander la vérification des correctifs. Aucun accès ni demande de revue n’a été accordé à ce jour. Une auto-revue, un second outil automatique ou une autre session d’IA peuvent aider à trouver des défauts, mais ne remplissent pas cette étape humaine indépendante.
+
 ## Résultat de revue
 
 À compléter par la personne indépendante :
