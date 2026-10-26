@@ -96,9 +96,9 @@ Passage normal : PROPOSÉ → (À COMPARER / À SIMULER / À TESTER) → VALIDÉ
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
 | MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
-| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au palier initial, selon l’offre brute avant bloc | Tests de seuil et plafond | 3 | MON-03 | C V1 |
-| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Paliers liés à l’offre : 500/100/60/30/10/1 AUR aux seuils codés dans `EMISSION_MODEL.md` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
-| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)`, reliquat au mineur; émission tronquée au plafond | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
 | MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
 | MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
 | MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
@@ -371,6 +371,7 @@ Risques de la phase 0b : bibliothèque post-quantique non auditée ; benchmark n
 
 | Date | ID | Changement | Par |
 |---|---|---|---|
+| 2026-10-26 | MON-02–MON-04 | À la demande du porteur, implémentation testnet remplacée par une décroissance lissée proportionnelle au reliquat (1/1 000 000 par bloc, arrondi entier, plancher d’une unité); plafond strict, genèse sans préminage, trésorerie 5 %, frais 50/50 conservés. Aucune validation pour le protocole/mainnet | Codex, implémentation de prototype |
 | 2026-10-25 | tous | Version 1.1 : annexe A (justification et preuves requises pour les 88 lignes), annexe B (hypothèses du code), phases 0a/0b avec durées estimées, critères de décision du PoW avant testnet public, matrice d'évaluation des signatures, correction du compte de lignes (88). Aucun statut modifié | Claude (proposition), à valider par le porteur |
 | 2026-10-24 | tous | Création du registre v1.0 d'après le cahier v4.0 ; tous les statuts initiaux sont ceux du cahier ou PROPOSÉ / À COMPARER ; aucune décision validée | Claude (proposition), à valider par le porteur |
 
@@ -412,9 +413,9 @@ Chaque ligne du tableau maître. « Justification » explique pourquoi on part d
 | POW-12 | Mesures pour un réseau naissant (hashrate initial faible) | À SIMULER | Un réseau naissant est vulnérable à une majorité de hashrate | Simulations à 10, 25, 40, 50 % ; hypothèses publiées ; aucune garantie de sécurité réelle |
 | POW-13 | Démarrage du réseau : qui mine au début, nœuds de départ | À COMPARER | Les premiers blocs concentrent la production | Plan de démarrage documenté |
 | MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
-| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au palier initial, selon l’offre brute avant bloc | Tests de seuil et plafond | 3 | MON-03 | C V1 |
-| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Paliers liés à l’offre : 500/100/60/30/10/1 AUR aux seuils codés dans `EMISSION_MODEL.md` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
-| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)`, reliquat au mineur; émission tronquée au plafond | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
 | MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
 | MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
 | MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
