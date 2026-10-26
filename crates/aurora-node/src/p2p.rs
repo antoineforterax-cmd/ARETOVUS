@@ -591,13 +591,11 @@ fn handle_peer_shared(
             }
             Some(&GET_TX_STATUS) if request.len() == 33 => {
                 let txid = Hash256::from_bytes(request[1..33].try_into().expect("fixed hash"));
-                let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                let confirmed = chain.blocks().any(|block| {
-                    block
-                        .transactions
-                        .iter()
-                        .any(|tx| tx.txid().ok() == Some(txid))
-                });
+                let confirmed = chain
+                    .lock()
+                    .map_err(|_| P2pError::ChainLockPoisoned)?
+                    .canonical_transaction(txid)
+                    .is_some();
                 let pending = if confirmed {
                     false
                 } else {
@@ -607,7 +605,6 @@ fn handle_peer_shared(
                         .iter()
                         .any(|tx| tx.txid().ok() == Some(txid))
                 };
-                drop(chain);
                 let reply = vec![
                     TX_STATUS_REPLY,
                     if confirmed {
@@ -659,23 +656,24 @@ fn handle_peer_shared(
             }
             Some(&GET_TX_PROOF) if request.len() == 33 => {
                 let txid = Hash256::from_bytes(request[1..33].try_into().expect("fixed txid"));
-                let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                let mut found = None;
-                for (height, block) in chain.blocks().enumerate() {
+                let confirmed = chain
+                    .lock()
+                    .map_err(|_| P2pError::ChainLockPoisoned)?
+                    .canonical_transaction(txid)
+                    .map(|(height, index, block)| (height, index, block.clone()));
+                let found = if let Some((height, index, block)) = confirmed {
                     let txids = block
                         .transactions
                         .iter()
                         .map(|tx| tx.txid())
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|_| P2pError::Protocol("transaction id encoding failed"))?;
-                    if let Some(index) = txids.iter().position(|candidate| *candidate == txid) {
-                        let proof = merkle_proof(&txids, index)
-                            .map_err(|_| P2pError::Protocol("cannot build transaction proof"))?;
-                        found = Some((height as u64, block.header, proof));
-                        break;
-                    }
-                }
-                drop(chain);
+                    let proof = merkle_proof(&txids, index)
+                        .map_err(|_| P2pError::Protocol("cannot build transaction proof"))?;
+                    Some((height, block.header, proof))
+                } else {
+                    None
+                };
                 let mut reply = vec![TX_PROOF_REPLY];
                 if let Some((height, header, proof)) = found {
                     reply.push(1);
