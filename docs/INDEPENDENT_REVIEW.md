@@ -14,8 +14,8 @@ La revue devrait couvrir le code et le protocole au commit exact enregistré par
 4. Retarget, règles d’horodatage/MTP, travail cumulé, égalités de travail et réorganisations.
 5. Émission, plafond brut, trésorerie 5 %, frais 50/50, burns et état lors d’une réorganisation.
 6. Décodage P2P/RPC, quotas, délais, synchronisation, découverte et gestion de données hostiles.
-7. Snapshots version 4, checksum, rejeu de toutes les branches, reprise et erreurs d’E/S.
-8. Wallet testnet, fichiers de clés en clair, URI et vérification SPV contre éclipses et données de pairs mensongères.
+7. Stockage v5, lecture des snapshots v4, checksums, rejeu de toutes les branches, reprise, verrou exclusif de dossier entre processus et erreurs d’E/S.
+8. Wallet testnet, fichiers de clés AURKEY4 chiffrés par défaut (Argon2id et XChaCha20-Poly1305), sauvegarde/restauration, format clair explicite réservé aux tests, URI et vérification SPV contre éclipses et données de pairs mensongères.
 
 ## Reproduction locale
 
@@ -27,6 +27,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace --locked
 cargo test --workspace --locked
 python3 scripts/testnet_smoke.py
+python3 scripts/testnet_soak.py
 cargo +nightly fuzz run canonical_decode -- -max_total_time=300
 cargo +nightly fuzz run merkle_proofs -- -max_total_time=300
 cargo +nightly fuzz run network_payloads -- -max_total_time=300
@@ -37,8 +38,8 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 ## Limites connues à examiner
 
 - Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels.
-- Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage périodique; propagation de transactions par gossip et découverte multi-sauts ne sont pas fournies.
-- Le portefeuille actuel stocke encore ses clés en clair; ne jamais réutiliser ces fichiers hors testnet.
+- Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage et relais périodique des transactions depuis les pairs configurés; annonce spontanée à des pairs non configurés et découverte multi-sauts ne sont pas fournies.
+- Le portefeuille chiffre ses nouvelles clés par défaut, mais l’ergonomie du mot de passe, la dérivation, la sérialisation du fichier et la sauvegarde/restauration n’ont pas été revues indépendamment. Le format en clair est réservé aux scripts de test; ne jamais utiliser ces clés hors testnet.
 - La preuve SPV dépend des pairs consultés et ne défend pas contre une éclipse.
 - La trésorerie reçoit des unités à une adresse fixe, mais aucune gouvernance ni règle de dépense n’est définie.
 - Les tests de snapshot ne simulent pas une panne électrique réelle, le disque plein, ni une restauration interversion.
