@@ -1252,6 +1252,32 @@ mod tests {
     }
 
     #[test]
+    fn deterministic_decoder_fuzz_smoke_rejects_arbitrary_bytes_without_panicking() {
+        use aurora_consensus::experimental::BlockHeader;
+
+        let mut state = 0xA0_52_4F_52_41u64;
+        for case in 0..1024usize {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let length = (state as usize ^ case) % 4097;
+            let mut bytes = Vec::with_capacity(length);
+            for _ in 0..length {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                bytes.push(state as u8);
+            }
+
+            let _ = AccountBlock::from_canonical_bytes(&bytes);
+            let _ = AccountTransaction::from_canonical_bytes(&bytes);
+            let _ = BlockHeader::from_canonical_bytes(&bytes);
+            let _ = read_blocks(&bytes);
+            let _ = decode_peer_list(&bytes);
+        }
+    }
+
+    #[test]
     fn oversized_untrusted_frame_is_rejected_before_session_processing() {
         let dir = std::env::temp_dir().join(format!("aurora-p2p-oversized-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
