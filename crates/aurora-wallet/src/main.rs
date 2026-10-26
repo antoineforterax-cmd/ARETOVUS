@@ -51,7 +51,11 @@ fn copy_encrypted_key(source: &Path, destination: &Path) -> Result<(), Box<dyn E
     let result = WalletKey::copy_encrypted_testnet_file(source, destination, &password);
     password.zeroize();
     let account = result?;
-    println!("encrypted_key={} address={}", destination.display(), account_id_hex(account));
+    println!(
+        "encrypted_key={} address={}",
+        destination.display(),
+        account_id_hex(account)
+    );
     Ok(())
 }
 
