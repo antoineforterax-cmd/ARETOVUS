@@ -8,6 +8,7 @@ use std::{
 
 use aurora_core::{
     accounts::{AccountId, AccountTransaction},
+    codec::CanonicalEncode,
     amount::Amount,
     hash::Hash256,
 };
