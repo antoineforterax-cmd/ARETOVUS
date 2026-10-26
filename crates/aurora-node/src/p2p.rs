@@ -376,7 +376,9 @@ fn handle_peer_shared(
             let genesis = chain.blocks().next().expect("genesis exists");
             if genesis.header.network != NetworkId::Testnet {
                 let _ = write_frame(&mut stream, &[ERROR_REPLY]);
-                return Err(P2pError::Protocol("wallet RPC is available only on testnet"));
+                return Err(P2pError::Protocol(
+                    "wallet RPC is available only on testnet",
+                ));
             }
             let mut reply = vec![WALLET_HELLO_REPLY, NetworkId::Testnet.to_byte()];
             reply.extend_from_slice(protocol_fingerprint(&chain).as_bytes());
@@ -460,7 +462,12 @@ fn handle_peer_shared(
                     }
                     let pool_bytes = pool
                         .iter()
-                        .map(|known| known.to_canonical_bytes().map(|b| b.len()).unwrap_or(usize::MAX))
+                        .map(|known| {
+                            known
+                                .to_canonical_bytes()
+                                .map(|b| b.len())
+                                .unwrap_or(usize::MAX)
+                        })
                         .try_fold(0usize, usize::checked_add)
                         .ok_or(3u8)?;
                     let encoded_size = tx.to_canonical_bytes().map_err(|_| 1u8)?.len();
@@ -517,7 +524,10 @@ fn handle_peer_shared(
                 let txid = Hash256::from_bytes(request[1..33].try_into().expect("fixed hash"));
                 let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                 let confirmed = chain.blocks().any(|block| {
-                    block.transactions.iter().any(|tx| tx.txid().ok() == Some(txid))
+                    block
+                        .transactions
+                        .iter()
+                        .any(|tx| tx.txid().ok() == Some(txid))
                 });
                 let pending = if confirmed {
                     false
@@ -530,7 +540,13 @@ fn handle_peer_shared(
                 };
                 let reply = vec![
                     TX_STATUS_REPLY,
-                    if confirmed { 2 } else if pending { 1 } else { 0 },
+                    if confirmed {
+                        2
+                    } else if pending {
+                        1
+                    } else {
+                        0
+                    },
                 ];
                 write_frame(&mut stream, &reply)?;
                 add_session_bytes(&mut session_bytes, reply.len() + 4)?;
@@ -609,9 +625,13 @@ pub fn serve(
                 .spawn(move || loop {
                     match listener.accept() {
                         Ok((stream, _)) => {
-                            if let Err(error) =
-                                handle_peer_shared(stream, &chain, &mempool, &data_dir, &advertised_peers)
-                            {
+                            if let Err(error) = handle_peer_shared(
+                                stream,
+                                &chain,
+                                &mempool,
+                                &data_dir,
+                                &advertised_peers,
+                            ) {
                                 eprintln!("peer rejected: {error}");
                             }
                         }
@@ -892,7 +912,13 @@ mod tests {
         let thread = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
+            let result = handle_peer_shared(
+                stream,
+                &shared_chain,
+                &Mutex::new(Vec::new()),
+                &server_dir,
+                &[],
+            );
             tx.send(result.is_ok()).unwrap();
         });
         let mut client = chain();
@@ -929,7 +955,13 @@ mod tests {
                 let data_dir = server_dir.clone();
                 let advertised_peers = advertised_peers.clone();
                 workers.push(thread::spawn(move || {
-                    handle_peer_shared(stream, &chain, &Mutex::new(Vec::new()), &data_dir, &advertised_peers)
+                    handle_peer_shared(
+                        stream,
+                        &chain,
+                        &Mutex::new(Vec::new()),
+                        &data_dir,
+                        &advertised_peers,
+                    )
                 }));
             }
             workers
@@ -1059,7 +1091,13 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), Path::new("."), &advertised)
+            handle_peer_shared(
+                stream,
+                &shared_chain,
+                &Mutex::new(Vec::new()),
+                Path::new("."),
+                &advertised,
+            )
         });
         let discovered = discover_peers(address, &chain()).unwrap();
         assert_eq!(discovered, expected);
@@ -1127,7 +1165,13 @@ mod tests {
         let server_dir = dir.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            handle_peer_shared(stream, &Mutex::new(chain()), &Mutex::new(Vec::new()), &server_dir, &[])
+            handle_peer_shared(
+                stream,
+                &Mutex::new(chain()),
+                &Mutex::new(Vec::new()),
+                &server_dir,
+                &[],
+            )
         });
 
         let mut client = TcpStream::connect(address).unwrap();
