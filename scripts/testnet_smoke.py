@@ -72,20 +72,45 @@ def main() -> int:
                 binary, "testnet", "mine", "--data-dir", str(node_a),
                 "--miner", MINER, "--count", "3", "--peer", f"{addr_b[0]}:{addr_b[1]}",
             )
-            if not re.search(r"height=3\s+tip=[0-9a-f]{64}", mined):
-                raise AssertionError(f"miner did not report the expected three-block tip:\n{mined}")
+            mined_tip = re.search(r"height=3\\s+tip=([0-9a-f]{64})", mined)
+            if mined_tip is None:
+                raise AssertionError(f"miner did not report the expected three-block tip:\\n{mined}")
 
+            # Stop B, then restart A's server after mining so it serves its persisted height-3 chain.
+            servers[1].terminate()
+            servers[1].wait(timeout=5)
+            addr_a = ("127.0.0.1", 28441)
+            stream = logs[0].open("a", encoding="utf-8")
+            server_a = subprocess.Popen(
+                [str(binary), "testnet", "serve", "--data-dir", str(node_a),
+                 "--listen", f"{addr_a[0]}:{addr_a[1]}"],
+                cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
+            )
+            server_a._aurora_log_stream = stream  # type: ignore[attr-defined]
+            servers.append(server_a)
+            wait_listening(server_a, addr_a, logs[0])
+
+            fresh_node = base / "node-fresh"
             synced = run_node(
+                binary, "testnet", "sync", "--data-dir", str(fresh_node),
+                "--peer", f"{addr_a[0]}:{addr_a[1]}",
+            )
+            tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", synced)
+            accepted = re.search(r"accepted=(\\d+)", synced)
+            if not tips or tips[-1][0] != "3" or accepted is None or accepted.group(1) != "3":
+                raise AssertionError(f"fresh node did not pull all three blocks:\\n{synced}")
+            if tips[-1][1] != mined_tip.group(1):
+                raise AssertionError(f"fresh node did not converge to the mined tip:\\n{mined}\\n{synced}")
+
+            # A separate process reopens B's persisted snapshot and checks the same peer tip.
+            restored = run_node(
                 binary, "testnet", "sync", "--data-dir", str(node_b),
                 "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", synced)
-            if not tips or tips[-1][0] != "3":
-                raise AssertionError(f"second node did not report height 3:\n{synced}")
-            mined_tip = re.search(r"height=3\s+tip=([0-9a-f]{64})", mined)
-            if mined_tip is None or tips[-1][1] != mined_tip.group(1):
-                raise AssertionError(f"nodes failed to converge to the same tip:\n{mined}\n{synced}")
-            print(f"two-node testnet smoke passed: height=3 tip={tips[-1][1]}")
+            restored_tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", restored)
+            if not restored_tips or restored_tips[-1] != tips[-1]:
+                raise AssertionError(f"pushed node did not restore the same tip:\\n{restored}")
+            print(f"multi-process testnet smoke passed: height=3 tip={tips[-1][1]}")
         finally:
             for server in servers:
                 server.terminate()
