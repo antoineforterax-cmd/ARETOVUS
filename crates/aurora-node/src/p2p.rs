@@ -1360,21 +1360,13 @@ mod tests {
 
     #[test]
     fn invalid_second_block_does_not_partially_apply_a_sync_page() {
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-atomic-page-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-atomic-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
-        let valid = AccountBlock::build(
-            NetworkId::Regtest,
-            server_chain.tip_hash(),
-            2,
-            0,
-            vec![],
-        )
-        .unwrap();
+        let valid =
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![]).unwrap();
         let orphan = AccountBlock::build(
             NetworkId::Regtest,
             sha256_plain(b"missing-parent"),
@@ -1425,8 +1417,7 @@ mod tests {
         fs::write(&path, b"not a directory").unwrap();
         let mut server_chain = chain();
         let block =
-            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![])
-                .unwrap();
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![]).unwrap();
         server_chain.submit(block).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
