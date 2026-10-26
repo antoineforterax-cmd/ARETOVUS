@@ -64,6 +64,7 @@ const MAX_HEADERS_PAGE: usize = 64;
 const MAX_MEMPOOL_TXS: usize = 4_096;
 const MAX_MEMPOOL_BYTES: usize = 32 * 1024 * 1024;
 const MAX_MEMPOOL_PAGE_TXS: usize = 700;
+const MAX_MEMPOOL_PAGES: usize = 16;
 
 #[derive(Debug)]
 pub enum P2pError {
@@ -1117,7 +1118,12 @@ pub fn fetch_mempool(
     }
     check_hello(&hello, chain)?;
     let mut transactions = Vec::new();
+    let mut pages = 0usize;
     loop {
+        pages += 1;
+        if pages > MAX_MEMPOOL_PAGES {
+            return Err(P2pError::Protocol("peer mempool has too many pages"));
+        }
         if transactions.len() > MAX_MEMPOOL_TXS {
             return Err(P2pError::Protocol("peer mempool exceeds total limit"));
         }
