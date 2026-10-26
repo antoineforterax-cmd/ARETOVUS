@@ -109,8 +109,10 @@ impl WalletKey {
         let mut key = derive_password_key(password, &salt)?;
         let cipher = XChaCha20Poly1305::new_from_slice(&key)
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
+        let nonce_ref = XNonce::try_from(nonce.as_slice())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid nonce"))?;
         let encrypted = cipher.encrypt(
-            XNonce::from_slice(&nonce),
+            &nonce_ref,
             Payload {
                 msg: &self.seed,
                 aad: &header,
@@ -153,8 +155,10 @@ impl WalletKey {
         let mut key = derive_password_key(password, &salt)?;
         let cipher = XChaCha20Poly1305::new_from_slice(&key)
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
+        let nonce_ref = XNonce::try_from(nonce.as_slice())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid nonce"))?;
         let decrypted = cipher.decrypt(
-            XNonce::from_slice(&nonce),
+            &nonce_ref,
             Payload {
                 msg: &payload[ENCRYPTED_HEADER_BYTES..],
                 aad: &payload[..ENCRYPTED_HEADER_BYTES],
