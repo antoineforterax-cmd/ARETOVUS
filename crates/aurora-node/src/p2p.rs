@@ -1,5 +1,6 @@
 //! Small bounded TCP sync protocol for the experimental testnet.
 use std::{
+    collections::HashSet,
     error::Error,
     io::{self, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
@@ -107,7 +108,7 @@ pub fn protocol_fingerprint(chain: &AccountForkChain) -> Hash256 {
     bytes.push(genesis.header.network.to_byte());
     bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
     // Deliberately separates the native-PQ testnet from the earlier hybrid testnet.
-    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v2");
+    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v3");
     bytes.extend_from_slice(
         genesis
             .header
@@ -584,11 +585,16 @@ fn handle_peer_shared(
                 write_frame(&mut stream, &reply)?;
                 add_session_bytes(&mut session_bytes, reply.len() + 4)?;
             }
-            Some(&GET_MEMPOOL) if request.len() == 1 => {
+            Some(&GET_MEMPOOL) if request.len() == 5 => {
+                let offset = u32::from_be_bytes(request[1..5].try_into().expect("fixed offset"))
+                    as usize;
+                if offset > MAX_MEMPOOL_TXS {
+                    return Err(P2pError::Protocol("mempool offset exceeds limit"));
+                }
                 let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                 let mut reply = vec![MEMPOOL_REPLY, 0, 0];
                 let mut count = 0u16;
-                for tx in pool.iter().take(MAX_MEMPOOL_PAGE_TXS) {
+                for tx in pool.iter().skip(offset).take(MAX_MEMPOOL_PAGE_TXS) {
                     let encoded = tx
                         .to_canonical_bytes()
                         .map_err(|_| P2pError::Protocol("mempool transaction encoding failed"))?;
@@ -770,6 +776,71 @@ fn revalidate_mempool(
     Ok(())
 }
 
+/// Pull pending transactions from a configured peer without trusting its admission decisions.
+fn sync_mempool_peer(
+    address: SocketAddr,
+    chain: &Mutex<AccountForkChain>,
+    mempool: &Mutex<Vec<AccountTransaction>>,
+) -> Result<usize, P2pError> {
+    let handshake_chain = chain
+        .lock()
+        .map_err(|_| P2pError::ChainLockPoisoned)?
+        .clone();
+    let incoming = fetch_mempool(address, &handshake_chain)?;
+    let current = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+    let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+    let mut state = current.state().clone();
+    let mut known = HashSet::with_capacity(pool.len());
+    let mut pool_bytes = 0usize;
+    for pending in pool.iter() {
+        known.insert(
+            pending
+                .txid()
+                .map_err(|_| P2pError::Protocol("local mempool transaction encoding failed"))?,
+        );
+        pool_bytes = pool_bytes
+            .checked_add(
+                pending
+                    .to_canonical_bytes()
+                    .map_err(|_| P2pError::Protocol("local mempool encoding failed"))?
+                    .len(),
+            )
+            .ok_or(P2pError::Protocol("local mempool size overflow"))?;
+        state
+            .apply_transaction(pending)
+            .map_err(|_| P2pError::Protocol("local mempool state invalid"))?;
+    }
+    let mut added = 0;
+    for tx in incoming {
+        if tx.network != NetworkId::Testnet || tx.version != POST_QUANTUM_ACCOUNT_TX_VERSION {
+            continue;
+        }
+        let id = tx
+            .txid()
+            .map_err(|_| P2pError::Protocol("peer mempool transaction encoding failed"))?;
+        if known.contains(&id) {
+            continue;
+        }
+        let encoded_size = tx
+            .to_canonical_bytes()
+            .map_err(|_| P2pError::Protocol("peer mempool encoding failed"))?
+            .len();
+        if pool.len() >= MAX_MEMPOOL_TXS
+            || pool_bytes.saturating_add(encoded_size) > MAX_MEMPOOL_BYTES
+        {
+            break;
+        }
+        if state.apply_transaction(&tx).is_err() {
+            continue;
+        }
+        pool.push(tx);
+        known.insert(id);
+        pool_bytes += encoded_size;
+        added += 1;
+    }
+    Ok(added)
+}
+
 /// Download without holding the server lock, then merge all validated branches atomically.
 fn sync_peer_into_shared(
     address: SocketAddr,
@@ -833,6 +904,9 @@ pub fn serve(
                         sync_peer_into_shared(peer, &sync_chain, &sync_mempool, &sync_data_dir)
                     {
                         eprintln!("background peer sync from {peer} failed: {error}");
+                    }
+                    if let Err(error) = sync_mempool_peer(peer, &sync_chain, &sync_mempool) {
+                        eprintln!("background mempool sync from {peer} failed: {error}");
                     }
                 }
                 thread::sleep(PEER_POLL_INTERVAL);
@@ -1026,7 +1100,7 @@ fn sync_from_peer_inner(
     Ok(accepted)
 }
 
-/// Fetch one bounded batch of pending transactions from a compatible testnet peer.
+/// Fetch bounded pages of pending transactions from a compatible testnet peer.
 pub fn fetch_mempool(
     address: SocketAddr,
     chain: &AccountForkChain,
@@ -1042,43 +1116,55 @@ pub fn fetch_mempool(
         return Err(P2pError::Protocol("peer rejected network identity"));
     }
     check_hello(&hello, chain)?;
-    add_session_request(&mut session_requests)?;
-    add_session_bytes(&mut session_bytes, 5)?;
-    write_frame(&mut stream, &[GET_MEMPOOL])?;
-    let frame = read_frame(&mut stream)?;
-    add_session_bytes(&mut session_bytes, frame.len() + 4)?;
-    if frame.len() < 3 || frame[0] != MEMPOOL_REPLY {
-        return Err(P2pError::Protocol("invalid mempool page"));
-    }
-    let count = u16::from_be_bytes(frame[1..3].try_into().expect("fixed count")) as usize;
-    if count > MAX_MEMPOOL_PAGE_TXS {
-        return Err(P2pError::Protocol("mempool page exceeds transaction limit"));
-    }
-    let mut cursor = 3usize;
-    let mut transactions = Vec::with_capacity(count);
-    for _ in 0..count {
-        let length_end = cursor
-            .checked_add(4)
-            .ok_or(P2pError::Protocol("mempool length overflow"))?;
-        let length_bytes = frame
-            .get(cursor..length_end)
-            .ok_or(P2pError::Protocol("truncated mempool transaction length"))?;
-        let length = u32::from_be_bytes(length_bytes.try_into().expect("fixed length")) as usize;
-        cursor = length_end;
-        let end = cursor
-            .checked_add(length)
-            .ok_or(P2pError::Protocol("mempool length overflow"))?;
-        let encoded = frame
-            .get(cursor..end)
-            .ok_or(P2pError::Protocol("truncated mempool transaction"))?;
-        transactions.push(
-            AccountTransaction::from_canonical_bytes(encoded)
-                .map_err(|_| P2pError::Protocol("invalid canonical mempool transaction"))?,
-        );
-        cursor = end;
-    }
-    if cursor != frame.len() {
-        return Err(P2pError::Protocol("trailing mempool page data"));
+    let mut transactions = Vec::new();
+    loop {
+        if transactions.len() > MAX_MEMPOOL_TXS {
+            return Err(P2pError::Protocol("peer mempool exceeds total limit"));
+        }
+        add_session_request(&mut session_requests)?;
+        add_session_bytes(&mut session_bytes, 9)?;
+        let mut request = vec![GET_MEMPOOL];
+        request.extend_from_slice(&(transactions.len() as u32).to_be_bytes());
+        write_frame(&mut stream, &request)?;
+        let frame = read_frame(&mut stream)?;
+        add_session_bytes(&mut session_bytes, frame.len() + 4)?;
+        if frame.len() < 3 || frame[0] != MEMPOOL_REPLY {
+            return Err(P2pError::Protocol("invalid mempool page"));
+        }
+        let count = u16::from_be_bytes(frame[1..3].try_into().expect("fixed count")) as usize;
+        if count > MAX_MEMPOOL_PAGE_TXS
+            || transactions.len().saturating_add(count) > MAX_MEMPOOL_TXS
+        {
+            return Err(P2pError::Protocol("mempool page exceeds transaction limit"));
+        }
+        let mut cursor = 3usize;
+        for _ in 0..count {
+            let length_end = cursor
+                .checked_add(4)
+                .ok_or(P2pError::Protocol("mempool length overflow"))?;
+            let length_bytes = frame
+                .get(cursor..length_end)
+                .ok_or(P2pError::Protocol("truncated mempool transaction length"))?;
+            let length = u32::from_be_bytes(length_bytes.try_into().expect("fixed length")) as usize;
+            cursor = length_end;
+            let end = cursor
+                .checked_add(length)
+                .ok_or(P2pError::Protocol("mempool length overflow"))?;
+            let encoded = frame
+                .get(cursor..end)
+                .ok_or(P2pError::Protocol("truncated mempool transaction"))?;
+            transactions.push(
+                AccountTransaction::from_canonical_bytes(encoded)
+                    .map_err(|_| P2pError::Protocol("invalid canonical mempool transaction"))?,
+            );
+            cursor = end;
+        }
+        if cursor != frame.len() {
+            return Err(P2pError::Protocol("trailing mempool page data"));
+        }
+        if count == 0 {
+            break;
+        }
     }
     Ok(transactions)
 }
