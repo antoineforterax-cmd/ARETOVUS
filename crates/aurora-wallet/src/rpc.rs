@@ -159,7 +159,7 @@ pub struct RpcAccount {
     pub balance: Amount,
 }
 
-fn connect(node: SocketAddr) -> Result<TcpStream, Box<dyn Error>> {
+pub(super) fn connect(node: SocketAddr) -> Result<TcpStream, Box<dyn Error>> {
     let mut stream = TcpStream::connect_timeout(&node, IO_TIMEOUT)?;
     stream.set_read_timeout(Some(IO_TIMEOUT))?;
     stream.set_write_timeout(Some(IO_TIMEOUT))?;
