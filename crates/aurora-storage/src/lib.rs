@@ -704,6 +704,42 @@ mod tests {
     }
 
     #[test]
+    fn copied_v5_data_directory_restores_all_branches() {
+        let source = dir();
+        let backup = dir();
+        let mut original = chain();
+        let genesis = original.tip_hash();
+        let branch_a = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
+        let branch_b = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
+        original.submit(branch_a).unwrap();
+        original.submit(branch_b).unwrap();
+        save_snapshot(&source, &original).unwrap();
+
+        fs::create_dir_all(backup.join(BLOCK_DIRECTORY)).unwrap();
+        for entry in fs::read_dir(&source).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
+                fs::copy(&path, backup.join(path.file_name().unwrap())).unwrap();
+            }
+        }
+        for entry in fs::read_dir(source.join(BLOCK_DIRECTORY)).unwrap() {
+            let path = entry.unwrap().path();
+            fs::copy(
+                &path,
+                backup.join(BLOCK_DIRECTORY).join(path.file_name().unwrap()),
+            )
+            .unwrap();
+        }
+        let restored =
+            load_latest_snapshot(&backup, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.state(), original.state());
+        fs::remove_dir_all(source).unwrap();
+        fs::remove_dir_all(backup).unwrap();
+    }
+
+    #[test]
     fn legacy_v4_snapshot_can_be_migrated_to_v5() {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
