@@ -71,7 +71,7 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
             heights = [
                 int(match.group(1))
                 for snapshot in snapshots
-                if (match := re.match(r"snapshot-(\\d{20})-", snapshot.name))
+                if (match := re.match(r"snapshot-(\d{20})-", snapshot.name))
             ]
             if heights and max(heights) >= 2:
                 saved_height = max(heights)
@@ -92,10 +92,10 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
         binary, "testnet", "mine", "--data-dir", str(data_dir),
         "--miner", miner, "--count", "1",
     )
-    heights = [int(value) for value in re.findall(r"height=(\\d+)\\b", resumed)]
+    heights = [int(value) for value in re.findall(r"height=(\d+)\b", resumed)]
     if not heights or max(heights) <= saved_height:
         raise AssertionError(
-            f"node did not resume above the last committed snapshot (height {saved_height}):\\n{resumed}"
+            f"node did not resume above the last committed snapshot (height {saved_height}):\n{resumed}"
         )
     return max(heights)
 
