@@ -166,10 +166,8 @@ def main() -> int:
         logs = [base / "a.log", base / "b.log"]
         servers: list[subprocess.Popen[str]] = []
         try:
-            for data_dir, address, log in (
-                (node_a, addr_a, logs[0]),
-                (node_b, addr_b, logs[1]),
-            ):
+            # Keep A offline while its miner writes; B serves a separate data directory.
+            for data_dir, address, log in ((node_b, addr_b, logs[1]),):
                 stream = log.open("w", encoding="utf-8")
                 server = subprocess.Popen(
                     [str(binary), "testnet", "serve", "--data-dir", str(data_dir),
@@ -180,6 +178,14 @@ def main() -> int:
                 server._aurora_log_stream = stream  # type: ignore[attr-defined]
                 servers.append(server)
                 wait_listening(server, address, log)
+
+            concurrent = subprocess.run(
+                [str(binary), "testnet", "mine", "--data-dir", str(node_b),
+                 "--miner", miner, "--count", "1"],
+                cwd=ROOT, text=True, capture_output=True, timeout=10,
+            )
+            if concurrent.returncode == 0 or "already in use or cannot be locked" not in concurrent.stderr:
+                raise AssertionError(f"second writer was not rejected: {concurrent.stdout}{concurrent.stderr}")
 
             mined = run_node(
                 binary, "testnet", "mine", "--data-dir", str(node_a),
@@ -258,8 +264,8 @@ def main() -> int:
             if "SPV verified:" not in verified or "confirmations=1" not in verified:
                 raise AssertionError(f"SPV transaction verification failed:\n{verified}")
 
-            # Restart A after mining so its server loads the persisted height-4 chain.
-            for server in servers[:2]:
+            # Stop B before a separate process reads and extends its persisted chain.
+            for server in servers:
                 server.terminate()
                 server.wait(timeout=5)
             stream = logs[0].open("a", encoding="utf-8")
