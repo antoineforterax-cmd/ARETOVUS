@@ -458,6 +458,20 @@ mod tests {
     }
 
     #[test]
+    fn interrupted_temporary_snapshot_does_not_replace_last_valid_state() {
+        let path = dir();
+        let original = chain();
+        let expected_tip = original.tip_hash();
+        save_snapshot(&path, &original).unwrap();
+        fs::write(path.join(".snapshot-interrupted.tmp"), b"incomplete snapshot").unwrap();
+
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), expected_tip);
+        assert_eq!(restored.height(), 0);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();
         let file = save_snapshot(&path, &chain()).unwrap();
