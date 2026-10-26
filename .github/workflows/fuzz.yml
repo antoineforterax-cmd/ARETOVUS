@@ -1,7 +1,8 @@
 name: fuzz
 
 on:
-  pull_request:
+  push:
+    branches: [feature/emission-schedule-v0]
     paths:
       - "fuzz/**"
       - "crates/aurora-core/**"
@@ -11,7 +12,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: fuzz-${{ github.event.pull_request.number || github.ref }}
+  group: fuzz-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
