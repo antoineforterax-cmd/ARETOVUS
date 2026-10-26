@@ -71,6 +71,10 @@ def validate_tiers(tiers: list[Tier]) -> None:
 def years_for_blocks(blocks: int) -> float:
     return blocks * BLOCK_TARGET_SECONDS / SECONDS_PER_YEAR
 
+def format_aur(units: int) -> str:
+    whole, fraction = divmod(units, DECIMALS)
+    return f"{whole}.{fraction:08d}"
+
 
 def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
     validate_tiers(tiers)
@@ -151,19 +155,19 @@ def simulate_proportional_remaining() -> dict[str, int | float | str]:
 
     years = blocks * target_seconds / SECONDS_PER_YEAR
     print(f"\n## Current consensus: proportional remaining supply")
-    print(f"first block reward: {first_reward / DECIMALS:.8f} AUR")
+    print(f"first block reward: {format_aur(first_reward)} AUR")
     for supply, milestone_blocks in reached:
         print(
-            f"reached {supply / DECIMALS:.8f} issued AUR after "
+            f"reached {format_aur(supply)} issued AUR after "
             f"{milestone_blocks:,} blocks ({milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
         )
     print(
-        f"cap: {issued / DECIMALS:.8f} AUR after {blocks:,} blocks "
+        f"cap: {format_aur(issued)} AUR after {blocks:,} blocks "
         f"({years:.2f} years at 60 seconds/block)"
     )
     print(
-        f"treasury={treasury / DECIMALS:.8f} AUR; "
-        f"miner issuance={miner_issuance / DECIMALS:.8f} AUR"
+        f"treasury={format_aur(treasury)} AUR; "
+        f"miner issuance={format_aur(miner_issuance)} AUR"
     )
     assert issued == CAP
     assert treasury + miner_issuance == CAP
