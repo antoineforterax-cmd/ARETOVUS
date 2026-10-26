@@ -150,12 +150,12 @@ def simulate_proportional_remaining() -> dict[str, int | float | str]:
             reached.append((milestones.pop(0), blocks))
 
     years = blocks * target_seconds / SECONDS_PER_YEAR
-    print("\\n## Current consensus: proportional remaining supply")
+    print(f"\n## Current consensus: proportional remaining supply")
     print(f"first block reward: {first_reward / DECIMALS:.8f} AUR")
     for supply, milestone_blocks in reached:
         print(
             f"reached {supply / DECIMALS:.8f} issued AUR after "
-            f"{milestone_blocks:,} blocks ({years_for_blocks(milestone_blocks) if False else milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
+            f"{milestone_blocks:,} blocks ({milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
         )
     print(
         f"cap: {issued / DECIMALS:.8f} AUR after {blocks:,} blocks "
