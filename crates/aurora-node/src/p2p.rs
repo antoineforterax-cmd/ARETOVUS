@@ -1004,7 +1004,13 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
+            let result = handle_peer_shared(
+                stream,
+                &shared_chain,
+                &Mutex::new(Vec::new()),
+                &server_dir,
+                &[],
+            );
             (result, shared_chain.into_inner().unwrap())
         });
         let mut client = chain();
@@ -1035,7 +1041,13 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
+            let result = handle_peer_shared(
+                stream,
+                &shared_chain,
+                &Mutex::new(Vec::new()),
+                &server_dir,
+                &[],
+            );
             (result, shared_chain.into_inner().unwrap())
         });
         let client = chain();
