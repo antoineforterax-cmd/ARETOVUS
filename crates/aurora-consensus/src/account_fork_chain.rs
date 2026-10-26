@@ -8,11 +8,8 @@ use crate::{
     reward::{apply_block_reward, RewardError, RewardParams},
 };
 use aurora_core::{
-    accounts::POST_QUANTUM_ACCOUNT_TX_VERSION,
-    codec::EncodeError,
-    hash::Hash256,
-    network::NetworkId,
-    state::AccountLedger,
+    accounts::POST_QUANTUM_ACCOUNT_TX_VERSION, codec::EncodeError, hash::Hash256,
+    network::NetworkId, state::AccountLedger,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -422,8 +419,7 @@ mod tests {
     #[test]
     fn testnet_accepts_and_applies_a_native_ml_dsa_transaction() {
         use aurora_core::accounts::{
-            ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
-            POST_QUANTUM_AUTH_BYTES,
+            ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
         };
         use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
 
@@ -434,8 +430,7 @@ mod tests {
         state
             .credit_issuance(sender, Amount::from_units(10).unwrap())
             .unwrap();
-        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
-            .unwrap();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
         let mut chain = AccountForkChain::new(genesis, 0, state).unwrap();
         let mut transaction = AccountTransaction {
             version: POST_QUANTUM_ACCOUNT_TX_VERSION,
@@ -447,13 +442,11 @@ mod tests {
             fee: Amount::from_units(1).unwrap(),
             auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
         };
-        transaction.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES]
-            .copy_from_slice(public_key.as_slice());
+        transaction.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key.as_slice());
         let signature = key
             .sign(transaction.signing_digest().unwrap().as_bytes())
             .encode();
-        transaction.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..]
-            .copy_from_slice(signature.as_slice());
+        transaction.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
         let block = AccountBlock::build(
             NetworkId::Testnet,
             chain.tip_hash(),
@@ -473,12 +466,8 @@ mod tests {
     fn testnet_rejects_legacy_ed25519_and_hybrid_transaction_profiles() {
         let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
             .unwrap();
-        let mut chain = AccountForkChain::new(
-            genesis,
-            0,
-            AccountLedger::new(NetworkId::Testnet),
-        )
-        .unwrap();
+        let mut chain =
+            AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
 
         for legacy_version in [
             aurora_core::accounts::ACCOUNT_TX_VERSION,
@@ -492,8 +481,9 @@ mod tests {
             } else {
                 vec![0; aurora_core::accounts::HYBRID_AUTH_BYTES]
             };
-            let block = AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![legacy])
-                .unwrap();
+            let block =
+                AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![legacy])
+                    .unwrap();
             assert_eq!(
                 chain.submit(block),
                 Err(AccountForkChainError::InvalidTransactionProfile)
