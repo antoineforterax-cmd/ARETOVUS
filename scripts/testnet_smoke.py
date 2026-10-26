@@ -329,13 +329,73 @@ def main() -> int:
             ):
                 raise AssertionError(f"fresh node did not recover and sync the 20-block chain:\n{long_sync}")
 
+            fork_node = base / "node-fork"
+            competing = run_node(
+                binary, "testnet", "mine", "--data-dir", str(fork_node),
+                "--miner", miner, "--count", "21",
+            )
+            competing_tip = re.search(
+                r"height=21\b.*\btip=([0-9a-f]{64})", competing
+            )
+            if competing_tip is None:
+                raise AssertionError(f"competing branch did not reach height 21:\n{competing}")
+
+            addr_c = free_address()
+            while addr_c[1] in (addr_a[1], addr_b[1]):
+                addr_c = free_address()
+            fork_log = base / "fork.log"
+            stream = fork_log.open("w", encoding="utf-8")
+            server_c = subprocess.Popen(
+                [str(binary), "testnet", "serve", "--data-dir", str(fork_node),
+                 "--listen", f"{addr_c[0]}:{addr_c[1]}"],
+                cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
+            )
+            server_c._aurora_log_stream = stream  # type: ignore[attr-defined]
+            servers.append(server_c)
+            wait_listening(server_c, addr_c, fork_log)
+
+            server_a.terminate()
+            server_a.wait(timeout=5)
+            reorg = run_node(
+                binary, "testnet", "sync", "--data-dir", str(node_a),
+                "--peer", f"{addr_c[0]}:{addr_c[1]}",
+            )
+            reorg_tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", reorg)
+            if not reorg_tips or reorg_tips[-1] != ("21", competing_tip.group(1)):
+                raise AssertionError(f"node did not reorganize to the heavier peer branch:\n{reorg}")
+
+            stream = logs[0].open("a", encoding="utf-8")
+            server_a = subprocess.Popen(
+                [str(binary), "testnet", "serve", "--data-dir", str(node_a),
+                 "--listen", f"{addr_a[0]}:{addr_a[1]}"],
+                cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
+            )
+            server_a._aurora_log_stream = stream  # type: ignore[attr-defined]
+            servers.append(server_a)
+            wait_listening(server_a, addr_a, logs[0])
+
+            converged = run_node(
+                binary, "testnet", "sync", "--data-dir", str(fresh_node),
+                "--peer", f"{addr_a[0]}:{addr_a[1]}",
+            )
+            converged_tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", converged)
+            if not converged_tips or converged_tips[-1] != ("21", competing_tip.group(1)):
+                raise AssertionError(f"fresh peer did not converge after the reorganization:\n{converged}")
+            post_reorg_status = run_wallet(
+                wallet, "status", "--node", f"{addr_a[0]}:{addr_a[1]}",
+                "--txid", tx_match.group(1),
+            )
+            if "Confirmed" in post_reorg_status:
+                raise AssertionError("wallet still reports the orphaned transaction as confirmed")
+
             crash_height = crash_recovery_test(binary, base / "crash-node", miner)
             size_limit_height = write_limit_recovery_test(
                 binary, base / "write-limit-node", miner
             )
             print(
-                "wallet, SPV, 20-block multi-process soak, forced-stop and write-limit "
-                f"recovery passed: height=20 tip={long_tips[-1][1]} "
+                "wallet, SPV, 20-block soak, heavier-branch reorganization, forced-stop "
+                "and write-limit recovery passed: "
+                f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"
             )
         finally:
