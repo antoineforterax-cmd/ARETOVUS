@@ -6,11 +6,13 @@ use std::{
     time::Duration,
 };
 
+use aurora_consensus::experimental::BlockHeader;
 use aurora_core::{
     accounts::{AccountId, AccountTransaction},
     amount::Amount,
-    codec::CanonicalEncode,
+    codec::{CanonicalDecode, CanonicalEncode},
     hash::Hash256,
+    merkle::MerkleProof,
 };
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
@@ -24,6 +26,132 @@ const TX_ACCEPTED: u8 = 0x87;
 const TX_REJECTED: u8 = 0x89;
 const GET_TX_STATUS: u8 = 9;
 const TX_STATUS_REPLY: u8 = 0x8a;
+const GET_HEADERS: u8 = 10;
+const HEADERS_REPLY: u8 = 0x8b;
+const GET_TX_PROOF: u8 = 11;
+const TX_PROOF_REPLY: u8 = 0x8c;
+const MAX_HEADERS_PAGE: u16 = 64;
+const MAX_MERKLE_SIBLINGS: u8 = 17;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HeaderPage {
+    pub start_height: u64,
+    pub tip_height: u64,
+    pub headers: Vec<BlockHeader>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TransactionProof {
+    pub height: u64,
+    pub header: BlockHeader,
+    pub proof: MerkleProof,
+}
+
+pub(crate) fn get_headers_on_stream(
+    stream: &mut TcpStream,
+    start_height: u64,
+    limit: u16,
+) -> Result<HeaderPage, Box<dyn Error>> {
+    if limit == 0 || limit > MAX_HEADERS_PAGE {
+        return Err("SPV header page limit is outside 1..=64".into());
+    }
+    let mut request = vec![GET_HEADERS];
+    request.extend_from_slice(&start_height.to_be_bytes());
+    request.extend_from_slice(&limit.to_be_bytes());
+    write_frame(stream, &request)?;
+    let reply = read_frame(stream)?;
+    if reply.len() < 19 || reply[0] != HEADERS_REPLY {
+        return Err("node returned an invalid SPV header page".into());
+    }
+    let tip_height = u64::from_be_bytes(reply[1..9].try_into()?);
+    let returned_start = u64::from_be_bytes(reply[9..17].try_into()?);
+    let count = u16::from_be_bytes(reply[17..19].try_into()?) as usize;
+    if returned_start != start_height || count > limit as usize {
+        return Err("node returned a mismatched SPV header page".into());
+    }
+    let mut cursor = 19usize;
+    let mut headers = Vec::with_capacity(count);
+    for _ in 0..count {
+        let length_end = cursor.checked_add(2).ok_or("SPV length overflow")?;
+        let length = u16::from_be_bytes(
+            reply
+                .get(cursor..length_end)
+                .ok_or("truncated SPV header length")?
+                .try_into()?,
+        ) as usize;
+        cursor = length_end;
+        let end = cursor.checked_add(length).ok_or("SPV length overflow")?;
+        let bytes = reply.get(cursor..end).ok_or("truncated SPV header")?;
+        headers.push(BlockHeader::from_canonical_bytes(bytes)?);
+        cursor = end;
+    }
+    if cursor != reply.len() {
+        return Err("SPV header page has trailing bytes".into());
+    }
+    Ok(HeaderPage {
+        start_height,
+        tip_height,
+        headers,
+    })
+}
+
+pub(crate) fn get_transaction_proof_on_stream(
+    stream: &mut TcpStream,
+    txid: Hash256,
+) -> Result<Option<TransactionProof>, Box<dyn Error>> {
+    let mut request = vec![GET_TX_PROOF];
+    request.extend_from_slice(txid.as_bytes());
+    write_frame(stream, &request)?;
+    let reply = read_frame(stream)?;
+    if reply.len() == 2 && reply[0] == TX_PROOF_REPLY && reply[1] == 0 {
+        return Ok(None);
+    }
+    if reply.len() < 2 || reply[0] != TX_PROOF_REPLY || reply[1] != 1 {
+        return Err("node returned an invalid transaction proof response".into());
+    }
+    let mut cursor = 2usize;
+    let height_end = cursor.checked_add(8).ok_or("SPV length overflow")?;
+    let height = u64::from_be_bytes(reply.get(cursor..height_end).ok_or("truncated proof height")?.try_into()?);
+    cursor = height_end;
+    let header_length_end = cursor.checked_add(2).ok_or("SPV length overflow")?;
+    let header_length = u16::from_be_bytes(reply.get(cursor..header_length_end).ok_or("truncated proof header length")?.try_into()?) as usize;
+    cursor = header_length_end;
+    let header_end = cursor.checked_add(header_length).ok_or("SPV length overflow")?;
+    let header = BlockHeader::from_canonical_bytes(reply.get(cursor..header_end).ok_or("truncated proof header")?)?;
+    cursor = header_end;
+    let index_end = cursor.checked_add(4).ok_or("SPV length overflow")?;
+    let index = u32::from_be_bytes(reply.get(cursor..index_end).ok_or("truncated proof index")?.try_into()?);
+    cursor = index_end;
+    let count_end = cursor.checked_add(4).ok_or("SPV length overflow")?;
+    let leaf_count = u32::from_be_bytes(reply.get(cursor..count_end).ok_or("truncated proof leaf count")?.try_into()?);
+    cursor = count_end;
+    let sibling_count = *reply.get(cursor).ok_or("truncated proof sibling count")?;
+    cursor += 1;
+    if sibling_count > MAX_MERKLE_SIBLINGS {
+        return Err("node returned an oversized Merkle proof".into());
+    }
+    let expected_end = cursor
+        .checked_add(usize::from(sibling_count) * 32)
+        .ok_or("SPV proof length overflow")?;
+    if expected_end != reply.len() {
+        return Err("SPV transaction proof has an invalid length".into());
+    }
+    let mut siblings = Vec::with_capacity(usize::from(sibling_count));
+    while cursor < expected_end {
+        let end = cursor + 32;
+        siblings.push(Hash256::from_bytes(reply[cursor..end].try_into()?));
+        cursor = end;
+    }
+    Ok(Some(TransactionProof {
+        height,
+        header,
+        proof: MerkleProof {
+            index,
+            leaf_count,
+            siblings,
+        },
+    }))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RpcAccount {
