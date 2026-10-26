@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""AURORA issuance model simulator — research tool, not consensus code.
+
+Run:
+    python3 scripts/emission_sim.py
+
+The current consensus schedule is proportional to remaining gross supply;
+historical tier candidates remain only for comparison. All amounts use integer
+atomic units. Timing is an assumption, not a forecast.
 """AURORA issuance schedule simulator — research tool, not consensus code.
 
 Run:
