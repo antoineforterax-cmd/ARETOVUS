@@ -77,6 +77,9 @@ const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 const TAG_ACCOUNT_TX_LIST: &[u8] = b"AURORA/exp/v0/account-tx-list";
 const TAG_HYBRID_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/hybrid-account-id";
 const TAG_POST_QUANTUM_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/post-quantum-account-id";
+const TAG_MERKLE_LEAF: &[u8] = b"AURORA/exp/v1/merkle-leaf";
+const TAG_MERKLE_NODE: &[u8] = b"AURORA/exp/v1/merkle-node";
+const TAG_MERKLE_EMPTY: &[u8] = b"AURORA/exp/v1/merkle-empty";
 
 /// Domaine de hachage : deux domaines différents ne produisent jamais le même condensat
 /// pour les mêmes données.
@@ -98,6 +101,12 @@ pub enum Domain {
     HybridAccountId,
     /// Account identifier derived from the native ML-DSA-65 public key.
     PostQuantumAccountId,
+    /// Transaction Merkle leaf.
+    MerkleLeaf,
+    /// Transaction Merkle internal node.
+    MerkleNode,
+    /// Empty transaction Merkle tree.
+    MerkleEmpty,
 }
 
 impl Domain {
@@ -112,6 +121,9 @@ impl Domain {
             Domain::AccountTxList => TAG_ACCOUNT_TX_LIST,
             Domain::HybridAccountId => TAG_HYBRID_ACCOUNT_ID,
             Domain::PostQuantumAccountId => TAG_POST_QUANTUM_ACCOUNT_ID,
+            Domain::MerkleLeaf => TAG_MERKLE_LEAF,
+            Domain::MerkleNode => TAG_MERKLE_NODE,
+            Domain::MerkleEmpty => TAG_MERKLE_EMPTY,
         }
     }
 }
@@ -144,7 +156,7 @@ pub fn tagged_hash(domain: Domain, data: &[u8]) -> Hash256 {
 mod tests {
     use super::*;
 
-    const ALL_DOMAINS: [Domain; 8] = [
+    const ALL_DOMAINS: [Domain; 11] = [
         Domain::TxId,
         Domain::AccountTxId,
         Domain::TxSigning,
@@ -153,6 +165,9 @@ mod tests {
         Domain::AccountTxList,
         Domain::HybridAccountId,
         Domain::PostQuantumAccountId,
+        Domain::MerkleLeaf,
+        Domain::MerkleNode,
+        Domain::MerkleEmpty,
     ];
 
     #[test]
