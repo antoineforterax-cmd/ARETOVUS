@@ -390,11 +390,20 @@ fn decode_index(
             ids.extend(decode_index_page(&page, start)?);
         }
         if ids.len() != count {
-            return Err(StorageError::InvalidFormat("index pages have wrong block count"));
+            return Err(StorageError::InvalidFormat(
+                "index pages have wrong block count",
+            ));
         }
         ids
     };
-    replay_index_blocks(&ids, dir, initial_difficulty, params, rewards, initial_state)
+    replay_index_blocks(
+        &ids,
+        dir,
+        initial_difficulty,
+        params,
+        rewards,
+        initial_state,
+    )
 }
 
 fn decode_index_page(bytes: &[u8], expected_start: usize) -> Result<Vec<Hash256>, StorageError> {
