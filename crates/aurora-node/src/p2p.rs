@@ -35,6 +35,7 @@ const MAX_SESSION_DURATION: Duration = Duration::from_secs(15 * 60);
 const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const PEER_RETRY_ATTEMPTS: usize = 3;
 const PEER_RETRY_BASE_DELAY: Duration = Duration::from_millis(100);
+const PEER_POLL_INTERVAL: Duration = Duration::from_secs(10);
 const HELLO: u8 = 1;
 const GET_BLOCKS: u8 = 2;
 const SUBMIT_BLOCK: u8 = 3;
@@ -696,15 +697,7 @@ fn handle_peer_shared(
                     Ok(_) => {
                         save_snapshot(data_dir, &candidate)?;
                         *chain = candidate;
-                        let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                        let mut pending = Vec::with_capacity(pool.len());
-                        let mut state = chain.state().clone();
-                        for tx in pool.drain(..) {
-                            if state.apply_transaction(&tx).is_ok() {
-                                pending.push(tx);
-                            }
-                        }
-                        *pool = pending;
+                        revalidate_mempool(&chain, mempool)?;
                     }
                     Err(AccountForkChainError::DuplicateBlock) => {}
                     Err(error) => return Err(P2pError::Chain(error)),
@@ -719,6 +712,55 @@ fn handle_peer_shared(
             _ => return Err(P2pError::Protocol("unknown or malformed request")),
         }
     }
+}
+
+fn revalidate_mempool(
+    chain: &AccountForkChain,
+    mempool: &Mutex<Vec<AccountTransaction>>,
+) -> Result<(), P2pError> {
+    let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+    let mut pending = Vec::with_capacity(pool.len());
+    let mut state = chain.state().clone();
+    for tx in pool.drain(..) {
+        if state.apply_transaction(&tx).is_ok() {
+            pending.push(tx);
+        }
+    }
+    *pool = pending;
+    Ok(())
+}
+
+/// Download without holding the server lock, then merge all validated branches atomically.
+fn sync_peer_into_shared(
+    address: SocketAddr,
+    chain: &Mutex<AccountForkChain>,
+    mempool: &Mutex<Vec<AccountTransaction>>,
+    data_dir: &Path,
+) -> Result<usize, P2pError> {
+    let mut candidate = chain
+        .lock()
+        .map_err(|_| P2pError::ChainLockPoisoned)?
+        .clone();
+    let downloaded = sync_from_peer_inner(address, &mut candidate, data_dir, false)?;
+    if downloaded == 0 {
+        return Ok(0);
+    }
+    let mut current = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+    let mut merged = current.clone();
+    let mut added = 0usize;
+    for block in candidate.all_blocks_by_height().into_iter().skip(1) {
+        match merged.submit((*block).clone()) {
+            Ok(_) => added += 1,
+            Err(AccountForkChainError::DuplicateBlock) => {}
+            Err(error) => return Err(P2pError::Chain(error)),
+        }
+    }
+    if added != 0 {
+        save_snapshot(data_dir, &merged)?;
+        *current = merged;
+        revalidate_mempool(&current, mempool)?;
+    }
+    Ok(added)
 }
 
 pub fn serve(
@@ -738,6 +780,24 @@ pub fn serve(
     peers.dedup();
     peers.truncate(MAX_ADVERTISED_PEERS);
     let advertised_peers = Arc::new(peers);
+    if !advertised_peers.is_empty() {
+        let sync_chain = Arc::clone(&chain);
+        let sync_mempool = Arc::clone(&mempool);
+        let sync_data_dir = Arc::clone(&data_dir);
+        let sync_peers = Arc::clone(&advertised_peers);
+        thread::Builder::new()
+            .name("aurora-peer-sync".to_string())
+            .spawn(move || loop {
+                for peer in sync_peers.iter().copied() {
+                    if let Err(error) =
+                        sync_peer_into_shared(peer, &sync_chain, &sync_mempool, &sync_data_dir)
+                    {
+                        eprintln!("background peer sync from {peer} failed: {error}");
+                    }
+                }
+                thread::sleep(PEER_POLL_INTERVAL);
+            })?;
+    }
     let mut workers = Vec::with_capacity(PEER_WORKERS);
     for worker_id in 0..PEER_WORKERS {
         let listener = listener.try_clone()?;
@@ -851,6 +911,15 @@ pub fn sync_from_peer(
     chain: &mut AccountForkChain,
     data_dir: &Path,
 ) -> Result<usize, P2pError> {
+    sync_from_peer_inner(address, chain, data_dir, true)
+}
+
+fn sync_from_peer_inner(
+    address: SocketAddr,
+    chain: &mut AccountForkChain,
+    data_dir: &Path,
+    persist: bool,
+) -> Result<usize, P2pError> {
     let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
     set_timeouts(&stream)?;
     let session_started = Instant::now();
@@ -904,7 +973,9 @@ pub fn sync_from_peer(
             }
         }
         if page_accepted != 0 {
-            save_snapshot(data_dir, &candidate)?;
+            if persist {
+                save_snapshot(data_dir, &candidate)?;
+            }
             *chain = candidate;
             accepted += page_accepted;
         }
@@ -1028,6 +1099,51 @@ mod tests {
         )
         .unwrap()
     }
+    #[test]
+    fn background_sync_merges_remote_blocks_without_dropping_local_branch() {
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-background-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let mut remote = chain();
+        let genesis = remote.tip_hash();
+        let remote_block =
+            AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, vec![]).unwrap();
+        remote.submit(remote_block).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server_dir = dir.clone();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_peer_shared(
+                stream,
+                &Mutex::new(remote),
+                &Mutex::new(Vec::new()),
+                &server_dir,
+                &[],
+            )
+            .unwrap();
+        });
+
+        let mut local = chain();
+        let local_block = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, vec![]).unwrap();
+        local.submit(local_block).unwrap();
+        let shared = Mutex::new(local);
+        let mempool = Mutex::new(Vec::new());
+        assert_eq!(
+            sync_peer_into_shared(address, &shared, &mempool, &dir).unwrap(),
+            1
+        );
+        let current = shared.lock().unwrap();
+        assert_eq!(current.known_block_count(), 3);
+        let restored = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), 3);
+        assert_eq!(restored.tip_hash(), current.tip_hash());
+        drop(current);
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn peer_sync_transfers_and_persists_validated_blocks() {
         let dir = std::env::temp_dir().join(format!("aurora-p2p-{}", std::process::id()));
