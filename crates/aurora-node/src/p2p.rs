@@ -12,6 +12,7 @@ use std::{
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
+    reward::EMISSION_SCHEDULE_ID,
 };
 use aurora_core::{
     codec::{CanonicalDecode, CanonicalEncode},
@@ -81,6 +82,7 @@ pub fn protocol_fingerprint(chain: &AccountForkChain) -> Hash256 {
     let mut bytes = Vec::with_capacity(128);
     let genesis = chain.blocks().next().expect("genesis exists");
     bytes.push(genesis.header.network.to_byte());
+    bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
     bytes.extend_from_slice(
         genesis
             .header
