@@ -37,11 +37,12 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 
 ## Limites connues à examiner
 
-- Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels.
-- Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage et relais périodique des transactions depuis les pairs configurés; annonce spontanée à des pairs non configurés et découverte multi-sauts ne sont pas fournies.
+- Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels. Le consensus exige des timestamps strictement croissants et un MTP, sans plafond lié à l’horloge locale; examiner les effets d’horodatages très futurs sur le retarget et la disponibilité des mineurs.
+- Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage et relais périodique des transactions depuis les pairs configurés; annonce spontanée à des pairs non configurés et découverte multi-sauts ne sont pas fournies. Les huit workers et la durée maximale de session de quinze minutes laissent un risque de saturation par connexions répétées ou entretenues; les tests de connexions lentes ne prouvent pas la résistance à cette saturation.
 - Le portefeuille chiffre ses nouvelles clés par défaut, mais l’ergonomie du mot de passe, la dérivation, la sérialisation du fichier et la sauvegarde/restauration n’ont pas été revues indépendamment. Le format en clair est réservé aux scripts de test; ne jamais utiliser ces clés hors testnet.
 - La preuve SPV dépend des pairs consultés et ne défend pas contre une éclipse.
 - La trésorerie reçoit des unités à une adresse fixe, mais aucune gouvernance ni règle de dépense n’est définie.
+- La chaîne conserve des états de comptes par bloc et clone l’état du parent à l’application d’un nouveau bloc; mesurer la mémoire et le temps de rejeu avec un grand nombre de comptes et de branches avant un testnet prolongé.
 - Les tests de snapshot ne simulent pas une panne électrique réelle, le disque plein, ni une restauration interversion.
 - Le SHA-256 utilisé pour les identifiants et le PoW n’est pas une construction résistante aux ordinateurs quantiques.
 
