@@ -27,6 +27,12 @@ def run_node(binary: Path, *args: str) -> str:
     return output
 
 
+def free_address() -> tuple[str, int]:
+    with socket.socket() as candidate:
+        candidate.bind(("127.0.0.1", 0))
+        return ("127.0.0.1", candidate.getsockname()[1])
+
+
 def wait_listening(process: subprocess.Popen[str], address: tuple[str, int], log: Path) -> None:
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
@@ -49,7 +55,9 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="aurora-p2p-smoke-") as temporary:
         base = Path(temporary)
         node_a, node_b = base / "node-a", base / "node-b"
-        addr_a, addr_b = ("127.0.0.1", 28441), ("127.0.0.1", 28442)
+        addr_a, addr_b = free_address(), free_address()
+        while addr_b[1] == addr_a[1]:
+            addr_b = free_address()
         logs = [base / "a.log", base / "b.log"]
         servers: list[subprocess.Popen[str]] = []
         try:
@@ -80,7 +88,6 @@ def main() -> int:
             for server in servers[:2]:
                 server.terminate()
                 server.wait(timeout=5)
-            addr_a = ("127.0.0.1", 28441)
             stream = logs[0].open("a", encoding="utf-8")
             server_a = subprocess.Popen(
                 [str(binary), "testnet", "serve", "--data-dir", str(node_a),
