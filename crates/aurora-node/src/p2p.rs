@@ -581,6 +581,7 @@ fn handle_peer_shared(
                     count += 1;
                 }
                 reply[1..3].copy_from_slice(&count.to_be_bytes());
+                drop(pool);
                 let sent = reply.len() + 4;
                 if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
                     return Err(P2pError::Protocol("peer session byte budget exceeded"));
@@ -606,6 +607,7 @@ fn handle_peer_shared(
                         .iter()
                         .any(|tx| tx.txid().ok() == Some(txid))
                 };
+                drop(chain);
                 let reply = vec![
                     TX_STATUS_REPLY,
                     if confirmed {
@@ -647,6 +649,7 @@ fn handle_peer_shared(
                     count += 1;
                 }
                 reply[count_offset..count_offset + 2].copy_from_slice(&count.to_be_bytes());
+                drop(chain);
                 let sent = reply.len() + 4;
                 if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
                     return Err(P2pError::Protocol("peer session byte budget exceeded"));
@@ -672,6 +675,7 @@ fn handle_peer_shared(
                         break;
                     }
                 }
+                drop(chain);
                 let mut reply = vec![TX_PROOF_REPLY];
                 if let Some((height, header, proof)) = found {
                     reply.push(1);
