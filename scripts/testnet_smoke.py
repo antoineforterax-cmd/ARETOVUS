@@ -67,7 +67,7 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
     saved_height = -1
     try:
         while time.monotonic() < deadline:
-            snapshots = list(data_dir.glob("snapshot-*.aurora"))
+            snapshots = list(data_dir.glob("snapshot-*.auridx"))
             heights = [
                 int(match.group(1))
                 for snapshot in snapshots
