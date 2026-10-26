@@ -11,7 +11,7 @@ Le passage au profil Testnet v3 est incompatible avec l’ancien testnet hybride
 - Le testnet accepte uniquement les transactions v3: clé publique ML-DSA-65 de 1 952 octets et signature ML-DSA-65 de 3 309 octets; `sender` est le hash domaine-séparé de la clé publique. Le digest signé engage la version, le réseau, l’expéditeur, le nonce, le destinataire, le montant et les frais. Les profils v1 Ed25519 et v2 hybride sont conservés pour Regtest et rejetés par consensus sur Testnet. Le handshake P2P distingue le nouveau profil.
 - Les montants sont des entiers non signés à 8 décimales. Encodage réseau big-endian et décodage canonique; formats incorrects, données excédentaires et dépassements sont rejetés.
 - Une transaction débite montant + frais, exige la signature exacte et le prochain nonce. Le lot de transactions est appliqué atomiquement.
-- Le bloc engage la liste ordonnée des identifiants de transactions et l’identité de mineur. Ce n’est pas un arbre de Merkle.
+- Le bloc engage la liste ordonnée des identifiants de transactions et l’identité de mineur. Ce n’est pas un arbre de Merkle; preuves Merkle et SPV ne sont pas encore définis.
 
 ## Entête, PoW et sélection
 
@@ -33,9 +33,28 @@ Le nœud construit une genèse testnet vide et déterministe. Paramètres actuel
 
 ## Réseau expérimental
 
-Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
+Le transport actuel est TCP push/pull vers des pairs configurés. Le mempool RPC et le wallet sont disponibles sur Testnet seulement : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. Il n’existe pas de reconnexion continue, d’annonce spontanée multi-sauts, ni de mempool. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
+La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. Il n’existe pas de reconnexion continue ni d’annonce spontanée multi-sauts. Le mempool ne se propage pas par gossip et n’est pas persisté. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
+
+## Portefeuille et RPC testnet
+
+Le CLI `aurora-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet.
+
+Les commandes utilisent les messages suivants :
+
+| Message | Charge après l’opcode | Réponse |
+|---|---|---|
+| `GET_ACCOUNT=6` | AccountId[32] | `0x86 || next_nonce[u64] || balance_units[u64]` |
+| `SUBMIT_TX=7` | Transaction v3 canonique | `0x87 || txid[32] || pending_count[u32]`, ou `0x89 || reason` |
+| `GET_MEMPOOL=8` | vide | `0x88 || count[u16] || (length[u32] || tx)*` |
+| `GET_TX_STATUS=9` | txid[32] | `0x8a || status` : 0 inconnu, 1 pending, 2 inclus dans la chaîne canonique |
+
+Le compte et le nonce sont calculés en rejouant les transactions actuellement en attente sur l’état confirmé. L’admission au mempool exige le réseau et la version v3, l’encodage canonique, une signature valide, le prochain nonce et un solde suffisant, après application des transactions déjà en attente. Le mempool est borné à 4 096 transactions et 32 MiB; chaque pair ne sert qu’une page de 700 transactions. Il est en mémoire et ne survit pas à un redémarrage. Le mineur récupère les transactions du premier pair `--peer`, vérifie les règles de consensus en construisant le bloc, puis propage le bloc. Le protocole n’a pas encore de gossip de transactions ni de sélection économique des frais.
+
+Les fichiers de clés wallet `AURKEY3` contiennent une graine de 32 octets générée par le CSPRNG du système, en clair, suivie d’une somme de contrôle SHA-256. L’adresse actuelle est l’identifiant brut de 32 octets dérivé de la clé publique ML-DSA-65; son affichage est 64 caractères hexadécimaux. Le format n’est pas chiffré, n’est pas un format de sauvegarde à long terme et ne doit servir qu’aux essais locaux. Il n’y a pas encore de dérivation hiérarchique, de phrase de récupération, d’URI de paiement, de gardiens/time-locks, de DID ou de protection matérielle des clés.
+
+`Confirmed` signifie uniquement que le txid est observé dans les blocs canoniques de ce nœud au moment de la requête; aucune règle de confirmations ou de finalité n’est promise. En cas de réorganisation, une transaction peut perdre cette inclusion. Le portefeuille doit alors réinterroger le statut.
 
 ## Commandes
 
@@ -56,4 +75,4 @@ Avant d’élargir les essais, restent à faire :
 4. Tests d’interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
 5. Fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
 
-Portefeuille, explorateur et site de présentation sont une étape ultérieure, hors de ce travail sur le mécanisme blockchain.
+Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. URI de paiement, DID et récupération, explorateur, SPV et site de présentation restent à concevoir.
