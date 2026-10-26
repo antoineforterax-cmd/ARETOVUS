@@ -84,7 +84,7 @@ pub fn save_snapshot(
     fs::create_dir_all(dir)?;
     let block_dir = dir.join(BLOCK_DIRECTORY);
     fs::create_dir_all(&block_dir)?;
-    let blocks = chain.all_blocks_by_height();
+    let blocks = chain.all_blocks_by_arrival();
     if blocks.is_empty() || blocks.len() > MAX_BLOCKS {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
@@ -515,6 +515,34 @@ mod tests {
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), 3);
         assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn v5_index_preserves_arrival_inventory_after_restart() {
+        let path = dir();
+        let mut original = chain();
+        let genesis = original.tip_hash();
+        let first = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
+        let first_hash = first.header.hash().unwrap();
+        original.submit(first).unwrap();
+        let second =
+            AccountBlock::build(NetworkId::Regtest, first_hash, 3, 0, Vec::new()).unwrap();
+        let second_hash = second.header.hash().unwrap();
+        original.submit(second).unwrap();
+        let late = AccountBlock::build(NetworkId::Regtest, genesis, 4, 0, Vec::new()).unwrap();
+        let late_hash = late.header.hash().unwrap();
+        original.submit(late).unwrap();
+        let expected = [genesis, first_hash, second_hash, late_hash];
+
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let actual: Vec<_> = restored
+            .arrival_block_page(0, 4)
+            .iter()
+            .map(|block| block.header.hash().unwrap())
+            .collect();
+        assert_eq!(actual, expected);
         fs::remove_dir_all(path).unwrap();
     }
 
