@@ -9,18 +9,20 @@
 - Émission `fast_start_500`, partage trésorerie/mineur et frais, plafond strict; identité mineur engagée et récompenses réorganisées avec l’état.
 - Snapshot `AURORSNP` v3 avec toutes les branches et paramètres de difficulté/récompense; checksum, rejeu/revalidation et choix du dernier snapshot par travail cumulé (même si la chaîne gagnante est plus courte).
 - Commande de minage testnet avec identité publique en argument, sauvegarde à chaque bloc et test de reprise après rechargement.
-- TCP expérimental push/pull vers pairs statiques : sync paginée, réception de blocs, propagation explicite par `mine --peer`, handshake d’empreinte consensus, limites de frames et revalidation des blocs reçus.
+- TCP expérimental push/pull vers pairs statiques : sync paginée, réception et sauvegarde de blocs, propagation explicite par `mine --peer`, handshake d’empreinte consensus, découverte opt-in d’un saut, huit sessions concurrentes et quotas cumulés par session.
+- `scripts/testnet_smoke.py` orchestre deux processus, propage trois blocs, synchronise à nouveau et vérifie la convergence des sommets; lancé par la CI.
+- Tests réseau négatifs : blocs invalides, handshake incompatible, inventaires/frame malformés ou surdimensionnés, limites de session, découverte bornée et erreurs transitoires.
 - CI GitHub Actions verte pour le lot mineur/snapshots (run 187, commit `983d56d16d572d4dfd988563ffdf0418d7c7261d`). CI GitHub Actions verte sur le lot courant (run 245, commit `c18186db1dc7a00fbed6bb22feb89e7d191bdf12`), couvrant P2P, limite d’octets de bloc et reprise par travail cumulé.
 
 ## Reste pour fermer une version de testnet reproductible
 
 1. **Difficulté/temps** : vecteurs de référence indépendants, simulation de dérive temporelle, rafales, longues pauses et manipulation du retarget; décider une borne future de timestamp.
-2. **Réseau** : tests de protocole contre pairs malveillants, coupure/reprise, plafonds cumulés de ressources par session; ajouter découverte, reconnexion, connexions simultanées et annonce de blocs ou documenter précisément une topologie statique expérimentale.
+2. **Réseau** : le scénario de deux nœuds et les limites de ressources sont désormais vérifiés en CI. Restent une reconnexion continue, propagation multi-sauts spontanée, campagne de tests de coupure/réprise et fuzzing des trames; la topologie actuelle reste amorcée par adresses statiques, avec découverte opt-in d’un seul saut.
 3. **Limites de bloc** : limite consensus de 4 MiB maintenant en place; mesurer le coût CPU/mémoire et tester les frontières de taille dans consensus, décodage, stockage et transport.
 4. **Stockage** : injecter interruptions au moment d’écriture, disque plein, snapshots concurrents, restauration indépendante et migration de format; le snapshot actuel n’est pas une base transactionnelle.
-5. **Testnet reproductible** : script d’orchestration multi-nœuds, commande de vérification de solde/état, tests de divergence et de réorganisation entre processus.
+5. **Testnet reproductible** : le smoke test à deux processus est en CI; ajouter scénarios multi-hôtes prolongés, synchronisation après redémarrage, forks concurrents et réorganisations observées entre processus.
 6. **Robustesse** : fuzzing du décodage et de l’application de blocs, analyse de dépendances, revue humaine du code et revue indépendante du protocole.
 
 ## Étape suivante
 
-Faire passer la CI du transport TCP ajouté, corriger toute régression, puis écrire/valider les scénarios multi-nœuds et les attaques réseau. La crypto sera considérée comme codée pour le testnet seulement lorsque ces critères centraux seront exécutables et que les limites restantes seront clairement signalées. La revue indépendante restera nécessaire avant toute finalisation ou usage public.
+La CI doit maintenant valider le transport TCP et son smoke test multi-processus; poursuivre les scénarios de coupure, redémarrage, réorganisation et messages hostiles. Le réseau fourni fonctionne pour une testnet expérimentale à pairs connus, sans promesse de disponibilité continue. La revue indépendante reste nécessaire avant toute finalisation publique ou tout usage avec valeur.
