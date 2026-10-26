@@ -10,5 +10,6 @@ workspace = true
 
 [dependencies]
 aurora-core.workspace = true
+aurora-consensus.workspace = true
 ml-dsa.workspace = true
 getrandom.workspace = true
