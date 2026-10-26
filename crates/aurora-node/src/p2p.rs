@@ -203,7 +203,7 @@ fn encode_peer_list(peers: &[SocketAddr]) -> Result<Vec<u8>, P2pError> {
     Ok(frame)
 }
 
-fn decode_peer_list(frame: &[u8]) -> Result<Vec<SocketAddr>, P2pError> {
+pub fn decode_peer_list(frame: &[u8]) -> Result<Vec<SocketAddr>, P2pError> {
     if frame.len() < 3 || frame[0] != PEERS_REPLY {
         return Err(P2pError::Protocol("invalid peer list"));
     }
@@ -324,7 +324,7 @@ fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, 
     frame[count_offset..count_offset + 4].copy_from_slice(&count.to_be_bytes());
     Ok(frame)
 }
-fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
+pub fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
     if frame.len() < 9 || frame[0] != BLOCKS_REPLY {
         return Err(P2pError::Protocol("invalid block page"));
     }
