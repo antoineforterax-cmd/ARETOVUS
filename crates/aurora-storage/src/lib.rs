@@ -28,13 +28,20 @@ use aurora_core::{
 const MAGIC: &[u8; 8] = b"AURORSNP";
 const FORMAT_VERSION: u32 = 4;
 const INDEX_MAGIC: &[u8; 8] = b"AURORIDX";
-const INDEX_VERSION: u32 = 5;
+const INDEX_VERSION: u32 = 6;
+const LEGACY_INDEX_VERSION: u32 = 5;
+const INDEX_PAGE_MAGIC: &[u8; 8] = b"AURORPAG";
+const INDEX_PAGE_VERSION: u32 = 1;
+const INDEX_PAGE_DIRECTORY: &str = "index-pages-v6";
+const INDEX_PAGE_EXTENSION: &str = "aurpage";
+const INDEX_PAGE_BLOCKS: usize = 4_096;
+const MAX_INDEX_PAGE_BYTES: usize = 24 + INDEX_PAGE_BLOCKS * 32 + 32;
 const BLOCK_DIRECTORY: &str = "blocks-v5";
 const INDEX_EXTENSION: &str = "auridx";
 const BLOCK_EXTENSION: &str = "aurblk";
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
-const MAX_BLOCKS: usize = 100_000;
+const MAX_LEGACY_BLOCKS: usize = 100_000;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug)]
@@ -74,8 +81,8 @@ impl From<AccountForkChainError> for StorageError {
     }
 }
 
-/// Persist content-addressed blocks and an immutable, checksummed v5 index.
-/// The old v4 snapshot reader remains available for recovery and migration.
+/// Persist content-addressed blocks, immutable v6 pages and a checksummed manifest.
+/// The v4 snapshot and v5 index readers remain available for recovery and migration.
 pub fn save_snapshot(
     dir: impl AsRef<Path>,
     chain: &AccountForkChain,
@@ -84,11 +91,25 @@ pub fn save_snapshot(
     fs::create_dir_all(dir)?;
     let block_dir = dir.join(BLOCK_DIRECTORY);
     fs::create_dir_all(&block_dir)?;
+    let page_dir = dir.join(INDEX_PAGE_DIRECTORY);
+    fs::create_dir_all(&page_dir)?;
     let blocks = chain.all_blocks_by_arrival();
-    if blocks.is_empty() || blocks.len() > MAX_BLOCKS {
+    if blocks.is_empty() {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
-    let mut body = Vec::with_capacity(73 + blocks.len() * 32 + CHECKSUM_LEN);
+    let mut block_ids = Vec::with_capacity(blocks.len());
+    for block in blocks {
+        let block_id = block.header.hash()?;
+        let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        if !block_path.exists() {
+            let encoded = block.to_canonical_bytes()?;
+            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+        }
+        block_ids.push(block_id);
+    }
+
+    let page_count = block_ids.len().div_ceil(INDEX_PAGE_BLOCKS);
+    let mut body = Vec::with_capacity(81 + page_count * 32 + CHECKSUM_LEN);
     body.extend_from_slice(INDEX_MAGIC);
     body.extend_from_slice(&INDEX_VERSION.to_be_bytes());
     body.extend_from_slice(&chain.initial_difficulty_bits().to_be_bytes());
@@ -101,15 +122,38 @@ pub fn save_snapshot(
     let rewards = chain.reward_params();
     body.push(u8::from(rewards.enabled));
     body.extend_from_slice(&rewards.treasury_account.0);
-    body.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
-    for block in blocks {
-        let block_id = block.header.hash()?;
-        let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        if !block_path.exists() {
-            let encoded = block.to_canonical_bytes()?;
-            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+    body.extend_from_slice(
+        &u64::try_from(block_ids.len())
+            .map_err(|_| StorageError::InvalidFormat("block count exceeds u64"))?
+            .to_be_bytes(),
+    );
+    body.extend_from_slice(
+        &u32::try_from(page_count)
+            .map_err(|_| StorageError::InvalidFormat("page count exceeds u32"))?
+            .to_be_bytes(),
+    );
+    for (page_number, chunk) in block_ids.chunks(INDEX_PAGE_BLOCKS).enumerate() {
+        let mut page = Vec::with_capacity(24 + chunk.len() * 32 + CHECKSUM_LEN);
+        page.extend_from_slice(INDEX_PAGE_MAGIC);
+        page.extend_from_slice(&INDEX_PAGE_VERSION.to_be_bytes());
+        let start = page_number
+            .checked_mul(INDEX_PAGE_BLOCKS)
+            .ok_or(StorageError::InvalidFormat("page offset overflow"))?;
+        page.extend_from_slice(
+            &u64::try_from(start)
+                .map_err(|_| StorageError::InvalidFormat("page offset exceeds u64"))?
+                .to_be_bytes(),
+        );
+        page.extend_from_slice(&(chunk.len() as u32).to_be_bytes());
+        for block_id in chunk {
+            page.extend_from_slice(block_id.as_bytes());
         }
-        body.extend_from_slice(block_id.as_bytes());
+        let checksum = sha256_plain(&page);
+        page.extend_from_slice(checksum.as_bytes());
+        let page_id = sha256_plain(&page);
+        let page_path = page_dir.join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
+        body.extend_from_slice(page_id.as_bytes());
     }
     let checksum = sha256_plain(&body);
     body.extend_from_slice(checksum.as_bytes());
@@ -283,7 +327,7 @@ fn decode_index(
         return Err(StorageError::InvalidFormat("bad index magic"));
     }
     let version = u32::from_be_bytes(body[8..12].try_into().expect("fixed slice"));
-    if version != INDEX_VERSION {
+    if version != INDEX_VERSION && version != LEGACY_INDEX_VERSION {
         return Err(StorageError::InvalidFormat("unsupported index version"));
     }
     let initial_difficulty = u16::from_be_bytes(body[12..14].try_into().expect("fixed slice"));
@@ -303,24 +347,117 @@ fn decode_index(
         enabled: reward_enabled,
         treasury_account: AccountId(body[37..69].try_into().expect("fixed account id")),
     };
-    let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
-    if count == 0 || count > MAX_BLOCKS || body.len() != 73 + count * 32 {
-        return Err(StorageError::InvalidFormat("invalid index block count"));
+    let ids = if version == LEGACY_INDEX_VERSION {
+        let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
+        if count == 0 || count > MAX_LEGACY_BLOCKS || body.len() != 73 + count * 32 {
+            return Err(StorageError::InvalidFormat("invalid index block count"));
+        }
+        body[73..]
+            .chunks_exact(32)
+            .map(|chunk| Hash256::from_bytes(chunk.try_into().expect("fixed hash")))
+            .collect::<Vec<_>>()
+    } else {
+        if body.len() < 81 + 32 {
+            return Err(StorageError::InvalidFormat("invalid v6 index length"));
+        }
+        let count = usize::try_from(u64::from_be_bytes(
+            body[69..77].try_into().expect("fixed slice"),
+        ))
+        .map_err(|_| StorageError::InvalidFormat("index count exceeds platform size"))?;
+        let page_count = u32::from_be_bytes(body[77..81].try_into().expect("fixed slice")) as usize;
+        let digest_bytes = page_count
+            .checked_mul(32)
+            .ok_or(StorageError::InvalidFormat("page count overflow"))?;
+        if count == 0
+            || page_count != count.div_ceil(INDEX_PAGE_BLOCKS)
+            || body.len() != 81 + digest_bytes
+        {
+            return Err(StorageError::InvalidFormat("invalid v6 page count"));
+        }
+        let mut ids = Vec::new();
+        for (page_number, digest) in body[81..].chunks_exact(32).enumerate() {
+            let page_id = Hash256::from_bytes(digest.try_into().expect("fixed hash"));
+            let page_path = dir
+                .join(INDEX_PAGE_DIRECTORY)
+                .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+            let page = read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES)?;
+            if sha256_plain(&page) != page_id {
+                return Err(StorageError::ChecksumMismatch);
+            }
+            let start = page_number
+                .checked_mul(INDEX_PAGE_BLOCKS)
+                .ok_or(StorageError::InvalidFormat("page offset overflow"))?;
+            ids.extend(decode_index_page(&page, start)?);
+        }
+        if ids.len() != count {
+            return Err(StorageError::InvalidFormat("index pages have wrong block count"));
+        }
+        ids
+    };
+    replay_index_blocks(&ids, dir, initial_difficulty, params, rewards, initial_state)
+}
+
+fn decode_index_page(bytes: &[u8], expected_start: usize) -> Result<Vec<Hash256>, StorageError> {
+    if bytes.len() < 24 + 32 + CHECKSUM_LEN || bytes.len() > MAX_INDEX_PAGE_BYTES {
+        return Err(StorageError::InvalidFormat("invalid index page length"));
     }
-    let mut blocks = Vec::with_capacity(count);
-    for &digest_bytes in body[73..].as_chunks::<32>().0 {
-        let block_id = Hash256::from_bytes(digest_bytes);
+    let body_len = bytes.len() - CHECKSUM_LEN;
+    let (body, checksum) = bytes.split_at(body_len);
+    if sha256_plain(body).as_bytes() != checksum {
+        return Err(StorageError::ChecksumMismatch);
+    }
+    if &body[..8] != INDEX_PAGE_MAGIC
+        || u32::from_be_bytes(body[8..12].try_into().expect("fixed slice")) != INDEX_PAGE_VERSION
+    {
+        return Err(StorageError::InvalidFormat("invalid index page header"));
+    }
+    let start = u64::from_be_bytes(body[12..20].try_into().expect("fixed slice"));
+    let count = u32::from_be_bytes(body[20..24].try_into().expect("fixed slice")) as usize;
+    if start != expected_start as u64
+        || count == 0
+        || count > INDEX_PAGE_BLOCKS
+        || body.len() != 24 + count * 32
+    {
+        return Err(StorageError::InvalidFormat("invalid index page range"));
+    }
+    Ok(body[24..]
+        .chunks_exact(32)
+        .map(|chunk| Hash256::from_bytes(chunk.try_into().expect("fixed hash")))
+        .collect())
+}
+
+fn replay_index_blocks(
+    ids: &[Hash256],
+    dir: &Path,
+    initial_difficulty: u16,
+    params: DifficultyParams,
+    rewards: RewardParams,
+    initial_state: AccountLedger,
+) -> Result<AccountForkChain, StorageError> {
+    let mut chain = None;
+    for block_id in ids {
         let block_path = dir
             .join(BLOCK_DIRECTORY)
             .join(format!("{block_id}.{BLOCK_EXTENSION}"));
         let encoded = read_bounded_limit(&block_path, MAX_ACCOUNT_BLOCK_BYTES)?;
         let block = AccountBlock::from_canonical_bytes(&encoded)?;
-        if block.header.hash()? != block_id {
+        if block.header.hash()? != *block_id {
             return Err(StorageError::ChecksumMismatch);
         }
-        blocks.push(block);
+        if let Some(chain) = chain.as_mut() {
+            let chain: &mut AccountForkChain = chain;
+            chain.submit(block)?;
+        } else {
+            chain = Some(AccountForkChain::new_with_protocol_params(
+                block,
+                initial_difficulty,
+                params,
+                rewards,
+                initial_state.clone(),
+            )?);
+        }
     }
-    replay_blocks(blocks, initial_difficulty, params, rewards, initial_state)
+    chain.ok_or(StorageError::InvalidFormat("missing genesis"))
 }
 
 fn replay_blocks(
@@ -350,7 +487,7 @@ fn replay_blocks(
 #[cfg(test)]
 fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
     let blocks = chain.all_blocks_by_height();
-    if blocks.len() > MAX_BLOCKS {
+    if blocks.len() > MAX_LEGACY_BLOCKS {
         return Err(StorageError::InvalidFormat("too many blocks"));
     }
     let mut body = Vec::new();
@@ -422,7 +559,7 @@ fn decode_snapshot(
         treasury_account,
     };
     let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
-    if count == 0 || count > MAX_BLOCKS {
+    if count == 0 || count > MAX_LEGACY_BLOCKS {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut cursor = 73usize;
@@ -519,7 +656,7 @@ mod tests {
     }
 
     #[test]
-    fn v5_index_preserves_arrival_inventory_after_restart() {
+    fn v6_index_preserves_arrival_inventory_after_restart() {
         let path = dir();
         let mut original = chain();
         let genesis = original.tip_hash();
@@ -673,7 +810,7 @@ mod tests {
     }
 
     #[test]
-    fn v5_indexes_share_immutable_blocks_and_keep_recovery_points() {
+    fn v6_indexes_share_immutable_blocks_and_keep_recovery_points() {
         let path = dir();
         let mut chain = chain();
         save_snapshot(&path, &chain).unwrap();
@@ -731,7 +868,7 @@ mod tests {
     }
 
     #[test]
-    fn copied_v5_data_directory_restores_all_branches() {
+    fn copied_v6_data_directory_restores_all_branches() {
         let source = dir();
         let backup = dir();
         let mut original = chain();
@@ -743,6 +880,7 @@ mod tests {
         save_snapshot(&source, &original).unwrap();
 
         fs::create_dir_all(backup.join(BLOCK_DIRECTORY)).unwrap();
+        fs::create_dir_all(backup.join(INDEX_PAGE_DIRECTORY)).unwrap();
         for entry in fs::read_dir(&source).unwrap() {
             let path = entry.unwrap().path();
             if path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
@@ -757,6 +895,16 @@ mod tests {
             )
             .unwrap();
         }
+        for entry in fs::read_dir(source.join(INDEX_PAGE_DIRECTORY)).unwrap() {
+            let path = entry.unwrap().path();
+            fs::copy(
+                &path,
+                backup
+                    .join(INDEX_PAGE_DIRECTORY)
+                    .join(path.file_name().unwrap()),
+            )
+            .unwrap();
+        }
         let restored =
             load_latest_snapshot(&backup, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
@@ -767,7 +915,7 @@ mod tests {
     }
 
     #[test]
-    fn legacy_v4_snapshot_can_be_migrated_to_v5() {
+    fn legacy_v4_snapshot_can_be_migrated_to_v6() {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
         let original = chain();
