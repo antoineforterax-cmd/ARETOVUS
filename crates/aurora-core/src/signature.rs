@@ -7,8 +7,9 @@
 use ed25519_dalek::{Signature, VerifyingKey as VerifyingKeyEd25519};
 
 use crate::accounts::{
-    AccountTransaction, HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES, ML_DSA_65_PUBLIC_KEY_BYTES,
-    ML_DSA_65_SIGNATURE_BYTES,
+    AccountTransaction, HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES,
+    ML_DSA_65_PUBLIC_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
+    POST_QUANTUM_AUTH_BYTES,
 };
 use crate::hash::{tagged_hash, Domain};
 
@@ -18,10 +19,14 @@ pub enum SignatureError {
     InvalidSignatureEncoding,
     InvalidSignature,
     InvalidHybridAccountId,
+    InvalidPostQuantumAccountId,
 }
 
 /// Valide les octets de signature d'une transaction contre la clé publique `sender`.
 pub fn verify_account_transaction(tx: &AccountTransaction) -> Result<(), SignatureError> {
+    if tx.version == POST_QUANTUM_ACCOUNT_TX_VERSION {
+        return verify_post_quantum_account_transaction(tx);
+    }
     if tx.version == HYBRID_ACCOUNT_TX_VERSION {
         return verify_hybrid_account_transaction(tx);
     }
@@ -45,6 +50,41 @@ pub fn hybrid_account_id(
     keys.extend_from_slice(ed25519_public_key);
     keys.extend_from_slice(ml_dsa_65_public_key);
     crate::accounts::AccountId(*tagged_hash(Domain::HybridAccountId, &keys).as_bytes())
+}
+
+/// Account id for v3 is a domain-separated hash of the encoded ML-DSA-65 public key.
+pub fn post_quantum_account_id(ml_dsa_65_public_key: &[u8]) -> crate::accounts::AccountId {
+    crate::accounts::AccountId(
+        *tagged_hash(Domain::PostQuantumAccountId, ml_dsa_65_public_key).as_bytes(),
+    )
+}
+
+fn verify_post_quantum_account_transaction(
+    tx: &AccountTransaction,
+) -> Result<(), SignatureError> {
+    use ml_dsa::{MlDsa65, Signature as MlDsaSignature, Verifier, VerifyingKey};
+
+    if tx.auth_data.len() != POST_QUANTUM_AUTH_BYTES {
+        return Err(SignatureError::InvalidSignatureEncoding);
+    }
+    let key_end = ML_DSA_65_PUBLIC_KEY_BYTES;
+    let encoded_key = ml_dsa::EncodedVerifyingKey::<MlDsa65>::try_from(
+        &tx.auth_data[..key_end],
+    )
+    .map_err(|_| SignatureError::InvalidSignatureEncoding)?;
+    let key = VerifyingKey::<MlDsa65>::decode(&encoded_key);
+    if post_quantum_account_id(&tx.auth_data[..key_end]) != tx.sender {
+        return Err(SignatureError::InvalidPostQuantumAccountId);
+    }
+    let encoded_sig = ml_dsa::EncodedSignature::<MlDsa65>::try_from(&tx.auth_data[key_end..])
+        .map_err(|_| SignatureError::InvalidSignatureEncoding)?;
+    let signature = MlDsaSignature::<MlDsa65>::decode(&encoded_sig)
+        .ok_or(SignatureError::InvalidSignatureEncoding)?;
+    let digest = tx
+        .signing_digest()
+        .map_err(|_| SignatureError::InvalidSignature)?;
+    key.verify(digest.as_bytes(), &signature)
+        .map_err(|_| SignatureError::InvalidSignature)
 }
 
 fn verify_hybrid_account_transaction(tx: &AccountTransaction) -> Result<(), SignatureError> {
@@ -146,6 +186,39 @@ mod tests {
         assert_eq!(verify_account_transaction(&tx), Ok(()));
 
         tx.amount = Amount::from_units(5).unwrap();
+        assert_eq!(
+            verify_account_transaction(&tx),
+            Err(SignatureError::InvalidSignature)
+        );
+    }
+
+    #[test]
+    fn native_post_quantum_v3_uses_only_ml_dsa_65() {
+        use crate::accounts::{
+            POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
+        };
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+
+        let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = signing_key.verifying_key().encode();
+        let mut tx = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender: post_quantum_account_id(public_key.as_slice()),
+            nonce: 0,
+            recipient: AccountId([0x33; 32]),
+            amount: Amount::from_units(5).unwrap(),
+            fee: Amount::from_units(1).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key.as_slice());
+        let signature = signing_key
+            .sign(tx.signing_digest().unwrap().as_bytes())
+            .encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
+
+        tx.amount = Amount::from_units(6).unwrap();
         assert_eq!(
             verify_account_transaction(&tx),
             Err(SignatureError::InvalidSignature)
