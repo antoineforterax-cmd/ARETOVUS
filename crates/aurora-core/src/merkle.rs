@@ -150,7 +150,12 @@ mod tests {
             let root = merkle_root(&leaves).unwrap();
             for (index, txid) in leaves.iter().enumerate() {
                 let proof = merkle_proof(&leaves, index).unwrap();
-                assert!(verify_merkle_proof(*txid, &proof, root), "count={} index={}", count, index);
+                assert!(
+                    verify_merkle_proof(*txid, &proof, root),
+                    "count={} index={}",
+                    count,
+                    index
+                );
             }
         }
     }
@@ -173,6 +178,9 @@ mod tests {
         let leaves = ids(2);
         assert_eq!(merkle_proof(&[], 0), Err(MerkleError::EmptyProof));
         assert_eq!(merkle_proof(&leaves, 2), Err(MerkleError::IndexOutOfRange));
-        assert_eq!(merkle_root(&ids(MAX_MERKLE_LEAVES + 1)), Err(MerkleError::TooManyLeaves));
+        assert_eq!(
+            merkle_root(&ids(MAX_MERKLE_LEAVES + 1)),
+            Err(MerkleError::TooManyLeaves)
+        );
     }
 }
