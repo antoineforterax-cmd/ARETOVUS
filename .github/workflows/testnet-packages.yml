@@ -8,6 +8,7 @@ on:
       - "Cargo.lock"
       - "crates/**"
       - "scripts/package_testnet.py"
+      - "scripts/testnet_lock_smoke.py"
       - ".github/workflows/testnet-packages.yml"
   workflow_dispatch:
 
@@ -36,6 +37,8 @@ jobs:
           python-version: "3.12"
       - name: Construire les binaires du testnet
         run: cargo build --workspace --release --locked
+      - name: Vérifier le verrou de dossier entre processus
+        run: python scripts/testnet_lock_smoke.py
       - name: Créer l’archive et vérifier ses sommes de contrôle
         run: python scripts/package_testnet.py
       - name: Publier l’archive comme artefact CI privé
