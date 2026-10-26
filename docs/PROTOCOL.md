@@ -33,7 +33,7 @@ Le nœud construit une genèse testnet vide et déterministe. Paramètres actuel
 
 Le transport actuel est TCP push/pull vers des pairs configurés : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-Ne sont pas implémentés : annonces spontanées, reprise automatique de sessions déjà établies et découverte non supervisée; la découverte actuelle est opt-in, à un seul saut, et repose sur des bootstrap peers statiques. Le mempool n’est pas implémenté; découverte/reconnexion, mais le protocole borne désormais le trafic cumulé, le nombre de demandes et la durée de chaque session; une défense éprouvée contre les attaques DoS reste à faire. Ne pas exposer ce transport à un réseau non fiable.
+La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. Il n’existe pas de reconnexion continue, d’annonce spontanée multi-sauts, ni de mempool. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
 
 ## Commandes
 
@@ -43,13 +43,15 @@ cargo run -p aurora-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:1
 cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444 --discover
 ```
 
-## Travaux de finalisation
+## État de préparation
 
-1. Compléter les plafonds globaux aux ressources/temps des sessions et tester la cohérence des limites de blocs dans tous les chemins de décodage.
-2. Faire des tests d’intégration multi-processus et des tests de pairs adversariaux : frames malformées, inventaire menteur, bloc invalide, coupure et reprise de sync.
-3. Compléter découverte, annonces, reconnexion et gestion de plusieurs pairs, ou définir explicitement un testnet supervisé à pairs statiques.
-4. Simuler et comparer le retarget avec vecteurs indépendants, dérive temporelle, longues pauses, rafales et réorganisations.
-5. Éprouver interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
-6. Ajouter fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
+Le réseau expérimental fonctionne pour une testnet supervisée à pairs connus; le push/pull, la reprise du snapshot et la convergence de nœuds distincts passent le scénario multi-processus de CI. Ce jalon ne signifie pas que le réseau est décentralisé, toujours connecté ou résistant aux attaques.
+
+Avant d’élargir les essais, restent à faire :
+1. Reconnexion continue et annonces multi-sauts spontanées, si l’usage les exige; le profil actuel suppose un démarrage supervisé avec adresses statiques.
+2. Scénarios prolongés de coupure/reprise, inventaires menteurs, connexions lentes et saturation concurrente.
+3. Simulation indépendante du retarget avec dérive d’horloge, longues pauses, rafales et réorganisations.
+4. Tests d’interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
+5. Fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
 
 Portefeuille, explorateur et site de présentation sont une étape ultérieure, hors de ce travail sur le mécanisme blockchain.
