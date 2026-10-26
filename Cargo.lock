@@ -39,6 +39,11 @@ dependencies = [
 [[package]]
 name = "aurora-wallet"
 version = "0.0.1"
+dependencies = [
+ "aurora-core",
+ "getrandom 0.2.17",
+ "ml-dsa",
+]
 
 [[package]]
 name = "autocfg"
