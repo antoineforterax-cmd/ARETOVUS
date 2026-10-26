@@ -1,13 +1,13 @@
 # Rapport d’essais du testnet AURORA
 
-**Commit de code et CI multi-nœuds :** `2f66c728d5c154e6a5f9c3a15f5fb0cb116e1655`  
+**Commit de code et CI multi-nœuds :** `cafb72193a5d712f13e19658268a3fdd8fb1782e`  
 **Date des workflows :** 26 octobre 2026  
 **Branche :** `feature/emission-schedule-v0`  
 **Verdict :** les contrôles automatisés ciblés passent; ce résultat ne constitue ni un audit indépendant ni une garantie pour des fonds réels.
 
 ## Contrôles de compilation et tests
 
-- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40400643312) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40401304742) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
 - [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
 - [Campagne libFuzzer sur le nœud avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895495), commit `31b016e931624785508cf82b464efa19557c31bf` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Le changement suivant adapte seulement le smoke test au verrou et est couvert par la CI courante.
 
@@ -22,7 +22,7 @@ Le smoke test utilise plusieurs processus isolés et des dossiers temporaires :
 5. Crée une branche concurrente de hauteur 21 depuis la genèse, vérifie que son travail cumulé provoque la réorganisation du nœud, puis vérifie la convergence d’un autre pair. La transaction devenue orpheline n’est plus rapportée comme confirmée.
 6. Lance un pair avec un serveur déjà actif, vérifie qu’il rejoint automatiquement une branche de hauteur 21, puis qu’il rattrape un nouveau bloc de hauteur 22 sans commande `sync` manuelle.
 7. Soumet une nouvelle transaction à un pair, vérifie son relais périodique à un second pair, puis la fait miner par un nœud qui ne contacte que le second pair.
-8. Arrête brutalement un mineur après plusieurs index validés, puis vérifie qu’il redémarre au-dessus du dernier index complet.
+8. Un test Rust fait couper un pair au milieu d’une page de blocs et vérifie qu’aucun bloc partiel ne modifie la chaîne ni le disque. Arrête brutalement un mineur après plusieurs index validés, puis vérifie qu’il redémarre au-dessus du dernier index complet.
 9. Sur Linux, impose une limite de taille aux écritures pour simuler un échec de sauvegarde; vérifie que le nœud reprend l’index complet précédent. Les tests Rust restaurent aussi une copie complète du dossier v5 et lisent un snapshot v4 avant écriture v5.
 
 Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop and write-limit recovery passed ». Résultat : succès sur le commit indiqué.
