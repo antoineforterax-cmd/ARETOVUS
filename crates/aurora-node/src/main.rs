@@ -15,9 +15,7 @@ use aurora_consensus::{
     account_fork_chain::AccountForkChain,
     proof_of_work::mine_nonce,
     reward::RewardParams,
-    testnet::{
-        testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS, TESTNET_TREASURY,
-    },
+    testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS, TESTNET_TREASURY},
 };
 use aurora_core::{
     accounts::{AccountId, AccountTransaction},
