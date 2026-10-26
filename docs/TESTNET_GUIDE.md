@@ -107,3 +107,22 @@ Le scénario démarre des processus séparés, crée un wallet, vérifie trois b
 - Le compte trésorerie actuel n’est pas un smart contract et ne comporte pas de mécanisme de dépense.
 
 Détails et limites : [EMISSION_MODEL.md](EMISSION_MODEL.md), [PROTOCOL.md](PROTOCOL.md).
+
+
+## Wallet et vérification SPV
+
+Le CLI wallet expérimental et la commande de minage multi-pairs sont dans la même workspace. Génère un wallet de test et garde le fichier de clé en local; il est actuellement stocké en clair :
+
+```sh
+cargo run --locked -p aurora-wallet -- keygen --out ./wallet.aurkey
+cargo run --locked -p aurora-wallet -- address --key ./wallet.aurkey
+cargo run --locked -p aurora-wallet -- send --key ./wallet.aurkey --to <adresse-hex> --amount 1.25 --fee 0.01 --node 127.0.0.1:18444
+```
+
+Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
+
+```sh
+cargo run --locked -p aurora-wallet -- verify --node 127.0.0.1:18444 --txid <txid-hex> --confirmations 1
+```
+
+Le module URI accepte les demandes `aurora://testnet/<adresse-hex>?amount=...&memo=...`; il ne s’agit pas d’une commande de portefeuille autonome. La vérification SPV s’appuie sur le pair interrogé et ne remplace pas une synchronisation complète ni une revue de sécurité.
