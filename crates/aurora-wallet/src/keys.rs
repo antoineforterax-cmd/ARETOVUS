@@ -2,17 +2,29 @@
 use std::{
     error::Error,
     fs::{File, OpenOptions},
-    io::{Read, Write},
+    io::{self, Read, Write},
     path::Path,
 };
 
 use aurora_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
+use argon2::{Algorithm, Argon2, Params, Version};
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
+use chacha20poly1305::{
+    aead::{Aead, KeyInit, Payload},
+    XChaCha20Poly1305, XNonce,
+};
+use zeroize::Zeroize;
 
 const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
 const KEY_FILE_BYTES: usize = 8 + 32 + 32;
+const ENCRYPTED_MAGIC: &[u8; 8] = b"AURKEY4\0";
+const ARGON_MEMORY_KIB: u32 = 64 * 1024;
+const ARGON_PASSES: u32 = 3;
+const ARGON_LANES: u32 = 1;
+const ENCRYPTED_HEADER_BYTES: usize = 8 + 12 + 16 + 24;
+const ENCRYPTED_FILE_BYTES: usize = ENCRYPTED_HEADER_BYTES + 32 + 16;
 
-/// An unencrypted testnet signing seed and its derived public identity.
+/// Testnet signing seed and its derived public identity; the seed is wiped on drop.
 pub struct WalletKey {
     seed: [u8; 32],
     public_key: Vec<u8>,
@@ -59,6 +71,109 @@ impl WalletKey {
         SigningKey::<MlDsa65>::from_seed(&seed)
     }
 
+    /// Whether a key file uses the authenticated encrypted AURKEY4 format.
+    pub fn file_is_encrypted(path: &Path) -> Result<bool, Box<dyn Error>> {
+        let mut file = File::open(path)?;
+        let mut magic = [0u8; 8];
+        file.read_exact(&mut magic)?;
+        if &magic == ENCRYPTED_MAGIC {
+            Ok(true)
+        } else if &magic == KEY_MAGIC {
+            Ok(false)
+        } else {
+            Err("unknown AURORA key format".into())
+        }
+    }
+
+    /// Save a password-encrypted testnet seed with a fresh random salt and nonce.
+    pub fn save_encrypted_testnet_file(
+        &self,
+        path: &Path,
+        password: &str,
+    ) -> Result<(), Box<dyn Error>> {
+        if password.len() < 12 {
+            return Err("wallet password must contain at least 12 characters".into());
+        }
+        let mut salt = [0u8; 16];
+        let mut nonce = [0u8; 24];
+        getrandom::getrandom(&mut salt).map_err(|error| format!("OS CSPRNG failed: {error}"))?;
+        getrandom::getrandom(&mut nonce).map_err(|error| format!("OS CSPRNG failed: {error}"))?;
+        let mut header = Vec::with_capacity(ENCRYPTED_HEADER_BYTES);
+        header.extend_from_slice(ENCRYPTED_MAGIC);
+        header.extend_from_slice(&ARGON_MEMORY_KIB.to_be_bytes());
+        header.extend_from_slice(&ARGON_PASSES.to_be_bytes());
+        header.extend_from_slice(&ARGON_LANES.to_be_bytes());
+        header.extend_from_slice(&salt);
+        header.extend_from_slice(&nonce);
+
+        let mut key = derive_password_key(password, &salt)?;
+        let cipher = XChaCha20Poly1305::new_from_slice(&key)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
+        let encrypted = cipher.encrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: &self.seed,
+                aad: &header,
+            },
+        );
+        key.zeroize();
+        let encrypted = encrypted
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "wallet encryption failed"))?;
+        let mut payload = header;
+        payload.extend_from_slice(&encrypted);
+        if payload.len() != ENCRYPTED_FILE_BYTES {
+            return Err("unexpected encrypted key length".into());
+        }
+        write_new_private_file(path, &payload)?;
+        Ok(())
+    }
+
+    /// Restore a password-encrypted seed after authenticating all header fields.
+    pub fn load_encrypted_testnet_file(
+        path: &Path,
+        password: &str,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut file = File::open(path)?;
+        if file.metadata()?.len() != ENCRYPTED_FILE_BYTES as u64 {
+            return Err("invalid AURKEY4 file length".into());
+        }
+        let mut payload = [0u8; ENCRYPTED_FILE_BYTES];
+        file.read_exact(&mut payload)?;
+        if &payload[..8] != ENCRYPTED_MAGIC {
+            return Err("invalid AURKEY4 file header".into());
+        }
+        let memory = u32::from_be_bytes(payload[8..12].try_into()?);
+        let passes = u32::from_be_bytes(payload[12..16].try_into()?);
+        let lanes = u32::from_be_bytes(payload[16..20].try_into()?);
+        if (memory, passes, lanes) != (ARGON_MEMORY_KIB, ARGON_PASSES, ARGON_LANES) {
+            return Err("unsupported AURKEY4 derivation parameters".into());
+        }
+        let salt: [u8; 16] = payload[20..36].try_into()?;
+        let nonce: [u8; 24] = payload[36..60].try_into()?;
+        let mut key = derive_password_key(password, &salt)?;
+        let cipher = XChaCha20Poly1305::new_from_slice(&key)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
+        let decrypted = cipher.decrypt(
+            XNonce::from_slice(&nonce),
+            Payload {
+                msg: &payload[ENCRYPTED_HEADER_BYTES..],
+                aad: &payload[..ENCRYPTED_HEADER_BYTES],
+            },
+        );
+        key.zeroize();
+        let mut decrypted = decrypted.map_err(|_| {
+            io::Error::new(io::ErrorKind::InvalidData, "wrong password or damaged key file")
+        })?;
+        if decrypted.len() != 32 {
+            decrypted.zeroize();
+            return Err("invalid decrypted seed length".into());
+        }
+        let mut seed = [0u8; 32];
+        seed.copy_from_slice(&decrypted);
+        decrypted.zeroize();
+        Ok(Self::from_seed(seed))
+    }
+
     /// Save a plain testnet seed without replacing an existing file.
     ///
     /// The checksum detects accidental corruption; it does not encrypt the seed or
@@ -70,16 +185,7 @@ impl WalletKey {
         let checksum = sha256_plain(&payload);
         payload.extend_from_slice(checksum.as_bytes());
 
-        let mut options = OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options.open(path)?;
-        file.write_all(&payload)?;
-        file.sync_all()?;
+        write_new_private_file(path, &payload)?;
         Ok(())
     }
 
@@ -101,6 +207,34 @@ impl WalletKey {
         let seed: [u8; 32] = payload[8..40].try_into()?;
         Ok(Self::from_seed(seed))
     }
+}
+
+impl Drop for WalletKey {
+    fn drop(&mut self) {
+        self.seed.zeroize();
+    }
+}
+
+fn derive_password_key(password: &str, salt: &[u8; 16]) -> Result<[u8; 32], Box<dyn Error>> {
+    let params = Params::new(ARGON_MEMORY_KIB, ARGON_PASSES, ARGON_LANES, Some(32))?;
+    let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+    let mut key = [0u8; 32];
+    argon.hash_password_into(password.as_bytes(), salt, &mut key)?;
+    Ok(key)
+}
+
+fn write_new_private_file(path: &Path, payload: &[u8]) -> io::Result<()> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path)?;
+    file.write_all(payload)?;
+    file.sync_all()?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -126,6 +260,27 @@ mod tests {
         assert_eq!(loaded.account_id(), key.account_id());
         assert_eq!(loaded.public_key(), key.public_key());
         assert!(loaded.save_plain_testnet_file(&path).is_err());
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn encrypted_key_roundtrip_rejects_wrong_password_and_tampering() {
+        let path = std::env::temp_dir().join(format!(
+            "aurora-wallet-encrypted-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let key = WalletKey::from_seed_bytes([43; 32]);
+        key.save_encrypted_testnet_file(&path, "a long test password").unwrap();
+        assert!(WalletKey::file_is_encrypted(&path).unwrap());
+        let loaded = WalletKey::load_encrypted_testnet_file(&path, "a long test password").unwrap();
+        assert_eq!(loaded.account_id(), key.account_id());
+        assert!(WalletKey::load_encrypted_testnet_file(&path, "wrong password").is_err());
+        assert!(key.save_encrypted_testnet_file(&path, "a long test password").is_err());
+        let mut bytes = fs::read(&path).unwrap();
+        bytes[ENCRYPTED_HEADER_BYTES] ^= 1;
+        fs::write(&path, bytes).unwrap();
+        assert!(WalletKey::load_encrypted_testnet_file(&path, "a long test password").is_err());
         fs::remove_file(path).unwrap();
     }
 
