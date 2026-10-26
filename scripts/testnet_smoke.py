@@ -73,7 +73,7 @@ def main() -> int:
         key_output = run_wallet(wallet, "keygen", "--out", str(keyfile))
         miner_match = re.search(r"address=([0-9a-f]{64})", key_output)
         if miner_match is None:
-            raise AssertionError(f"wallet did not print its testnet address:\\n{key_output}")
+            raise AssertionError(f"wallet did not print its testnet address:\n{key_output}")
         miner = miner_match.group(1)
         addr_a, addr_b = free_address(), free_address()
         while addr_b[1] == addr_a[1]:
@@ -125,11 +125,6 @@ def main() -> int:
                     f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
                 )
 
-            if mined_rows != expected_rows:
-                raise AssertionError(
-                    f"mined blocks do not follow smooth emission and 95/5 split:\\n{mined}"
-                )
-
             sent = run_wallet(
                 wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
                 "--amount", "1.00000000", "--fee", "0.00000003",
@@ -137,20 +132,20 @@ def main() -> int:
             )
             tx_match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
             if tx_match is None or "mempool=pending" not in sent:
-                raise AssertionError(f"wallet did not submit transaction to mempool:\\n{sent}")
+                raise AssertionError(f"wallet did not submit transaction to mempool:\n{sent}")
             pending = run_wallet(
                 wallet, "status", "--node", f"{addr_b[0]}:{addr_b[1]}",
                 "--txid", tx_match.group(1),
             )
             if "Pending" not in pending:
-                raise AssertionError(f"submitted transaction was not pending:\\n{pending}")
+                raise AssertionError(f"submitted transaction was not pending:\n{pending}")
 
             mined_payment = run_node(
                 binary, "testnet", "mine", "--data-dir", str(node_a),
                 "--miner", miner, "--count", "1", "--peer", f"{addr_b[0]}:{addr_b[1]}",
             )
-            if not re.search(r"height=4\\b.*transactions=1", mined_payment):
-                raise AssertionError(f"miner did not include the pending wallet transaction:\\n{mined_payment}")
+            if not re.search(r"height=4\b.*transactions=1", mined_payment):
+                raise AssertionError(f"miner did not include the pending wallet transaction:\n{mined_payment}")
             remaining = cap_units - expected_issued
             issuance = min(remaining, max(1, remaining // 1_000_000))
             expected_issued += issuance
@@ -158,19 +153,19 @@ def main() -> int:
             expected_miner -= 100_000_000 + 3
             expected_miner += 1
             payment_row = re.search(
-                r"height=4 tip=[0-9a-f]{64} .*issued_units=(\\d+) miner_balance_units=(\\d+)",
+                r"height=4 tip=[0-9a-f]{64} .*issued_units=(\d+) miner_balance_units=(\d+)",
                 mined_payment,
             )
             if payment_row is None or (int(payment_row.group(1)), int(payment_row.group(2))) != (
                 expected_issued, expected_miner
             ):
-                raise AssertionError(f"mined wallet payment reward accounting was incorrect:\\n{mined_payment}")
+                raise AssertionError(f"mined wallet payment reward accounting was incorrect:\n{mined_payment}")
             confirmed = run_wallet(
                 wallet, "status", "--node", f"{addr_b[0]}:{addr_b[1]}",
                 "--txid", tx_match.group(1),
             )
             if "Confirmed" not in confirmed:
-                raise AssertionError(f"transaction was not confirmed after mining:\\n{confirmed}")
+                raise AssertionError(f"transaction was not confirmed after mining:\n{confirmed}")
 
             # Restart A after mining so its server loads the persisted height-4 chain.
             for server in servers[:2]:
@@ -194,9 +189,10 @@ def main() -> int:
             tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", synced)
             accepted = re.search(r"accepted=(\d+)", synced)
             if not tips or tips[-1][0] != "4" or accepted is None or accepted.group(1) != "4":
-                raise AssertionError(f"fresh node did not pull all three blocks:\n{synced}")
-            if tips[-1][1] != mined_tip.group(1):
-                raise AssertionError(f"fresh node did not converge to the mined tip:\n{mined}\n{synced}")
+                raise AssertionError(f"fresh node did not pull all four blocks:\n{synced}")
+            payment_tip = re.search(r"height=4\\b.*\\btip=([0-9a-f]{64})", mined_payment)
+            if payment_tip is None or tips[-1][1] != payment_tip.group(1):
+                raise AssertionError(f"fresh node did not converge to the latest mined tip:\n{mined_payment}\n{synced}")
 
             # A separate process reopens B's persisted snapshot and checks the same peer tip.
             restored = run_node(
