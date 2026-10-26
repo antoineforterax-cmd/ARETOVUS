@@ -4,11 +4,11 @@
 
 ## État actuel
 
-Le profil post-quantique hybride v2 est expérimental et facultatif; aucun compte v1 n’est migré automatiquement. La bibliothèque ML-DSA-65 utilisée n’a pas d’audit indépendant. Voir `docs/POST_QUANTUM.md`.
+Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v3; le consensus refuse les transactions Ed25519 v1 et hybrides v2. Les anciens formats sont conservés pour Regtest. Le changement de profil est incompatible avec l’ancien testnet: utiliser un nouveau dossier de données et garder les snapshots précédents. Cela ne rend pas SHA-256/PoW post-quantique. Voir `docs/POST_QUANTUM.md`.
 
 | Composant | Fonctionnement présent |
 |---|---|
-| `aurora-core` | Montants entiers, encodage canonique, signatures v1 Ed25519 et profil hybride expérimental v2 Ed25519 + ML-DSA-65. |
+| `aurora-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
 | `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
 | `aurora-storage` | Snapshots `AURORSNP` version 3 avec checksum, paramètres de consensus et toutes les branches; chargement par rejeu et revalidation. |
 | `aurora-node` | Minage local testnet, persistance, TCP push/pull vers pairs statiques, découverte opt-in bornée, 8 sessions serveur simultanées, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
