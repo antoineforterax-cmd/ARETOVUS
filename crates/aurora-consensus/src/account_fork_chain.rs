@@ -560,7 +560,10 @@ mod tests {
             chain.state().account(miner).balance.to_units(),
             issuance - treasury_issuance + 2
         );
-        assert_eq!(chain.state().account(treasury).balance.to_units(), treasury_issuance);
+        assert_eq!(
+            chain.state().account(treasury).balance.to_units(),
+            treasury_issuance
+        );
         assert_eq!(chain.state().total_issued().to_units(), 1_000 + issuance);
     }
 
@@ -581,10 +584,9 @@ mod tests {
         .unwrap();
         let parent = chain.tip_hash();
         let first_issuance = crate::reward::scheduled_issuance(Amount::ZERO).to_units();
-        let second_issuance = crate::reward::scheduled_issuance(
-            Amount::from_units(first_issuance).unwrap(),
-        )
-        .to_units();
+        let second_issuance =
+            crate::reward::scheduled_issuance(Amount::from_units(first_issuance).unwrap())
+                .to_units();
         let parent_miner_issuance = first_issuance - first_issuance / 20;
         let child_miner_issuance = second_issuance - second_issuance / 20;
         let branch_a =
