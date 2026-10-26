@@ -1668,16 +1668,13 @@ mod tests {
 
     #[test]
     fn disconnected_peer_does_not_publish_a_partial_sync_page() {
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-truncated-page-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-truncated-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mut server_chain = chain();
         let block =
-            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![])
-                .unwrap();
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![]).unwrap();
         server_chain.submit(block).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
@@ -1688,7 +1685,9 @@ mod tests {
             send_hello(&mut stream, &server_chain).unwrap();
             read_frame(&mut stream).unwrap();
             let page = build_blocks_page(&server_chain, 1).unwrap();
-            stream.write_all(&(page.len() as u32).to_be_bytes()).unwrap();
+            stream
+                .write_all(&(page.len() as u32).to_be_bytes())
+                .unwrap();
             stream.write_all(&page[..page.len() - 1]).unwrap();
         });
 
