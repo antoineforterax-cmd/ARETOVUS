@@ -553,19 +553,15 @@ mod tests {
                 AccountBlockValidationError::Stateless(AccountBlockError::CommitmentMismatch)
             ))
         ));
+        let issuance = crate::reward::scheduled_issuance(chain.state().total_issued()).to_units();
+        let treasury_issuance = issuance / 20;
         chain.submit(candidate).unwrap();
         assert_eq!(
             chain.state().account(miner).balance.to_units(),
-            475 * aurora_core::amount::UNITS_PER_COIN + 2
+            issuance - treasury_issuance + 2
         );
-        assert_eq!(
-            chain.state().account(treasury).balance.to_units(),
-            25 * aurora_core::amount::UNITS_PER_COIN
-        );
-        assert_eq!(
-            chain.state().total_issued().to_units(),
-            1_000 + 500 * aurora_core::amount::UNITS_PER_COIN
-        );
+        assert_eq!(chain.state().account(treasury).balance.to_units(), treasury_issuance);
+        assert_eq!(chain.state().total_issued().to_units(), 1_000 + issuance);
     }
 
     #[test]
@@ -584,6 +580,13 @@ mod tests {
         )
         .unwrap();
         let parent = chain.tip_hash();
+        let first_issuance = crate::reward::scheduled_issuance(Amount::ZERO).to_units();
+        let second_issuance = crate::reward::scheduled_issuance(
+            Amount::from_units(first_issuance).unwrap(),
+        )
+        .to_units();
+        let parent_miner_issuance = first_issuance - first_issuance / 20;
+        let child_miner_issuance = second_issuance - second_issuance / 20;
         let branch_a =
             AccountBlock::build_with_miner(NetworkId::Regtest, parent, 2, 0, Some(miner_a), vec![])
                 .unwrap();
@@ -614,16 +617,16 @@ mod tests {
         assert_eq!(chain.height(), 2);
         assert_eq!(
             chain.state().total_issued().to_units(),
-            1_000 * aurora_core::amount::UNITS_PER_COIN
+            first_issuance + second_issuance
         );
         assert_eq!(
             chain.state().account(miner_c).balance.to_units(),
-            475 * aurora_core::amount::UNITS_PER_COIN
+            child_miner_issuance
         );
         assert_eq!(
             chain.state().account(miner_a).balance.to_units()
                 + chain.state().account(miner_b).balance.to_units(),
-            475 * aurora_core::amount::UNITS_PER_COIN
+            parent_miner_issuance
         );
     }
 
