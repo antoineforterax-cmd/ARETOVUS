@@ -24,12 +24,8 @@ pub const TESTNET_GENESIS_HASH: Hash256 = Hash256::from_bytes([
 
 /// Deterministic empty testnet genesis, including its fixed 8-bit proof of work.
 pub fn testnet_genesis_block() -> AccountBlock {
-    let mut genesis =
-        AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 189, Vec::new())
-            .expect("fixed testnet genesis encodes");
-    assert_eq!(genesis.header.hash().expect("genesis header encodes"), TESTNET_GENESIS_HASH);
-    genesis.header.nonce = 189;
-    genesis
+    AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 189, Vec::new())
+        .expect("fixed testnet genesis encodes")
 }
 
 #[cfg(test)]
