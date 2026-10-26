@@ -1652,6 +1652,53 @@ mod tests {
     }
 
     #[test]
+    fn future_block_in_sync_page_is_rejected_before_persistence() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-p2p-future-page-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let server_chain = chain();
+        let future = AccountBlock::build(
+            NetworkId::Regtest,
+            server_chain.tip_hash(),
+            u64::MAX,
+            0,
+            vec![],
+        )
+        .unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            set_timeouts(&stream).unwrap();
+            read_frame(&mut stream).unwrap();
+            send_hello(&mut stream, &server_chain).unwrap();
+            read_frame(&mut stream).unwrap();
+            let bytes = future.to_canonical_bytes().unwrap();
+            let mut page = vec![BLOCKS_REPLY];
+            page.extend_from_slice(&2u32.to_be_bytes());
+            page.extend_from_slice(&1u32.to_be_bytes());
+            page.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+            page.extend_from_slice(&bytes);
+            write_frame(&mut stream, &page).unwrap();
+        });
+
+        let mut client = chain();
+        let original_tip = client.tip_hash();
+        assert!(matches!(
+            sync_from_peer(address, &mut client, &dir),
+            Err(P2pError::Protocol("block timestamp exceeds local future allowance"))
+        ));
+        assert_eq!(client.tip_hash(), original_tip);
+        assert_eq!(client.height(), 0);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn invalid_second_block_does_not_partially_apply_a_sync_page() {
         let dir =
             std::env::temp_dir().join(format!("aurora-p2p-atomic-page-{}", std::process::id()));
