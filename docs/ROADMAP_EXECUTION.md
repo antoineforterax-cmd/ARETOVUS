@@ -50,7 +50,7 @@ Avant de déclarer un testnet public stable, il faut choisir et héberger des n�
 
 Ces éléments restent des prototypes de testnet tant que les essais prolongés, les décisions de protocole et la revue indépendante n’ont pas été achevés. Leur construction peut continuer, mais pas leur présentation comme produits sûrs pour des fonds réels :
 
-1. **Portefeuille quotidien** : les nouveaux fichiers de clés du CLI testnet sont chiffrés par défaut (Argon2id/XChaCha20-Poly1305), avec sauvegarde et restauration manuelles documentées. Restent une sauvegarde guidée, des essais d’ergonomie, une gestion des secrets par plateforme et une revue indépendante avant toute utilisation de fonds réels.
+1. **Portefeuille quotidien** : les nouveaux fichiers de clés du CLI testnet sont chiffrés par défaut (Argon2id/XChaCha20-Poly1305), avec commandes de sauvegarde et restauration chiffrées, vérification de l’identité restaurée et refus d’écrasement. Restent des essais d’ergonomie, une gestion des secrets par plateforme et une revue indépendante avant toute utilisation de fonds réels.
 2. **Explorateur** : indexeur et API en lecture seule avec affichage des blocs, transactions, preuves et réorganisations.
 3. **Site de présentation** : but du projet, fonctionnement, limites, guide d’installation et risques.
 4. **Vente/échange** : spécification séparée des rôles, garde des fonds, règlement et exigences juridiques applicables avant toute intégration financière.
