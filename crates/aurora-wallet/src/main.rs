@@ -57,9 +57,13 @@ fn run() -> Result<(), Box<dyn Error>> {
             let key = WalletKey::generate()?;
             if flag(&args, "--plain-testnet") {
                 key.save_plain_testnet_file(path)?;
-                println!("AURORA TESTNET ONLY: unencrypted key saved at {}", path.display());
+                println!(
+                    "AURORA TESTNET ONLY: unencrypted key saved at {}",
+                    path.display()
+                );
             } else {
-                let mut password = rpassword::prompt_password("New wallet password (at least 12 characters): ")?;
+                let mut password =
+                    rpassword::prompt_password("New wallet password (at least 12 characters): ")?;
                 let mut confirmation = rpassword::prompt_password("Confirm wallet password: ")?;
                 if password != confirmation {
                     password.zeroize();
