@@ -8,14 +8,10 @@ use aurora_core::{
 };
 
 const CAP_UNITS: u64 = MAX_UNITS;
-const TIERS: [(u64, u64); 6] = [
-    (5_000_000, 500),
-    (25_000_000, 100),
-    (75_000_000, 60),
-    (175_000_000, 30),
-    (350_000_000, 10),
-    (500_000_000, 1),
-];
+/// One part per million of unissued supply per block, rounded down to atomic units.
+pub const EMISSION_DENOMINATOR: u64 = 1_000_000;
+/// A one-unit floor guarantees that the strict cap is eventually reachable.
+pub const MIN_BLOCK_ISSUANCE_UNITS: u64 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RewardParams {
@@ -63,20 +59,17 @@ impl From<StateError> for RewardError {
     }
 }
 
-/// Returns the gross block issuance for the repository's `fast_start_500` profile.
-/// The reward tier uses gross supply at the start of the block and is clipped to the 500M AUR cap.
+/// Returns block issuance proportional to the gross supply still unissued.
+/// The recurrence is deterministic integer arithmetic:
+/// max(1 atomic unit, floor((cap - issued) / 1,000,000)), clipped to the exact remainder.
+/// This starts at 500 AUR, decays smoothly with remaining supply, and eventually reaches the cap.
 pub fn scheduled_issuance(issued: Amount) -> Amount {
-    let issued_units = issued.to_units();
-    if issued_units >= CAP_UNITS {
+    let remaining = CAP_UNITS.saturating_sub(issued.to_units());
+    if remaining == 0 {
         return Amount::ZERO;
     }
-    let reward_coins = TIERS
-        .iter()
-        .find(|(threshold_coins, _)| issued_units < threshold_coins.saturating_mul(UNITS_PER_COIN))
-        .map_or(0, |(_, reward_coins)| *reward_coins);
-    let proposed = reward_coins.saturating_mul(UNITS_PER_COIN);
-    Amount::from_units(proposed.min(CAP_UNITS - issued_units))
-        .expect("clipped reward is within amount cap")
+    let proposed = (remaining / EMISSION_DENOMINATOR).max(MIN_BLOCK_ISSUANCE_UNITS);
+    Amount::from_units(proposed.min(remaining)).expect("clipped reward is within amount cap")
 }
 
 /// Applies deterministic issuance and fees after transfers have been validated on `ledger`.
@@ -120,22 +113,43 @@ mod tests {
     use aurora_core::network::NetworkId;
 
     #[test]
-    fn fast_start_tiers_and_cap_are_integer_and_clipped() {
+    fn proportional_emission_starts_at_500_and_slows_with_remaining_supply() {
+        let first = scheduled_issuance(Amount::ZERO).to_units();
+        assert_eq!(first, 500 * UNITS_PER_COIN);
         assert_eq!(
-            scheduled_issuance(Amount::ZERO).to_units(),
-            500 * UNITS_PER_COIN
+            scheduled_issuance(Amount::from_units(first).unwrap()).to_units(),
+            (CAP_UNITS - first) / EMISSION_DENOMINATOR
         );
+        let half_issued = Amount::from_units(CAP_UNITS / 2).unwrap();
         assert_eq!(
-            scheduled_issuance(Amount::from_units(5_000_000 * UNITS_PER_COIN).unwrap()).to_units(),
-            100 * UNITS_PER_COIN
+            scheduled_issuance(half_issued).to_units(),
+            (CAP_UNITS / 2) / EMISSION_DENOMINATOR
         );
+        assert!(
+            scheduled_issuance(half_issued).to_units() < scheduled_issuance(Amount::ZERO).to_units()
+        );
+    }
+
+    #[test]
+    fn proportional_emission_is_integer_bounded_and_reaches_the_strict_cap() {
         assert_eq!(
             scheduled_issuance(Amount::from_units(CAP_UNITS - 1).unwrap()).to_units(),
-            1
+            MIN_BLOCK_ISSUANCE_UNITS
         );
         assert_eq!(
             scheduled_issuance(Amount::from_units(CAP_UNITS).unwrap()),
             Amount::ZERO
+        );
+    }
+
+    #[test]
+    fn emission_changes_smoothly_without_threshold_jumps() {
+        let before = Amount::from_units(CAP_UNITS - 499_999_999 * UNITS_PER_COIN).unwrap();
+        let after = Amount::from_units(CAP_UNITS - 500_000_001 * UNITS_PER_COIN).unwrap();
+        assert!(scheduled_issuance(before).to_units() >= scheduled_issuance(after).to_units());
+        assert!(
+            scheduled_issuance(before).to_units() - scheduled_issuance(after).to_units()
+                <= 2 * UNITS_PER_COIN / EMISSION_DENOMINATOR + 1
         );
     }
 
