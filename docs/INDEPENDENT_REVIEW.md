@@ -29,6 +29,7 @@ cargo test --workspace --locked
 python3 scripts/testnet_smoke.py
 cargo +nightly fuzz run canonical_decode -- -max_total_time=300
 cargo +nightly fuzz run merkle_proofs -- -max_total_time=300
+cargo +nightly fuzz run network_payloads -- -max_total_time=300
 ```
 
 Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et des campagnes fuzz courtes. Ils ne constituent pas une revue de sécurité. L’auditeur devrait relancer des campagnes plus longues, produire un rapport de menaces, examiner les diffs au commit épinglé et publier les constats avec des cas reproductibles.
