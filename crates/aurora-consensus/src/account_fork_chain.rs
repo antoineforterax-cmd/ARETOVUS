@@ -400,6 +400,11 @@ impl AccountForkChain {
             .collect()
     }
 
+    /// Accepted blocks in parent-before-child order, retained across v5 index replay.
+    pub fn all_blocks_by_arrival(&self) -> Vec<&AccountBlock> {
+        self.arrival_order.iter().map(|hash| &self.blocks[hash]).collect()
+    }
+
     /// Stable local inventory page: accepting a late side branch only appends to this order.
     pub fn arrival_block_page(&self, start: usize, limit: usize) -> Vec<&AccountBlock> {
         if start >= self.arrival_order.len() {
