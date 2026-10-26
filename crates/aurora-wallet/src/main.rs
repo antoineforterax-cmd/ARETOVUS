@@ -84,6 +84,24 @@ fn run() -> Result<(), Box<dyn Error>> {
                 node
             );
         }
+        "verify" => {
+            let id = txid(option(&args, "--txid")?)?;
+            let confirmations = option(&args, "--confirmations")?.parse::<u64>()?;
+            let result = aurora_wallet::spv::verify_transaction_inclusion(
+                node_address(&args)?,
+                id,
+                confirmations,
+            )?;
+            println!(
+                "SPV verified: txid={} block_height={} confirmations={} block={} tip_height={} tip={}",
+                result.txid,
+                result.block_height,
+                result.confirmations,
+                result.block_hash,
+                result.tip_height,
+                result.tip_hash
+            );
+        }
         "status" => {
             let id = txid(option(&args, "--txid")?)?;
             let status = rpc::transaction_status(node_address(&args)?, id)?;
@@ -112,6 +130,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet address --key-file FILE");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT");
+            println!("  aurora-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
             println!("  aurora-wallet status --node IP:PORT --txid TXID_HEX");
             println!("  aurora-wallet wait --node IP:PORT --txid TXID_HEX --timeout-seconds N");
         }
