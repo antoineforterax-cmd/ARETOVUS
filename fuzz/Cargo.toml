@@ -1,0 +1,26 @@
+[package]
+name = "aurora-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+aurora-consensus = { path = "../crates/aurora-consensus" }
+aurora-core = { path = "../crates/aurora-core" }
+libfuzzer-sys = "=0.4.13"
+
+[[bin]]
+name = "canonical_decode"
+path = "fuzz_targets/canonical_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "merkle_proofs"
+path = "fuzz_targets/merkle_proofs.rs"
+test = false
+doc = false
+bench = false
