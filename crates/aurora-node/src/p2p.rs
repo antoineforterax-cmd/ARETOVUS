@@ -10,10 +10,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub use aurora_consensus::testnet::protocol_fingerprint;
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
 };
+#[cfg(test)]
+use aurora_core::hash::sha256_plain;
 use aurora_core::{
     accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
@@ -22,9 +25,6 @@ use aurora_core::{
     network::NetworkId,
 };
 use aurora_storage::save_snapshot;
-pub use aurora_consensus::testnet::protocol_fingerprint;
-#[cfg(test)]
-use aurora_core::hash::sha256_plain;
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
