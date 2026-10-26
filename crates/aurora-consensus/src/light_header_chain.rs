@@ -252,7 +252,7 @@ impl LightHeaderChain {
 mod tests {
     use super::*;
     use crate::{
-        account_block::{AccountBlock, check_account_block_pow},
+        account_block::AccountBlock,
         proof_of_work::mine_nonce,
         testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS},
     };
@@ -306,10 +306,15 @@ mod tests {
         assert_eq!(chain.submit(wrong_bits), Err(HeaderChainError::InsufficientWork));
         let mut bad_genesis = genesis.header;
         bad_genesis.timestamp += 1;
-        assert_eq!(
-            LightHeaderChain::new(bad_genesis, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS, TESTNET_DIFFICULTY),
+        assert!(matches!(
+            LightHeaderChain::new(
+                bad_genesis,
+                TESTNET_GENESIS_HASH,
+                TESTNET_INITIAL_BITS,
+                TESTNET_DIFFICULTY
+            ),
             Err(HeaderChainError::InvalidGenesis)
-        );
+        ));
     }
 
     #[test]
