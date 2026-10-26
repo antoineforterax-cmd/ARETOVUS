@@ -526,8 +526,7 @@ mod tests {
         let first = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
         let first_hash = first.header.hash().unwrap();
         original.submit(first).unwrap();
-        let second =
-            AccountBlock::build(NetworkId::Regtest, first_hash, 3, 0, Vec::new()).unwrap();
+        let second = AccountBlock::build(NetworkId::Regtest, first_hash, 3, 0, Vec::new()).unwrap();
         let second_hash = second.header.hash().unwrap();
         original.submit(second).unwrap();
         let late = AccountBlock::build(NetworkId::Regtest, genesis, 4, 0, Vec::new()).unwrap();
