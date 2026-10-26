@@ -111,19 +111,45 @@ pub(crate) fn get_transaction_proof_on_stream(
     }
     let mut cursor = 2usize;
     let height_end = cursor.checked_add(8).ok_or("SPV length overflow")?;
-    let height = u64::from_be_bytes(reply.get(cursor..height_end).ok_or("truncated proof height")?.try_into()?);
+    let height = u64::from_be_bytes(
+        reply
+            .get(cursor..height_end)
+            .ok_or("truncated proof height")?
+            .try_into()?,
+    );
     cursor = height_end;
     let header_length_end = cursor.checked_add(2).ok_or("SPV length overflow")?;
-    let header_length = u16::from_be_bytes(reply.get(cursor..header_length_end).ok_or("truncated proof header length")?.try_into()?) as usize;
+    let header_length = u16::from_be_bytes(
+        reply
+            .get(cursor..header_length_end)
+            .ok_or("truncated proof header length")?
+            .try_into()?,
+    ) as usize;
     cursor = header_length_end;
-    let header_end = cursor.checked_add(header_length).ok_or("SPV length overflow")?;
-    let header = BlockHeader::from_canonical_bytes(reply.get(cursor..header_end).ok_or("truncated proof header")?)?;
+    let header_end = cursor
+        .checked_add(header_length)
+        .ok_or("SPV length overflow")?;
+    let header = BlockHeader::from_canonical_bytes(
+        reply
+            .get(cursor..header_end)
+            .ok_or("truncated proof header")?,
+    )?;
     cursor = header_end;
     let index_end = cursor.checked_add(4).ok_or("SPV length overflow")?;
-    let index = u32::from_be_bytes(reply.get(cursor..index_end).ok_or("truncated proof index")?.try_into()?);
+    let index = u32::from_be_bytes(
+        reply
+            .get(cursor..index_end)
+            .ok_or("truncated proof index")?
+            .try_into()?,
+    );
     cursor = index_end;
     let count_end = cursor.checked_add(4).ok_or("SPV length overflow")?;
-    let leaf_count = u32::from_be_bytes(reply.get(cursor..count_end).ok_or("truncated proof leaf count")?.try_into()?);
+    let leaf_count = u32::from_be_bytes(
+        reply
+            .get(cursor..count_end)
+            .ok_or("truncated proof leaf count")?
+            .try_into()?,
+    );
     cursor = count_end;
     let sibling_count = *reply.get(cursor).ok_or("truncated proof sibling count")?;
     cursor += 1;
