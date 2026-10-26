@@ -559,7 +559,8 @@ fn handle_peer_shared(
             }
             Some(&GET_HEADERS) if request.len() == 11 => {
                 let start = u64::from_be_bytes(request[1..9].try_into().expect("fixed height"));
-                let limit = u16::from_be_bytes(request[9..11].try_into().expect("fixed limit")) as usize;
+                let limit =
+                    u16::from_be_bytes(request[9..11].try_into().expect("fixed limit")) as usize;
                 if limit == 0 || limit > MAX_HEADERS_PAGE {
                     return Err(P2pError::Protocol("header page limit outside range"));
                 }
