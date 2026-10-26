@@ -1,10 +1,7 @@
 //! Header-only consensus verification for experimental SPV clients.
 use std::collections::BTreeMap;
 
-use aurora_core::{
-    hash::Hash256,
-    network::NetworkId,
-};
+use aurora_core::{hash::Hash256, network::NetworkId};
 
 use crate::{
     difficulty::{ChainWork, DifficultyParams},
@@ -75,7 +72,9 @@ impl LightHeaderChain {
                 HeaderChainError::InvalidGenesis
             });
         }
-        if !check_proof(&genesis, initial_difficulty_bits).map_err(HeaderChainError::InvalidProof)? {
+        if !check_proof(&genesis, initial_difficulty_bits)
+            .map_err(HeaderChainError::InvalidProof)?
+        {
             return Err(HeaderChainError::InsufficientWork);
         }
         let network = genesis.network;
@@ -136,7 +135,8 @@ impl LightHeaderChain {
                 .timestamp
                 .saturating_sub(self.nodes[&anchor_hash].timestamp)
                 .max(1);
-            self.difficulty_params.retarget(parent.difficulty_bits, elapsed)
+            self.difficulty_params
+                .retarget(parent.difficulty_bits, elapsed)
         } else {
             parent.difficulty_bits
         };
@@ -147,9 +147,9 @@ impl LightHeaderChain {
             .chain_work
             .checked_add(ChainWork::for_difficulty(expected_bits))
             .ok_or(HeaderChainError::WorkOverflow)?;
-        let mut nodes = self.nodes.clone();
-        let mut headers = self.headers.clone();
-        nodes.insert(
+        let current_tip = *self.canonical.last().expect("genesis exists");
+        let current_work = self.nodes[&current_tip].chain_work;
+        self.nodes.insert(
             hash,
             HeaderNode {
                 parent: parent_hash,
@@ -159,29 +159,24 @@ impl LightHeaderChain {
                 chain_work: work,
             },
         );
-        headers.insert(hash, header);
-        let current_tip = *self.canonical.last().expect("genesis exists");
-        let current = self.nodes[&current_tip];
-        if work <= current.chain_work
-            && (work != current.chain_work || hash >= current_tip)
-        {
-            self.nodes = nodes;
-            self.headers = headers;
+        self.headers.insert(hash, header);
+        if work < current_work || (work == current_work && hash >= current_tip) {
             return Ok(false);
         }
         let mut path = Vec::with_capacity(height as usize + 1);
         let mut cursor = hash;
         loop {
             path.push(cursor);
-            let node = nodes.get(&cursor).expect("inserted header path is complete");
+            let node = self
+                .nodes
+                .get(&cursor)
+                .expect("inserted header path is complete");
             if node.height == 0 {
                 break;
             }
             cursor = node.parent;
         }
         path.reverse();
-        self.nodes = nodes;
-        self.headers = headers;
         self.canonical = path;
         Ok(true)
     }
@@ -192,7 +187,10 @@ impl LightHeaderChain {
         target_height: u64,
     ) -> Result<Hash256, HeaderChainError> {
         loop {
-            let node = self.nodes.get(&hash).ok_or(HeaderChainError::UnknownParent)?;
+            let node = self
+                .nodes
+                .get(&hash)
+                .ok_or(HeaderChainError::UnknownParent)?;
             if node.height == target_height {
                 return Ok(hash);
             }
@@ -262,14 +260,21 @@ mod tests {
     use crate::{
         account_block::AccountBlock,
         proof_of_work::mine_nonce,
-        testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS},
+        testnet::{
+            testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS,
+        },
     };
     use aurora_core::accounts::AccountTransaction;
 
     fn child(parent: Hash256, timestamp: u64, bits: u16) -> BlockHeader {
-        let mut block =
-            AccountBlock::build(NetworkId::Testnet, parent, timestamp, 0, Vec::<AccountTransaction>::new())
-                .unwrap();
+        let mut block = AccountBlock::build(
+            NetworkId::Testnet,
+            parent,
+            timestamp,
+            0,
+            Vec::<AccountTransaction>::new(),
+        )
+        .unwrap();
         block.header.nonce = mine_nonce(&block.header, bits, 0, u64::MAX).unwrap();
         block.header
     }
@@ -320,8 +325,26 @@ mod tests {
             chain.submit(header).unwrap();
             assert_eq!(height, chain.height());
         }
-        let wrong_bits = child(parent, 11, TESTNET_INITIAL_BITS);
-        assert_eq!(chain.submit(wrong_bits), Err(HeaderChainError::InsufficientWork));
+        let mut wrong_bits = AccountBlock::build(
+            NetworkId::Testnet,
+            parent,
+            11,
+            0,
+            Vec::<AccountTransaction>::new(),
+        )
+        .unwrap()
+        .header;
+        wrong_bits.nonce = (0..u64::MAX)
+            .find(|nonce| {
+                wrong_bits.nonce = *nonce;
+                check_proof(&wrong_bits, TESTNET_INITIAL_BITS).unwrap()
+                    && !check_proof(&wrong_bits, TESTNET_INITIAL_BITS + 2).unwrap()
+            })
+            .unwrap();
+        assert_eq!(
+            chain.submit(wrong_bits),
+            Err(HeaderChainError::InsufficientWork)
+        );
         let mut bad_genesis = genesis.header;
         bad_genesis.timestamp += 1;
         assert!(matches!(
