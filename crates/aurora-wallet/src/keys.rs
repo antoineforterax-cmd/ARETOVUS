@@ -6,11 +6,7 @@ use std::{
     path::Path,
 };
 
-use aurora_core::{
-    hash::sha256_plain,
-    signature::post_quantum_account_id,
-    accounts::AccountId,
-};
+use aurora_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
 
 const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
@@ -110,7 +106,10 @@ impl WalletKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{fs, sync::atomic::{AtomicU64, Ordering}};
+    use std::{
+        fs,
+        sync::atomic::{AtomicU64, Ordering},
+    };
 
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
