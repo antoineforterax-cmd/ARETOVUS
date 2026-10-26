@@ -184,14 +184,54 @@ fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, P2pError> {
     stream.set_read_timeout(original_timeout)?;
     result
 }
+fn write_all_before_deadline(
+    stream: &mut TcpStream,
+    bytes: &[u8],
+    started: Instant,
+    budget: Duration,
+) -> io::Result<()> {
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let remaining = budget.checked_sub(started.elapsed()).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::TimedOut, "frame write deadline exceeded")
+        })?;
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "frame write deadline exceeded",
+            ));
+        }
+        stream.set_write_timeout(Some(remaining))?;
+        match stream.write(&bytes[cursor..]) {
+            Ok(0) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::WriteZero,
+                    "peer stopped accepting frame bytes",
+                ))
+            }
+            Ok(count) => cursor += count,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
 fn write_frame(stream: &mut TcpStream, frame: &[u8]) -> Result<(), P2pError> {
     if frame.is_empty() || frame.len() > MAX_FRAME {
         return Err(P2pError::Protocol("outbound frame exceeds limit"));
     }
-    stream.write_all(&(frame.len() as u32).to_be_bytes())?;
-    stream.write_all(frame)?;
-    stream.flush()?;
-    Ok(())
+    let original_timeout = stream.write_timeout()?;
+    let budget = original_timeout.unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
+    let started = Instant::now();
+    let result = (|| {
+        write_all_before_deadline(stream, &(frame.len() as u32).to_be_bytes(), started, budget)?;
+        write_all_before_deadline(stream, frame, started, budget)?;
+        stream.flush()?;
+        Ok(())
+    })();
+    stream.set_write_timeout(original_timeout)?;
+    result
 }
 
 fn add_session_bytes(total: &mut usize, bytes: usize) -> Result<(), P2pError> {
@@ -1473,6 +1513,37 @@ mod tests {
                 )
         ));
         assert!(elapsed < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn peer_that_stops_reading_cannot_hold_a_frame_write_indefinitely() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut writer = TcpStream::connect(address).unwrap();
+        let (_reader, _) = listener.accept().unwrap();
+        writer
+            .set_write_timeout(Some(Duration::from_millis(200)))
+            .unwrap();
+        let frame = vec![0u8; MAX_FRAME];
+        let started = Instant::now();
+        let mut timed_out = false;
+        for _ in 0..32 {
+            match write_frame(&mut writer, &frame) {
+                Ok(()) => {}
+                Err(P2pError::Io(error))
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+                    ) =>
+                {
+                    timed_out = true;
+                    break;
+                }
+                Err(error) => panic!("unexpected frame write error: {error}"),
+            }
+        }
+        assert!(timed_out, "peer accepted 128 MiB without reading");
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 
     #[test]
