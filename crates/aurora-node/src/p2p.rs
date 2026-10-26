@@ -908,9 +908,10 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
+        let server_dir = dir.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            handle_peer_shared(stream, &Mutex::new(chain()), &dir, &[])
+            handle_peer_shared(stream, &Mutex::new(chain()), &server_dir, &[])
         });
 
         let mut client = TcpStream::connect(address).unwrap();
