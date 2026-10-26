@@ -15,8 +15,10 @@ use aurora_consensus::{
     reward::EMISSION_SCHEDULE_ID,
 };
 use aurora_core::{
+    accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
     hash::{sha256_plain, Hash256},
+    network::NetworkId,
 };
 use aurora_storage::save_snapshot;
 
@@ -40,6 +42,20 @@ const BLOCKS_REPLY: u8 = 0x82;
 const ERROR_REPLY: u8 = 0xff;
 const GET_PEERS: u8 = 4;
 const PEERS_REPLY: u8 = 0x84;
+const WALLET_HELLO: u8 = 5;
+const WALLET_HELLO_REPLY: u8 = 0x85;
+const GET_ACCOUNT: u8 = 6;
+const ACCOUNT_REPLY: u8 = 0x86;
+const SUBMIT_TX: u8 = 7;
+const TX_ACCEPTED: u8 = 0x87;
+const GET_MEMPOOL: u8 = 8;
+const MEMPOOL_REPLY: u8 = 0x88;
+const TX_REJECTED: u8 = 0x89;
+const GET_TX_STATUS: u8 = 9;
+const TX_STATUS_REPLY: u8 = 0x8a;
+const MAX_MEMPOOL_TXS: usize = 4_096;
+const MAX_MEMPOOL_BYTES: usize = 32 * 1024 * 1024;
+const MAX_MEMPOOL_PAGE_TXS: usize = 700;
 
 #[derive(Debug)]
 pub enum P2pError {
@@ -344,6 +360,7 @@ fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
 fn handle_peer_shared(
     mut stream: TcpStream,
     chain: &Mutex<AccountForkChain>,
+    mempool: &Mutex<Vec<AccountTransaction>>,
     data_dir: &Path,
     advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
@@ -355,16 +372,30 @@ fn handle_peer_shared(
     add_session_bytes(&mut session_bytes, hello.len() + 4)?;
     {
         let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-        if let Err(error) = check_hello(&hello, &chain) {
-            let _ = write_frame(&mut stream, &[ERROR_REPLY]);
-            return Err(error);
+        if hello.as_slice() == [WALLET_HELLO] {
+            let genesis = chain.blocks().next().expect("genesis exists");
+            if genesis.header.network != NetworkId::Testnet {
+                let _ = write_frame(&mut stream, &[ERROR_REPLY]);
+                return Err(P2pError::Protocol("wallet RPC is available only on testnet"));
+            }
+            let mut reply = vec![WALLET_HELLO_REPLY, NetworkId::Testnet.to_byte()];
+            reply.extend_from_slice(protocol_fingerprint(&chain).as_bytes());
+            reply.extend_from_slice(&chain.height().to_be_bytes());
+            reply.extend_from_slice(chain.tip_hash().as_bytes());
+            write_frame(&mut stream, &reply)?;
+            add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+        } else {
+            if let Err(error) = check_hello(&hello, &chain) {
+                let _ = write_frame(&mut stream, &[ERROR_REPLY]);
+                return Err(error);
+            }
+            if 77 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                return Err(P2pError::Protocol("peer session byte budget exceeded"));
+            }
+            send_hello(&mut stream, &chain)?;
+            add_session_bytes(&mut session_bytes, 77)?;
         }
-        if 77 > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
-            return Err(P2pError::Protocol("peer session byte budget exceeded"));
-        }
-        send_hello(&mut stream, &chain)?;
     }
-    add_session_bytes(&mut session_bytes, 77)?;
     loop {
         if session_started.elapsed() > MAX_SESSION_DURATION {
             return Err(P2pError::Protocol("peer session duration exceeded"));
@@ -391,6 +422,119 @@ fn handle_peer_shared(
                 write_frame(&mut stream, &frame)?;
                 add_session_bytes(&mut session_bytes, sent)?;
             }
+            Some(&GET_ACCOUNT) if request.len() == 33 => {
+                let id = AccountId(request[1..33].try_into().expect("fixed account id"));
+                let account = {
+                    let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                    let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                    let mut state = chain.state().clone();
+                    for tx in pool.iter() {
+                        let _ = state.apply_transaction(tx);
+                    }
+                    state.account(id)
+                };
+                let mut reply = vec![ACCOUNT_REPLY];
+                reply.extend_from_slice(&account.next_nonce.to_be_bytes());
+                reply.extend_from_slice(&account.balance.to_units().to_be_bytes());
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+            }
+            Some(&SUBMIT_TX) if request.len() > 1 => {
+                let tx = AccountTransaction::from_canonical_bytes(&request[1..])
+                    .map_err(|_| P2pError::Protocol("invalid canonical transaction"))?;
+                let admission = (|| -> Result<(Hash256, usize), u8> {
+                    if tx.network != NetworkId::Testnet
+                        || tx.version != POST_QUANTUM_ACCOUNT_TX_VERSION
+                        || tx.check_stateless().is_err()
+                    {
+                        return Err(1);
+                    }
+                    let txid = tx.txid().map_err(|_| 2u8)?;
+                    let chain = chain.lock().map_err(|_| 2u8)?;
+                    let mut pool = mempool.lock().map_err(|_| 2u8)?;
+                    if pool.iter().any(|known| known.txid().ok() == Some(txid)) {
+                        return Ok((txid, pool.len()));
+                    }
+                    if pool.len() >= MAX_MEMPOOL_TXS {
+                        return Err(3);
+                    }
+                    let pool_bytes = pool
+                        .iter()
+                        .map(|known| known.to_canonical_bytes().map(|b| b.len()).unwrap_or(usize::MAX))
+                        .try_fold(0usize, usize::checked_add)
+                        .ok_or(3u8)?;
+                    let encoded_size = tx.to_canonical_bytes().map_err(|_| 1u8)?.len();
+                    if pool_bytes.saturating_add(encoded_size) > MAX_MEMPOOL_BYTES {
+                        return Err(3);
+                    }
+                    let mut candidate = chain.state().clone();
+                    for pending in pool.iter() {
+                        candidate.apply_transaction(pending).map_err(|_| 2u8)?;
+                    }
+                    candidate.apply_transaction(&tx).map_err(|_| 2u8)?;
+                    pool.push(tx);
+                    Ok((txid, pool.len()))
+                })();
+                let reply = match admission {
+                    Ok((txid, count)) => {
+                        let mut reply = vec![TX_ACCEPTED];
+                        reply.extend_from_slice(txid.as_bytes());
+                        reply.extend_from_slice(&(count as u32).to_be_bytes());
+                        reply
+                    }
+                    Err(code) => vec![TX_REJECTED, code],
+                };
+                if reply.len() > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+            }
+            Some(&GET_MEMPOOL) if request.len() == 1 => {
+                let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                let mut reply = vec![MEMPOOL_REPLY, 0, 0];
+                let mut count = 0u16;
+                for tx in pool.iter().take(MAX_MEMPOOL_PAGE_TXS) {
+                    let encoded = tx
+                        .to_canonical_bytes()
+                        .map_err(|_| P2pError::Protocol("mempool transaction encoding failed"))?;
+                    if reply.len().saturating_add(4 + encoded.len()) > MAX_FRAME {
+                        break;
+                    }
+                    reply.extend_from_slice(&(encoded.len() as u32).to_be_bytes());
+                    reply.extend_from_slice(&encoded);
+                    count += 1;
+                }
+                reply[1..3].copy_from_slice(&count.to_be_bytes());
+                let sent = reply.len() + 4;
+                if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, sent)?;
+            }
+            Some(&GET_TX_STATUS) if request.len() == 33 => {
+                let txid = Hash256::from_bytes(request[1..33].try_into().expect("fixed hash"));
+                let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                let confirmed = chain.blocks().any(|block| {
+                    block.transactions.iter().any(|tx| tx.txid().ok() == Some(txid))
+                });
+                let pending = if confirmed {
+                    false
+                } else {
+                    mempool
+                        .lock()
+                        .map_err(|_| P2pError::ChainLockPoisoned)?
+                        .iter()
+                        .any(|tx| tx.txid().ok() == Some(txid))
+                };
+                let reply = vec![
+                    TX_STATUS_REPLY,
+                    if confirmed { 2 } else if pending { 1 } else { 0 },
+                ];
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+            }
             Some(&GET_PEERS) if request.len() == 1 => {
                 let frame = encode_peer_list(advertised_peers)?;
                 let sent = frame.len() + 4;
@@ -410,6 +554,15 @@ fn handle_peer_shared(
                 match chain.submit(block) {
                     Ok(_) => {
                         save_snapshot(data_dir, &chain)?;
+                        let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                        let mut pending = Vec::with_capacity(pool.len());
+                        let mut state = chain.state().clone();
+                        for tx in pool.drain(..) {
+                            if state.apply_transaction(&tx).is_ok() {
+                                pending.push(tx);
+                            }
+                        }
+                        *pool = pending;
                     }
                     Err(AccountForkChainError::DuplicateBlock) => {}
                     Err(error) => return Err(P2pError::Chain(error)),
@@ -436,6 +589,7 @@ pub fn serve(
     let listener = TcpListener::bind(address)?;
     println!("testnet peer listening on {}", listener.local_addr()?);
     let chain = Arc::new(Mutex::new(chain.clone()));
+    let mempool = Arc::new(Mutex::new(Vec::<AccountTransaction>::new()));
     let data_dir = Arc::new(data_dir.to_path_buf());
     let mut peers = advertised_peers.to_vec();
     peers.sort_unstable();
@@ -446,6 +600,7 @@ pub fn serve(
     for worker_id in 0..PEER_WORKERS {
         let listener = listener.try_clone()?;
         let chain = Arc::clone(&chain);
+        let mempool = Arc::clone(&mempool);
         let data_dir = Arc::clone(&data_dir);
         let advertised_peers = Arc::clone(&advertised_peers);
         workers.push(
@@ -455,7 +610,7 @@ pub fn serve(
                     match listener.accept() {
                         Ok((stream, _)) => {
                             if let Err(error) =
-                                handle_peer_shared(stream, &chain, &data_dir, &advertised_peers)
+                                handle_peer_shared(stream, &chain, &mempool, &data_dir, &advertised_peers)
                             {
                                 eprintln!("peer rejected: {error}");
                             }
