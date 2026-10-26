@@ -70,7 +70,7 @@ pub fn merkle_proof(txids: &[Hash256], index: usize) -> Result<MerkleProof, Merk
     let mut position = index;
     let mut siblings = Vec::new();
     while level.len() > 1 {
-        let sibling = if position % 2 == 0 {
+        let sibling = if position.is_multiple_of(2) {
             level.get(position + 1).copied().unwrap_or(level[position])
         } else {
             level[position - 1]
@@ -109,7 +109,7 @@ pub fn verify_merkle_proof(txid: Hash256, proof: &MerkleProof, expected_root: Ha
     let mut current = hash_leaf(txid);
     width = count;
     for sibling in &proof.siblings {
-        if position % 2 == 0 {
+        if position.is_multiple_of(2) {
             if position + 1 >= width && *sibling != current {
                 return false;
             }
