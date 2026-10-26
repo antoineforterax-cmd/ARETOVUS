@@ -181,6 +181,22 @@ impl WalletKey {
         Ok(Self::from_seed(seed))
     }
 
+    /// Verify an encrypted key, then create an independent encrypted copy.
+    ///
+    /// The destination uses a fresh salt and nonce and is never overwritten.
+    pub fn copy_encrypted_testnet_file(
+        source: &Path,
+        destination: &Path,
+        password: &str,
+    ) -> Result<AccountId, Box<dyn Error>> {
+        if !Self::file_is_encrypted(source)? {
+            return Err("backup and restore require an encrypted AURKEY4 source".into());
+        }
+        let key = Self::load_encrypted_testnet_file(source, password)?;
+        key.save_encrypted_testnet_file(destination, password)?;
+        Ok(key.account_id())
+    }
+
     /// Save a plain testnet seed without replacing an existing file.
     ///
     /// The checksum detects accidental corruption; it does not encrypt the seed or
@@ -292,6 +308,62 @@ mod tests {
         fs::write(&path, bytes).unwrap();
         assert!(WalletKey::load_encrypted_testnet_file(&path, "a long test password").is_err());
         fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn encrypted_backup_restores_identity_without_reusing_ciphertext() {
+        let unique = NEXT.fetch_add(1, Ordering::Relaxed);
+        let source = std::env::temp_dir().join(format!(
+            "aurora-wallet-backup-source-{}-{unique}",
+            std::process::id()
+        ));
+        let backup = std::env::temp_dir().join(format!(
+            "aurora-wallet-backup-copy-{}-{unique}",
+            std::process::id()
+        ));
+        let restored = std::env::temp_dir().join(format!(
+            "aurora-wallet-backup-restored-{}-{unique}",
+            std::process::id()
+        ));
+        let key = WalletKey::from_seed_bytes([44; 32]);
+        key.save_encrypted_testnet_file(&source, "another long test password")
+            .unwrap();
+        let account = WalletKey::copy_encrypted_testnet_file(
+            &source,
+            &backup,
+            "another long test password",
+        )
+        .unwrap();
+        assert_eq!(account, key.account_id());
+        assert_ne!(fs::read(&source).unwrap(), fs::read(&backup).unwrap());
+        assert!(WalletKey::copy_encrypted_testnet_file(
+            &source,
+            &backup,
+            "another long test password"
+        )
+        .is_err());
+        assert!(WalletKey::copy_encrypted_testnet_file(
+            &backup,
+            &restored,
+            "wrong password"
+        )
+        .is_err());
+        assert!(!restored.exists());
+        WalletKey::copy_encrypted_testnet_file(
+            &backup,
+            &restored,
+            "another long test password",
+        )
+        .unwrap();
+        let loaded = WalletKey::load_encrypted_testnet_file(
+            &restored,
+            "another long test password",
+        )
+        .unwrap();
+        assert_eq!(loaded.account_id(), key.account_id());
+        for path in [source, backup, restored] {
+            fs::remove_file(path).unwrap();
+        }
     }
 
     #[test]
