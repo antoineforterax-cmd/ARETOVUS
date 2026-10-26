@@ -252,10 +252,11 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
             propagate_block_with_retry(*peer, &chain, &block)?;
         }
         println!(
-            "height={} tip={} difficulty_bits={} issued_units={} miner_balance_units={}",
+            "height={} tip={} difficulty_bits={} transactions={} issued_units={} miner_balance_units={}",
             chain.height(),
             chain.tip_hash(),
             chain.difficulty_bits(),
+            block.transactions.len(),
             chain.state().total_issued().to_units(),
             chain.state().account(miner).balance.to_units()
         );
