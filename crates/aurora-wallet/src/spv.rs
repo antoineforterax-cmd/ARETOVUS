@@ -3,15 +3,9 @@ use std::{error::Error, net::SocketAddr};
 
 use aurora_consensus::{
     light_header_chain::LightHeaderChain,
-    testnet::{
-        testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH,
-        TESTNET_INITIAL_BITS,
-    },
+    testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS},
 };
-use aurora_core::{
-    hash::Hash256,
-    merkle::verify_merkle_proof,
-};
+use aurora_core::{hash::Hash256, merkle::verify_merkle_proof};
 
 use crate::rpc;
 
