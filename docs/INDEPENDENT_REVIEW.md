@@ -4,6 +4,8 @@
 **Branche concernée :** `feature/emission-schedule-v0`.  
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 
+Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Elle reste une aide interne; elle ne remplit pas le critère de revue humaine indépendante.
+
 ## Portée demandée
 
 La revue devrait couvrir le code et le protocole au commit exact enregistré par l’auditeur :
