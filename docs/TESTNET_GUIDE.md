@@ -115,8 +115,8 @@ Le CLI wallet expérimental et la commande de minage multi-pairs sont dans la m�
 
 ```sh
 cargo run --locked -p aurora-wallet -- keygen --out ./wallet.aurkey
-cargo run --locked -p aurora-wallet -- address --key ./wallet.aurkey
-cargo run --locked -p aurora-wallet -- send --key ./wallet.aurkey --to <adresse-hex> --amount 1.25 --fee 0.01 --node 127.0.0.1:18444
+cargo run --locked -p aurora-wallet -- address --key-file ./wallet.aurkey
+cargo run --locked -p aurora-wallet -- send --key-file ./wallet.aurkey --to <adresse-hex> --amount 1.25 --fee 0.01 --node 127.0.0.1:18444
 ```
 
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
