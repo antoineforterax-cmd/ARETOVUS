@@ -11,12 +11,12 @@
 | Temps | Timestamps strictement supérieurs au parent et à la médiane des 11 ancêtres disponibles | Pas de borne future définie par consensus |
 | Difficulté | Retarget candidat-dépendant sur le delta brut `timestamp_candidat - timestamp(H - intervalle)`, pas entiers bornés min/max | Simulations temporelles indépendantes encore nécessaires |
 | Travail | `2^difficulty_bits` par bloc dans un accumulateur u320; chaîne au plus grand travail, égalité départagée par le hash le plus petit | Pas de revue externe |
-| Récompense | Profil `fast_start_500`; plafond brut 500 M AUR, paliers et split décrits dans `EMISSION_MODEL.md` et le code | Émission basée sur l’offre courante, testnet seulement |
+| Récompense | `max(1, floor(offre_restante / 1 000 000))` unités, plafonnée au reliquat; 5 % trésorerie / 95 % mineur | Émission lissée; paramètres encore expérimentaux |
 | Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
 | Stockage | Snapshot version 3, checksum, paramètres difficulté/récompense et toutes les branches; rejeu/revalidation à la lecture | Pas de journal transactionnel, migration de format ou test complet de coupure disque |
 | Réseau | TCP push/pull vers pairs statiques; 8 workers concurrents; budgets par session de trafic, requêtes et durée; frames bornées et validation consensus | Pas de découverte automatique, annonces spontanées, reconnexion ni suite DoS complète |
 
-Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
+Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, l’identifiant de la règle d’émission, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
 
 ## Profil testnet local
 
@@ -30,7 +30,7 @@ Les constructeurs de chaîne génériques désactivent les récompenses par déf
 ## Invariants couverts par tests
 
 - Même parent, bloc et paramètres donnent le même état validé; transaction ou bloc invalide ne produit pas d’état partiel.
-- Le plafond brut n’est pas dépassé, même au dernier palier; les frais brûlés ne réouvrent pas le plafond.
+- Le plafond brut strict de 500 M AUR n’est pas dépassé; l’émission décroît avec le reliquat et reste au moins une unité jusqu’au dernier bloc; les frais brûlés ne réouvrent pas le plafond.
 - Le compte du mineur est inclus dans l’engagement du bloc.
 - Une branche secondaire garde son propre état et ses récompenses; une réorganisation change l’état canonique.
 - Un snapshot conserve les branches et les paramètres, puis rejoue les blocs au chargement.
@@ -38,4 +38,4 @@ Les constructeurs de chaîne génériques désactivent les récompenses par déf
 
 Le format de transaction v2 requiert Ed25519 et ML-DSA-65 simultanément; il n’active aucune migration de comptes. La bibliothèque RustCrypto ML-DSA n’a pas d’audit indépendant. Il s’agit d’un format de test uniquement.
 
-La CI verte confirme seulement les contrôles automatisés. Avant de qualifier la chaîne de testnet multi-nœud utilisable, il faut compléter les essais de temps et retarget, les limites de taille, les pairs hostiles, la propagation et la reconnexion, les coupures de stockage et le fuzzing. Une revue indépendante est nécessaire avant tout usage au-delà d’expériences locales.
+La CI verte confirme seulement les contrôles automatisés. La smoke test multi-processus valide un réseau expérimental supervisé à pairs connus; les essais prolongés de retarget, pairs hostiles, reconnexion continue, arrêts brutaux et fuzzing restent à faire. Une revue indépendante est nécessaire avant tout usage au-delà d’expériences locales.
