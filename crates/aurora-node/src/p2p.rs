@@ -132,16 +132,56 @@ fn set_timeouts(stream: &TcpStream) -> io::Result<()> {
     stream.set_write_timeout(Some(IO_TIMEOUT))?;
     Ok(())
 }
-fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, P2pError> {
-    let mut raw_len = [0; 4];
-    stream.read_exact(&mut raw_len)?;
-    let len = u32::from_be_bytes(raw_len) as usize;
-    if len == 0 || len > MAX_FRAME {
-        return Err(P2pError::Protocol("frame length outside limit"));
+fn read_exact_before_deadline(
+    stream: &mut TcpStream,
+    bytes: &mut [u8],
+    started: Instant,
+    budget: Duration,
+) -> io::Result<()> {
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let remaining = budget.checked_sub(started.elapsed()).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::TimedOut, "frame read deadline exceeded")
+        })?;
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "frame read deadline exceeded",
+            ));
+        }
+        stream.set_read_timeout(Some(remaining))?;
+        match stream.read(&mut bytes[cursor..]) {
+            Ok(0) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "peer closed an incomplete frame",
+                ))
+            }
+            Ok(count) => cursor += count,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
     }
-    let mut frame = vec![0; len];
-    stream.read_exact(&mut frame)?;
-    Ok(frame)
+    Ok(())
+}
+
+fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, P2pError> {
+    let original_timeout = stream.read_timeout()?;
+    let budget = original_timeout.unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
+    let started = Instant::now();
+    let result = (|| {
+        let mut raw_len = [0; 4];
+        read_exact_before_deadline(stream, &mut raw_len, started, budget)?;
+        let len = u32::from_be_bytes(raw_len) as usize;
+        if len == 0 || len > MAX_FRAME {
+            return Err(P2pError::Protocol("frame length outside limit"));
+        }
+        let mut frame = vec![0; len];
+        read_exact_before_deadline(stream, &mut frame, started, budget)?;
+        Ok(frame)
+    })();
+    stream.set_read_timeout(original_timeout)?;
+    result
 }
 fn write_frame(stream: &mut TcpStream, frame: &[u8]) -> Result<(), P2pError> {
     if frame.is_empty() || frame.len() > MAX_FRAME {
@@ -651,9 +691,11 @@ fn handle_peer_shared(
                 let block = AccountBlock::from_canonical_bytes(&request[1..])
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
                 let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                match chain.submit(block) {
+                let mut candidate = chain.clone();
+                match candidate.submit(block) {
                     Ok(_) => {
-                        save_snapshot(data_dir, &chain)?;
+                        save_snapshot(data_dir, &candidate)?;
+                        *chain = candidate;
                         let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                         let mut pending = Vec::with_capacity(pool.len());
                         let mut state = chain.state().clone();
@@ -852,14 +894,20 @@ pub fn sync_from_peer(
         cursor = cursor
             .checked_add(blocks.len())
             .ok_or(P2pError::Protocol("cursor overflow"))?;
+        let mut candidate = chain.clone();
+        let mut page_accepted = 0usize;
         for block in blocks {
-            match chain.submit(block) {
-                Ok(_) => accepted += 1,
+            match candidate.submit(block) {
+                Ok(_) => page_accepted += 1,
                 Err(AccountForkChainError::DuplicateBlock) => {}
                 Err(error) => return Err(P2pError::Chain(error)),
             }
         }
-        save_snapshot(data_dir, chain)?;
+        if page_accepted != 0 {
+            save_snapshot(data_dir, &candidate)?;
+            *chain = candidate;
+            accepted += page_accepted;
+        }
         if cursor >= total {
             break;
         }
@@ -1277,6 +1325,130 @@ mod tests {
                 )
         ));
         assert!(elapsed < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn trickle_fed_frame_cannot_hold_a_peer_session_indefinitely() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_millis(200)))
+                .unwrap();
+            let started = Instant::now();
+            (read_frame(&mut stream), started.elapsed())
+        });
+
+        let mut client = TcpStream::connect(address).unwrap();
+        client.write_all(&8u32.to_be_bytes()).unwrap();
+        for _ in 0..8 {
+            thread::sleep(Duration::from_millis(50));
+            let _ = client.write_all(&[0]);
+        }
+        let (result, elapsed) = server.join().unwrap();
+        assert!(matches!(
+            result,
+            Err(P2pError::Io(ref error))
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+                )
+        ));
+        assert!(elapsed < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn invalid_second_block_does_not_partially_apply_a_sync_page() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-p2p-atomic-page-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let server_chain = chain();
+        let valid = AccountBlock::build(
+            NetworkId::Regtest,
+            server_chain.tip_hash(),
+            2,
+            0,
+            vec![],
+        )
+        .unwrap();
+        let orphan = AccountBlock::build(
+            NetworkId::Regtest,
+            sha256_plain(b"missing-parent"),
+            3,
+            0,
+            vec![],
+        )
+        .unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            set_timeouts(&stream).unwrap();
+            read_frame(&mut stream).unwrap();
+            send_hello(&mut stream, &server_chain).unwrap();
+            read_frame(&mut stream).unwrap();
+            let mut page = vec![BLOCKS_REPLY];
+            page.extend_from_slice(&3u32.to_be_bytes());
+            page.extend_from_slice(&2u32.to_be_bytes());
+            for block in [valid, orphan] {
+                let bytes = block.to_canonical_bytes().unwrap();
+                page.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+                page.extend_from_slice(&bytes);
+            }
+            write_frame(&mut stream, &page).unwrap();
+        });
+
+        let mut client = chain();
+        let original_tip = client.tip_hash();
+        assert!(matches!(
+            sync_from_peer(address, &mut client, &dir),
+            Err(P2pError::Chain(_))
+        ));
+        assert_eq!(client.height(), 0);
+        assert_eq!(client.tip_hash(), original_tip);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn failed_snapshot_does_not_publish_a_synced_page() {
+        let path = std::env::temp_dir().join(format!(
+            "aurora-p2p-snapshot-failure-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&path);
+        fs::write(&path, b"not a directory").unwrap();
+        let mut server_chain = chain();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, server_chain.tip_hash(), 2, 0, vec![])
+                .unwrap();
+        server_chain.submit(block).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            set_timeouts(&stream).unwrap();
+            read_frame(&mut stream).unwrap();
+            send_hello(&mut stream, &server_chain).unwrap();
+            read_frame(&mut stream).unwrap();
+            write_frame(&mut stream, &build_blocks_page(&server_chain, 1).unwrap()).unwrap();
+        });
+
+        let mut client = chain();
+        let original_tip = client.tip_hash();
+        assert!(matches!(
+            sync_from_peer(address, &mut client, &path),
+            Err(P2pError::Storage(_))
+        ));
+        assert_eq!(client.height(), 0);
+        assert_eq!(client.tip_hash(), original_tip);
+        server.join().unwrap();
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
