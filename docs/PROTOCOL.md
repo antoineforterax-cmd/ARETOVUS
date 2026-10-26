@@ -6,7 +6,9 @@ Ce document décrit l’implémentation actuelle. Les questions de recherche, me
 
 ## Profil transaction/état
 
-- En v1, un compte est la clé publique Ed25519 brute de 32 octets. Le profil v2 optionnel exige Ed25519 et ML-DSA-65; l’identifiant engage les deux clés et les deux signatures autorisent le même digest. La signature est de 64 octets et porte sur l’empreinte canonique versionnée, réseau, expéditeur, nonce, destinataire, montant et frais.
+Le passage au profil Testnet v3 est incompatible avec l’ancien testnet hybride. Il faut lancer les nœuds v3 avec un nouveau dossier `--data-dir`; conserver les snapshots antérieurs au cas où une comparaison ou une migration outil serait nécessaire. Aucune migration automatique des soldes ou des identifiants n’est définie. Ce profil remplace l’algorithme de signature des transactions, mais SHA-256 reste utilisé pour les hashes et le PoW: le protocole entier n’est donc pas qualifié de post-quantique.
+
+- Le testnet accepte uniquement les transactions v3: clé publique ML-DSA-65 de 1 952 octets et signature ML-DSA-65 de 3 309 octets; `sender` est le hash domaine-séparé de la clé publique. Le digest signé engage la version, le réseau, l’expéditeur, le nonce, le destinataire, le montant et les frais. Les profils v1 Ed25519 et v2 hybride sont conservés pour Regtest et rejetés par consensus sur Testnet. Le handshake P2P distingue le nouveau profil.
 - Les montants sont des entiers non signés à 8 décimales. Encodage réseau big-endian et décodage canonique; formats incorrects, données excédentaires et dépassements sont rejetés.
 - Une transaction débite montant + frais, exige la signature exacte et le prochain nonce. Le lot de transactions est appliqué atomiquement.
 - Le bloc engage la liste ordonnée des identifiants de transactions et l’identité de mineur. Ce n’est pas un arbre de Merkle.
