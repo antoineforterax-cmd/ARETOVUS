@@ -63,7 +63,7 @@ Construis aussi le portefeuille :
 cargo build --locked -p aurora-wallet
 ```
 
-Les clés générées par cette version sont des fichiers testnet en clair. Protège et sauvegarde le fichier; n’y place jamais de fonds réels. Le format contient une graine ML-DSA-65 et une somme de contrôle contre les corruptions accidentelles, sans chiffrement.
+Par défaut, `keygen` crée un fichier chiffré `AURKEY4` : Argon2id (64 MiB, 3 passes) dérive la clé depuis un mot de passe demandé sans écho, puis XChaCha20-Poly1305 protège la graine ML-DSA-65 et authentifie l’en-tête. Sauvegarde le fichier et le mot de passe séparément; une perte du mot de passe est irrécupérable. L’option explicite `--plain-testnet` conserve l’ancien format `AURKEY3` en clair pour les scripts de test uniquement. Aucun fonds réel.
 
 Crée une clé locale :
 
@@ -121,7 +121,7 @@ Détails et limites : [EMISSION_MODEL.md](EMISSION_MODEL.md), [PROTOCOL.md](PROT
 
 ## Wallet et vérification SPV
 
-Le CLI wallet expérimental et la commande de minage multi-pairs sont dans la même workspace. Génère un wallet de test et garde le fichier de clé en local; il est actuellement stocké en clair :
+Le CLI wallet expérimental et la commande de minage multi-pairs sont dans la même workspace. Génère un wallet de test et garde le fichier de clé chiffré en local. Le CLI demande un mot de passe à la création et à chaque accès :
 
 ```sh
 cargo run --locked -p aurora-wallet -- keygen --out ./wallet.aurkey
