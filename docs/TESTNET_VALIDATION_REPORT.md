@@ -1,13 +1,15 @@
 # Rapport d’essais du testnet AURORA
 
-**Commit de code et CI multi-nœuds :** `cafb72193a5d712f13e19658268a3fdd8fb1782e`  
+**Commit de code et CI multi-nœuds :** `37ec33c2ccc3e1d1be9dd6c2085c1a843e581578`  
 **Date des workflows :** 26 octobre 2026  
 **Branche :** `feature/emission-schedule-v0`  
 **Verdict :** les contrôles automatisés ciblés passent; ce résultat ne constitue ni un audit indépendant ni une garantie pour des fonds réels.
 
 ## Contrôles de compilation et tests
 
-- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40401304742) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40402865286) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- Le correctif de lecture réseau indexe les transactions confirmées, suit les réorganisations et sert les pages de blocs sans trier toute la chaîne sous le verrou; le smoke couvre toujours statut, preuve Merkle et synchronisation. Une mesure sous charge hostile reste à faire.
+- [Contrôle RustSec des dépendances](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40402139677) : 78 dépendances verrouillées inspectées, aucune vulnérabilité signalée par la base chargée lors de l’exécution. Ce contrôle ne vérifie pas la logique du protocole.
 - [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
 - [Campagne libFuzzer sur le nœud avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895495), commit `31b016e931624785508cf82b464efa19557c31bf` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Le changement suivant adapte seulement le smoke test au verrou et est couvert par la CI courante.
 
@@ -49,7 +51,7 @@ Aucun crash n’a été rapporté pendant ces campagnes. Les journaux de campagn
 ## Ce que ces essais ne valident pas
 
 - Une saturation réelle du disque, une panne électrique, la durabilité après redémarrage matériel, ou une restauration interversion.
-- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. L’essai local de 490,2 secondes ne couvre pas ces cas.
+- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. La [contre-revue IA](AI_COUNTER_REVIEW.md) documente trois risques encore ouverts : temps futurs, saturation des workers et limite globale de 100 000 blocs. L’essai local de 490,2 secondes ne couvre pas ces cas.
 - La résistance à une attaque d’éclipse contre le client SPV.
 - Une revue indépendante du consensus, de la cryptographie, du portefeuille ou du réseau. Aucun reviewer n’est encore désigné.
 - Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles. Les clés nouvelles du wallet CLI sont chiffrées par défaut, mais son stockage, son UX et ses sauvegardes n’ont pas subi de revue indépendante.
