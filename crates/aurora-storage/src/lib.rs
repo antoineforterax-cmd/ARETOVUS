@@ -251,13 +251,17 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
     let metadata = fs::metadata(path)?;
     if metadata.len() > limit as u64 {
-        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
+        return Err(StorageError::InvalidFormat(
+            "storage object exceeds byte limit",
+        ));
     }
     let file = File::open(path)?;
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take((limit + 1) as u64).read_to_end(&mut bytes)?;
     if bytes.len() > limit {
-        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
+        return Err(StorageError::InvalidFormat(
+            "storage object exceeds byte limit",
+        ));
     }
     Ok(bytes)
 }
