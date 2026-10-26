@@ -6,13 +6,13 @@ use std::{
     path::Path,
 };
 
-use aurora_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
 use argon2::{Algorithm, Argon2, Params, Version};
-use ml_dsa::{Keypair, MlDsa65, SigningKey};
+use aurora_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
 use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
 };
+use ml_dsa::{Keypair, MlDsa65, SigningKey};
 use zeroize::Zeroize;
 
 const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
@@ -162,7 +162,10 @@ impl WalletKey {
         );
         key.zeroize();
         let mut decrypted = decrypted.map_err(|_| {
-            io::Error::new(io::ErrorKind::InvalidData, "wrong password or damaged key file")
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "wrong password or damaged key file",
+            )
         })?;
         if decrypted.len() != 32 {
             decrypted.zeroize();
@@ -271,12 +274,15 @@ mod tests {
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         let key = WalletKey::from_seed_bytes([43; 32]);
-        key.save_encrypted_testnet_file(&path, "a long test password").unwrap();
+        key.save_encrypted_testnet_file(&path, "a long test password")
+            .unwrap();
         assert!(WalletKey::file_is_encrypted(&path).unwrap());
         let loaded = WalletKey::load_encrypted_testnet_file(&path, "a long test password").unwrap();
         assert_eq!(loaded.account_id(), key.account_id());
         assert!(WalletKey::load_encrypted_testnet_file(&path, "wrong password").is_err());
-        assert!(key.save_encrypted_testnet_file(&path, "a long test password").is_err());
+        assert!(key
+            .save_encrypted_testnet_file(&path, "a long test password")
+            .is_err());
         let mut bytes = fs::read(&path).unwrap();
         bytes[ENCRYPTED_HEADER_BYTES] ^= 1;
         fs::write(&path, bytes).unwrap();
