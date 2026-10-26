@@ -21,12 +21,17 @@ use aurora_consensus::{
 use aurora_core::{
     accounts::AccountId,
     codec::{CanonicalDecode, CanonicalEncode},
-    hash::sha256_plain,
+    hash::{sha256_plain, Hash256},
     state::AccountLedger,
 };
 
 const MAGIC: &[u8; 8] = b"AURORSNP";
 const FORMAT_VERSION: u32 = 4;
+const INDEX_MAGIC: &[u8; 8] = b"AURORIDX";
+const INDEX_VERSION: u32 = 5;
+const BLOCK_DIRECTORY: &str = "blocks-v5";
+const INDEX_EXTENSION: &str = "auridx";
+const BLOCK_EXTENSION: &str = "aurblk";
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_BLOCKS: usize = 100_000;
@@ -69,81 +74,154 @@ impl From<AccountForkChainError> for StorageError {
     }
 }
 
-/// Save an immutable snapshot named by height and tip hash. Repeating a save is idempotent.
+/// Persist content-addressed blocks and an immutable, checksummed v5 index.
+/// The old v4 snapshot reader remains available for recovery and migration.
 pub fn save_snapshot(
     dir: impl AsRef<Path>,
     chain: &AccountForkChain,
 ) -> Result<PathBuf, StorageError> {
     let dir = dir.as_ref();
     fs::create_dir_all(dir)?;
-    let bytes = encode_snapshot(chain)?;
+    let block_dir = dir.join(BLOCK_DIRECTORY);
+    fs::create_dir_all(&block_dir)?;
+    let blocks = chain.all_blocks_by_height();
+    if blocks.is_empty() || blocks.len() > MAX_BLOCKS {
+        return Err(StorageError::InvalidFormat("invalid block count"));
+    }
+    let mut body = Vec::with_capacity(73 + blocks.len() * 32 + CHECKSUM_LEN);
+    body.extend_from_slice(INDEX_MAGIC);
+    body.extend_from_slice(&INDEX_VERSION.to_be_bytes());
+    body.extend_from_slice(&chain.initial_difficulty_bits().to_be_bytes());
+    let params = chain.difficulty_params();
+    body.extend_from_slice(&params.target_block_seconds.to_be_bytes());
+    body.extend_from_slice(&params.adjustment_interval.to_be_bytes());
+    body.extend_from_slice(&params.max_adjustment_bits.to_be_bytes());
+    body.extend_from_slice(&params.min_bits.to_be_bytes());
+    body.extend_from_slice(&params.max_bits.to_be_bytes());
+    let rewards = chain.reward_params();
+    body.push(u8::from(rewards.enabled));
+    body.extend_from_slice(&rewards.treasury_account.0);
+    body.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
+    for block in blocks {
+        let encoded = block.to_canonical_bytes()?;
+        if encoded.len() > MAX_ACCOUNT_BLOCK_BYTES {
+            return Err(StorageError::InvalidFormat("block exceeds byte limit"));
+        }
+        let digest = sha256_plain(&encoded);
+        let block_path = block_dir.join(format!("{digest}.{BLOCK_EXTENSION}"));
+        write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+        body.extend_from_slice(digest.as_bytes());
+    }
+    let checksum = sha256_plain(&body);
+    body.extend_from_slice(checksum.as_bytes());
     let destination = dir.join(format!(
-        "snapshot-{:020}-{}-{}.aurora",
+        "snapshot-{:020}-{}-{}.{}",
         chain.height(),
         chain.tip_hash(),
-        sha256_plain(&bytes)
+        sha256_plain(&body),
+        INDEX_EXTENSION
     ));
-    if destination.exists() {
-        let existing = read_bounded(&destination)?;
-        if existing == bytes {
-            return Ok(destination);
+    write_immutable(&destination, &body, MAX_SNAPSHOT_BYTES)?;
+    prune_old_indexes(dir, &destination);
+    Ok(destination)
+}
+
+fn write_immutable(path: &Path, bytes: &[u8], limit: usize) -> Result<(), StorageError> {
+    if bytes.len() > limit {
+        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
+    }
+    if path.exists() {
+        if read_bounded_limit(path, limit)? == bytes {
+            return Ok(());
         }
-        return Err(StorageError::InvalidFormat("snapshot name collision"));
+        return Err(StorageError::InvalidFormat("content-addressed file mismatch"));
     }
     let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let temporary = dir.join(format!(".snapshot-{}-{sequence}.tmp", std::process::id()));
+    let temporary = path.with_file_name(format!(
+        ".aurora-{}-{sequence}.tmp",
+        std::process::id()
+    ));
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&temporary)?;
     let result = (|| {
-        file.write_all(&bytes)?;
+        file.write_all(bytes)?;
         file.sync_all()?;
-        fs::rename(&temporary, &destination)?;
+        fs::rename(&temporary, path)?;
+        sync_directory(path.parent().expect("file has a parent"))?;
         Ok::<_, io::Error>(())
     })();
     if result.is_err() {
         let _ = fs::remove_file(&temporary);
     }
     result?;
-    Ok(destination)
+    Ok(())
 }
 
-/// Load and validate every snapshot, then select the longest valid canonical history.
+#[cfg(unix)]
+fn sync_directory(dir: &Path) -> io::Result<()> {
+    File::open(dir)?.sync_all()
+}
+#[cfg(not(unix))]
+fn sync_directory(_dir: &Path) -> io::Result<()> {
+    Ok(())
+}
+
+/// Keep the latest index and two recovery points. Block files remain immutable.
+fn prune_old_indexes(dir: &Path, current: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut older = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path != current && path.extension().is_some_and(|ext| ext == INDEX_EXTENSION)
+        })
+        .collect::<Vec<_>>();
+    older.sort_by(|a, b| {
+        let a_time = fs::metadata(a).and_then(|meta| meta.modified()).ok();
+        let b_time = fs::metadata(b).and_then(|meta| meta.modified()).ok();
+        b_time.cmp(&a_time).then_with(|| b.cmp(a))
+    });
+    for path in older.into_iter().skip(2) {
+        if let Err(error) = fs::remove_file(&path) {
+            eprintln!("cannot prune old AURORA index {}: {error}", path.display());
+        }
+    }
+}
+
+/// Load and validate all available indexes or legacy snapshots, then select by cumulative work.
 pub fn load_latest_snapshot(
     dir: impl AsRef<Path>,
     initial_state: AccountLedger,
 ) -> Result<AccountForkChain, StorageError> {
+    let dir = dir.as_ref();
     let mut paths = fs::read_dir(dir)?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "aurora"))
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|ext| ext == "aurora" || ext == INDEX_EXTENSION)
+        })
         .collect::<Vec<_>>();
     paths.sort();
     let mut best: Option<AccountForkChain> = None;
     let mut rejected_snapshot: Option<StorageError> = None;
     for path in paths {
-        let bytes = match read_bounded(&path) {
-            Ok(bytes) => bytes,
-            Err(error @ StorageError::Io(_)) => return Err(error),
-            Err(error) => {
-                eprintln!(
-                    "ignoring invalid AURORA snapshot {}: {error}",
-                    path.display()
-                );
-                if rejected_snapshot.is_none() {
-                    rejected_snapshot = Some(error);
-                }
-                continue;
+        let result = (|| {
+            let bytes = read_bounded(&path)?;
+            if path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
+                decode_index(&bytes, dir, initial_state.clone())
+            } else {
+                decode_snapshot(&bytes, initial_state.clone())
             }
-        };
-        let chain = match decode_snapshot(&bytes, initial_state.clone()) {
+        })();
+        let chain = match result {
             Ok(chain) => chain,
             Err(error) => {
-                eprintln!(
-                    "ignoring invalid AURORA snapshot {}: {error}",
-                    path.display()
-                );
+                eprintln!("ignoring invalid AURORA snapshot {}: {error}", path.display());
                 if rejected_snapshot.is_none() {
                     rejected_snapshot = Some(error);
                 }
@@ -164,18 +242,101 @@ pub fn load_latest_snapshot(
 }
 
 fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
+    read_bounded_limit(path, MAX_SNAPSHOT_BYTES)
+}
+
+fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
     let metadata = fs::metadata(path)?;
-    if metadata.len() > MAX_SNAPSHOT_BYTES as u64 {
-        return Err(StorageError::InvalidFormat("snapshot exceeds byte limit"));
+    if metadata.len() > limit as u64 {
+        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
     }
     let file = File::open(path)?;
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
-    file.take((MAX_SNAPSHOT_BYTES + 1) as u64)
-        .read_to_end(&mut bytes)?;
-    if bytes.len() > MAX_SNAPSHOT_BYTES {
-        return Err(StorageError::InvalidFormat("snapshot exceeds byte limit"));
+    file.take((limit + 1) as u64).read_to_end(&mut bytes)?;
+    if bytes.len() > limit {
+        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
     }
     Ok(bytes)
+}
+
+fn decode_index(
+    bytes: &[u8],
+    dir: &Path,
+    initial_state: AccountLedger,
+) -> Result<AccountForkChain, StorageError> {
+    if bytes.len() < 73 + 32 + CHECKSUM_LEN || bytes.len() > MAX_SNAPSHOT_BYTES {
+        return Err(StorageError::InvalidFormat("invalid index length"));
+    }
+    let body_len = bytes.len() - CHECKSUM_LEN;
+    let (body, checksum) = bytes.split_at(body_len);
+    if sha256_plain(body).as_bytes() != checksum {
+        return Err(StorageError::ChecksumMismatch);
+    }
+    if &body[..8] != INDEX_MAGIC {
+        return Err(StorageError::InvalidFormat("bad index magic"));
+    }
+    let version = u32::from_be_bytes(body[8..12].try_into().expect("fixed slice"));
+    if version != INDEX_VERSION {
+        return Err(StorageError::InvalidFormat("unsupported index version"));
+    }
+    let initial_difficulty = u16::from_be_bytes(body[12..14].try_into().expect("fixed slice"));
+    let params = DifficultyParams {
+        target_block_seconds: u64::from_be_bytes(body[14..22].try_into().expect("fixed slice")),
+        adjustment_interval: u64::from_be_bytes(body[22..30].try_into().expect("fixed slice")),
+        max_adjustment_bits: u16::from_be_bytes(body[30..32].try_into().expect("fixed slice")),
+        min_bits: u16::from_be_bytes(body[32..34].try_into().expect("fixed slice")),
+        max_bits: u16::from_be_bytes(body[34..36].try_into().expect("fixed slice")),
+    };
+    let reward_enabled = match body[36] {
+        0 => false,
+        1 => true,
+        _ => return Err(StorageError::InvalidFormat("invalid reward flag")),
+    };
+    let rewards = RewardParams {
+        enabled: reward_enabled,
+        treasury_account: AccountId(body[37..69].try_into().expect("fixed account id")),
+    };
+    let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
+    if count == 0 || count > MAX_BLOCKS || body.len() != 73 + count * 32 {
+        return Err(StorageError::InvalidFormat("invalid index block count"));
+    }
+    let mut blocks = Vec::with_capacity(count);
+    for digest_bytes in body[73..].chunks_exact(32) {
+        let digest = Hash256::from_bytes(digest_bytes.try_into().expect("fixed hash"));
+        let block_path = dir
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{digest}.{BLOCK_EXTENSION}"));
+        let encoded = read_bounded_limit(&block_path, MAX_ACCOUNT_BLOCK_BYTES)?;
+        if sha256_plain(&encoded) != digest {
+            return Err(StorageError::ChecksumMismatch);
+        }
+        blocks.push(AccountBlock::from_canonical_bytes(&encoded)?);
+    }
+    replay_blocks(blocks, initial_difficulty, params, rewards, initial_state)
+}
+
+fn replay_blocks(
+    blocks: Vec<AccountBlock>,
+    initial_difficulty: u16,
+    params: DifficultyParams,
+    rewards: RewardParams,
+    initial_state: AccountLedger,
+) -> Result<AccountForkChain, StorageError> {
+    let mut iter = blocks.into_iter();
+    let genesis = iter
+        .next()
+        .ok_or(StorageError::InvalidFormat("missing genesis"))?;
+    let mut chain = AccountForkChain::new_with_protocol_params(
+        genesis,
+        initial_difficulty,
+        params,
+        rewards,
+        initial_state,
+    )?;
+    for block in iter {
+        chain.submit(block)?;
+    }
+    Ok(chain)
 }
 
 fn encode_snapshot(chain: &AccountForkChain) -> Result<Vec<u8>, StorageError> {
@@ -472,6 +633,69 @@ mod tests {
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), expected_tip);
         assert_eq!(restored.height(), 0);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn v5_indexes_share_immutable_blocks_and_keep_recovery_points() {
+        let path = dir();
+        let mut chain = chain();
+        save_snapshot(&path, &chain).unwrap();
+        for timestamp in 2..8 {
+            let block =
+                AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), timestamp, 0, Vec::new())
+                    .unwrap();
+            chain.submit(block).unwrap();
+            save_snapshot(&path, &chain).unwrap();
+        }
+        let indexes = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+            .count();
+        let blocks = fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count();
+        assert_eq!(indexes, 3);
+        assert_eq!(blocks, chain.known_block_count());
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), chain.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn corrupted_new_block_falls_back_to_previous_index() {
+        let path = dir();
+        let mut chain = chain();
+        let previous_tip = chain.tip_hash();
+        save_snapshot(&path, &chain).unwrap();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let digest = sha256_plain(&block.to_canonical_bytes().unwrap());
+        chain.submit(block).unwrap();
+        save_snapshot(&path, &chain).unwrap();
+        fs::write(
+            path.join(BLOCK_DIRECTORY)
+                .join(format!("{digest}.{BLOCK_EXTENSION}")),
+            b"corrupted block",
+        )
+        .unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), previous_tip);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn legacy_v4_snapshot_can_be_migrated_to_v5() {
+        let path = dir();
+        fs::create_dir_all(&path).unwrap();
+        let original = chain();
+        fs::write(path.join("legacy.aurora"), encode_snapshot(&original).unwrap()).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let index = save_snapshot(&path, &restored).unwrap();
+        assert_eq!(index.extension().and_then(|ext| ext.to_str()), Some(INDEX_EXTENSION));
+        fs::remove_file(path.join("legacy.aurora")).unwrap();
+        let migrated = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(migrated.tip_hash(), original.tip_hash());
         fs::remove_dir_all(path).unwrap();
     }
 
