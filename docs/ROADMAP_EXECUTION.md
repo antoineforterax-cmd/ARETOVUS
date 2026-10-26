@@ -1,36 +1,66 @@
-# AURORA — état d’exécution et travaux restants
+# AURORA — état vérifié et chemin vers une version finale
 
-**Branche :** `feature/emission-schedule-v0`. **Cible :** mécanisme blockchain expérimental testnet, sans portefeuille, explorateur ni site de présentation dans cette étape. Toute la chaîne reste non auditée et impropre aux fonds réels.
+**Branche de travail :** `feature/emission-schedule-v0`.  
+**État :** testnet expérimental supervisé. La PR reste non fusionnée. Aucun fonds réels; aucune revendication de sécurité mainnet.
 
-## Réalisé et couvert par tests
+## 1. Éprouver le réseau et le stockage
 
-- Encodage canonique des transactions/blocs, signatures Ed25519 vérifiées, nonce, solde et lot atomique.
-- État par branche, validation de blocs, horodatage médian, retarget déterministe borné, travail cumulé u320 et réorganisation selon le travail.
-- Émission lissée `proportional-remaining-1e6-v1`, plafond brut strict de 500 M AUR, genèse sans préminage, répartition trésorerie 5 % / mineur 95 % et frais 50 % mineur / 50 % brûlés; réorganisations recalculent l’état.
-- Snapshot `AURORSNP` v3 avec toutes les branches et paramètres de difficulté/récompense; checksum, rejeu/revalidation et choix du dernier snapshot par travail cumulé (même si la chaîne gagnante est plus courte).
-- Commande de minage testnet avec identité publique en argument, sauvegarde à chaque bloc et test de reprise après rechargement.
-- TCP expérimental push/pull vers pairs statiques : sync paginée, réception et sauvegarde de blocs, propagation explicite par `mine --peer`, handshake d’empreinte consensus, découverte opt-in d’un saut, huit sessions concurrentes et quotas cumulés par session.
-- `scripts/testnet_smoke.py` orchestre des processus séparés, pousse trois blocs, redémarre un pair pour tester le chargement du snapshot puis synchronise un répertoire neuf et vérifie la convergence; lancé par la CI.
-- Tests réseau négatifs : blocs invalides, handshake incompatible, inventaires/frame malformés ou surdimensionnés, limites de session, découverte bornée et erreurs transitoires.
-- CI GitHub Actions verte pour le lot mineur/snapshots (run 187, commit `983d56d16d572d4dfd988563ffdf0418d7c7261d`). CI GitHub Actions verte sur le lot courant (run 245, commit `c18186db1dc7a00fbed6bb22feb89e7d191bdf12`), couvrant P2P, limite d’octets de bloc et reprise par travail cumulé.
+### Déjà couvert par les contrôles automatisés
 
-## Reste pour fermer une version de testnet reproductible
+- Validation de transactions ML-DSA-65 v3, blocs, retarget borné, MTP, travail cumulé et réorganisations.
+- Snapshot version 4 avec checksum, relecture et revalidation des branches; récupération depuis un snapshot précédent si le dernier est corrompu.
+- Décodage hostile : tailles excessives, trames/inventaires malformés, handshake incompatible, bloc rejeté et limites de session.
+- Scénario multi-processus : le smoke test mine et propage, inclut une transaction wallet, vérifie son statut et sa preuve Merkle, passe la hauteur 20 à travers deux fenêtres de retarget, redémarre un pair et synchronise les blocs manquants.
+- Reprise après terminaison forcée entre des sauvegardes; essai d’échec d’écriture simulé par limite de taille de fichier sur Linux.
+- Test reproductible déterministe d’entrées arbitraires pour les décodeurs de transactions, blocs, en-têtes, inventaires et listes de pairs.
+- Cibles libFuzzer pour les décodeurs canoniques et les preuves Merkle; job GitHub Actions séparé.
 
-1. **Difficulté/temps** : vecteurs de référence indépendants, simulation de dérive temporelle, rafales, longues pauses et manipulation du retarget; décider une borne future de timestamp.
-2. **Réseau** : le scénario multi-processus push/pull et les limites de ressources sont désormais vérifiés en CI. Restent une reconnexion continue, propagation multi-sauts spontanée, campagne de tests de coupure/réprise et fuzzing des trames; la topologie actuelle reste amorcée par adresses statiques, avec découverte opt-in d’un seul saut.
-3. **Limites de bloc** : limite consensus de 4 MiB maintenant en place; mesurer le coût CPU/mémoire et tester les frontières de taille dans consensus, décodage, stockage et transport.
-4. **Stockage** : injecter interruptions au moment d’écriture, disque plein, snapshots concurrents, restauration indépendante et migration de format; le snapshot actuel n’est pas une base transactionnelle.
-5. **Testnet reproductible** : le smoke test à deux processus est en CI; ajouter scénarios multi-hôtes prolongés, synchronisation après redémarrage, forks concurrents et réorganisations observées entre processus.
-6. **Robustesse** : fuzzing du décodage et de l’application de blocs, analyse de dépendances, revue humaine du code et revue indépendante du protocole.
+### À compléter avant de prétendre à une robustesse élevée
 
-## Après l’évaluation testnet
+- Campagnes fuzz longues et rapport de couverture; le job CI court ne remplace pas une campagne de plusieurs heures/jours.
+- Plus de scénarios lents et malveillants : ralentissement volontaire, inventaire menteur, déconnexion au milieu d’une page, saturation simultanée et partitions.
+- Essais de restauration depuis une sauvegarde hors machine, migrations de format réelles et test avec disque effectivement plein. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas une panne électrique ou un volume saturé.
+- Réorganisations multi-nœuds concurrentes et synchronisation prolongée sur plusieurs processus.
+- Vérification indépendante du retarget sous dérive d’horloge, longues pauses et rafales.
 
-Le réseau expérimental fonctionne pour une testnet supervisée à pairs connus; les scénarios prolongés, le retarget indépendant, le fuzzing, les coupures disque et une revue indépendante restent avant tout usage public.
+## 2. Revue indépendante — porte de sécurité non satisfaite
 
-Ordre recommandé après ce jalon :
-1. Évaluer le testnet à plusieurs nœuds et régler les erreurs de disponibilité, convergence, difficulté et restauration.
-2. Simuler l’émission proportionnelle sur la durée et faire relire indépendamment la formule et ses incitations. La CI teste l’arithmétique, pas sa valeur économique.
-3. Définir comment la trésorerie `[0xA0; 32]` peut dépenser : le compte actuel n’est pas un smart contract et ne porte pas de gouvernance ou de politique d’audit.
-4. Concevoir les gardiens/time-locks avec les formats de clés et le portefeuille, puis tester récupération, révocation, délais et attaques de gardiens avant de les ajouter au consensus.
-5. Traiter le recyclage des comptes inactifs comme une décision de propriété distincte : aucune saisie automatique n’est codée, et son seuil, les preuves d’inactivité, l’appel et les recours doivent être spécifiés avant prototypage.
-6. Après stabilisation et revue indépendante du protocole, commencer le portefeuille, l’explorateur et le site explicatif. La vente ou la cotation vient bien plus tard, après sécurité, conformité et gouvernance du projet.
+Le dossier [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md) décrit le périmètre, les commandes et les limites connues. Aucune revue indépendante n’a été réalisée. Les contrôles CI, ce travail d’implémentation et les outils automatisés ne comptent pas comme une telle revue.
+
+Il faut un auditeur humain indépendant, un commit épinglé, un rapport écrit avec constats classés, puis des corrections suivies de nouveaux tests. Le dépôt est privé et aucun reviewer indépendant n’est actuellement désigné; aucune demande de revue n’a été envoyée à une personne non identifiée.
+
+## 3. Décisions de protocole et économie
+
+Les paramètres économiques demandés par le porteur sont codés : plafond brut de 500 millions AUR, aucune préémission, émission proportionnelle décroissante, 5 % crédités à l’adresse de trésorerie de test, 95 % au mineur, frais partagés 50/50 et burn non réutilisable sous le plafond.
+
+Deux sujets doivent rester explicitement séparés de ces règles :
+
+- L’adresse de trésorerie reçoit la part prévue, mais il n’existe ni contrat, ni gouvernance, ni règles de dépense/audit. Ne pas présenter cette adresse comme une trésorerie autonome opérationnelle avant qu’une politique de contrôle et d’utilisation soit décidée puis revue.
+- Le protocole actuel ne saisit et ne recycle pas les soldes inactifs. Toute récupération d’actifs change les droits de propriété; elle exige une décision explicite sur le seuil, les preuves, le recours et les protections contre le vol de clés.
+- DID, gardiens et récupération restent au stade de conception hors consensus dans [DID_RECOVERY_DESIGN.md](DID_RECOVERY_DESIGN.md). Ils ne peuvent être ajoutés à l’état des comptes qu’après conception détaillée, revue et décision du porteur.
+
+## 4. Stabiliser le testnet
+
+La configuration locale reproductible et son guide sont disponibles dans [TESTNET_GUIDE.md](TESTNET_GUIDE.md). Les paramètres de preuve de travail sont délibérément faibles et la topologie demande des pairs connus. La CI valide un scénario local, pas un réseau public exploité dans la durée.
+
+Avant de déclarer un testnet public stable, il faut choisir et héberger des nœuds semences, réaliser une campagne multi-hôtes prolongée, surveiller la disponibilité/convergence, geler une version protocolaire, et documenter les mises à jour, sauvegardes, restauration et signalement d’incident. Aucun hôte public ni opérateur externe n’est fourni dans ce dépôt.
+
+## 5. Applications — après les portes précédentes
+
+Ces éléments sont volontairement hors de la phase actuelle. Ils commencent après les essais prolongés, la revue indépendante, les corrections et le gel du protocole :
+
+1. **Portefeuille quotidien** : chiffrement au repos, sauvegarde/restauration vérifiable, gestion des secrets, puis tests d’ergonomie. Le wallet actuel est un outil testnet dont le fichier de clé est en clair.
+2. **Explorateur** : indexeur et API en lecture seule avec affichage des blocs, transactions, preuves et réorganisations.
+3. **Site de présentation** : but du projet, fonctionnement, limites, guide d’installation et risques.
+4. **Vente/échange** : spécification séparée des rôles, garde des fonds, règlement et exigences juridiques applicables avant toute intégration financière.
+
+## Critères de version finale
+
+- Campagnes de tests prolongées et fuzzing avec résultats conservés.
+- Revue indépendante terminée et constats critiques/élevés corrigés ou formellement acceptés par le porteur.
+- Décisions documentées sur trésorerie, inactivité, DID/récupération et mises à niveau.
+- Testnet multi-hôtes stable, version et procédures reproductibles publiées.
+- Portefeuille, explorateur et site testés sur la version protocolaire gelée.
+- Toute vente ou cotation fait l’objet d’une validation juridique et opérationnelle distincte.
+
+La version actuelle ne satisfait pas encore ces critères.
