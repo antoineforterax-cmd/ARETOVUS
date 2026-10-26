@@ -2,7 +2,7 @@
 
 use aurora_core::{
     hash::Hash256,
-    merkle::{verify_merkle_proof, MerkleProof, MAX_MERKLE_LEAVES},
+    merkle::{verify_merkle_proof, MerkleProof},
 };
 use libfuzzer_sys::fuzz_target;
 
