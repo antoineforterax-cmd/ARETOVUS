@@ -517,19 +517,24 @@ mod tests {
         let mut chain = AccountForkChain::new(genesis, 0, initial_state()).unwrap();
         let genesis_hash = chain.tip_hash();
         let branch_a = block(genesis_hash, 2, vec![tx(0, 10, 10)]);
+        let tx_a = branch_a.transactions[0].txid().unwrap();
         let hash_a = branch_a.header.hash().unwrap();
         assert!(chain.submit(branch_a).unwrap().became_best);
+        assert_eq!(chain.canonical_transaction(tx_a).unwrap().0, 1);
 
         let branch_b = (3..100)
             .map(|time| block(genesis_hash, time, vec![tx(0, 11, 20)]))
             .find(|candidate| candidate.header.hash().unwrap() > hash_a)
             .expect("deterministic candidate with a higher hash exists");
+        let tx_b = branch_b.transactions[0].txid().unwrap();
         let hash_b = branch_b.header.hash().unwrap();
         assert!(!chain.submit(branch_b).unwrap().became_best);
+        assert!(chain.canonical_transaction(tx_b).is_none());
         assert_eq!(chain.state().account(account(10)).balance.to_units(), 10);
         assert_eq!(chain.state().account(account(11)).balance.to_units(), 0);
 
         let branch_b2 = block(hash_b, 100, vec![tx(1, 12, 5)]);
+        let tx_b2 = branch_b2.transactions[0].txid().unwrap();
         let update = chain.submit(branch_b2).unwrap();
         assert_eq!(
             update,
@@ -539,6 +544,9 @@ mod tests {
             }
         );
         assert_eq!(chain.height(), 2);
+        assert!(chain.canonical_transaction(tx_a).is_none());
+        assert_eq!(chain.canonical_transaction(tx_b).unwrap().0, 1);
+        assert_eq!(chain.canonical_transaction(tx_b2).unwrap().0, 2);
         assert_eq!(chain.state().account(account(10)).balance.to_units(), 0);
         assert_eq!(chain.state().account(account(11)).balance.to_units(), 20);
         assert_eq!(chain.state().account(account(12)).balance.to_units(), 5);
