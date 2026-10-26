@@ -166,6 +166,12 @@ def main() -> int:
             )
             if "Confirmed" not in confirmed:
                 raise AssertionError(f"transaction was not confirmed after mining:\n{confirmed}")
+            verified = run_wallet(
+                wallet, "verify", "--node", f"{addr_b[0]}:{addr_b[1]}",
+                "--txid", tx_match.group(1), "--confirmations", "1",
+            )
+            if "SPV verified:" not in verified or "confirmations=1" not in verified:
+                raise AssertionError(f"SPV transaction verification failed:\n{verified}")
 
             # Restart A after mining so its server loads the persisted height-4 chain.
             for server in servers[:2]:
