@@ -355,16 +355,20 @@ fn check_hello(frame: &[u8], chain: &AccountForkChain) -> Result<(), P2pError> {
     Ok(())
 }
 fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, P2pError> {
-    let blocks = chain.all_blocks_by_height();
-    if start > blocks.len() {
+    let total = chain.known_block_count();
+    if start > total {
         return Err(P2pError::Protocol("block cursor out of range"));
     }
     let mut frame = vec![BLOCKS_REPLY];
-    frame.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
+    frame.extend_from_slice(
+        &u32::try_from(total)
+            .map_err(|_| P2pError::Protocol("block inventory exceeds transport limit"))?
+            .to_be_bytes(),
+    );
     let mut count = 0u32;
     let count_offset = frame.len();
     frame.extend_from_slice(&count.to_be_bytes());
-    for block in blocks.iter().skip(start).take(PAGE_BLOCKS) {
+    for block in chain.block_page(start, PAGE_BLOCKS) {
         let encoded = block
             .to_canonical_bytes()
             .map_err(|_| P2pError::Protocol("block encoding failed"))?;
@@ -375,7 +379,7 @@ fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, 
         frame.extend_from_slice(&encoded);
         count += 1;
     }
-    if start < blocks.len() && count == 0 {
+    if start < total && count == 0 {
         return Err(P2pError::Protocol("block exceeds transport frame limit"));
     }
     frame[count_offset..count_offset + 4].copy_from_slice(&count.to_be_bytes());
