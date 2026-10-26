@@ -149,10 +149,7 @@ mod tests {
         let before = Amount::from_units(5_000_000 * UNITS_PER_COIN - 1).unwrap();
         let after = Amount::from_units(5_000_000 * UNITS_PER_COIN + 1).unwrap();
         assert!(scheduled_issuance(before).to_units() >= scheduled_issuance(after).to_units());
-        assert!(
-            scheduled_issuance(before).to_units() - scheduled_issuance(after).to_units()
-                <= 1
-        );
+        assert!(scheduled_issuance(before).to_units() - scheduled_issuance(after).to_units() <= 1);
     }
 
     #[test]
