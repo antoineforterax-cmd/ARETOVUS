@@ -296,13 +296,23 @@ mod tests {
         )
         .unwrap();
         let mut parent = TESTNET_GENESIS_HASH;
-        for (height, timestamp) in [(1, 61), (2, 121), (3, 181), (4, 241), (5, 301), (6, 361), (7, 421), (8, 481), (9, 541)] {
+        for (height, timestamp) in [
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),
+            (8, 9),
+            (9, 10),
+        ] {
             let header = child(parent, timestamp, TESTNET_INITIAL_BITS);
             parent = header.hash().unwrap();
             chain.submit(header).unwrap();
             assert_eq!(height, chain.height());
         }
-        let wrong_bits = child(parent, 10_000, TESTNET_INITIAL_BITS);
+        let wrong_bits = child(parent, 11, TESTNET_INITIAL_BITS);
         assert_eq!(chain.submit(wrong_bits), Err(HeaderChainError::InsufficientWork));
         let mut bad_genesis = genesis.header;
         bad_genesis.timestamp += 1;
