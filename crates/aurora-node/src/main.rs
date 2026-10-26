@@ -11,8 +11,13 @@ use std::{
 };
 
 use aurora_consensus::{
-    account_block::AccountBlock, account_fork_chain::AccountForkChain,
-    difficulty::DifficultyParams, proof_of_work::mine_nonce, reward::RewardParams,
+    account_block::AccountBlock,
+    account_fork_chain::AccountForkChain,
+    proof_of_work::mine_nonce,
+    reward::RewardParams,
+    testnet::{
+        testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS, TESTNET_TREASURY,
+    },
 };
 use aurora_core::{
     accounts::{AccountId, AccountTransaction},
@@ -26,16 +31,6 @@ use p2p::{
     sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
 };
 
-const TESTNET_INITIAL_BITS: u16 = 8;
-const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
-const TESTNET_DIFFICULTY: DifficultyParams = DifficultyParams {
-    target_block_seconds: 60,
-    adjustment_interval: 10,
-    max_adjustment_bits: 2,
-    min_bits: 4,
-    max_bits: 20,
-};
-
 fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
     let network = NetworkId::Regtest;
     let genesis = AccountBlock::build(network, Hash256::ZERO, 1, 0, Vec::new())?;
@@ -47,10 +42,8 @@ fn regtest_chain() -> Result<AccountForkChain, Box<dyn Error>> {
 }
 
 fn testnet_chain() -> Result<AccountForkChain, Box<dyn Error>> {
-    let mut genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, Vec::new())?;
-    genesis.header.nonce = mine_nonce(&genesis.header, TESTNET_INITIAL_BITS, 0, 1_000_000)?;
     Ok(AccountForkChain::new_with_protocol_params(
-        genesis,
+        testnet_genesis_block(),
         TESTNET_INITIAL_BITS,
         TESTNET_DIFFICULTY,
         RewardParams::experimental_testnet(TESTNET_TREASURY),
