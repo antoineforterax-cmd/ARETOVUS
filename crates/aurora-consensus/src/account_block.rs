@@ -13,6 +13,7 @@ use aurora_core::{
         EncodeError, Encoder,
     },
     hash::{tagged_hash, Domain, Hash256},
+    merkle::{merkle_root, MAX_MERKLE_LEAVES},
     network::NetworkId,
     state::{AccountLedger, StateError},
 };
@@ -60,6 +61,23 @@ impl fmt::Display for AccountBlockValidationError {
 }
 impl std::error::Error for AccountBlockValidationError {}
 
+pub fn compute_account_tx_merkle_root(txs: &[AccountTransaction]) -> Result<Hash256, EncodeError> {
+    if txs.len() > MAX_BLOCK_TXS || txs.len() > MAX_MERKLE_LEAVES {
+        return Err(EncodeError::LengthTooLarge {
+            len: txs.len(),
+            max: MAX_BLOCK_TXS.min(MAX_MERKLE_LEAVES),
+        });
+    }
+    let txids = txs
+        .iter()
+        .map(AccountTransaction::txid)
+        .collect::<Result<Vec<_>, _>>()?;
+    merkle_root(&txids).map_err(|_| EncodeError::LengthTooLarge {
+        len: txs.len(),
+        max: MAX_BLOCK_TXS.min(MAX_MERKLE_LEAVES),
+    })
+}
+
 pub fn compute_account_tx_commitment(txs: &[AccountTransaction]) -> Result<Hash256, EncodeError> {
     compute_account_block_commitment(txs, None)
 }
@@ -69,11 +87,9 @@ pub fn compute_account_block_commitment(
     txs: &[AccountTransaction],
     miner: Option<AccountId>,
 ) -> Result<Hash256, EncodeError> {
+    let root = compute_account_tx_merkle_root(txs)?;
     let mut enc = Encoder::new();
-    enc.put_len(txs.len(), MAX_BLOCK_TXS)?;
-    for tx in txs {
-        tx.txid()?.encode(&mut enc)?;
-    }
+    root.encode(&mut enc)?;
     match miner {
         None => enc.put_u8(0),
         Some(account) => {
@@ -103,12 +119,14 @@ impl AccountBlock {
         miner: Option<AccountId>,
         transactions: Vec<AccountTransaction>,
     ) -> Result<Self, EncodeError> {
+        let tx_merkle_root = compute_account_tx_merkle_root(&transactions)?;
         let tx_commitment = compute_account_block_commitment(&transactions, miner)?;
         Ok(Self {
             header: BlockHeader {
                 version: HEADER_VERSION,
                 network,
                 prev_hash,
+                tx_merkle_root,
                 tx_commitment,
                 timestamp,
                 nonce,
@@ -136,9 +154,12 @@ impl AccountBlock {
                 return Err(AccountBlockError::DuplicateTransaction);
             }
         }
-        if compute_account_block_commitment(&self.transactions, self.miner)
+        if compute_account_tx_merkle_root(&self.transactions)
             .map_err(AccountBlockError::Encoding)?
-            != self.header.tx_commitment
+            != self.header.tx_merkle_root
+            || compute_account_block_commitment(&self.transactions, self.miner)
+                .map_err(AccountBlockError::Encoding)?
+                != self.header.tx_commitment
         {
             return Err(AccountBlockError::CommitmentMismatch);
         }
