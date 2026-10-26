@@ -14,11 +14,16 @@ use aurora_consensus::{
     account_block::AccountBlock, account_fork_chain::AccountForkChain,
     difficulty::DifficultyParams, proof_of_work::mine_nonce, reward::RewardParams,
 };
-use aurora_core::{accounts::AccountId, hash::Hash256, network::NetworkId, state::AccountLedger};
+use aurora_core::{
+    accounts::{AccountId, AccountTransaction},
+    hash::Hash256,
+    network::NetworkId,
+    state::AccountLedger,
+};
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
 use p2p::{
-    discover_peers_with_retry, propagate_block_with_retry, serve as serve_peers,
-    sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
+    discover_peers_with_retry, fetch_mempool, propagate_block_with_retry,
+    serve as serve_peers, sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
 };
 
 const TESTNET_INITIAL_BITS: u16 = 8;
@@ -178,6 +183,7 @@ fn mine_one(
     chain: &mut AccountForkChain,
     miner: AccountId,
     timestamp: u64,
+    transactions: Vec<AccountTransaction>,
 ) -> Result<AccountBlock, Box<dyn Error>> {
     let timestamp = timestamp
         .max(chain.median_time_past().saturating_add(1))
@@ -189,7 +195,7 @@ fn mine_one(
         timestamp,
         0,
         Some(miner),
-        Vec::new(),
+        transactions,
     )?;
     block.header.nonce = mine_nonce(&block.header, difficulty, 0, u64::MAX)?;
     let update = chain.submit(block.clone())?;
@@ -231,9 +237,16 @@ fn run_testnet_miner(args: impl Iterator<Item = String>) -> Result<(), Box<dyn E
     let miner = miner.ok_or("testnet mine requires --miner <64 hex characters>")?;
     let dir = data_dir.ok_or("testnet mine requires --data-dir <path>")?;
     let mut chain = load_testnet_chain(&dir)?;
+    for peer in &peers {
+        sync_from_peer_with_retry(*peer, &mut chain, &dir)?;
+    }
     for _ in 0..count {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-        let block = mine_one(&mut chain, miner, now)?;
+        let transactions = match peers.first() {
+            Some(peer) => fetch_mempool(*peer, &chain)?,
+            None => Vec::new(),
+        };
+        let block = mine_one(&mut chain, miner, now, transactions)?;
         save_snapshot(&dir, &chain)?;
         for peer in &peers {
             propagate_block_with_retry(*peer, &chain, &block)?;
@@ -327,7 +340,7 @@ mod tests {
         let mut chain = testnet_chain().unwrap();
         assert_eq!(chain.height(), 0);
         assert_eq!(chain.state().total_issued().to_units(), 0);
-        let _mined = mine_one(&mut chain, miner, 2).unwrap();
+        let _mined = mine_one(&mut chain, miner, 2, Vec::new()).unwrap();
         assert_eq!(chain.height(), 1);
         assert_eq!(
             chain.state().total_issued().to_units(),
