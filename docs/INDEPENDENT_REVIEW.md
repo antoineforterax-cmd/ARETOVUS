@@ -37,7 +37,7 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 ## Limites connues à examiner
 
 - Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels.
-- Le nœud utilise une topologie amorcée par des adresses connues; reconnexion continue et propagation de transactions par gossip ne sont pas fournies.
+- Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage périodique; propagation de transactions par gossip et découverte multi-sauts ne sont pas fournies.
 - Le portefeuille actuel stocke encore ses clés en clair; ne jamais réutiliser ces fichiers hors testnet.
 - La preuve SPV dépend des pairs consultés et ne défend pas contre une éclipse.
 - La trésorerie reçoit des unités à une adresse fixe, mais aucune gouvernance ni règle de dépense n’est définie.

@@ -1,15 +1,15 @@
 # Rapport d’essais automatisés du testnet AURORA
 
-**Commit de code éprouvé :** `390eb1d9517ffd61f560ba5dff065a4c9136c36f`  
+**Commit de code et CI multi-nœuds :** `b8a7626f1f8ad2a8018687783153601249123c8b`  
 **Date des workflows :** 26 octobre 2026  
 **Branche :** `feature/emission-schedule-v0`  
 **Verdict :** les contrôles automatisés ciblés passent; ce résultat ne constitue ni un audit indépendant ni une garantie pour des fonds réels.
 
 ## Contrôles de compilation et tests
 
-- [CI multi-processus 1](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40326204138) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
-- [CI multi-processus 2](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40326195910) : mêmes contrôles — succès.
-- [Campagne libFuzzer](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40326204232) : trois cibles exécutées 301 secondes chacune — succès, sans crash ni entrée déclenchant une erreur de fuzz.
+- [CI de la révision courante](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333486589) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
+- [Campagne libFuzzer](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40326204232) sur le commit `390eb1d9517ffd61f560ba5dff065a4c9136c36f` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Les changements de stockage et de rattrapage ultérieurs sont couverts par les tests/CI courants; cette campagne fuzz ne les couvre pas directement.
 
 ## Scénario multi-nœuds
 
@@ -20,10 +20,11 @@ Le smoke test utilise plusieurs processus isolés et des dossiers temporaires :
 3. Synchronise les nœuds, redémarre un serveur depuis son snapshot et fait télécharger le pair frais.
 4. Mine jusqu’à la hauteur 20, couvrant deux retargets, pousse cette chaîne, redémarre le nœud receveur et vérifie la synchronisation de 16 blocs.
 5. Crée une branche concurrente de hauteur 21 depuis la genèse, vérifie que son travail cumulé provoque la réorganisation du nœud, puis vérifie la convergence d’un autre pair. La transaction devenue orpheline n’est plus rapportée comme confirmée.
-6. Arrête brutalement un mineur après plusieurs snapshots validés, puis vérifie qu’il redémarre au-dessus du dernier snapshot complet.
-7. Sur Linux, impose une limite de taille aux écritures pour simuler un échec de sauvegarde; vérifie que le nœud reprend le snapshot complet précédent.
+6. Lance un pair avec un serveur déjà actif, vérifie qu’il rejoint automatiquement une branche de hauteur 21, puis qu’il rattrape un nouveau bloc de hauteur 22 sans commande `sync` manuelle.
+7. Arrête brutalement un mineur après plusieurs index validés, puis vérifie qu’il redémarre au-dessus du dernier index complet.
+8. Sur Linux, impose une limite de taille aux écritures pour simuler un échec de sauvegarde; vérifie que le nœud reprend l’index complet précédent. Les tests Rust restaurent aussi une copie complète du dossier v5 et lisent un snapshot v4 avant écriture v5.
 
-Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-branch reorganization, forced-stop and write-limit recovery passed ». Résultat : succès sur le commit indiqué.
+Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, forced-stop and write-limit recovery passed ». Résultat : succès sur le commit indiqué.
 
 ## Campagnes fuzz
 

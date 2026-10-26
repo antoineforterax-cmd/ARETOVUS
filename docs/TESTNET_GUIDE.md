@@ -51,9 +51,9 @@ Un mineur peut créer une série de blocs puis les pousser vers un serveur joign
 cargo run --locked -p aurora-node -- testnet mine --data-dir ./aurora-miner --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10 --peer 192.168.1.20:18444
 ```
 
-Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec `testnet sync`, puis lance `testnet serve` avec ce dossier. Le serveur et les commandes `mine`/`sync` ne doivent pas utiliser simultanément le même dossier : une commande lit son snapshot au démarrage. Arrête `serve` avant de miner ou synchroniser ce dossier, puis redémarre le serveur pour qu’il recharge le snapshot mis à jour.
+Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec `testnet sync`, puis lance `testnet serve` avec ce dossier et ses `--peer` statiques. Le serveur réinterroge ces pairs en arrière-plan après son démarrage. Le serveur et les commandes `mine`/`sync` ne doivent pas utiliser simultanément le même dossier : une commande lit son snapshot au démarrage. Arrête `serve` avant de miner ou synchroniser ce dossier, puis redémarre le serveur pour qu’il recharge le snapshot mis à jour.
 
-Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud a un mempool local borné, mais ne maintient pas de minage continu, de reconnexion automatique ni de gossip des transactions. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
+Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud a un mempool local borné et, en mode `serve --peer`, rattrape périodiquement les pairs configurés. Il ne maintient pas de minage continu ni de gossip des transactions. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
 
 ## Portefeuille CLI experimental
 

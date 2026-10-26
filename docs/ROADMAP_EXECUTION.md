@@ -10,7 +10,7 @@
 - Validation de transactions ML-DSA-65 v3, blocs, retarget borné, MTP, travail cumulé et réorganisations.
 - Stockage v5 par blocs immuables et index checksummés avec trois points de reprise; relecture/revalidation des branches, retour à un index valide antérieur si le dernier est corrompu, lecture des snapshots v4 et restauration d’une copie dans un autre dossier.
 - Décodage hostile : tailles excessives, trames/inventaires malformés, handshake incompatible, bloc rejeté et limites de session. Une lecture de trame complète a un délai total; une page n’est publiée en mémoire qu’après validation et sauvegarde complètes.
-- Scénario multi-processus : le smoke test mine et propage, inclut une transaction wallet, vérifie son statut et sa preuve Merkle, passe la hauteur 20 à travers deux fenêtres de retarget, redémarre un pair et synchronise les blocs manquants.
+- Scénario multi-processus : le smoke test mine et propage, inclut une transaction wallet, vérifie son statut et sa preuve Merkle, passe la hauteur 20 à travers deux fenêtres de retarget, redémarre un pair et synchronise les blocs manquants. Un serveur déjà lancé rattrape automatiquement un pair à la hauteur 21 puis un nouveau bloc à la hauteur 22.
 - Reprise après terminaison forcée entre des sauvegardes; essai d’échec d’écriture simulé par limite de taille de fichier sur Linux.
 - Test reproductible déterministe d’entrées arbitraires pour les décodeurs de transactions, blocs, en-têtes, inventaires et listes de pairs.
 - Trois cibles libFuzzer pour les décodeurs canoniques, les preuves Merkle et les charges P2P; job GitHub Actions séparé. Le [rapport](TESTNET_VALIDATION_REPORT.md) donne les nombres d’entrées et les limites.
@@ -20,7 +20,7 @@
 - Campagnes fuzz longues et rapport de couverture; le job CI court ne remplace pas une campagne de plusieurs heures/jours.
 - Plus de scénarios lents et malveillants : ralentissement volontaire, inventaire menteur, déconnexion au milieu d’une page, saturation simultanée et partitions.
 - Une copie complète de dossier est restaurée par test automatisé, et la lecture v4 puis écriture v5 est couverte. Il reste à éprouver une sauvegarde hors machine réelle, un disque effectivement plein et une panne électrique. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas un volume saturé.
-- Réorganisations multi-nœuds concurrentes et synchronisation prolongée sur plusieurs processus.
+- Réorganisations concurrentes répétées et synchronisation prolongée sur plusieurs machines réelles; le rattrapage périodique local est couvert par CI.
 - Vérification indépendante du retarget sous dérive d’horloge, longues pauses et rafales.
 
 ## 2. Revue indépendante — reportée pour le développement expérimental
