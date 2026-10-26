@@ -82,7 +82,11 @@ pub fn parse_payment_uri(uri: &str) -> Result<PaymentRequest, Box<dyn Error>> {
             }
         }
     }
-    Ok(PaymentRequest { account, amount, memo })
+    Ok(PaymentRequest {
+        account,
+        amount,
+        memo,
+    })
 }
 
 fn format_amount(amount: Amount) -> String {
@@ -129,7 +133,9 @@ fn percent_decode(value: &str) -> Result<Vec<u8>, Box<dyn Error>> {
         match bytes[cursor] {
             b'%' => {
                 let end = cursor.checked_add(3).ok_or("memo encoding overflow")?;
-                let escape = bytes.get(cursor + 1..end).ok_or("truncated percent escape")?;
+                let escape = bytes
+                    .get(cursor + 1..end)
+                    .ok_or("truncated percent escape")?;
                 let high = hex_nibble(escape[0]).ok_or("invalid percent escape")?;
                 let low = hex_nibble(escape[1]).ok_or("invalid percent escape")?;
                 output.push((high << 4) | low);
@@ -179,7 +185,9 @@ mod tests {
     fn payment_uri_rejects_network_confusion_duplicates_and_bad_escapes() {
         let address = "ab".repeat(32);
         assert!(parse_payment_uri(&format!("aurora://mainnet/{address}")).is_err());
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?amount=1&amount=2")).is_err());
+        assert!(
+            parse_payment_uri(&format!("aurora://testnet/{address}?amount=1&amount=2")).is_err()
+        );
         assert!(parse_payment_uri(&format!("aurora://testnet/{address}?memo=%Q0")).is_err());
         assert!(parse_payment_uri(&format!("aurora://testnet/{address}?unexpected=1")).is_err());
         assert!(parse_payment_uri(&format!("aurora://testnet/{address}#fragment")).is_err());
@@ -189,7 +197,9 @@ mod tests {
     fn payment_uri_rejects_zero_or_overprecision_and_control_memos() {
         let address = "ab".repeat(32);
         assert!(parse_payment_uri(&format!("aurora://testnet/{address}?amount=0")).is_err());
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?amount=1.000000001")).is_err());
+        assert!(
+            parse_payment_uri(&format!("aurora://testnet/{address}?amount=1.000000001")).is_err()
+        );
         assert!(parse_payment_uri(&format!("aurora://testnet/{address}?memo=%0A")).is_err());
     }
 
@@ -200,6 +210,8 @@ mod tests {
             amount: Some(Amount::from_units(120_000_000).unwrap()),
             memo: None,
         };
-        assert!(encode_payment_uri(&request).unwrap().ends_with("?amount=1.2"));
+        assert!(encode_payment_uri(&request)
+            .unwrap()
+            .ends_with("?amount=1.2"));
     }
 }
