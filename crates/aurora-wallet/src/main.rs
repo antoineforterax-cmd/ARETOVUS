@@ -1,5 +1,11 @@
 //! AURORA v3 testnet command-line wallet.
-use std::{error::Error, net::SocketAddr, path::Path, thread, time::{Duration, Instant}};
+use std::{
+    error::Error,
+    net::SocketAddr,
+    path::Path,
+    thread,
+    time::{Duration, Instant},
+};
 
 use aurora_core::hash::Hash256;
 use aurora_wallet::{
@@ -32,7 +38,10 @@ fn run() -> Result<(), Box<dyn Error>> {
             let path = Path::new(option(&args, "--out")?);
             let key = WalletKey::generate()?;
             key.save_plain_testnet_file(path)?;
-            println!("AURORA TESTNET ONLY: key saved unencrypted at {}", path.display());
+            println!(
+                "AURORA TESTNET ONLY: key saved unencrypted at {}",
+                path.display()
+            );
             println!("address={}", account_id_hex(key.account_id()));
             println!("Keep this file private. It is not encrypted.");
         }
@@ -62,19 +71,18 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err(format!(
                     "insufficient confirmed balance: have {}, need {}",
                     account.balance, debit
-                ).into());
+                )
+                .into());
             }
-            let transaction = build_signed_transaction(
-                &key,
-                recipient,
-                amount,
-                fee,
-                account.next_nonce,
-            )?;
+            let transaction =
+                build_signed_transaction(&key, recipient, amount, fee, account.next_nonce)?;
             let (id, pending) = rpc::submit_transaction(node, &transaction)?;
             println!("transaction_id={id}");
             println!("mempool=pending transactions={pending}");
-            println!("Use aurora-wallet status --node {} --txid {id} to check confirmation.", node);
+            println!(
+                "Use aurora-wallet status --node {} --txid {id} to check confirmation.",
+                node
+            );
         }
         "status" => {
             let id = txid(option(&args, "--txid")?)?;
