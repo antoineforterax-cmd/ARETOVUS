@@ -10,6 +10,8 @@ use aurora_core::{
 const CAP_UNITS: u64 = MAX_UNITS;
 /// One part per million of unissued supply per block, rounded down to atomic units.
 pub const EMISSION_DENOMINATOR: u64 = 1_000_000;
+/// Consensus fingerprint domain for this consensus-critical emission recurrence.
+pub const EMISSION_SCHEDULE_ID: &[u8] = b"proportional-remaining-1e6-v1";
 /// A one-unit floor guarantees that the strict cap is eventually reachable.
 pub const MIN_BLOCK_ISSUANCE_UNITS: u64 = 1;
 
@@ -144,12 +146,12 @@ mod tests {
 
     #[test]
     fn emission_changes_smoothly_without_threshold_jumps() {
-        let before = Amount::from_units(CAP_UNITS - 499_999_999 * UNITS_PER_COIN).unwrap();
-        let after = Amount::from_units(CAP_UNITS - 500_000_001 * UNITS_PER_COIN).unwrap();
+        let before = Amount::from_units(5_000_000 * UNITS_PER_COIN - 1).unwrap();
+        let after = Amount::from_units(5_000_000 * UNITS_PER_COIN + 1).unwrap();
         assert!(scheduled_issuance(before).to_units() >= scheduled_issuance(after).to_units());
         assert!(
             scheduled_issuance(before).to_units() - scheduled_issuance(after).to_units()
-                <= 2 * UNITS_PER_COIN / EMISSION_DENOMINATOR + 1
+                <= 1
         );
     }
 
