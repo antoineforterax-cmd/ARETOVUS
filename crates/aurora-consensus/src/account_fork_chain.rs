@@ -7,7 +7,13 @@ use crate::{
     fork_chain::ChainUpdate,
     reward::{apply_block_reward, RewardError, RewardParams},
 };
-use aurora_core::{codec::EncodeError, hash::Hash256, state::AccountLedger};
+use aurora_core::{
+    accounts::POST_QUANTUM_ACCOUNT_TX_VERSION,
+    codec::EncodeError,
+    hash::Hash256,
+    network::NetworkId,
+    state::AccountLedger,
+};
 
 #[derive(Clone, Copy, Debug)]
 struct Node {
@@ -38,6 +44,7 @@ pub enum AccountForkChainError {
     HeightOverflow,
     InvalidDifficultyParams,
     InvalidTimestamp,
+    InvalidTransactionProfile,
     WorkOverflow,
     Validation(AccountBlockValidationError),
     Reward(RewardError),
@@ -170,6 +177,16 @@ impl AccountForkChain {
         } else {
             parent_node.difficulty_bits
         };
+        // Testnet v2 is a consensus-incompatible, native ML-DSA-only profile.
+        // Regtest keeps legacy profiles available for compatibility and tooling.
+        if self.states[&parent].network() == NetworkId::Testnet
+            && block
+                .transactions
+                .iter()
+                .any(|tx| tx.version != POST_QUANTUM_ACCOUNT_TX_VERSION)
+        {
+            return Err(AccountForkChainError::InvalidTransactionProfile);
+        }
         let mut state = self
             .states
             .get(&parent)
@@ -400,6 +417,38 @@ mod tests {
             )
             .unwrap();
         state
+    }
+
+    #[test]
+    fn testnet_rejects_legacy_ed25519_and_hybrid_transaction_profiles() {
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![])
+            .unwrap();
+        let mut chain = AccountForkChain::new(
+            genesis,
+            0,
+            AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+
+        for legacy_version in [
+            aurora_core::accounts::ACCOUNT_TX_VERSION,
+            aurora_core::accounts::HYBRID_ACCOUNT_TX_VERSION,
+        ] {
+            let mut legacy = tx(0, 9, 1);
+            legacy.network = NetworkId::Testnet;
+            legacy.version = legacy_version;
+            legacy.auth_data = if legacy_version == aurora_core::accounts::ACCOUNT_TX_VERSION {
+                vec![0; 64]
+            } else {
+                vec![0; aurora_core::accounts::HYBRID_AUTH_BYTES]
+            };
+            let block = AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![legacy])
+                .unwrap();
+            assert_eq!(
+                chain.submit(block),
+                Err(AccountForkChainError::InvalidTransactionProfile)
+            );
+        }
     }
 
     #[test]
