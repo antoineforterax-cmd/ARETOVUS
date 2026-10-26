@@ -30,7 +30,7 @@ Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-br
 ## Essai prolongé et archives testnet
 
 - [Essai à trois nœuds avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895189) : 36 blocs propagés et vérifiés sur trois processus en **490,2 secondes**; le pair intermédiaire a été arrêté puis redémarré quatre fois, et une copie complète de son dossier a été restaurée et vérifiée au même sommet — succès. Cet essai est local au runner CI; il ne prouve pas un fonctionnement continu sur plusieurs hôtes ou pendant des jours.
-- [Construction des archives avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361894839) : compilation Rust release et empaquetage du nœud et du wallet réussis sur Windows, Linux et macOS. Chaque archive contient les binaires, la documentation et `SHA256SUMS.txt`, vérifié pendant l’empaquetage. Ces artefacts privés non signés expirent après 14 jours; aucun installateur ni publication publique n’existe encore.
+- [Construction des archives et essai du verrou sur les trois systèmes](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40400631436) : compilation Rust release et empaquetage du nœud et du wallet réussis sur Windows, Linux et macOS. Sur chaque système, un test lance le serveur, vérifie qu’un second écrivain est refusé, arrête le serveur, puis mine et vérifie un bloc avec le dossier libéré. Chaque archive contient les binaires, la documentation et `SHA256SUMS.txt`, vérifié pendant l’empaquetage. Ces artefacts privés non signés expirent après 14 jours; aucun installateur ni publication publique n’existe encore.
 
 ## Essai manuel fourni par le porteur
 
