@@ -2,7 +2,7 @@
 
 The main CI runs a deterministic malformed-input smoke test against transaction, block, header, block-inventory and peer-list decoders. It is a quick regression check, not a substitute for coverage-guided fuzzing.
 
-The separate `fuzz/` workspace contains libFuzzer targets for canonical transaction/block/header decoding and Merkle proof verification. GitHub Actions runs each target for 5 minutes on Linux for pull requests and manual dispatches.
+The separate `fuzz/` workspace contains libFuzzer targets for canonical transaction/block/header decoding, Merkle proof verification, and P2P block-inventory/peer-list decoding. GitHub Actions runs each target for 5 minutes on Linux for pull requests and manual dispatches.
 
 ## Local run
 
@@ -13,6 +13,7 @@ rustup toolchain install nightly --profile minimal
 cargo +stable install cargo-fuzz --version 0.13.2 --locked
 cargo +nightly fuzz run canonical_decode -- -max_total_time=300
 cargo +nightly fuzz run merkle_proofs -- -max_total_time=300
+cargo +nightly fuzz run network_payloads -- -max_total_time=300
 ```
 
 Corpus and crash artifacts are written under `fuzz/corpus/` and `fuzz/artifacts/`. Preserve minimized crash inputs as regression cases and fix the underlying decoder before continuing. CI time limits are deliberately short; release candidates need longer campaigns and an independent review of any findings.
