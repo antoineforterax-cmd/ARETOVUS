@@ -100,7 +100,7 @@ pub fn protocol_fingerprint(chain: &AccountForkChain) -> Hash256 {
     bytes.push(genesis.header.network.to_byte());
     bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
     // Deliberately separates the native-PQ testnet from the earlier hybrid testnet.
-    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65/v1");
+    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v2");
     bytes.extend_from_slice(
         genesis
             .header
