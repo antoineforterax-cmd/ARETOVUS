@@ -30,6 +30,7 @@ pub struct AccountForkChain {
     blocks: BTreeMap<Hash256, AccountBlock>,
     states: BTreeMap<Hash256, AccountLedger>,
     canonical: Vec<Hash256>,
+    canonical_tx_index: BTreeMap<Hash256, (u64, usize)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,6 +130,7 @@ impl AccountForkChain {
             blocks,
             states,
             canonical: vec![hash],
+            canonical_tx_index: BTreeMap::new(),
         })
     }
 
@@ -227,6 +229,18 @@ impl AccountForkChain {
             .take_while(|(a, b)| a == b)
             .count();
         let reorg_from_height = (common_len < self.canonical.len()).then_some(common_len as u64);
+        for old_hash in self.canonical.iter().skip(common_len) {
+            for tx in &self.blocks[old_hash].transactions {
+                let txid = tx.txid().expect("validated transaction has a canonical id");
+                self.canonical_tx_index.remove(&txid);
+            }
+        }
+        for (height, new_hash) in candidate.iter().enumerate().skip(common_len) {
+            for (index, tx) in self.blocks[new_hash].transactions.iter().enumerate() {
+                let txid = tx.txid().expect("validated transaction has a canonical id");
+                self.canonical_tx_index.insert(txid, (height as u64, index));
+            }
+        }
         self.canonical = candidate;
         Ok(ChainUpdate {
             became_best: true,
@@ -350,6 +364,13 @@ impl AccountForkChain {
     }
     pub fn blocks(&self) -> impl Iterator<Item = &AccountBlock> {
         self.canonical.iter().map(|hash| &self.blocks[hash])
+    }
+
+    /// Locate a confirmed transaction on the selected branch without scanning all blocks.
+    pub fn canonical_transaction(&self, txid: Hash256) -> Option<(u64, usize, &AccountBlock)> {
+        let &(height, index) = self.canonical_tx_index.get(&txid)?;
+        let hash = self.canonical.get(usize::try_from(height).ok()?)?;
+        Some((height, index, self.blocks.get(hash)?))
     }
 
     /// All accepted branches in deterministic topological order.
