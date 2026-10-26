@@ -18,6 +18,7 @@ use aurora_core::{
     accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
     hash::{sha256_plain, Hash256},
+    merkle::merkle_proof,
     network::NetworkId,
 };
 use aurora_storage::save_snapshot;
@@ -53,6 +54,11 @@ const MEMPOOL_REPLY: u8 = 0x88;
 const TX_REJECTED: u8 = 0x89;
 const GET_TX_STATUS: u8 = 9;
 const TX_STATUS_REPLY: u8 = 0x8a;
+const GET_HEADERS: u8 = 10;
+const HEADERS_REPLY: u8 = 0x8b;
+const GET_TX_PROOF: u8 = 11;
+const TX_PROOF_REPLY: u8 = 0x8c;
+const MAX_HEADERS_PAGE: usize = 64;
 const MAX_MEMPOOL_TXS: usize = 4_096;
 const MAX_MEMPOOL_BYTES: usize = 32 * 1024 * 1024;
 const MAX_MEMPOOL_PAGE_TXS: usize = 700;
@@ -550,6 +556,83 @@ fn handle_peer_shared(
                 ];
                 write_frame(&mut stream, &reply)?;
                 add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+            }
+            Some(&GET_HEADERS) if request.len() == 11 => {
+                let start = u64::from_be_bytes(request[1..9].try_into().expect("fixed height"));
+                let limit = u16::from_be_bytes(request[9..11].try_into().expect("fixed limit")) as usize;
+                if limit == 0 || limit > MAX_HEADERS_PAGE {
+                    return Err(P2pError::Protocol("header page limit outside range"));
+                }
+                let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                let tip_height = chain.height();
+                if start > tip_height.saturating_add(1) {
+                    return Err(P2pError::Protocol("header page starts beyond chain tip"));
+                }
+                let mut reply = vec![HEADERS_REPLY];
+                reply.extend_from_slice(&tip_height.to_be_bytes());
+                reply.extend_from_slice(&start.to_be_bytes());
+                let count_offset = reply.len();
+                reply.extend_from_slice(&0u16.to_be_bytes());
+                let mut count = 0u16;
+                for block in chain.blocks().skip(start as usize).take(limit) {
+                    let encoded = block
+                        .header
+                        .to_canonical_bytes()
+                        .map_err(|_| P2pError::Protocol("header encoding failed"))?;
+                    reply.extend_from_slice(&(encoded.len() as u16).to_be_bytes());
+                    reply.extend_from_slice(&encoded);
+                    count += 1;
+                }
+                reply[count_offset..count_offset + 2].copy_from_slice(&count.to_be_bytes());
+                let sent = reply.len() + 4;
+                if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, sent)?;
+            }
+            Some(&GET_TX_PROOF) if request.len() == 33 => {
+                let txid = Hash256::from_bytes(request[1..33].try_into().expect("fixed txid"));
+                let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                let mut found = None;
+                for (height, block) in chain.blocks().enumerate() {
+                    let txids = block
+                        .transactions
+                        .iter()
+                        .map(|tx| tx.txid())
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|_| P2pError::Protocol("transaction id encoding failed"))?;
+                    if let Some(index) = txids.iter().position(|candidate| *candidate == txid) {
+                        let proof = merkle_proof(&txids, index)
+                            .map_err(|_| P2pError::Protocol("cannot build transaction proof"))?;
+                        found = Some((height as u64, block.header, proof));
+                        break;
+                    }
+                }
+                let mut reply = vec![TX_PROOF_REPLY];
+                if let Some((height, header, proof)) = found {
+                    reply.push(1);
+                    reply.extend_from_slice(&height.to_be_bytes());
+                    let header = header
+                        .to_canonical_bytes()
+                        .map_err(|_| P2pError::Protocol("header encoding failed"))?;
+                    reply.extend_from_slice(&(header.len() as u16).to_be_bytes());
+                    reply.extend_from_slice(&header);
+                    reply.extend_from_slice(&proof.index.to_be_bytes());
+                    reply.extend_from_slice(&proof.leaf_count.to_be_bytes());
+                    reply.push(proof.siblings.len() as u8);
+                    for sibling in proof.siblings {
+                        reply.extend_from_slice(sibling.as_bytes());
+                    }
+                } else {
+                    reply.push(0);
+                }
+                let sent = reply.len() + 4;
+                if sent > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
+                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
+                }
+                write_frame(&mut stream, &reply)?;
+                add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&GET_PEERS) if request.len() == 1 => {
                 let frame = encode_peer_list(advertised_peers)?;
