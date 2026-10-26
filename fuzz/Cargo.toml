@@ -12,6 +12,7 @@ cargo-fuzz = true
 [dependencies]
 aurora-consensus = { path = "../crates/aurora-consensus" }
 aurora-core = { path = "../crates/aurora-core" }
+aurora-node = { path = "../crates/aurora-node" }
 libfuzzer-sys = "=0.4.13"
 
 [[bin]]
@@ -24,6 +25,13 @@ bench = false
 [[bin]]
 name = "merkle_proofs"
 path = "fuzz_targets/merkle_proofs.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "network_payloads"
+path = "fuzz_targets/network_payloads.rs"
 test = false
 doc = false
 bench = false
