@@ -100,6 +100,48 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
     return max(heights)
 
 
+def write_limit_recovery_test(binary: Path, data_dir: Path, miner: str) -> int | None:
+    if os.name == "nt":
+        return None
+    import resource
+    import signal
+
+    run_node(
+        binary, "testnet", "mine", "--data-dir", str(data_dir),
+        "--miner", miner, "--count", "1",
+    )
+
+    def constrain_file_size() -> None:
+        signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+        resource.setrlimit(resource.RLIMIT_FSIZE, (128, 128))
+
+    process = subprocess.Popen(
+        [str(binary), "testnet", "mine", "--data-dir", str(data_dir),
+         "--miner", miner, "--count", "1"],
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        preexec_fn=constrain_file_size,
+    )
+    try:
+        return_code = process.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+        raise TimeoutError("size-limited snapshot write did not finish")
+    if return_code == 0:
+        raise AssertionError("size-limited snapshot unexpectedly succeeded")
+
+    resumed = run_node(
+        binary, "testnet", "mine", "--data-dir", str(data_dir),
+        "--miner", miner, "--count", "1",
+    )
+    heights = [int(value) for value in re.findall(r"height=(\d+)\b", resumed)]
+    if not heights or max(heights) != 2:
+        raise AssertionError(
+            f"node did not recover the last complete snapshot after a size-limit write failure:\n{resumed}"
+        )
+    return max(heights)
+
+
 def main() -> int:
     subprocess.run([CARGO, "build", "--locked", "-p", "aurora-node"], cwd=ROOT, check=True)
     subprocess.run([CARGO, "build", "--locked", "-p", "aurora-wallet"], cwd=ROOT, check=True)
@@ -288,9 +330,13 @@ def main() -> int:
                 raise AssertionError(f"fresh node did not recover and sync the 20-block chain:\n{long_sync}")
 
             crash_height = crash_recovery_test(binary, base / "crash-node", miner)
+            size_limit_height = write_limit_recovery_test(
+                binary, base / "write-limit-node", miner
+            )
             print(
-                "wallet, SPV, 20-block multi-process soak and forced-stop recovery passed: "
-                f"height=20 tip={long_tips[-1][1]} crash_recovery_height={crash_height}"
+                "wallet, SPV, 20-block multi-process soak, forced-stop and write-limit "
+                f"recovery passed: height=20 tip={long_tips[-1][1]} "
+                f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"
             )
         finally:
             for server in servers:
