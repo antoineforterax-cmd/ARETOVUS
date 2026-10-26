@@ -426,7 +426,7 @@ fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, 
     let mut count = 0u32;
     let count_offset = frame.len();
     frame.extend_from_slice(&count.to_be_bytes());
-    for block in chain.block_page(start, PAGE_BLOCKS) {
+    for block in chain.arrival_block_page(start, PAGE_BLOCKS) {
         let encoded = block
             .to_canonical_bytes()
             .map_err(|_| P2pError::Protocol("block encoding failed"))?;
@@ -1284,6 +1284,36 @@ mod tests {
             ))
         ));
         assert!(check_block_timestamp_at(u64::MAX, u64::MAX).is_ok());
+    }
+
+    #[test]
+    fn block_inventory_cursor_survives_late_side_branch() {
+        let mut chain = chain();
+        let genesis = chain.tip_hash();
+        let first = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, vec![]).unwrap();
+        let first_hash = first.header.hash().unwrap();
+        chain.submit(first).unwrap();
+        let second = AccountBlock::build(NetworkId::Regtest, first_hash, 3, 0, vec![]).unwrap();
+        let second_hash = second.header.hash().unwrap();
+        chain.submit(second).unwrap();
+        let before = build_blocks_page(&chain, 1).unwrap();
+        let (_, before_blocks) = read_blocks(&before).unwrap();
+        let before_hashes: Vec<_> = before_blocks
+            .iter()
+            .map(|block| block.header.hash().unwrap())
+            .collect();
+        assert_eq!(before_hashes, vec![first_hash, second_hash]);
+
+        let late = AccountBlock::build(NetworkId::Regtest, genesis, 4, 0, vec![]).unwrap();
+        let late_hash = late.header.hash().unwrap();
+        chain.submit(late).unwrap();
+        let after = build_blocks_page(&chain, 1).unwrap();
+        let (_, after_blocks) = read_blocks(&after).unwrap();
+        let after_hashes: Vec<_> = after_blocks
+            .iter()
+            .map(|block| block.header.hash().unwrap())
+            .collect();
+        assert_eq!(after_hashes, vec![first_hash, second_hash, late_hash]);
     }
 
     #[test]
