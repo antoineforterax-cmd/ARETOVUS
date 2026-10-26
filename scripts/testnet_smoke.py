@@ -72,19 +72,19 @@ def main() -> int:
                 binary, "testnet", "mine", "--data-dir", str(node_a),
                 "--miner", MINER, "--count", "3", "--peer", f"{addr_b[0]}:{addr_b[1]}",
             )
-            if not re.search(r"height=3\\s+tip=[0-9a-f]{64}", mined):
-                raise AssertionError(f"miner did not report the expected three-block tip:\\n{mined}")
+            if not re.search(r"height=3\s+tip=[0-9a-f]{64}", mined):
+                raise AssertionError(f"miner did not report the expected three-block tip:\n{mined}")
 
             synced = run_node(
                 binary, "testnet", "sync", "--data-dir", str(node_b),
                 "--peer", f"{addr_a[0]}:{addr_a[1]}",
             )
-            tips = re.findall(r"height=(\\d+) tip=([0-9a-f]{64})", synced)
+            tips = re.findall(r"height=(\d+) tip=([0-9a-f]{64})", synced)
             if not tips or tips[-1][0] != "3":
-                raise AssertionError(f"second node did not report height 3:\\n{synced}")
-            mined_tip = re.search(r"height=3\\s+tip=([0-9a-f]{64})", mined)
+                raise AssertionError(f"second node did not report height 3:\n{synced}")
+            mined_tip = re.search(r"height=3\s+tip=([0-9a-f]{64})", mined)
             if mined_tip is None or tips[-1][1] != mined_tip.group(1):
-                raise AssertionError(f"nodes failed to converge to the same tip:\\n{mined}\\n{synced}")
+                raise AssertionError(f"nodes failed to converge to the same tip:\n{mined}\n{synced}")
             print(f"two-node testnet smoke passed: height=3 tip={tips[-1][1]}")
         finally:
             for server in servers:
