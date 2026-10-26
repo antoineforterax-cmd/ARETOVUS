@@ -835,7 +835,7 @@ mod tests {
         let thread = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
+            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
             tx.send(result.is_ok()).unwrap();
         });
         let mut client = chain();
@@ -872,7 +872,7 @@ mod tests {
                 let data_dir = server_dir.clone();
                 let advertised_peers = advertised_peers.clone();
                 workers.push(thread::spawn(move || {
-                    handle_peer_shared(stream, &chain, &data_dir, &advertised_peers)
+                    handle_peer_shared(stream, &chain, &Mutex::new(Vec::new()), &data_dir, &advertised_peers)
                 }));
             }
             workers
@@ -915,7 +915,7 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
+            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
             (result, shared_chain.into_inner().unwrap())
         });
         let mut client = chain();
@@ -946,7 +946,7 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            let result = handle_peer_shared(stream, &shared_chain, &server_dir, &[]);
+            let result = handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), &server_dir, &[]);
             (result, shared_chain.into_inner().unwrap())
         });
         let client = chain();
@@ -1002,7 +1002,7 @@ mod tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let shared_chain = Mutex::new(server_chain);
-            handle_peer_shared(stream, &shared_chain, Path::new("."), &advertised)
+            handle_peer_shared(stream, &shared_chain, &Mutex::new(Vec::new()), Path::new("."), &advertised)
         });
         let discovered = discover_peers(address, &chain()).unwrap();
         assert_eq!(discovered, expected);
@@ -1070,7 +1070,7 @@ mod tests {
         let server_dir = dir.clone();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            handle_peer_shared(stream, &Mutex::new(chain()), &server_dir, &[])
+            handle_peer_shared(stream, &Mutex::new(chain()), &Mutex::new(Vec::new()), &server_dir, &[])
         });
 
         let mut client = TcpStream::connect(address).unwrap();
