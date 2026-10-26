@@ -103,14 +103,13 @@ pub fn save_snapshot(
     body.extend_from_slice(&rewards.treasury_account.0);
     body.extend_from_slice(&(blocks.len() as u32).to_be_bytes());
     for block in blocks {
-        let encoded = block.to_canonical_bytes()?;
-        if encoded.len() > MAX_ACCOUNT_BLOCK_BYTES {
-            return Err(StorageError::InvalidFormat("block exceeds byte limit"));
+        let block_id = block.header.hash()?;
+        let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        if !block_path.exists() {
+            let encoded = block.to_canonical_bytes()?;
+            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
         }
-        let digest = sha256_plain(&encoded);
-        let block_path = block_dir.join(format!("{digest}.{BLOCK_EXTENSION}"));
-        write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
-        body.extend_from_slice(digest.as_bytes());
+        body.extend_from_slice(block_id.as_bytes());
     }
     let checksum = sha256_plain(&body);
     body.extend_from_slice(checksum.as_bytes());
@@ -128,19 +127,20 @@ pub fn save_snapshot(
 
 fn write_immutable(path: &Path, bytes: &[u8], limit: usize) -> Result<(), StorageError> {
     if bytes.len() > limit {
-        return Err(StorageError::InvalidFormat("storage object exceeds byte limit"));
+        return Err(StorageError::InvalidFormat(
+            "storage object exceeds byte limit",
+        ));
     }
     if path.exists() {
         if read_bounded_limit(path, limit)? == bytes {
             return Ok(());
         }
-        return Err(StorageError::InvalidFormat("content-addressed file mismatch"));
+        return Err(StorageError::InvalidFormat(
+            "content-addressed file mismatch",
+        ));
     }
     let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let temporary = path.with_file_name(format!(
-        ".aurora-{}-{sequence}.tmp",
-        std::process::id()
-    ));
+    let temporary = path.with_file_name(format!(".aurora-{}-{sequence}.tmp", std::process::id()));
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -221,7 +221,10 @@ pub fn load_latest_snapshot(
         let chain = match result {
             Ok(chain) => chain,
             Err(error) => {
-                eprintln!("ignoring invalid AURORA snapshot {}: {error}", path.display());
+                eprintln!(
+                    "ignoring invalid AURORA snapshot {}: {error}",
+                    path.display()
+                );
                 if rejected_snapshot.is_none() {
                     rejected_snapshot = Some(error);
                 }
@@ -302,15 +305,16 @@ fn decode_index(
     }
     let mut blocks = Vec::with_capacity(count);
     for digest_bytes in body[73..].chunks_exact(32) {
-        let digest = Hash256::from_bytes(digest_bytes.try_into().expect("fixed hash"));
+        let block_id = Hash256::from_bytes(digest_bytes.try_into().expect("fixed hash"));
         let block_path = dir
             .join(BLOCK_DIRECTORY)
-            .join(format!("{digest}.{BLOCK_EXTENSION}"));
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
         let encoded = read_bounded_limit(&block_path, MAX_ACCOUNT_BLOCK_BYTES)?;
-        if sha256_plain(&encoded) != digest {
+        let block = AccountBlock::from_canonical_bytes(&encoded)?;
+        if block.header.hash()? != block_id {
             return Err(StorageError::ChecksumMismatch);
         }
-        blocks.push(AccountBlock::from_canonical_bytes(&encoded)?);
+        blocks.push(block);
     }
     replay_blocks(blocks, initial_difficulty, params, rewards, initial_state)
 }
@@ -642,16 +646,26 @@ mod tests {
         let mut chain = chain();
         save_snapshot(&path, &chain).unwrap();
         for timestamp in 2..8 {
-            let block =
-                AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), timestamp, 0, Vec::new())
-                    .unwrap();
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
             chain.submit(block).unwrap();
             save_snapshot(&path, &chain).unwrap();
         }
         let indexes = fs::read_dir(&path)
             .unwrap()
             .filter_map(Result::ok)
-            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION)
+            })
             .count();
         let blocks = fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count();
         assert_eq!(indexes, 3);
@@ -669,7 +683,7 @@ mod tests {
         save_snapshot(&path, &chain).unwrap();
         let block =
             AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
-        let digest = sha256_plain(&block.to_canonical_bytes().unwrap());
+        let digest = block.header.hash().unwrap();
         chain.submit(block).unwrap();
         save_snapshot(&path, &chain).unwrap();
         fs::write(
@@ -689,10 +703,17 @@ mod tests {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
         let original = chain();
-        fs::write(path.join("legacy.aurora"), encode_snapshot(&original).unwrap()).unwrap();
+        fs::write(
+            path.join("legacy.aurora"),
+            encode_snapshot(&original).unwrap(),
+        )
+        .unwrap();
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         let index = save_snapshot(&path, &restored).unwrap();
-        assert_eq!(index.extension().and_then(|ext| ext.to_str()), Some(INDEX_EXTENSION));
+        assert_eq!(
+            index.extension().and_then(|ext| ext.to_str()),
+            Some(INDEX_EXTENSION)
+        );
         fs::remove_file(path.join("legacy.aurora")).unwrap();
         let migrated = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(migrated.tip_hash(), original.tip_hash());
