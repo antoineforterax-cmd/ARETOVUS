@@ -190,7 +190,7 @@ def main() -> int:
             accepted = re.search(r"accepted=(\d+)", synced)
             if not tips or tips[-1][0] != "4" or accepted is None or accepted.group(1) != "4":
                 raise AssertionError(f"fresh node did not pull all four blocks:\n{synced}")
-            payment_tip = re.search(r"height=4\\b.*\\btip=([0-9a-f]{64})", mined_payment)
+            payment_tip = re.search(r"height=4\b.*\btip=([0-9a-f]{64})", mined_payment)
             if payment_tip is None or tips[-1][1] != payment_tip.group(1):
                 raise AssertionError(f"fresh node did not converge to the latest mined tip:\n{mined_payment}\n{synced}")
 
