@@ -98,10 +98,11 @@ mod tests {
 
     fn header() -> BlockHeader {
         BlockHeader {
-            version: 0,
+            version: crate::experimental::HEADER_VERSION,
             network: NetworkId::Regtest,
             prev_hash: Hash256::ZERO,
             tx_commitment: Hash256::ZERO,
+            tx_merkle_root: Hash256::ZERO,
             timestamp: 1,
             nonce: 0,
         }
