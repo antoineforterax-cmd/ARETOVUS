@@ -12,7 +12,7 @@ Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v
 | `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
 | `aurora-storage` | Snapshots `AURORSNP` version 3 avec checksum, paramètres de consensus et toutes les branches; chargement par rejeu et revalidation. |
 | `aurora-node` | Minage local testnet, persistance, TCP push/pull vers pairs statiques, découverte opt-in bornée, 8 sessions serveur simultanées, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
-| `aurora-wallet` | Réservé; aucun portefeuille ou gestion de clés utilisateur. |
+| `aurora-wallet` | CLI testnet ML-DSA-65 v3 : génération/lecture de clés locales, solde/nonce, signature et soumission de transactions, statut mempool/confirmée. Clé en clair, testnet uniquement. |
 
 ## Règles économiques exécutées
 
@@ -37,8 +37,8 @@ cargo build --workspace --locked
 cargo test --workspace --locked
 ```
 
-Le smoke test démarre des processus séparés, vérifie l’émission exacte des trois premiers blocs, la répartition 95/5, la propagation push, le rechargement d’un snapshot et le téléchargement pull vers un nouveau dossier. GitHub Actions exécute ces vérifications. Le service TCP reste expérimental, sans reconnexion continue, annonces spontanées multi-sauts ni mempool; garde-le sur un réseau contrôlé.
+Le smoke test démarre des processus séparés, vérifie l’émission exacte des trois premiers blocs, la répartition 95/5, la propagation push, le rechargement d’un snapshot et le téléchargement pull vers un nouveau dossier. GitHub Actions exécute ces vérifications. Le service TCP reste expérimental, sans reconnexion continue ni annonces spontanées multi-sauts; garde-le sur un réseau contrôlé. Le RPC wallet/mempool est disponible seulement sur le testnet.
 
 ## Limites avant de parler d’une blockchain terminée
 
-Il reste des tests prolongés de pairs hostiles, reconnexion automatique, fuzzing, retarget indépendant, arrêts brutaux et revue de sécurité indépendante. La trésorerie créditée n’a pas encore de gouvernance ou de règles de dépense; gardiens/time-locks et recyclage des soldes inactifs sont des changements de propriété à spécifier séparément. Le portefeuille, l’explorateur et le site viennent après l’évaluation du réseau et la stabilisation du consensus; la vente ou cotation vient plus tard, après sécurité et gouvernance.
+Il reste des tests prolongés de pairs hostiles, reconnexion automatique, fuzzing, retarget indépendant, arrêts brutaux et revue de sécurité indépendante. La trésorerie créditée n’a pas encore de gouvernance ou de règles de dépense; gardiens/time-locks et recyclage des soldes inactifs sont des changements de propriété à spécifier séparément. Le portefeuille CLI expérimental est disponible. URI de paiement, DID/récupération, preuves Merkle/SPV, explorateur et site restent à concevoir; la vente ou cotation vient plus tard, après sécurité et gouvernance.
