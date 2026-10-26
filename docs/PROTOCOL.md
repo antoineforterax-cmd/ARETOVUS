@@ -2,7 +2,7 @@
 
 **Version de travail :** 0.1-expérimental. **Branche :** `feature/emission-schedule-v0`. **Usage :** expériences locales/testnet, aucun fonds réel. Les règles sont exécutables et couvertes par CI, mais le protocole n’a pas reçu de revue indépendante et n’est pas prêt pour un mainnet.
 
-Ce document décrit l’implémentation actuelle. Les questions de recherche, menaces et décisions futures restent dans `DECISION_REGISTER.md`; ce brouillon ne transforme pas une hypothèse en garantie de sécurité.
+Ce document décrit l’implémentation actuelle. Les choix actifs sont dans [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md); `DECISION_REGISTER.md` conserve les hypothèses historiques et questions de recherche. Le développement expérimental continue sans revue externe immédiate, sans garantie de sécurité.
 
 ## Profil transaction/état
 
@@ -29,13 +29,13 @@ Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au 
 
 Le nœud construit une genèse testnet vide et déterministe. Paramètres actuels : 8 bits initiaux, cible 60 secondes, fenêtre de 10 blocs, ajustement maximal de 2 bits par fenêtre, bornes 4 à 20 bits. La configuration persistée et une empreinte de protocole distinguent ce testnet des configurations incompatibles.
 
-`AURORSNP` version 4 stocke les paramètres et tous les blocs acceptés des branches connues avec un checksum SHA-256. Au chargement, les blocs sont décodés canoniquement, rejoués dans l’ordre topologique et validés à nouveau depuis l’état de genèse déterministe. Un snapshot invalide est ignoré si une sauvegarde valide existe; la reprise choisit ensuite la chaîne valide au travail cumulé maximal. C’est un snapshot simple; journal de base de données, migration formelle, sauvegarde et essais de panne brutale ne sont pas livrés.
+Le stockage v5 écrit les blocs acceptés une fois dans `blocks-v5/`, sous un nom dérivé du hash de leur en-tête, puis publie un index `AURORIDX` checksummé et atomique qui engage tous les blocs des branches connues et les paramètres de consensus. Les trois index les plus récents sont conservés; les fichiers de blocs restent immuables. Le chargeur lit aussi les anciens snapshots `AURORSNP` version 4. Il décode canoniquement, vérifie les identifiants, rejoue tous les blocs et sélectionne la chaîne valide au travail cumulé maximal. Un index corrompu peut être écarté au profit d’un point de reprise antérieur. Une copie complète du dossier, y compris `blocks-v5/`, est nécessaire pour sauvegarder. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
 ## Réseau expérimental
 
 Le transport actuel est TCP push/pull vers des pairs configurés. Le mempool RPC et le wallet sont disponibles sur Testnet seulement : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, inventaire maximal de 100 000 blocs, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le client synchronise les blocs en ordre topologique et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages et accepte les blocs soumis après validation; `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. Il n’existe pas de reconnexion continue ni d’annonce spontanée multi-sauts. Le mempool ne se propage pas par gossip et n’est pas persisté. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
+La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. La lecture d’une trame entière est bornée par un délai total, même si le pair envoie des octets au compte-gouttes. Les blocs d’une page sont validés dans une copie de la chaîne; cette page n’est publiée en mémoire qu’après sauvegarde réussie. Il n’existe pas de reconnexion continue ni d’annonce spontanée multi-sauts. Le mempool ne se propage pas par gossip et n’est pas persisté. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
 
 ## Portefeuille et RPC testnet
 
@@ -76,7 +76,7 @@ Avant d’élargir les essais, restent à faire :
 1. Reconnexion continue et annonces multi-sauts spontanées, si l’usage les exige; le profil actuel suppose un démarrage supervisé avec adresses statiques.
 2. Scénarios prolongés de coupure/reprise, inventaires menteurs, connexions lentes et saturation concurrente.
 3. Simulation indépendante du retarget avec dérive d’horloge, longues pauses, rafales et réorganisations.
-4. Tests d’interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
-5. Fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
+4. Essais avec disque réellement plein, panne électrique et sauvegardes hors machine malgré les tests de reprise, copie de sauvegarde et migration v4→v5 déjà réalisés.
+5. Campagnes fuzz prolongées et revue indépendante du consensus et du code avant toute prétention de sécurité pour des fonds réels.
 
 Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. DID et récupération restent au stade de conception (`docs/DID_RECOVERY_DESIGN.md`) et n’altèrent pas l’état consensus. L’explorateur, le site de présentation et la vente sont hors de ce jalon.

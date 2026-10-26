@@ -6,7 +6,7 @@ Cette procédure utilise des pairs connus sur la même machine ou un réseau pri
 
 - Rust stable et Cargo, avec accès aux dépendances.
 - Sous Windows, Visual C++ Build Tools avec l’éditeur de liens `link.exe`.
-- Pour une version testnet à émission lissée, choisis un nouveau dossier de données. Les snapshots de l’ancien calendrier par paliers sont incompatibles; garde une copie si tu tiens aux anciennes données.
+- Pour le profil testnet natif ML-DSA-65 v3 et l’émission lissée, choisis un nouveau dossier de données. Les anciens réseaux de consensus sont incompatibles; conserve une copie de leurs données. Les snapshots v4 du **même** profil peuvent être relus puis enregistrés en v5.
 - Le mineur passé à `--miner` est un identifiant public de 32 octets en hexadécimal, pas une clé privée.
 
 Construis le nœud :
@@ -53,7 +53,7 @@ cargo run --locked -p aurora-node -- testnet mine --data-dir ./aurora-miner --mi
 
 Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec `testnet sync`, puis lance `testnet serve` avec ce dossier. Le serveur et les commandes `mine`/`sync` ne doivent pas utiliser simultanément le même dossier : une commande lit son snapshot au démarrage. Arrête `serve` avant de miner ou synchroniser ce dossier, puis redémarre le serveur pour qu’il recharge le snapshot mis à jour.
 
-Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud ne maintient pas encore de minage continu, de reconnexion automatique ou de mempool. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
+Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud a un mempool local borné, mais ne maintient pas de minage continu, de reconnexion automatique ni de gossip des transactions. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
 
 ## Portefeuille CLI experimental
 
@@ -96,7 +96,17 @@ Depuis la racine du dépôt :
 python3 scripts/testnet_smoke.py
 ```
 
-Le scénario démarre des processus séparés, crée un wallet, vérifie trois blocs selon la formule proportionnelle, soumet une transaction ML-DSA au mempool, vérifie son inclusion et le partage des frais, puis teste la reprise des snapshots et la synchronisation complète d’un répertoire neuf. GitHub Actions exécute le même scénario.
+Le scénario démarre des processus séparés, crée un wallet, soumet une transaction ML-DSA au mempool, vérifie son inclusion, la preuve Merkle et le partage des frais. Il atteint la hauteur 20 à travers deux retargets, provoque une réorganisation vers une branche plus lourde et teste la reprise après arrêt forcé ou erreur d’écriture simulée. GitHub Actions exécute le même scénario.
+
+## Vérifier, sauvegarder et restaurer les données
+
+Le stockage courant écrit les blocs une seule fois dans `blocks-v5/` et conserve trois index `snapshot-*.auridx`. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
+
+```sh
+cargo run --locked -p aurora-node -- testnet verify --data-dir ./aurora-seed
+```
+
+Copie ensuite **tout** le dossier vers un autre emplacement et exécute la même commande sur cette copie; compare la hauteur et le hash du sommet. Un fichier index sans `blocks-v5/` ne suffit pas. La procédure complète de sauvegarde, restauration, mise à jour et incident est dans [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
 ## Politique monétaire testnet
 

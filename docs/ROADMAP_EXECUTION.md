@@ -8,32 +8,32 @@
 ### Déjà couvert par les contrôles automatisés
 
 - Validation de transactions ML-DSA-65 v3, blocs, retarget borné, MTP, travail cumulé et réorganisations.
-- Snapshot version 4 avec checksum, relecture et revalidation des branches; récupération depuis un snapshot précédent si le dernier est corrompu.
-- Décodage hostile : tailles excessives, trames/inventaires malformés, handshake incompatible, bloc rejeté et limites de session.
+- Stockage v5 par blocs immuables et index checksummés avec trois points de reprise; relecture/revalidation des branches, retour à un index valide antérieur si le dernier est corrompu, lecture des snapshots v4 et restauration d’une copie dans un autre dossier.
+- Décodage hostile : tailles excessives, trames/inventaires malformés, handshake incompatible, bloc rejeté et limites de session. Une lecture de trame complète a un délai total; une page n’est publiée en mémoire qu’après validation et sauvegarde complètes.
 - Scénario multi-processus : le smoke test mine et propage, inclut une transaction wallet, vérifie son statut et sa preuve Merkle, passe la hauteur 20 à travers deux fenêtres de retarget, redémarre un pair et synchronise les blocs manquants.
 - Reprise après terminaison forcée entre des sauvegardes; essai d’échec d’écriture simulé par limite de taille de fichier sur Linux.
 - Test reproductible déterministe d’entrées arbitraires pour les décodeurs de transactions, blocs, en-têtes, inventaires et listes de pairs.
-- Cibles libFuzzer pour les décodeurs canoniques et les preuves Merkle; job GitHub Actions séparé.
+- Trois cibles libFuzzer pour les décodeurs canoniques, les preuves Merkle et les charges P2P; job GitHub Actions séparé. Le [rapport](TESTNET_VALIDATION_REPORT.md) donne les nombres d’entrées et les limites.
 
 ### À compléter avant de prétendre à une robustesse élevée
 
 - Campagnes fuzz longues et rapport de couverture; le job CI court ne remplace pas une campagne de plusieurs heures/jours.
 - Plus de scénarios lents et malveillants : ralentissement volontaire, inventaire menteur, déconnexion au milieu d’une page, saturation simultanée et partitions.
-- Essais de restauration depuis une sauvegarde hors machine, migrations de format réelles et test avec disque effectivement plein. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas une panne électrique ou un volume saturé.
+- Une copie complète de dossier est restaurée par test automatisé, et la lecture v4 puis écriture v5 est couverte. Il reste à éprouver une sauvegarde hors machine réelle, un disque effectivement plein et une panne électrique. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas un volume saturé.
 - Réorganisations multi-nœuds concurrentes et synchronisation prolongée sur plusieurs processus.
 - Vérification indépendante du retarget sous dérive d’horloge, longues pauses et rafales.
 
-## 2. Revue indépendante — porte de sécurité non satisfaite
+## 2. Revue indépendante — reportée pour le développement expérimental
 
 Le dossier [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md) décrit le périmètre, les commandes et les limites connues. Aucune revue indépendante n’a été réalisée. Les contrôles CI, ce travail d’implémentation et les outils automatisés ne comptent pas comme une telle revue.
 
-Il faut un auditeur humain indépendant, un commit épinglé, un rapport écrit avec constats classés, puis des corrections suivies de nouveaux tests. Le dépôt est privé et aucun reviewer indépendant n’est actuellement désigné; aucune demande de revue n’a été envoyée à une personne non identifiée.
+Le 26 octobre 2026, le porteur a choisi de continuer le développement expérimental sans revue externe immédiate. Aucun reviewer indépendant n’est actuellement désigné et aucune demande n’a été envoyée. Cette décision permet de poursuivre les outils et essais locaux; elle ne donne aucune assurance de sécurité. Avant toute revendication mainnet ou usage de fonds réels, il faut un auditeur humain indépendant, un commit épinglé, un rapport écrit, des corrections et de nouveaux tests.
 
 ## 3. Décisions de protocole et économie
 
 Les paramètres économiques demandés par le porteur sont codés : plafond brut de 500 millions AUR, aucune préémission, émission proportionnelle décroissante, 5 % crédités à l’adresse de trésorerie de test, 95 % au mineur, frais partagés 50/50 et burn non réutilisable sous le plafond.
 
-Deux sujets doivent rester explicitement séparés de ces règles :
+Les décisions de périmètre sont détaillées dans [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md) :
 
 - L’adresse de trésorerie reçoit la part prévue, mais il n’existe ni contrat, ni gouvernance, ni règles de dépense/audit. Ne pas présenter cette adresse comme une trésorerie autonome opérationnelle avant qu’une politique de contrôle et d’utilisation soit décidée puis revue.
 - Le protocole actuel ne saisit et ne recycle pas les soldes inactifs. Toute récupération d’actifs change les droits de propriété; elle exige une décision explicite sur le seuil, les preuves, le recours et les protections contre le vol de clés.
@@ -41,13 +41,13 @@ Deux sujets doivent rester explicitement séparés de ces règles :
 
 ## 4. Stabiliser le testnet
 
-La configuration locale reproductible et son guide sont disponibles dans [TESTNET_GUIDE.md](TESTNET_GUIDE.md). Les paramètres de preuve de travail sont délibérément faibles et la topologie demande des pairs connus. La CI valide un scénario local, pas un réseau public exploité dans la durée.
+La configuration locale reproductible et son guide sont disponibles dans [TESTNET_GUIDE.md](TESTNET_GUIDE.md). Les procédures de vérification, sauvegarde, restauration, mise à jour et incident sont dans [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md). Les paramètres de preuve de travail sont délibérément faibles et la topologie demande des pairs connus. La CI valide un scénario local, pas un réseau public exploité dans la durée.
 
 Avant de déclarer un testnet public stable, il faut choisir et héberger des nœuds semences, réaliser une campagne multi-hôtes prolongée, surveiller la disponibilité/convergence, geler une version protocolaire, et documenter les mises à jour, sauvegardes, restauration et signalement d’incident. Aucun hôte public ni opérateur externe n’est fourni dans ce dépôt.
 
 ## 5. Applications — après les portes précédentes
 
-Ces éléments sont volontairement hors de la phase actuelle. Ils commencent après les essais prolongés, la revue indépendante, les corrections et le gel du protocole :
+Ces éléments restent des prototypes de testnet tant que les essais prolongés, les décisions de protocole et la revue indépendante n’ont pas été achevés. Leur construction peut continuer, mais pas leur présentation comme produits sûrs pour des fonds réels :
 
 1. **Portefeuille quotidien** : chiffrement au repos, sauvegarde/restauration vérifiable, gestion des secrets, puis tests d’ergonomie. Le wallet actuel est un outil testnet dont le fichier de clé est en clair.
 2. **Explorateur** : indexeur et API en lecture seule avec affichage des blocs, transactions, preuves et réorganisations.

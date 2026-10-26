@@ -1,6 +1,6 @@
 # Dossier de revue indépendante — AURORA
 
-**Statut :** dossier préparatoire; aucune revue indépendante n’a été réalisée.  
+**Statut :** dossier préparatoire; aucune revue indépendante n’a été réalisée. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
 **Branche concernée :** `feature/emission-schedule-v0`.  
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 

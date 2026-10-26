@@ -1,13 +1,10 @@
 # DECISION_REGISTER.md — AURORA
 
-**Version du registre :** 1.1 (cahier des charges v4.0 + corrections v4.1)
-**Dernière mise à jour :** 2026-10-25
-**Décideur unique :** le porteur du projet.
+**Statut :** registre historique des questions de conception de phase 0, conservé pour traçabilité. Les statuts du tableau ci-dessous n’ont pas tous été remis à jour après les prototypes et ne décrivent pas, à eux seuls, le protocole exécuté.  
+**Choix actifs du testnet expérimental :** [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md), [PROTOCOL.md](PROTOCOL.md) et [EMISSION_MODEL.md](EMISSION_MODEL.md).  
+**Dernière mise au point :** 2026-10-26. Le porteur a choisi de continuer le développement expérimental sans revue externe immédiate. Aucune revue indépendante n’a eu lieu et aucune sécurité mainnet n’est revendiquée.
 
-> **Aucun résultat de benchmark, de simulation ou d'audit indépendant n'existe à ce jour.**
-> Les contrôles automatisés Rust (formatage, Clippy, compilation et tests) ont passé sur le commit `e3b9102f3308c4bedc4dfa28b5681b1adaccd144` via GitHub Actions ; cela ne constitue pas un audit de sécurité. Voir annexe B pour la portée exacte.
-> Ce registre ne contient que des décisions à prendre, des hypothèses et des méthodes de vérification.
-> Les chiffres marqués « calcul indicatif » sont de l'arithmétique, pas des mesures.
+Les résultats automatisés récents figurent dans [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md). Le tableau historique ci-dessous garde les alternatives initiales; une ligne marquée « à comparer » peut avoir reçu un choix provisoire dans le profil testnet actuel. Pour toute lecture des règles réellement exécutées, consulter les documents actifs et le code au commit visé.
 
 ---
 
