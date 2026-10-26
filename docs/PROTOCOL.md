@@ -11,11 +11,11 @@ Le passage au profil Testnet v3 est incompatible avec l’ancien testnet hybride
 - Le testnet accepte uniquement les transactions v3: clé publique ML-DSA-65 de 1 952 octets et signature ML-DSA-65 de 3 309 octets; `sender` est le hash domaine-séparé de la clé publique. Le digest signé engage la version, le réseau, l’expéditeur, le nonce, le destinataire, le montant et les frais. Les profils v1 Ed25519 et v2 hybride sont conservés pour Regtest et rejetés par consensus sur Testnet. Le handshake P2P distingue le nouveau profil.
 - Les montants sont des entiers non signés à 8 décimales. Encodage réseau big-endian et décodage canonique; formats incorrects, données excédentaires et dépassements sont rejetés.
 - Une transaction débite montant + frais, exige la signature exacte et le prochain nonce. Le lot de transactions est appliqué atomiquement.
-- Le bloc engage la liste ordonnée des identifiants de transactions et l’identité de mineur. Ce n’est pas un arbre de Merkle; preuves Merkle et SPV ne sont pas encore définis.
+- Le bloc engage la liste ordonnée des identifiants de transactions par une racine Merkle domaine-séparée (feuille, nœud et arbre vide ont des domaines distincts); pour un niveau impair, le dernier nœud est dupliqué. Les preuves bornées incluent l’index et le nombre de feuilles. La racine est incluse dans l’en-tête canonique version 1.
 
 ## Entête, PoW et sélection
 
-L’en-tête version 0 porte l’identifiant réseau, le hash parent, l’engagement du bloc, l’horodatage et le nonce. Le hash SHA-256 de l’encodage canonique doit commencer par le nombre requis de bits nuls. Le bloc doit avoir un horodatage strictement supérieur à la médiane des onze ancêtres disponibles.
+L’en-tête version 1 porte l’identifiant réseau, le hash parent, l’engagement du bloc, la racine Merkle, l’horodatage et le nonce. Le changement casse la compatibilité avec les anciennes entêtes. Le hash SHA-256 de l’encodage canonique doit commencer par le nombre requis de bits nuls. Le bloc doit avoir un horodatage strictement supérieur à la médiane des onze ancêtres disponibles.
 
 À chaque hauteur multiple de l’intervalle, le retarget mesure `timestamp_candidat - timestamp_ancêtre(H - intervalle)`, avec un minimum de 1 seconde. Ce delta couvre les espacements de blocs visés et inclut le candidat. Chaque timestamp est strictement supérieur à celui du parent et au temps médian des 11 ancêtres. Aucun plafond lié à l’horloge locale n’est une règle de consensus. L’ajustement reste borné par fenêtre et par difficulté min/max.
 
@@ -29,7 +29,7 @@ Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au 
 
 Le nœud construit une genèse testnet vide et déterministe. Paramètres actuels : 8 bits initiaux, cible 60 secondes, fenêtre de 10 blocs, ajustement maximal de 2 bits par fenêtre, bornes 4 à 20 bits. La configuration persistée et une empreinte de protocole distinguent ce testnet des configurations incompatibles.
 
-`AURORSNP` version 3 stocke les paramètres et tous les blocs acceptés des branches connues avec un checksum SHA-256. Au chargement, les blocs sont décodés canoniquement, rejoués dans l’ordre topologique et validés à nouveau depuis l’état de genèse déterministe. Un snapshot invalide est ignoré si une sauvegarde valide existe; la reprise choisit ensuite la chaîne valide au travail cumulé maximal. C’est un snapshot simple; journal de base de données, migration formelle, sauvegarde et essais de panne brutale ne sont pas livrés.
+`AURORSNP` version 4 stocke les paramètres et tous les blocs acceptés des branches connues avec un checksum SHA-256. Au chargement, les blocs sont décodés canoniquement, rejoués dans l’ordre topologique et validés à nouveau depuis l’état de genèse déterministe. Un snapshot invalide est ignoré si une sauvegarde valide existe; la reprise choisit ensuite la chaîne valide au travail cumulé maximal. C’est un snapshot simple; journal de base de données, migration formelle, sauvegarde et essais de panne brutale ne sont pas livrés.
 
 ## Réseau expérimental
 
@@ -52,7 +52,11 @@ Les commandes utilisent les messages suivants :
 
 Le compte et le nonce sont calculés en rejouant les transactions actuellement en attente sur l’état confirmé. L’admission au mempool exige le réseau et la version v3, l’encodage canonique, une signature valide, le prochain nonce et un solde suffisant, après application des transactions déjà en attente. Le mempool est borné à 4 096 transactions et 32 MiB; chaque pair ne sert qu’une page de 700 transactions. Il est en mémoire et ne survit pas à un redémarrage. Le mineur récupère les transactions du premier pair `--peer`, vérifie les règles de consensus en construisant le bloc, puis propage le bloc. Le protocole n’a pas encore de gossip de transactions ni de sélection économique des frais.
 
-Les fichiers de clés wallet `AURKEY3` contiennent une graine de 32 octets générée par le CSPRNG du système, en clair, suivie d’une somme de contrôle SHA-256. L’adresse actuelle est l’identifiant brut de 32 octets dérivé de la clé publique ML-DSA-65; son affichage est 64 caractères hexadécimaux. Le format n’est pas chiffré, n’est pas un format de sauvegarde à long terme et ne doit servir qu’aux essais locaux. Il n’y a pas encore de dérivation hiérarchique, de phrase de récupération, d’URI de paiement, de gardiens/time-locks, de DID ou de protection matérielle des clés.
+Les commandes `aurora-wallet verify --txid <hex> --confirmations N` téléchargent des pages d’en-têtes depuis la genèse testnet épinglée, vérifient le PoW, les horodatages, les retargets et le travail cumulé, puis demandent une preuve d’inclusion Merkle au nœud. Le client vérifie que l’en-tête prouvant la transaction est canonique dans la chaîne téléchargée et respecte le nombre minimal de confirmations demandé. C’est une vérification légère dépendante de la vue des pairs; elle ne prouve pas à elle seule que le réseau n’a pas été éclipsé ou censuré.
+
+Le module `aurora_wallet::uri` encode les paiements comme `aurora://testnet/<adresse-hex>?amount=<AUR>&memo=<texte-percent-encodé>`. Le parseur refuse réseau, paramètres, montants, encodages et mémo invalides. Le montant et le mémo sont optionnels. L’URI ne transporte aucune preuve d’identité ni signature de demande.
+
+Les fichiers de clés wallet `AURKEY3` contiennent une graine de 32 octets générée par le CSPRNG du système, en clair, suivie d’une somme de contrôle SHA-256. L’adresse actuelle est l’identifiant brut de 32 octets dérivé de la clé publique ML-DSA-65; son affichage est 64 caractères hexadécimaux. Le format n’est pas chiffré, n’est pas un format de sauvegarde à long terme et ne doit servir qu’aux essais locaux. Il n’y a pas encore de dérivation hiérarchique, de phrase de récupération, de gardiens/time-locks, de DID intégré aux comptes ou de protection matérielle des clés.
 
 `Confirmed` signifie uniquement que le txid est observé dans les blocs canoniques de ce nœud au moment de la requête; aucune règle de confirmations ou de finalité n’est promise. En cas de réorganisation, une transaction peut perdre cette inclusion. Le portefeuille doit alors réinterroger le statut.
 
@@ -75,4 +79,4 @@ Avant d’élargir les essais, restent à faire :
 4. Tests d’interruption d’écriture, disque plein, sauvegarde/restauration et migrations de snapshot.
 5. Fuzzing du décodage réseau/transactions/blocs et revue indépendante du consensus et du code.
 
-Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. URI de paiement, DID et récupération, explorateur, SPV et site de présentation restent à concevoir.
+Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. DID et récupération restent au stade de conception (`docs/DID_RECOVERY_DESIGN.md`) et n’altèrent pas l’état consensus. L’explorateur, le site de présentation et la vente sont hors de ce jalon.
