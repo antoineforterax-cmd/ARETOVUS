@@ -357,7 +357,7 @@ mod tests {
     fn unknown_header_version_is_rejected() {
         let block = block_of(vec![]);
         let mut bytes = block.to_canonical_bytes().unwrap();
-        bytes[3] = 1;
+        bytes[3] = 2;
         assert!(matches!(
             Block::from_canonical_bytes(&bytes),
             Err(DecodeError::InvalidValue(_))
