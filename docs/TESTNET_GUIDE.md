@@ -55,6 +55,39 @@ Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec
 
 Plusieurs destinations `--peer` sont permises pour le mineur. Le nœud ne maintient pas encore de minage continu, de reconnexion automatique ou de mempool. `sync --discover` découvre au plus un saut de pairs annoncés, depuis un pair de démarrage configuré.
 
+## Portefeuille CLI experimental
+
+Construis aussi le portefeuille :
+
+```sh
+cargo build --locked -p aurora-wallet
+```
+
+Les clés générées par cette version sont des fichiers testnet en clair. Protège et sauvegarde le fichier; n’y place jamais de fonds réels. Le format contient une graine ML-DSA-65 et une somme de contrôle contre les corruptions accidentelles, sans chiffrement.
+
+Crée une clé locale :
+
+```sh
+cargo run --locked -p aurora-wallet -- keygen --out ./alice.aurkey
+cargo run --locked -p aurora-wallet -- address --key-file ./alice.aurkey
+```
+
+Mine les premiers blocs vers l’adresse affichée par `keygen`, puis lance ou synchronise un nœud testnet qui sert le RPC wallet. Les opérations wallet utilisent l’adresse IPv4/IPv6 et le port TCP du nœud :
+
+```sh
+cargo run --locked -p aurora-wallet -- balance --key-file ./alice.aurkey --node 127.0.0.1:18444
+cargo run --locked -p aurora-wallet -- send --key-file ./alice.aurkey --to <64-hex-destinataire> --amount 1.25 --fee 0.00000003 --node 127.0.0.1:18444
+```
+
+La commande `send` lit le nonce attendu, signe le transfert v3 avec ML-DSA-65 et le soumet au mempool du nœud. Elle imprime le txid. Vérifie ensuite son état et l’inclusion après minage :
+
+```sh
+cargo run --locked -p aurora-wallet -- status --node 127.0.0.1:18444 --txid <64-hex-txid>
+cargo run --locked -p aurora-wallet -- wait --node 127.0.0.1:18444 --txid <64-hex-txid> --timeout-seconds 120
+```
+
+Le statut `Pending` signifie accepté par le mempool de ce nœud. `Confirmed` signifie inclus dans sa chaîne canonique au moment de la requête; ce prototype ne définit pas de profondeur de finalité. Les frais sont comptabilisés par le consensus : 50 % au mineur, le reste brûlé (l’arrondi à l’unité minimale favorise le burn). Le RPC wallet/mempool est réservé au testnet v3.
+
 ## Vérifier le scénario multi-nœuds
 
 Depuis la racine du dépôt :
@@ -63,7 +96,7 @@ Depuis la racine du dépôt :
 python3 scripts/testnet_smoke.py
 ```
 
-Le scénario démarre des processus séparés, vérifie les trois premiers blocs selon la formule proportionnelle, leur propagation, le rechargement d’un snapshot et la synchronisation complète d’un répertoire neuf. GitHub Actions exécute le même scénario.
+Le scénario démarre des processus séparés, crée un wallet, vérifie trois blocs selon la formule proportionnelle, soumet une transaction ML-DSA au mempool, vérifie son inclusion et le partage des frais, puis teste la reprise des snapshots et la synchronisation complète d’un répertoire neuf. GitHub Actions exécute le même scénario.
 
 ## Politique monétaire testnet
 
