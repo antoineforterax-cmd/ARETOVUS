@@ -136,7 +136,15 @@ cargo run --locked -p aurora-wallet -- address --key-file ./wallet.aurkey
 cargo run --locked -p aurora-wallet -- send --key-file ./wallet.aurkey --to <adresse-hex> --amount 1.25 --fee 0.01 --node 127.0.0.1:18444
 ```
 
-Pour sauvegarder la clé chiffrée, copie `wallet.aurkey` vers un support distinct et garde le mot de passe séparément. Pour éprouver la restauration, recopie la sauvegarde sous un **nouveau** nom (par exemple `wallet-restaure.aurkey`), puis exécute `aurora-wallet address --key-file wallet-restaure.aurkey`. Saisis le mot de passe et compare l’adresse obtenue à celle d’origine. Le CLI refuse de remplacer un fichier de clé existant; une sauvegarde du seul répertoire du nœud ne contient pas cette clé. Sans le fichier ou sans le mot de passe, la récupération est impossible.
+Pour créer une sauvegarde indépendante, `backup` vérifie le mot de passe, puis rechiffre la même graine avec un sel et un nonce nouveaux. Place le fichier produit sur un support distinct et conserve le mot de passe séparément. `restore` vérifie la sauvegarde et crée un **nouveau** fichier chiffré; aucune commande ne remplace un fichier de clé existant.
+
+```sh
+cargo run --locked -p aurora-wallet -- backup --key-file ./wallet.aurkey --out ./wallet-sauvegarde.aurkey
+cargo run --locked -p aurora-wallet -- restore --from ./wallet-sauvegarde.aurkey --out ./wallet-restaure.aurkey
+cargo run --locked -p aurora-wallet -- address --key-file ./wallet-restaure.aurkey
+```
+
+Compare l’adresse restaurée à l’adresse d’origine. La sauvegarde du seul dossier du nœud ne contient pas la clé du wallet. Sans fichier de clé ou sans mot de passe, la récupération est impossible. `backup` et `restore` exigent le format chiffré AURKEY4; le format en clair AURKEY3 reste réservé aux essais.
 
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
 
