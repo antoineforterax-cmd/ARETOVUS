@@ -9,7 +9,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use aurora_node::p2p;
 use aurora_consensus::{
     account_block::AccountBlock,
     account_fork_chain::AccountForkChain,
@@ -23,6 +22,7 @@ use aurora_core::{
     network::NetworkId,
     state::AccountLedger,
 };
+use aurora_node::p2p;
 use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
 use p2p::{
     discover_peers_with_retry, fetch_mempool, propagate_block_with_retry, serve as serve_peers,
