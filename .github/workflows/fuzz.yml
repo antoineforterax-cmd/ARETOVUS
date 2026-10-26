@@ -6,6 +6,7 @@ on:
       - "fuzz/**"
       - "crates/aurora-core/**"
       - "crates/aurora-consensus/**"
+      - "crates/aurora-node/**"
       - ".github/workflows/fuzz.yml"
   workflow_dispatch:
 
@@ -27,3 +28,6 @@ jobs:
         run: cargo +nightly fuzz run canonical_decode -- -max_total_time=300 -print_final_stats=1
       - name: Fuzz Merkle proofs
         run: cargo +nightly fuzz run merkle_proofs -- -max_total_time=300 -print_final_stats=1
+
+      - name: Fuzz P2P payload decoders
+        run: cargo +nightly fuzz run network_payloads -- -max_total_time=300 -print_final_stats=1
