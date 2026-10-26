@@ -215,9 +215,7 @@ impl AccountForkChain {
         self.states.insert(hash, state);
         let position = self
             .ordered
-            .binary_search_by(|known| {
-                (self.nodes[known].height, *known).cmp(&(height, hash))
-            })
+            .binary_search_by(|known| (self.nodes[known].height, *known).cmp(&(height, hash)))
             .unwrap_or_else(|position| position);
         self.ordered.insert(position, hash);
 
