@@ -80,8 +80,7 @@ pub fn build_signed_transaction(
         auth_data: vec![0; aurora_core::accounts::POST_QUANTUM_AUTH_BYTES],
     };
     let public_key = key.public_key();
-    tx.auth_data[..aurora_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES]
-        .copy_from_slice(public_key);
+    tx.auth_data[..aurora_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key);
     let signature = key
         .signing_key()
         .sign(tx.signing_digest()?.as_bytes())
