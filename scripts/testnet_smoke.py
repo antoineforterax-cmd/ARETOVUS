@@ -83,6 +83,27 @@ def main() -> int:
             mined_tip = re.search(r"height=3\b.*\btip=([0-9a-f]{64})", mined)
             if mined_tip is None:
                 raise AssertionError(f"miner did not report the expected three-block tip:\n{mined}")
+            cap_units = 500_000_000 * 100_000_000
+            expected_issued = 0
+            expected_miner = 0
+            expected_rows = []
+            for height in range(1, 4):
+                remaining = cap_units - expected_issued
+                issuance = min(remaining, max(1, remaining // 1_000_000))
+                expected_issued += issuance
+                expected_miner += issuance - issuance // 20
+                expected_rows.append((height, expected_issued, expected_miner))
+            mined_rows = [
+                (int(height), int(issued), int(balance))
+                for height, issued, balance in re.findall(
+                    r"height=(\d+) tip=[0-9a-f]{64} .*issued_units=(\d+) miner_balance_units=(\d+)",
+                    mined,
+                )
+            ]
+            if mined_rows != expected_rows:
+                raise AssertionError(
+                    f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
+                )
 
             # Restart A after mining so its server loads the persisted height-3 chain.
             for server in servers[:2]:
