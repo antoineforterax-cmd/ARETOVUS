@@ -68,16 +68,14 @@ fn verify_post_quantum_account_transaction(
         return Err(SignatureError::InvalidSignatureEncoding);
     }
     let key_end = ML_DSA_65_PUBLIC_KEY_BYTES;
-    let encoded_key = ml_dsa::EncodedVerifyingKey::<MlDsa65>::try_from(
-        &tx.auth_data[..key_end],
-    )
-    .map_err(|_| SignatureError::InvalidSignatureEncoding)?;
+    let mut encoded_key = ml_dsa::EncodedVerifyingKey::<MlDsa65>::default();
+    encoded_key.copy_from_slice(&tx.auth_data[..key_end]);
     let key = VerifyingKey::<MlDsa65>::decode(&encoded_key);
     if post_quantum_account_id(&tx.auth_data[..key_end]) != tx.sender {
         return Err(SignatureError::InvalidPostQuantumAccountId);
     }
-    let encoded_sig = ml_dsa::EncodedSignature::<MlDsa65>::try_from(&tx.auth_data[key_end..])
-        .map_err(|_| SignatureError::InvalidSignatureEncoding)?;
+    let mut encoded_sig = ml_dsa::EncodedSignature::<MlDsa65>::default();
+    encoded_sig.copy_from_slice(&tx.auth_data[key_end..]);
     let signature = MlDsaSignature::<MlDsa65>::decode(&encoded_sig)
         .ok_or(SignatureError::InvalidSignatureEncoding)?;
     let digest = tx
