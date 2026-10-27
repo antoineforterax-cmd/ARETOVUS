@@ -226,7 +226,7 @@ impl AccountForkChain {
         if chain_work < current.chain_work
             || (chain_work == current.chain_work && hash >= current_tip)
         {
-            if height % STATE_CHECKPOINT_INTERVAL == 0 {
+            if height.is_multiple_of(STATE_CHECKPOINT_INTERVAL) {
                 self.states.insert(hash, state);
             }
             return Ok(ChainUpdate {
@@ -234,7 +234,10 @@ impl AccountForkChain {
                 reorg_from_height: None,
             });
         }
-        if self.nodes[&current_tip].height % STATE_CHECKPOINT_INTERVAL != 0 {
+        if !self.nodes[&current_tip]
+            .height
+            .is_multiple_of(STATE_CHECKPOINT_INTERVAL)
+        {
             self.states.remove(&current_tip);
         }
         self.states.insert(hash, state);
