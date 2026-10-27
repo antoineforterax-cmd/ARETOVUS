@@ -36,7 +36,7 @@ fn fingerprint_parts(
     let mut bytes = Vec::with_capacity(128);
     bytes.push(network.to_byte());
     bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
-    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v3");
+    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v4");
     bytes.extend_from_slice(genesis_hash.as_bytes());
     bytes.extend_from_slice(&initial_bits.to_be_bytes());
     bytes.extend_from_slice(&difficulty.target_block_seconds.to_be_bytes());
