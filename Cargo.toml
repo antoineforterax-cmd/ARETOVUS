@@ -12,6 +12,7 @@ members = [
 version = "0.0.1"
 edition = "2021"
 publish = false
+license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 # Primitives cryptographiques externes; les profils actifs et leurs limites sont décrits dans docs/POST_QUANTUM.md.

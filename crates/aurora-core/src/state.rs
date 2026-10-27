@@ -1,6 +1,7 @@
 //! Registre de comptes déterministe pour le prototype AURORA.
 //!
-//! Les transferts passent la vérification de signature du profil de transaction versionné.
+//! Testnet exige ML-DSA-65 natif (profil v3); Regtest conserve les profils historiques.
+//! Les transferts passent la vérification de signature du profil versionné.
 //! Aucun transfert ne modifie l'état si cette vérification échoue.
 //! Ce module ne constitue pas encore une validation complète de bloc ou de consensus.
 

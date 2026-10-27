@@ -1,8 +1,8 @@
-//! Vérification Ed25519 des transferts expérimentaux par comptes.
+//! Vérification des signatures des transactions par comptes.
 //!
-//! L'identifiant de compte est la clé publique Ed25519 brute (32 octets) et `auth_data`
-//! contient exactement une signature Ed25519 (64 octets) du `signing_digest` canonique.
-//! Ce choix est propre au prototype v1 et ne constitue pas un format d'adresse utilisateur.
+//! Testnet utilise le profil v3 natif ML-DSA-65 : l'identifiant de compte est
+//! dérivé de la clé publique, et l'autorisation contient clé et signature.
+//! Regtest conserve v1 Ed25519 et v2 hybride pour les tests de compatibilité.
 
 use ed25519_dalek::{Signature, VerifyingKey as VerifyingKeyEd25519};
 

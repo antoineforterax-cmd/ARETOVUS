@@ -1,4 +1,5 @@
 [package]
+license = "MIT OR Apache-2.0"
 name = "aurora-fuzz"
 version = "0.0.0"
 publish = false

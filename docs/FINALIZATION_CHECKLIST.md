@@ -50,9 +50,9 @@ Le [rapport d’essais](TESTNET_VALIDATION_REPORT.md) distingue les preuves déj
 - Vérifier sur Windows le rattrapage du second dossier de 3 à au moins 367 après arrêt du serveur ancien et redémarrage sur le dossier miné. Utiliser le [guide](TESTNET_GUIDE.md) et les [procédures d’exploitation](TESTNET_OPERATIONS.md).
 - Geler le protocole expérimental seulement après correction et répétition des CI, soak et fuzzing; prévoir une procédure de mise à jour, sauvegarde/restauration, diagnostic et signalement d’incident.
 
-## 5 — Interfaces et services, dès que l’API et le réseau sont stabilisés
+## 5 — Hors périmètre actuel / pour les repreneurs
 
-Ces produits peuvent être prototypés sur le testnet après les corrections P0 et la stabilisation de l’API. Ils ne doivent pas recevoir de fonds réels tant que la porte de sécurité n’est pas franchie.
+Le porteur a gelé ce périmètre le 27 octobre 2026. Les éléments ci-dessous sont conservés comme pistes pour les repreneurs; ils ne sont plus à construire dans le lot actuel. Le wallet CLI existant reste entretenu.
 
 | Produit | Déjà là | Reste à construire et vérifier |
 | --- | --- | --- |
@@ -61,10 +61,10 @@ Ces produits peuvent être prototypés sur le testnet après les corrections P0 
 | **Site de présentation** | Documentation dans le dépôt. | Site expliquant but d’AURORA, fonctionnement, économie réellement codée, installation du nœud/minage, statut expérimental, risques, sources et versions téléchargeables. Éviter les promesses de rendement ou de valeur. |
 | **Vente/échange** | Aucun marché ni service de garde. | Choisir d’abord le modèle : vente directe entre utilisateurs, carnet d’ordres testnet, ou intermédiaire qui détient des fonds. Spécifier propriété des ordres, appariement, règlement, annulation, frais, litiges, garde des clés, anti-fraude et responsabilités. Faire une analyse juridique et opérationnelle avant toute vente réelle ou intégration de paiement. Une « bourse générale » ne peut pas être supposée exister simplement parce qu’un ordre de vente est créé. |
 
-**Ordre de réalisation :** corriger le cœur et l’API → prototype wallet et explorateur sur testnet → site explicatif et documentation de téléchargement → seulement ensuite prototype de marché de test. Le développement d’interface peut préparer des maquettes plus tôt, mais ses données et promesses doivent correspondre aux règles effectivement exécutées.
+**Ordre actuel :** durcir et mesurer le cœur → préparer la relecture humaine → stabiliser et distribuer le testnet. Les applications listées ci-dessus sont reportées par décision du porteur.
 
 ## Critère final et dépendances externes
 
-AURORA ne sera « finalisée » que si tous les points suivants sont prouvés sur la même version gelée : défauts P0 corrigés, essais hostiles et multi-hôtes prolongés, stockage au-delà de l’horizon visé, fuzzing/mesures conservés, économie et gouvernance décidées, revue humaine indépendante avec corrections revérifiées, procédures d’exploitation, wallet/explorateur/site testés, et traitement séparé de la vente réelle.
+AURORA ne sera « finalisée » que si tous les points suivants sont prouvés sur la même version gelée : défauts P0 corrigés, essais hostiles et multi-hôtes prolongés, stockage au-delà de l’horizon visé, fuzzing/mesures conservés, économie et gouvernance décidées, revue humaine indépendante avec corrections revérifiées, procédures d’exploitation et wallet CLI testé. Les applications et la vente réelle sont exclues du périmètre courant par décision du porteur.
 
 Ce qui nécessite une intervention extérieure : choix d’un reviewer humain et remise du commit public précis; machines/hébergement et opérateurs du réseau public de test; décisions de gouvernance de la trésorerie, DID et inactivité; analyse juridique pour une vente réelle. L’agent peut continuer le code, les tests, la documentation et les prototypes sans attendre ces éléments, mais ne peut pas fabriquer leurs preuves ni décider à la place du propriétaire.

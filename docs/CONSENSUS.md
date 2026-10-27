@@ -1,41 +1,21 @@
-# AURORA — règles de consensus expérimentales
+# Consensus du testnet AURORA
 
-**Statut : testnet expérimentale locale, non auditée.** Les règles ci-dessous décrivent le code de `feature/emission-schedule-v0`; elles ne constituent ni un lancement public ni une garantie de sécurité mainnet.
+État du 27 octobre 2026, branche `feature/emission-schedule-v0`. Le code reste expérimental et non audité par un humain indépendant.
 
-## Profil de chaîne exécuté
+| Élément | Règle exécutée |
+| --- | --- |
+| Transactions | Profil v3 natif ML-DSA-65 sur Testnet; sérialisation canonique et domaines de signature; adresse de compte dérivée de la clé publique. Les profils v1 Ed25519 et v2 hybride sont limités à Regtest. |
+| État | Montants entiers à huit décimales, nonce exact, solde et frais contrôlés avant mutation. Un transfert vers soi-même est rejeté. Le mempool existe mais ne fait pas partie du consensus. |
+| Blocs | En-tête v1, racine Merkle des txids et engagement du mineur; PoW SHA-256 avec nombre requis de bits nuls en tête. Corps borné à 4 MiB moins la marge de transport. |
+| Temps | Timestamp strictement supérieur au parent et à la médiane des onze ancêtres disponibles. Mineur, réseau et client SPV appliquent aussi une admission locale à au plus deux heures dans le futur; cette borne dépend de l’horloge locale et ne fait pas partie du rejeu du consensus. |
+| Difficulté | 8 bits initialement; cible 60 secondes, fenêtre de 10 blocs, retarget entier borné à deux bits, minimum 4 et maximum 20. Le candidat ferme la fenêtre mesurée depuis l’ancêtre H−10. |
+| Sélection | Travail `2^difficulty_bits` accumulé sur 320 bits; plus grand travail, puis plus petit hash en cas d’égalité. |
+| Émission | Genèse vide; plafond brut de 500 millions AUR; `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Premier bloc : 500 AUR. Le burn ne réouvre pas le plafond. |
+| Répartition | 5 % de l’émission à la trésorerie fixe `[0xA0; 32]`, reliquat au mineur. Moitié entière des frais au mineur, reliquat détruit. À plafond atteint, aucune nouvelle émission. |
+| Réorganisation | Validation contre l’état du parent, avec récompenses et frais propres à chaque branche. Le sommet canonique et des points de contrôle tous les 256 blocs sont conservés; les autres états sont rejoués. Aucun horizon de réorganisation n’est ajouté par ce cache. |
+| Stockage | Blocs immuables, pages et manifestes checksummés v6, trois points de reprise; lecture des snapshots v4 et index v5, puis revalidation. |
+| Transport | Fingerprint P2P v4, inventaires u64 en ordre d’arrivée, pages bornées, budgets de session et contrôle de continuité à la reconnexion. Les limites réseau ne remplacent jamais la validation consensus. |
 
-| Sujet | Règle codée | Limite restante |
-|---|---|---|
-| Transactions | Encodage canonique; Ed25519 stricte; clé publique 32 octets comme compte; nonce exact; solde/frais validés atomiquement | Pas d’adresse texte, mempool ou frais minimums |
-| Blocs | En-tête version 0; engagement ordonné des txids et de l’identifiant mineur; SHA-256 avec bits nuls en tête | Engagement de liste, pas un arbre de Merkle; limite consensus de 4 MiB |
-| Temps | Timestamps strictement supérieurs au parent et à la médiane des 11 ancêtres disponibles | Pas de borne future définie par consensus |
-| Difficulté | Retarget candidat-dépendant sur le delta brut `timestamp_candidat - timestamp(H - intervalle)`, pas entiers bornés min/max | Simulations temporelles indépendantes encore nécessaires |
-| Travail | `2^difficulty_bits` par bloc dans un accumulateur u320; chaîne au plus grand travail, égalité départagée par le hash le plus petit | Pas de revue externe |
-| Récompense | `max(1, floor(offre_restante / 1 000 000))` unités, plafonnée au reliquat; 5 % trésorerie / 95 % mineur | Émission lissée; paramètres encore expérimentaux |
-| Réorganisation | État et récompenses sont calculés depuis l’état du parent de chaque branche; la branche au travail supérieur devient canonique | Pas de maturité de coinbase ni dépense de récompense différée |
-| Stockage | Snapshot version 3, checksum, paramètres difficulté/récompense et toutes les branches; rejeu/revalidation à la lecture | Pas de journal transactionnel, migration de format ou test complet de coupure disque |
-| Réseau | TCP push/pull vers pairs statiques; 8 workers concurrents; budgets par session de trafic, requêtes et durée; frames bornées et validation consensus | Découverte opt-in d’un saut; pas de reconnexion continue, annonces spontanées multi-sauts ni suite DoS complète |
+Le compte de trésorerie n’est pas un contrat gouverné. DID, gardiens, récupération et recyclage des fonds inactifs ne sont pas activés. Il n’existe pas de maturité différée des récompenses. Le profil SHA-256/PoW n’est pas présenté comme entièrement post-quantique.
 
-Les constructeurs de chaîne génériques désactivent les récompenses par défaut. Le nœud testnet choisit explicitement le profil de récompense et la difficulté initiale. Le fingerprint P2P comprend le hash de genèse, l’identifiant de la règle d’émission, la difficulté, le retarget, le drapeau des récompenses et le compte de trésorerie.
-
-## Profil testnet local
-
-- Réseau : `NetworkId::Testnet`, genèse déterministe et vide.
-- Difficulté initiale : 8 bits nuls en tête.
-- Cible : 60 secondes; fenêtre : 10 blocs; ajustement entier borné à 2 bits par fenêtre; bornes de 4 à 20 bits.
-- Trésorerie : compte fixe de test `[0xA0; 32]`.
-- Les blocs sont minés par `aurora-node testnet mine`, sauvegardés après chaque bloc et revalidés à la reprise.
-- Synchronisation via `aurora-node testnet serve` et `aurora-node testnet sync`; le transport accepte le push des blocs minés, le pull paginé et la découverte opt-in d’un saut.
-
-## Invariants couverts par tests
-
-- Même parent, bloc et paramètres donnent le même état validé; transaction ou bloc invalide ne produit pas d’état partiel.
-- Le plafond brut strict de 500 M AUR n’est pas dépassé; l’émission décroît avec le reliquat et reste au moins une unité jusqu’au dernier bloc; les frais brûlés ne réouvrent pas le plafond.
-- Le compte du mineur est inclus dans l’engagement du bloc.
-- Une branche secondaire garde son propre état et ses récompenses; une réorganisation change l’état canonique.
-- Un snapshot conserve les branches et les paramètres, puis rejoue les blocs au chargement.
-- La synchronisation rejette les fingerprints différents et revalide les blocs reçus avant sauvegarde.
-
-Le format de transaction v2 requiert Ed25519 et ML-DSA-65 simultanément; il n’active aucune migration de comptes. La bibliothèque RustCrypto ML-DSA n’a pas d’audit indépendant. Il s’agit d’un format de test uniquement.
-
-La CI verte confirme seulement les contrôles automatisés. La smoke test multi-processus valide un réseau expérimental supervisé à pairs connus; les essais prolongés de retarget, pairs hostiles, reconnexion continue, arrêts brutaux et fuzzing restent à faire. Une revue indépendante est nécessaire avant tout usage au-delà d’expériences locales.
+Les tests couvrent signatures, montants, nonce, atomicité, Merkle, retarget, travail, réorganisations et récompenses, stockage et réseau. Les preuves sont rattachées à des commits dans [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md). Les coûts de rejeu d’état, la mémoire, les pairs hostiles et le comportement sur plusieurs machines pendant 72 heures restent à mesurer. Les formats détaillés sont dans [PROTOCOL.md](PROTOCOL.md).

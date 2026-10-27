@@ -41,7 +41,7 @@ jobs:
         run: python scripts/testnet_lock_smoke.py
       - name: Créer l’archive et vérifier ses sommes de contrôle
         run: python scripts/package_testnet.py
-      - name: Publier l’archive comme artefact CI privé
+      - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4
         with:
           name: aurora-testnet-${{ matrix.os }}

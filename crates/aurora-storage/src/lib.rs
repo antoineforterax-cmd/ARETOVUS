@@ -1192,6 +1192,54 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    /// Resource-intensive proof that the v6 index and consensus replay cross the
+    /// former 100,000-block inventory limit while retaining a secondary branch.
+    #[test]
+    #[ignore = "run through the dedicated volume-probe workflow"]
+    fn volume_above_100k_blocks_with_side_branch_and_restart() {
+        let started = std::time::Instant::now();
+        let path = dir();
+        let mut original = chain();
+        for height in 1..=100_001u64 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                height + 1,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            original.submit(block).unwrap();
+        }
+        let side_parent = original.block_page(50_000, 1)[0].header.hash().unwrap();
+        let side =
+            AccountBlock::build(NetworkId::Regtest, side_parent, 200_000, 1, Vec::new()).unwrap();
+        let side_hash = side.header.hash().unwrap();
+        original.submit(side).unwrap();
+        assert_eq!(original.height(), 100_001);
+        assert_eq!(original.known_block_count(), 100_003);
+        let build_elapsed = started.elapsed();
+
+        save_snapshot(&path, &original).unwrap();
+        let save_elapsed = started.elapsed() - build_elapsed;
+        drop(original);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 100_001);
+        assert_eq!(restored.known_block_count(), 100_003);
+        assert!(restored
+            .all_blocks_by_arrival()
+            .iter()
+            .any(|block| block.header.hash().unwrap() == side_hash));
+        eprintln!(
+            "volume probe: blocks={} build_seconds={:.1} save_seconds={:.1} total_seconds={:.1}",
+            restored.known_block_count(),
+            build_elapsed.as_secs_f64(),
+            save_elapsed.as_secs_f64(),
+            started.elapsed().as_secs_f64()
+        );
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();

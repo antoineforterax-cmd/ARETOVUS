@@ -1,0 +1,129 @@
+name: testnet-release
+
+on:
+  push:
+    branches: [feature/emission-schedule-v0]
+    paths: [".github/release-request.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testnet-release
+  cancel-in-progress: false
+
+jobs:
+  request:
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.request.outputs.source }}
+      tag: ${{ steps.request.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: request
+        name: Validate the pinned release request
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          request = json.loads(Path('.github/release-request.json').read_text())
+          source, tag = request['source'], request['tag']
+          assert re.fullmatch(r'[0-9a-f]{40}', source), 'source must be a full commit hash'
+          assert re.fullmatch(r'testnet-v[0-9]+\.[0-9]+\.[0-9]+-experimental\.[0-9]+', tag), 'experimental tag required'
+          subprocess.run(['git', 'merge-base', '--is-ancestor', source, 'HEAD'], check=True)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'source={source}\ntag={tag}\n')
+          PY
+  verify:
+    needs: request
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.request.outputs.source }}
+      - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+      - run: python3 scripts/testnet_smoke.py
+      - run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --output target/endurance-release --max-rounds 6 --restart-every 3 --interval-seconds 0
+  package:
+    needs: request
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.request.outputs.source }}
+      - run: rustup toolchain install stable --profile minimal
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cargo build --workspace --release --locked
+      - run: python scripts/testnet_lock_smoke.py
+      - name: Check endurance monitoring on this operating system
+        shell: bash
+        run: |
+          suffix=''
+          if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
+          python scripts/testnet_endurance.py --binary "target/release/aurora-node${suffix}" --output target/endurance-package --max-rounds 3 --restart-every 3 --interval-seconds 0
+      - run: python scripts/package_testnet.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: dist/*.zip
+          if-no-files-found: error
+  publish:
+    needs: [request, verify, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Check archives and prepare external checksums
+        env:
+          SOURCE: ${{ needs.request.outputs.source }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, zipfile
+          from pathlib import Path
+          files = sorted(Path('dist').glob('*.zip'))
+          assert len(files) == 3, 'three platform archives required'
+          for path in files:
+              with zipfile.ZipFile(path) as archive:
+                  assert archive.testzip() is None
+                  assert f"Source commit: {os.environ['SOURCE'][:12]}" in archive.read('EXPERIMENTAL_TESTNET.txt').decode()
+                  for line in archive.read('SHA256SUMS.txt').decode().splitlines():
+                      checksum, name = line.split('  ', 1)
+                      assert hashlib.sha256(archive.read(name)).hexdigest() == checksum
+          Path('dist/SHA256SUMS.txt').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in files))
+          Path('release-notes.md').write_text(
+              'Experimental testnet binaries for Windows, Linux and macOS.\n\n'
+              f"Source commit: `{os.environ['SOURCE']}`.\n\n"
+              'This workflow passed formatting, Clippy, workspace tests, multi-node smoke, short endurance monitoring and platform packaging checks before publication. '
+              'The short endurance check is not a completed 72-hour or multi-host test.\n\n'
+              'The code was largely produced with AI assistance and has no independent human audit. No mainnet or real-funds security claim. '
+              'Binaries are unsigned. Verify the external SHA256SUMS.txt, extract the archive and read docs/TESTNET_GUIDE.md. '
+              'Read docs/ENDURANCE_RUN.md for the optional local three-node trial.\n\n'
+              'Storage v6 and P2P v4: older peers are not compatible with this wire protocol. Back up existing data before any upgrade. '
+              'The feature PR remains unmerged.\n')
+          PY
+      - name: Publish experimental prerelease without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE: ${{ needs.request.outputs.source }}
+          TAG: ${{ needs.request.outputs.tag }}
+        run: gh release create "$TAG" --target "$SOURCE" --prerelease --title "AURORA $TAG" --notes-file release-notes.md dist/*.zip dist/SHA256SUMS.txt

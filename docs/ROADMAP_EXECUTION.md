@@ -1,3 +1,5 @@
+> Périmètre révisé le 27 octobre 2026 : explorateur, site, vente simulée, interfaces graphiques et mobile sont reportés aux repreneurs. Les anciennes étapes applicatives ci-dessous sont conservées comme historique, pas comme travaux en cours.
+
 # AURORA — état vérifié et chemin vers une version finale
 
 **Branche de travail :** `feature/emission-schedule-v0`.  

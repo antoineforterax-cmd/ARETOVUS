@@ -1,5 +1,7 @@
 # THREAT_MODEL.md — AURORA
 
+> Archive : décrit l’ancien prototype v0.0.1 au moment de sa rédaction. Pour les formats actuels, voir [CONSENSUS.md](CONSENSUS.md) et [PROTOCOL.md](PROTOCOL.md); pour les preuves, voir [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md).
+
 **Statut : version initiale, aucune évaluation chiffrée.** Le cahier des charges interdit
 d'attribuer un score sans méthode de notation documentée. Les colonnes « Probabilité » et « Impact »
 sont donc à remplir **après** validation de l'échelle ci-dessous, et chaque ligne reste « Non évalué »

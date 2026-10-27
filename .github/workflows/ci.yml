@@ -24,4 +24,5 @@ jobs:
         run: cargo test --workspace --locked
       - name: Testnet multi-nœuds
         run: python3 scripts/testnet_smoke.py
-# À ajouter plus tard (GOV-03) : cargo audit et cargo deny, une fois Cargo.lock committé.
+      - name: Vérifier le lanceur d’endurance et sa collecte de mesures
+        run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0
