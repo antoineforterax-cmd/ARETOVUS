@@ -1084,23 +1084,56 @@ fn sync_from_peer_inner(
     data_dir: &Path,
     persist: bool,
 ) -> Result<usize, P2pError> {
-    let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
-    set_timeouts(&stream)?;
-    let session_started = Instant::now();
-    let mut session_bytes = 77usize;
+    sync_from_peer_with_request_limit(
+        address,
+        chain,
+        data_dir,
+        persist,
+        MAX_SESSION_REQUESTS.saturating_sub(2),
+    )
+}
+
+fn sync_from_peer_with_request_limit(
+    address: SocketAddr,
+    chain: &mut AccountForkChain,
+    data_dir: &Path,
+    persist: bool,
+    restart_after_requests: usize,
+) -> Result<usize, P2pError> {
+    let (mut stream, mut session_bytes) = open_sync_session(address, chain)?;
+    let mut session_started = Instant::now();
     let mut session_requests = 0usize;
-    send_hello(&mut stream, chain)?;
-    let reply = read_frame(&mut stream)?;
-    add_session_bytes(&mut session_bytes, reply.len() + 4)?;
-    if reply.first() == Some(&ERROR_REPLY) {
-        return Err(P2pError::Protocol("peer rejected network identity"));
-    }
-    check_hello(&reply, chain)?;
     let mut cursor = 1u64;
     let mut accepted = 0;
+    let mut last_block_hash = None;
     loop {
-        if session_started.elapsed() > MAX_SESSION_DURATION {
-            return Err(P2pError::Protocol("peer session duration exceeded"));
+        // A session cannot assume that an inventory fits within its byte, request, or
+        // time budget. Reopen before any of those limits and prove that the last
+        // applied cursor still names the same block on the new connection.
+        if session_bytes > MAX_SESSION_BYTES.saturating_sub(MAX_FRAME + 17)
+            || session_requests >= restart_after_requests
+            || session_started.elapsed() >= MAX_SESSION_DURATION.saturating_sub(IO_TIMEOUT * 2)
+        {
+            drop(stream);
+            (stream, session_bytes) = open_sync_session(address, chain)?;
+            session_started = Instant::now();
+            session_requests = 0;
+            if let Some(expected_hash) = last_block_hash {
+                add_session_request(&mut session_requests)?;
+                add_session_bytes(&mut session_bytes, 13)?;
+                let mut probe = vec![GET_BLOCKS];
+                probe.extend_from_slice(&(cursor - 1).to_be_bytes());
+                write_frame(&mut stream, &probe)?;
+                let reply = read_frame(&mut stream)?;
+                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+                let (total, blocks) = read_blocks(&reply)?;
+                if total < cursor
+                    || blocks.first().and_then(|block| block.header.hash().ok())
+                        != Some(expected_hash)
+                {
+                    return Err(P2pError::Protocol("peer inventory changed during sync"));
+                }
+            }
         }
         add_session_request(&mut session_requests)?;
         add_session_bytes(&mut session_bytes, 13)?;
@@ -1124,6 +1157,7 @@ fn sync_from_peer_inner(
             }
             break;
         }
+        last_block_hash = blocks.last().and_then(|block| block.header.hash().ok());
         cursor = cursor
             .checked_add(
                 u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?,
@@ -1151,6 +1185,23 @@ fn sync_from_peer_inner(
         }
     }
     Ok(accepted)
+}
+
+fn open_sync_session(
+    address: SocketAddr,
+    chain: &AccountForkChain,
+) -> Result<(TcpStream, usize), P2pError> {
+    let mut stream = TcpStream::connect_timeout(&address, IO_TIMEOUT)?;
+    set_timeouts(&stream)?;
+    let mut session_bytes = 77usize;
+    send_hello(&mut stream, chain)?;
+    let reply = read_frame(&mut stream)?;
+    add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+    if reply.first() == Some(&ERROR_REPLY) {
+        return Err(P2pError::Protocol("peer rejected network identity"));
+    }
+    check_hello(&reply, chain)?;
+    Ok((stream, session_bytes))
 }
 
 /// Fetch bounded pages of pending transactions from a compatible testnet peer.
@@ -1314,6 +1365,57 @@ mod tests {
             .map(|block| block.header.hash().unwrap())
             .collect();
         assert_eq!(after_hashes, vec![first_hash, second_hash, late_hash]);
+    }
+
+    #[test]
+    fn sync_reopens_session_and_checks_last_cursor_before_continuing() {
+        let mut remote = chain();
+        let first =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
+        let first_hash = first.header.hash().unwrap();
+        remote.submit(first.clone()).unwrap();
+        let second = AccountBlock::build(NetworkId::Regtest, first_hash, 3, 0, vec![]).unwrap();
+        let second_hash = second.header.hash().unwrap();
+        remote.submit(second).unwrap();
+
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut first_session, _) = listener.accept().unwrap();
+            set_timeouts(&first_session).unwrap();
+            read_frame(&mut first_session).unwrap();
+            send_hello(&mut first_session, &remote).unwrap();
+            assert_eq!(read_frame(&mut first_session).unwrap()[0], GET_BLOCKS);
+            let bytes = first.to_canonical_bytes().unwrap();
+            let mut first_page = vec![BLOCKS_REPLY];
+            first_page.extend_from_slice(&3u64.to_be_bytes());
+            first_page.extend_from_slice(&1u32.to_be_bytes());
+            first_page.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+            first_page.extend_from_slice(&bytes);
+            write_frame(&mut first_session, &first_page).unwrap();
+            drop(first_session);
+
+            let (mut second_session, _) = listener.accept().unwrap();
+            set_timeouts(&second_session).unwrap();
+            read_frame(&mut second_session).unwrap();
+            send_hello(&mut second_session, &remote).unwrap();
+            let probe = read_frame(&mut second_session).unwrap();
+            assert_eq!(probe[0], GET_BLOCKS);
+            assert_eq!(u64::from_be_bytes(probe[1..9].try_into().unwrap()), 1);
+            write_frame(&mut second_session, &build_blocks_page(&remote, 1).unwrap()).unwrap();
+            let request = read_frame(&mut second_session).unwrap();
+            assert_eq!(u64::from_be_bytes(request[1..9].try_into().unwrap()), 2);
+            write_frame(&mut second_session, &build_blocks_page(&remote, 2).unwrap()).unwrap();
+        });
+
+        let mut client = chain();
+        let count =
+            sync_from_peer_with_request_limit(address, &mut client, Path::new("."), false, 1)
+                .unwrap();
+        assert_eq!(count, 2);
+        assert_eq!(client.height(), 2);
+        assert_eq!(client.tip_hash(), second_hash);
+        server.join().unwrap();
     }
 
     #[test]
