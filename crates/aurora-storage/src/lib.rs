@@ -353,8 +353,10 @@ fn decode_index(
             return Err(StorageError::InvalidFormat("invalid index block count"));
         }
         body[73..]
-            .chunks_exact(32)
-            .map(|chunk| Hash256::from_bytes(chunk.try_into().expect("fixed hash")))
+            .as_chunks::<32>()
+            .0
+            .iter()
+            .map(|chunk| Hash256::from_bytes(*chunk))
             .collect::<Vec<_>>()
     } else {
         if body.len() < 81 + 32 {
@@ -375,8 +377,8 @@ fn decode_index(
             return Err(StorageError::InvalidFormat("invalid v6 page count"));
         }
         let mut ids = Vec::new();
-        for (page_number, digest) in body[81..].chunks_exact(32).enumerate() {
-            let page_id = Hash256::from_bytes(digest.try_into().expect("fixed hash"));
+        for (page_number, digest) in body[81..].as_chunks::<32>().0.iter().enumerate() {
+            let page_id = Hash256::from_bytes(*digest);
             let page_path = dir
                 .join(INDEX_PAGE_DIRECTORY)
                 .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
@@ -430,8 +432,10 @@ fn decode_index_page(bytes: &[u8], expected_start: usize) -> Result<Vec<Hash256>
         return Err(StorageError::InvalidFormat("invalid index page range"));
     }
     Ok(body[24..]
-        .chunks_exact(32)
-        .map(|chunk| Hash256::from_bytes(chunk.try_into().expect("fixed hash")))
+        .as_chunks::<32>()
+        .0
+        .iter()
+        .map(|chunk| Hash256::from_bytes(*chunk))
         .collect())
 }
 
@@ -597,21 +601,7 @@ fn decode_snapshot(
     if cursor != body.len() {
         return Err(StorageError::InvalidFormat("trailing snapshot bytes"));
     }
-    let mut iter = blocks.into_iter();
-    let genesis = iter
-        .next()
-        .ok_or(StorageError::InvalidFormat("missing genesis"))?;
-    let mut chain = AccountForkChain::new_with_protocol_params(
-        genesis,
-        initial_difficulty,
-        params,
-        rewards,
-        initial_state,
-    )?;
-    for block in iter {
-        chain.submit(block)?;
-    }
-    Ok(chain)
+    replay_blocks(blocks, initial_difficulty, params, rewards, initial_state)
 }
 
 #[cfg(test)]
