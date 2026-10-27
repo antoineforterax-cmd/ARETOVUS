@@ -288,7 +288,9 @@ fn prune_unreferenced_index_pages(dir: &Path) -> Result<(), StorageError> {
     }
     for entry in fs::read_dir(page_dir)? {
         let path = entry?.path();
-        if path.extension().is_some_and(|ext| ext == INDEX_PAGE_EXTENSION)
+        if path
+            .extension()
+            .is_some_and(|ext| ext == INDEX_PAGE_EXTENSION)
             && !path
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -327,7 +329,10 @@ pub fn load_latest_snapshot(
                 let format = u32::from_be_bytes(bytes[8..12].try_into().expect("valid index"));
                 Ok((chain, format))
             } else {
-                Ok((decode_snapshot(&bytes, initial_state.clone())?, FORMAT_VERSION))
+                Ok((
+                    decode_snapshot(&bytes, initial_state.clone())?,
+                    FORMAT_VERSION,
+                ))
             }
         })();
         let (chain, format) = match result {
@@ -343,7 +348,9 @@ pub fn load_latest_snapshot(
                 continue;
             }
         };
-        let modified = fs::metadata(&path).and_then(|metadata| metadata.modified()).ok();
+        let modified = fs::metadata(&path)
+            .and_then(|metadata| metadata.modified())
+            .ok();
         if best.as_ref().is_none_or(|current| {
             chain.chain_work() > current.chain_work()
                 || (chain.chain_work() == current.chain_work()
@@ -957,7 +964,9 @@ mod tests {
                     .is_some_and(|ext| ext == INDEX_EXTENSION)
             })
             .count();
-        let pages = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY)).unwrap().count();
+        let pages = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY))
+            .unwrap()
+            .count();
         assert_eq!(manifests, 3);
         assert_eq!(pages, 3);
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
