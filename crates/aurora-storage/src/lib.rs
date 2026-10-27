@@ -1111,6 +1111,24 @@ mod tests {
     }
 
     #[test]
+    fn oversized_v6_manifest_count_is_rejected_without_panicking() {
+        let path = dir();
+        let index = save_snapshot(&path, &chain()).unwrap();
+        let mut bytes = fs::read(&index).unwrap();
+        let body_len = bytes.len() - CHECKSUM_LEN;
+        bytes[69..77].copy_from_slice(&u64::MAX.to_be_bytes());
+        bytes[77..81].copy_from_slice(&u32::MAX.to_be_bytes());
+        let checksum = sha256_plain(&bytes[..body_len]);
+        bytes[body_len..].copy_from_slice(checksum.as_bytes());
+        fs::write(index, bytes).unwrap();
+        assert!(matches!(
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
+            Err(StorageError::InvalidFormat(_))
+        ));
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();
         let file = save_snapshot(&path, &chain()).unwrap();
