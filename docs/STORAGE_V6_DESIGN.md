@@ -1,6 +1,6 @@
 # AURORA — proposition de stockage et de synchronisation v6
 
-**Statut : implémentation partielle, non validée par CI.** La branche écrit déjà un manifeste et des pages v6, lit v4/v5, et sert les blocs dans un ordre d’arrivée stable. Le P2P refuse encore plus de 100 000 blocs connus et conserve des états coûteux. GitHub Actions ne démarre plus les jobs depuis le 27 octobre 2026 pour un problème de facturation/limite. Aucun fonds réel.
+**Statut : implémentation partielle; CI v6 verte sur `21a24c7`.** La branche écrit déjà un manifeste et des pages v6, lit v4/v5, et sert les blocs dans un ordre d’arrivée stable. Le P2P refuse encore plus de 100 000 blocs connus et conserve des états coûteux. Les jobs GitHub Actions ont repris et la [CI v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614) a réussi; l’essai de volume manque toujours. Aucun fonds réel.
 
 ## Problème observé
 
@@ -18,7 +18,7 @@ Le stockage v5 écrit un index monolithique contenant tous les identifiants de b
 ## Séquence d'implémentation
 
 - Fait dans le code : ordre d’acceptation persistant et test d’une branche ancienne qui ne décale pas le curseur.
-- Fait dans le code, à vérifier par CI : écriture/lecture du manifeste et des pages v6, test de corruption et migration v5. Restent l’essai de coupure au milieu d’une page, la restauration après plusieurs générations et la mesure de volume.
+- Fait et vérifié par CI : écriture/lecture du manifeste et des pages v6, test de corruption et migration v5. Restent l’essai de coupure au milieu d’une page, la restauration après plusieurs générations et la mesure de volume.
 - Introduire l'API P2P u64 et la reconnexion de session, puis tester une chaîne au-delà de la petite borne injectée dans les tests.
 - Réduire la mémoire des états sans modifier la validation des blocs, les récompenses ni la sélection au travail cumulé.
 - Mesurer sur une chaîne synthétique de plus de 100 000 blocs, incluant branches secondaires, redémarrage, restauration et sync depuis zéro; conserver CPU, RAM, disque, durée et hashes des sommets dans le rapport d'essai.
