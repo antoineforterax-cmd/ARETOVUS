@@ -745,7 +745,17 @@ mod tests {
         original.submit(late).unwrap();
         let expected = [genesis, first_hash, second_hash, late_hash];
 
-        save_snapshot(&path, &original).unwrap();
+        let v6_index = save_snapshot(&path, &original).unwrap();
+        let v6_bytes = fs::read(v6_index).unwrap();
+        let mut legacy = v6_bytes[..69].to_vec();
+        legacy[8..12].copy_from_slice(&LEGACY_INDEX_VERSION.to_be_bytes());
+        legacy.extend_from_slice(&(original.known_block_count() as u32).to_be_bytes());
+        for block in original.all_blocks_by_height() {
+            legacy.extend_from_slice(block.header.hash().unwrap().as_bytes());
+        }
+        let checksum = sha256_plain(&legacy);
+        legacy.extend_from_slice(checksum.as_bytes());
+        fs::write(path.join("legacy.auridx"), legacy).unwrap();
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         let actual: Vec<_> = restored
             .arrival_block_page(0, 4)
