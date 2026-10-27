@@ -4,6 +4,7 @@
 //! caller-provided deterministic genesis state. This is not an optimized database or
 //! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
+    collections::HashSet,
     error::Error,
     fmt,
     fs::{self, File, OpenOptions},
@@ -166,6 +167,9 @@ pub fn save_snapshot(
     ));
     write_immutable(&destination, &body, MAX_SNAPSHOT_BYTES)?;
     prune_old_indexes(dir, &destination);
+    if let Err(error) = prune_unreferenced_index_pages(dir) {
+        eprintln!("cannot prune old AURORA index pages: {error}");
+    }
     Ok(destination)
 }
 
@@ -234,6 +238,59 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             eprintln!("cannot prune old AURORA index {}: {error}", path.display());
         }
     }
+}
+
+/// Delete only pages absent from every retained, checksummed manifest.
+/// If any manifest is unreadable, keep all pages so a recovery point is not lost.
+fn prune_unreferenced_index_pages(dir: &Path) -> Result<(), StorageError> {
+    let mut referenced = HashSet::new();
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if !path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
+            continue;
+        }
+        let bytes = read_bounded(&path)?;
+        if bytes.len() < 12 + CHECKSUM_LEN {
+            return Err(StorageError::InvalidFormat("invalid retained index length"));
+        }
+        let body_len = bytes.len() - CHECKSUM_LEN;
+        let (body, checksum) = bytes.split_at(body_len);
+        if sha256_plain(body).as_bytes() != checksum || &body[..8] != INDEX_MAGIC {
+            return Err(StorageError::ChecksumMismatch);
+        }
+        let version = u32::from_be_bytes(body[8..12].try_into().expect("fixed slice"));
+        if version == LEGACY_INDEX_VERSION {
+            continue;
+        }
+        if version != INDEX_VERSION || body.len() < 81 {
+            return Err(StorageError::InvalidFormat("unsupported retained index"));
+        }
+        let count = u64::from_be_bytes(body[69..77].try_into().expect("fixed slice"));
+        let page_count = u32::from_be_bytes(body[77..81].try_into().expect("fixed slice")) as usize;
+        if count == 0 || body.len() != 81 + page_count * 32 {
+            return Err(StorageError::InvalidFormat("invalid retained page list"));
+        }
+        for digest in body[81..].as_chunks::<32>().0 {
+            let page_id = Hash256::from_bytes(*digest);
+            referenced.insert(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        }
+    }
+    let page_dir = dir.join(INDEX_PAGE_DIRECTORY);
+    if !page_dir.exists() {
+        return Ok(());
+    }
+    for entry in fs::read_dir(page_dir)? {
+        let path = entry?.path();
+        if path.extension().is_some_and(|ext| ext == INDEX_PAGE_EXTENSION)
+            && !path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| referenced.contains(name))
+        {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
 }
 
 /// Load and validate all available indexes or legacy snapshots, then select by cumulative work.
@@ -838,6 +895,42 @@ mod tests {
         let blocks = fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count();
         assert_eq!(indexes, 3);
         assert_eq!(blocks, chain.known_block_count());
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), chain.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn v6_pages_are_pruned_only_after_last_manifest_reference() {
+        let path = dir();
+        let mut chain = chain();
+        for timestamp in 1..=4 {
+            if timestamp > 1 {
+                let block = AccountBlock::build(
+                    NetworkId::Regtest,
+                    chain.tip_hash(),
+                    timestamp,
+                    0,
+                    Vec::new(),
+                )
+                .unwrap();
+                chain.submit(block).unwrap();
+            }
+            save_snapshot(&path, &chain).unwrap();
+        }
+        let manifests = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION)
+            })
+            .count();
+        let pages = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY)).unwrap().count();
+        assert_eq!(manifests, 3);
+        assert_eq!(pages, 3);
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), chain.tip_hash());
         fs::remove_dir_all(path).unwrap();
