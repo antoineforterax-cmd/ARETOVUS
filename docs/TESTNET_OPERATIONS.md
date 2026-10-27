@@ -1,6 +1,6 @@
 # Exploitation et reprise du testnet expérimental AURORA
 
-**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (CI v6 passée; changements P2P v4 et états à valider). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
+**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (CI P2P v4 et états passée; campagnes prolongées en cours). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
 
 ## Vérifier une installation
 
