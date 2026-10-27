@@ -1,6 +1,6 @@
 # Exploitation et reprise du testnet expérimental AURORA
 
-**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables et index `AURORIDX` v5. Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte aussi les anciens snapshots `AURORSNP` v4 et réécrit les prochains états en v5. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
+**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (code en validation). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
 
 ## Vérifier une installation
 
@@ -23,7 +23,7 @@ Une erreur ou un sommet inattendu interdit de traiter la copie comme une restaur
 ## Sauvegarder
 
 1. Arrêter `testnet serve`, `testnet mine` et `testnet sync` qui utilisent ce dossier. Attendre leur fin et noter la hauteur et le sommet via `testnet verify`.
-2. Copier **tout** le dossier de données vers un autre support : les fichiers `snapshot-*.auridx`, le sous-dossier `blocks-v5/` et, s’ils existent, les anciens `*.aurora`. Un index v5 seul ne constitue pas une sauvegarde. Les fichiers `*.tmp` incomplets sont ignorés au chargement. Le fichier `.aurora.lock` peut être copié; il n’est pas un snapshot et le verrou du système d’exploitation ne reste pas actif dans la copie.
+2. Copier **tout** le dossier de données vers un autre support : les fichiers `snapshot-*.auridx`, les sous-dossiers `blocks-v5/` et `index-pages-v6/`, ainsi que les anciens `*.aurora` s’ils existent. Un manifeste v6 sans ses pages et ses blocs ne constitue pas une sauvegarde. Les fichiers `*.tmp` incomplets sont ignorés au chargement. Le fichier `.aurora.lock` peut être copié; il n’est pas un snapshot et le verrou du système d’exploitation ne reste pas actif dans la copie.
 3. Exécuter `testnet verify --data-dir` sur la copie et comparer hauteur/sommet. Garder au moins une copie hors machine et noter le commit du nœud qui a créé l’index. Les fichiers de clés wallet sont séparés du dossier du nœud et demandent une sauvegarde propre.
 
 Exemple PowerShell, nœud arrêté :
@@ -44,8 +44,8 @@ Le code synchronise chaque nouveau fichier et, sur Unix, son répertoire après 
 ## Mettre à jour et revenir en arrière
 
 - Épingler le commit ou une future version publiée; sauvegarder et vérifier les données avant toute mise à jour. Lancer d’abord le nouveau binaire sur **une copie** du dossier et comparer les paramètres, hauteur et sommet.
-- La lecture v4 → v5 concerne uniquement le format de stockage compatible avec les mêmes règles de consensus. Elle ne migre pas les anciens réseaux testnet Ed25519/hybrides vers le profil v3 ML-DSA-65, ni les soldes de ces réseaux.
-- Si une mise à jour change l’empreinte de protocole ou les règles économiques, créer un nouveau dossier/réseau de test selon son guide. Pour revenir à l’ancien binaire, repartir de la sauvegarde créée avant mise à jour; ne pas supposer qu’il sait lire l’index v5.
+- La lecture v4/v5 et l’écriture v6 concernent uniquement le format de stockage compatible avec les mêmes règles de consensus. Elle ne migre pas les anciens réseaux testnet Ed25519/hybrides vers le profil v3 ML-DSA-65, ni les soldes de ces réseaux.
+- Si une mise à jour change l’empreinte de protocole ou les règles économiques, créer un nouveau dossier/réseau de test selon son guide. Pour revenir à l’ancien binaire, repartir de la sauvegarde créée avant mise à jour; ne pas supposer qu’il sait lire l’index v6.
 
 ## Incident et suivi
 
