@@ -29,7 +29,7 @@ Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au 
 
 Le nœud construit une genèse testnet vide et déterministe. Paramètres actuels : 8 bits initiaux, cible 60 secondes, fenêtre de 10 blocs, ajustement maximal de 2 bits par fenêtre, bornes 4 à 20 bits. La configuration persistée et une empreinte de protocole distinguent ce testnet des configurations incompatibles.
 
-Le stockage v6 de cette branche écrit les blocs acceptés une fois dans `blocks-v5/`, sous leur hash. Il écrit leur ordre d’arrivée dans des pages immuables checksummées dans `index-pages-v6/`, puis publie atomiquement un manifeste `AURORIDX` engageant les pages et les paramètres de consensus. Les trois derniers manifestes sont conservés. Le chargeur lit aussi les index v5 et les snapshots `AURORSNP` v4; il vérifie les hashes, rejoue tous les blocs et choisit la chaîne valide au travail cumulé maximal. La version v6 n’a pas encore passé la CI depuis son introduction, car GitHub bloque actuellement le démarrage des jobs pour un problème de facturation/limite. Une sauvegarde doit copier le dossier entier, notamment les deux sous-dossiers et les manifestes. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md). Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
+Le stockage v6 de cette branche écrit les blocs acceptés une fois dans `blocks-v5/`, sous leur hash. Il écrit leur ordre d’arrivée dans des pages immuables checksummées dans `index-pages-v6/`, puis publie atomiquement un manifeste `AURORIDX` engageant les pages et les paramètres de consensus. Les trois derniers manifestes sont conservés. Le chargeur lit aussi les index v5 et les snapshots `AURORSNP` v4; il vérifie les hashes, rejoue tous les blocs et choisit la chaîne valide au travail cumulé maximal. La version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614); aucun essai de volume ou de panne matérielle n’en découle. Une sauvegarde doit copier le dossier entier, notamment les deux sous-dossiers et les manifestes. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
 ## Réseau expérimental
 
@@ -76,7 +76,7 @@ Avant d’élargir les essais, restent à faire :
 1. Découverte et annonces multi-sauts spontanées, si l’usage les exige; le profil actuel garde des adresses statiques et un rattrapage périodique.
 2. Scénarios prolongés de coupure/reprise, inventaires menteurs, connexions lentes et saturation concurrente.
 3. Simulation indépendante du retarget avec dérive d’horloge, longues pauses, rafales et réorganisations.
-4. Essais avec disque réellement plein, panne électrique et sauvegardes hors machine malgré les tests de reprise, copie de sauvegarde et migrations v4→v5 déjà réalisées; la migration vers v6 attend sa CI.
+4. Essais avec disque réellement plein, panne électrique et sauvegardes hors machine malgré les tests de reprise, copie de sauvegarde et migrations v4→v5 déjà réalisées; la migration vers v6 a passé la CI, mais pas les essais de panne réelle.
 5. Campagnes fuzz prolongées et revue indépendante du consensus et du code avant toute prétention de sécurité pour des fonds réels.
 
 Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. DID et récupération restent au stade de conception (`docs/DID_RECOVERY_DESIGN.md`) et n’altèrent pas l’état consensus. L’explorateur, le site de présentation et la vente sont hors de ce jalon.
