@@ -316,18 +316,22 @@ pub fn load_latest_snapshot(
         .collect::<Vec<_>>();
     paths.sort();
     let mut best: Option<AccountForkChain> = None;
+    let mut best_format = 0u32;
+    let mut best_modified = None;
     let mut rejected_snapshot: Option<StorageError> = None;
     for path in paths {
         let result = (|| {
             let bytes = read_bounded(&path)?;
             if path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
-                decode_index(&bytes, dir, initial_state.clone())
+                let chain = decode_index(&bytes, dir, initial_state.clone())?;
+                let format = u32::from_be_bytes(bytes[8..12].try_into().expect("valid index"));
+                Ok((chain, format))
             } else {
-                decode_snapshot(&bytes, initial_state.clone())
+                Ok((decode_snapshot(&bytes, initial_state.clone())?, FORMAT_VERSION))
             }
         })();
-        let chain = match result {
-            Ok(chain) => chain,
+        let (chain, format) = match result {
+            Ok(value) => value,
             Err(error) => {
                 eprintln!(
                     "ignoring invalid AURORA snapshot {}: {error}",
@@ -339,13 +343,20 @@ pub fn load_latest_snapshot(
                 continue;
             }
         };
+        let modified = fs::metadata(&path).and_then(|metadata| metadata.modified()).ok();
         if best.as_ref().is_none_or(|current| {
             chain.chain_work() > current.chain_work()
                 || (chain.chain_work() == current.chain_work()
                     && (chain.tip_hash() < current.tip_hash()
                         || (chain.tip_hash() == current.tip_hash()
-                            && chain.known_block_count() > current.known_block_count())))
+                            && (chain.known_block_count() > current.known_block_count()
+                                || (chain.known_block_count() == current.known_block_count()
+                                    && (format > best_format
+                                        || (format == best_format
+                                            && modified >= best_modified)))))))
         }) {
+            best_format = format;
+            best_modified = modified;
             best = Some(chain);
         }
     }
