@@ -267,7 +267,14 @@ fn prune_unreferenced_index_pages(dir: &Path) -> Result<(), StorageError> {
         }
         let count = u64::from_be_bytes(body[69..77].try_into().expect("fixed slice"));
         let page_count = u32::from_be_bytes(body[77..81].try_into().expect("fixed slice")) as usize;
-        if count == 0 || body.len() != 81 + page_count * 32 {
+        let listed_bytes = page_count
+            .checked_mul(32)
+            .and_then(|bytes| bytes.checked_add(81))
+            .ok_or(StorageError::InvalidFormat("retained page count overflow"))?;
+        if count == 0
+            || u64::from(page_count as u32) != count.div_ceil(INDEX_PAGE_BLOCKS as u64)
+            || body.len() != listed_bytes
+        {
             return Err(StorageError::InvalidFormat("invalid retained page list"));
         }
         for digest in body[81..].as_chunks::<32>().0 {
