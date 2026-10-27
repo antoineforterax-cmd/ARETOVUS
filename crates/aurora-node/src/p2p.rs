@@ -537,8 +537,7 @@ fn handle_peer_shared(
         add_session_bytes(&mut session_bytes, request.len() + 4)?;
         match request.first() {
             Some(&GET_BLOCKS) if request.len() == 9 => {
-                let start =
-                    u64::from_be_bytes(request[1..9].try_into().expect("fixed slice"));
+                let start = u64::from_be_bytes(request[1..9].try_into().expect("fixed slice"));
                 let frame = {
                     let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                     build_blocks_page(&chain, start)?
@@ -1111,8 +1110,10 @@ fn sync_from_peer_inner(
         let page = read_frame(&mut stream)?;
         add_session_bytes(&mut session_bytes, page.len() + 4)?;
         let (total, blocks) = read_blocks(&page)?;
-        if total < cursor || u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?
-            > total.saturating_sub(cursor) {
+        if total < cursor
+            || u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?
+                > total.saturating_sub(cursor)
+        {
             return Err(P2pError::Protocol("peer block inventory is inconsistent"));
         }
         if blocks.is_empty() {
@@ -1124,7 +1125,9 @@ fn sync_from_peer_inner(
             break;
         }
         cursor = cursor
-            .checked_add(u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?)
+            .checked_add(
+                u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?,
+            )
             .ok_or(P2pError::Protocol("cursor overflow"))?;
         let mut candidate = chain.clone();
         let mut page_accepted = 0usize;
