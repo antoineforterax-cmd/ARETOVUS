@@ -442,12 +442,13 @@ fn decode_index(
         ))
         .map_err(|_| StorageError::InvalidFormat("index count exceeds platform size"))?;
         let page_count = u32::from_be_bytes(body[77..81].try_into().expect("fixed slice")) as usize;
-        let digest_bytes = page_count
+        let expected_len = page_count
             .checked_mul(32)
+            .and_then(|bytes| bytes.checked_add(81))
             .ok_or(StorageError::InvalidFormat("page count overflow"))?;
         if count == 0
             || page_count != count.div_ceil(INDEX_PAGE_BLOCKS)
-            || body.len() != 81 + digest_bytes
+            || body.len() != expected_len
         {
             return Err(StorageError::InvalidFormat("invalid v6 page count"));
         }
