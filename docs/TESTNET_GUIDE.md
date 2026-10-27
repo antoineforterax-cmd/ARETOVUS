@@ -134,13 +134,13 @@ Le scénario démarre des processus séparés, crée un wallet, soumet une trans
 
 ## Vérifier, sauvegarder et restaurer les données
 
-Le stockage courant écrit les blocs une seule fois dans `blocks-v5/` et conserve trois index `snapshot-*.auridx`. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
+Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 attend encore une CI exécutable pour être considérée comme vérifiée. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
 
 ```sh
 cargo run --locked -p aurora-node -- testnet verify --data-dir ./aurora-seed
 ```
 
-Copie ensuite **tout** le dossier vers un autre emplacement et exécute la même commande sur cette copie; compare la hauteur et le hash du sommet. Un fichier index sans `blocks-v5/` ne suffit pas. La procédure complète de sauvegarde, restauration, mise à jour et incident est dans [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
+Copie ensuite **tout** le dossier vers un autre emplacement et exécute la même commande sur cette copie; compare la hauteur et le hash du sommet. Un manifeste sans `blocks-v5/` et `index-pages-v6/` ne suffit pas. La procédure complète de sauvegarde, restauration, mise à jour et incident est dans [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
 ## Politique monétaire testnet
 
