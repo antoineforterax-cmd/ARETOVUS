@@ -134,7 +134,7 @@ Le scénario démarre des processus séparés, crée un wallet, soumet une trans
 
 ## Vérifier, sauvegarder et restaurer les données
 
-Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 attend encore une CI exécutable pour être considérée comme vérifiée. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
+Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614); les essais de volume et de panne matérielle restent à faire. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
 
 ```sh
 cargo run --locked -p aurora-node -- testnet verify --data-dir ./aurora-seed
