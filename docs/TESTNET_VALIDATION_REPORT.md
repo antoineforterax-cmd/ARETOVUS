@@ -48,6 +48,12 @@ Les trois cibles ont été exécutées pendant 301 secondes chacune sur le commi
 
 Aucun crash n’a été rapporté pendant ces campagnes. Les journaux de campagne sont dans le workflow lié ci-dessus. Ces essais CI sont bornés; ils ne remplacent pas un fuzzing prolongé avec corpus conservé et revue humaine indépendante.
 
+## État des changements v6 au 27 octobre 2026
+
+La branche a ajouté l’ordre d’arrivée stable pour les pages P2P, un index de stockage v6 paginé, sa lecture avec compatibilité v4/v5, et des tests de migration, corruption, rétention de pages et compte malformé. Ces changements **ne sont pas validés par la CI**. Le dernier [contrôle CI vert avant v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40406551356) portait sur le changement d’ordre réseau. Les [jobs du correctif v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40483790636) ont été refusés avant exécution par GitHub avec l’annotation : paiement récent échoué ou limite de dépenses à augmenter. Leur statut « failure » ne représente pas un échec des tests Rust.
+
+Sur une copie propre de la branche, le 27 octobre, `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous Windows après correction du formatage. Le contrôle local `cargo clippy`/compilation n’a pas abouti : la cible MSVC manque de `link.exe`, et le contrôle d’applications Windows refuse l’exécution des scripts de construction de la cible GNU (erreur 4551). Aucun test v6 complet, paquet multi-système, soak ou fuzz récent ne peut être revendiqué. Le P2P garde encore son plafond de 100 000 blocs et la croissance des états n’est pas résolue.
+
 ## Ce que ces essais ne valident pas
 
 - Une saturation réelle du disque, une panne électrique, la durabilité après redémarrage matériel, ou une restauration interversion.
