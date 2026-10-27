@@ -28,7 +28,6 @@ use aurora_storage::save_snapshot;
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
-const MAX_SYNC_BLOCKS: usize = 100_000;
 pub const MAX_DISCOVERED_PEERS: usize = 64;
 const MAX_ADVERTISED_PEERS: usize = 32;
 /// Hard aggregate cap per peer session, independent of per-frame limits.
@@ -412,21 +411,21 @@ fn check_hello(frame: &[u8], chain: &AccountForkChain) -> Result<(), P2pError> {
     }
     Ok(())
 }
-fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, P2pError> {
-    let total = chain.known_block_count();
+fn build_blocks_page(chain: &AccountForkChain, start: u64) -> Result<Vec<u8>, P2pError> {
+    let total = u64::try_from(chain.known_block_count())
+        .map_err(|_| P2pError::Protocol("block inventory exceeds u64"))?;
     if start > total {
         return Err(P2pError::Protocol("block cursor out of range"));
     }
     let mut frame = vec![BLOCKS_REPLY];
-    frame.extend_from_slice(
-        &u32::try_from(total)
-            .map_err(|_| P2pError::Protocol("block inventory exceeds transport limit"))?
-            .to_be_bytes(),
-    );
+    frame.extend_from_slice(&total.to_be_bytes());
     let mut count = 0u32;
     let count_offset = frame.len();
     frame.extend_from_slice(&count.to_be_bytes());
-    for block in chain.arrival_block_page(start, PAGE_BLOCKS) {
+    for block in chain.arrival_block_page(
+        usize::try_from(start).map_err(|_| P2pError::Protocol("block cursor exceeds usize"))?,
+        PAGE_BLOCKS,
+    ) {
         let encoded = block
             .to_canonical_bytes()
             .map_err(|_| P2pError::Protocol("block encoding failed"))?;
@@ -443,16 +442,16 @@ fn build_blocks_page(chain: &AccountForkChain, start: usize) -> Result<Vec<u8>, 
     frame[count_offset..count_offset + 4].copy_from_slice(&count.to_be_bytes());
     Ok(frame)
 }
-pub fn read_blocks(frame: &[u8]) -> Result<(usize, Vec<AccountBlock>), P2pError> {
-    if frame.len() < 9 || frame[0] != BLOCKS_REPLY {
+pub fn read_blocks(frame: &[u8]) -> Result<(u64, Vec<AccountBlock>), P2pError> {
+    if frame.len() < 13 || frame[0] != BLOCKS_REPLY {
         return Err(P2pError::Protocol("invalid block page"));
     }
-    let total = u32::from_be_bytes(frame[1..5].try_into().expect("fixed slice")) as usize;
-    let count = u32::from_be_bytes(frame[5..9].try_into().expect("fixed slice")) as usize;
-    if count > PAGE_BLOCKS || total > MAX_SYNC_BLOCKS {
+    let total = u64::from_be_bytes(frame[1..9].try_into().expect("fixed slice"));
+    let count = u32::from_be_bytes(frame[9..13].try_into().expect("fixed slice")) as usize;
+    if count > PAGE_BLOCKS {
         return Err(P2pError::Protocol("peer inventory exceeds limit"));
     }
-    let mut cursor: usize = 9;
+    let mut cursor: usize = 13;
     let mut blocks = Vec::with_capacity(count);
     for _ in 0..count {
         let len_end = cursor
@@ -537,9 +536,9 @@ fn handle_peer_shared(
         add_session_request(&mut session_requests)?;
         add_session_bytes(&mut session_bytes, request.len() + 4)?;
         match request.first() {
-            Some(&GET_BLOCKS) if request.len() == 5 => {
+            Some(&GET_BLOCKS) if request.len() == 9 => {
                 let start =
-                    u32::from_be_bytes(request[1..5].try_into().expect("fixed slice")) as usize;
+                    u64::from_be_bytes(request[1..9].try_into().expect("fixed slice"));
                 let frame = {
                     let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                     build_blocks_page(&chain, start)?
@@ -1098,24 +1097,22 @@ fn sync_from_peer_inner(
         return Err(P2pError::Protocol("peer rejected network identity"));
     }
     check_hello(&reply, chain)?;
-    let mut cursor = 1usize;
+    let mut cursor = 1u64;
     let mut accepted = 0;
     loop {
         if session_started.elapsed() > MAX_SESSION_DURATION {
             return Err(P2pError::Protocol("peer session duration exceeded"));
         }
         add_session_request(&mut session_requests)?;
-        add_session_bytes(&mut session_bytes, 9)?;
+        add_session_bytes(&mut session_bytes, 13)?;
         let mut request = vec![GET_BLOCKS];
-        request.extend_from_slice(
-            &(u32::try_from(cursor).map_err(|_| P2pError::Protocol("chain too long"))?)
-                .to_be_bytes(),
-        );
+        request.extend_from_slice(&cursor.to_be_bytes());
         write_frame(&mut stream, &request)?;
         let page = read_frame(&mut stream)?;
         add_session_bytes(&mut session_bytes, page.len() + 4)?;
         let (total, blocks) = read_blocks(&page)?;
-        if total < cursor || blocks.len() > total.saturating_sub(cursor) {
+        if total < cursor || u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?
+            > total.saturating_sub(cursor) {
             return Err(P2pError::Protocol("peer block inventory is inconsistent"));
         }
         if blocks.is_empty() {
@@ -1127,7 +1124,7 @@ fn sync_from_peer_inner(
             break;
         }
         cursor = cursor
-            .checked_add(blocks.len())
+            .checked_add(u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?)
             .ok_or(P2pError::Protocol("cursor overflow"))?;
         let mut candidate = chain.clone();
         let mut page_accepted = 0usize;
@@ -1647,12 +1644,12 @@ mod tests {
     #[test]
     fn malformed_or_oversized_peer_inventories_are_rejected() {
         let mut oversized = vec![BLOCKS_REPLY];
-        oversized.extend_from_slice(&((MAX_SYNC_BLOCKS as u32) + 1).to_be_bytes());
+        oversized.extend_from_slice(&(100_001u64).to_be_bytes());
         oversized.extend_from_slice(&0u32.to_be_bytes());
-        assert!(read_blocks(&oversized).is_err());
+        assert_eq!(read_blocks(&oversized).unwrap().0, 100_001);
 
         let mut trailing = vec![BLOCKS_REPLY];
-        trailing.extend_from_slice(&1u32.to_be_bytes());
+        trailing.extend_from_slice(&1u64.to_be_bytes());
         trailing.extend_from_slice(&0u32.to_be_bytes());
         trailing.push(0);
         assert!(read_blocks(&trailing).is_err());
@@ -1773,7 +1770,7 @@ mod tests {
             read_frame(&mut stream).unwrap();
             let bytes = future.to_canonical_bytes().unwrap();
             let mut page = vec![BLOCKS_REPLY];
-            page.extend_from_slice(&2u32.to_be_bytes());
+            page.extend_from_slice(&2u64.to_be_bytes());
             page.extend_from_slice(&1u32.to_be_bytes());
             page.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
             page.extend_from_slice(&bytes);
@@ -1821,7 +1818,7 @@ mod tests {
             send_hello(&mut stream, &server_chain).unwrap();
             read_frame(&mut stream).unwrap();
             let mut page = vec![BLOCKS_REPLY];
-            page.extend_from_slice(&3u32.to_be_bytes());
+            page.extend_from_slice(&3u64.to_be_bytes());
             page.extend_from_slice(&2u32.to_be_bytes());
             for block in [valid, orphan] {
                 let bytes = block.to_canonical_bytes().unwrap();
