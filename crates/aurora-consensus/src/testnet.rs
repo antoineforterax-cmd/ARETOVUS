@@ -13,6 +13,8 @@ use crate::{
 };
 
 pub const TESTNET_INITIAL_BITS: u16 = 8;
+/// Local admission policy for full nodes and SPV clients; not a consensus timestamp rule.
+pub const TESTNET_MAX_FUTURE_BLOCK_SECS: u64 = 2 * 60 * 60;
 pub const TESTNET_DIFFICULTY: DifficultyParams = DifficultyParams {
     target_block_seconds: 60,
     adjustment_interval: 10,

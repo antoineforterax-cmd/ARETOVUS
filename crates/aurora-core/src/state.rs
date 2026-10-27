@@ -1,7 +1,7 @@
 //! Registre de comptes déterministe pour le prototype AURORA.
 //!
-//! Les transferts passent une vérification Ed25519. Aucun transfert ne modifie l'état si une
-//! vérification échoue.
+//! Les transferts passent la vérification de signature du profil de transaction versionné.
+//! Aucun transfert ne modifie l'état si cette vérification échoue.
 //! Ce module ne constitue pas encore une validation complète de bloc ou de consensus.
 
 use std::collections::BTreeMap;

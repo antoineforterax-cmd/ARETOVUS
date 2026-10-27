@@ -21,7 +21,7 @@
 - Campagnes fuzz longues et rapport de couverture; le job CI court ne remplace pas une campagne de plusieurs heures/jours.
 - Le test de déconnexion au milieu d’une page vérifie désormais l’absence de publication partielle. Restent les [horodatages futurs](https://github.com/antoineforterax-cmd/AURORA/issues/3), la [saturation simultanée des workers](https://github.com/antoineforterax-cmd/AURORA/issues/4), les inventaires menteurs et les partitions répétées.
 - Une copie complète de dossier est restaurée par test automatisé, et la lecture v4 puis écriture v5 est couverte. Il reste à éprouver une sauvegarde hors machine réelle, un disque effectivement plein et une panne électrique. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas un volume saturé.
-- La [limite globale actuelle de 100 000 blocs connus](https://github.com/antoineforterax-cmd/AURORA/issues/5) doit être levée avant un testnet durable. Il faut également éprouver des réorganisations concurrentes répétées et une synchronisation pendant des jours sur plusieurs machines réelles; les 490,2 secondes de rattrapage local restent un essai borné.
+- Le stockage et le fil P2P n’ont plus de seuil logique à 100 000 blocs, mais le franchissement réel de cette borne et la croissance mémoire/CPU restent à prouver avant un testnet durable. Il faut également éprouver des réorganisations concurrentes répétées et une synchronisation pendant des jours sur plusieurs machines réelles; les 490,2 secondes de rattrapage local restent un essai borné.
 - Vérification indépendante du retarget sous dérive d’horloge, longues pauses et rafales.
 
 ## 2. Revue indépendante — reportée pour le développement expérimental

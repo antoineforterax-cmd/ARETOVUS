@@ -1,6 +1,6 @@
 # Exploitation et reprise du testnet expérimental AURORA
 
-**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (code en validation). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
+**Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (CI v6 passée; changements P2P v4 et états à valider). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
 
 ## Vérifier une installation
 
@@ -49,6 +49,6 @@ Le code synchronise chaque nouveau fichier et, sur Unix, son répertoire après 
 
 ## Incident et suivi
 
-Relever périodiquement le sommet et la hauteur de plusieurs nœuds indépendants, les erreurs de pairs, les rejets de snapshots, l’espace disque et la durée des synchronisations. En cas de divergence durable, d’index corrompu ou de panne d’écriture : arrêter le minage concerné, préserver logs et dossiers, noter les commits et sommets de chaque nœud, reproduire sur copie, puis consigner l’incident dans le dépôt privé avant de reprendre.
+Relever périodiquement le sommet et la hauteur de plusieurs nœuds indépendants, les erreurs de pairs, les rejets de snapshots, l’espace disque et la durée des synchronisations. En cas de divergence durable, d’index corrompu ou de panne d’écriture : arrêter le minage concerné, préserver logs et dossiers, noter les commits et sommets de chaque nœud, reproduire sur copie, puis consigner l’incident dans le dépôt, sans y publier de clés ni de données sensibles, avant de reprendre.
 
 Le test local CI couvre 20 blocs, des réorganisations et des reprises simulées. Il ne mesure pas encore la disponibilité multi-hôtes pendant plusieurs jours, les partitions réelles, ni la résistance aux attaques d’un réseau ouvert.

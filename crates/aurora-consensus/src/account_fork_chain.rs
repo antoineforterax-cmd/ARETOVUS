@@ -12,6 +12,8 @@ use aurora_core::{
     network::NetworkId, state::AccountLedger,
 };
 
+const STATE_CHECKPOINT_INTERVAL: u64 = 256;
+
 #[derive(Clone, Copy, Debug)]
 struct Node {
     parent: Hash256,
@@ -30,6 +32,8 @@ pub struct AccountForkChain {
     blocks: BTreeMap<Hash256, AccountBlock>,
     ordered: Vec<Hash256>,
     arrival_order: Vec<Hash256>,
+    /// Checkpoints on every branch plus the current canonical tip. Older states
+    /// are reconstructed from the nearest retained ancestor when a fork grows.
     states: BTreeMap<Hash256, AccountLedger>,
     canonical: Vec<Hash256>,
     canonical_tx_index: BTreeMap<Hash256, (u64, usize)>,
@@ -182,7 +186,7 @@ impl AccountForkChain {
         };
         // Testnet v2 is a consensus-incompatible, native ML-DSA-only profile.
         // Regtest keeps legacy profiles available for compatibility and tooling.
-        if self.states[&parent].network() == NetworkId::Testnet
+        if self.blocks[&self.canonical[0]].header.network == NetworkId::Testnet
             && block
                 .transactions
                 .iter()
@@ -190,11 +194,7 @@ impl AccountForkChain {
         {
             return Err(AccountForkChainError::InvalidTransactionProfile);
         }
-        let mut state = self
-            .states
-            .get(&parent)
-            .expect("every known block has a state snapshot")
-            .clone();
+        let mut state = self.state_at(parent)?;
         let total_fees = validate_and_apply_account_block(&block, expected_bits, &mut state)
             .map_err(AccountForkChainError::Validation)?;
         apply_block_reward(&mut state, block.miner, total_fees, self.reward_params)
@@ -214,7 +214,6 @@ impl AccountForkChain {
             },
         );
         self.blocks.insert(hash, block);
-        self.states.insert(hash, state);
         let position = self
             .ordered
             .binary_search_by(|known| (self.nodes[known].height, *known).cmp(&(height, hash)))
@@ -227,8 +226,29 @@ impl AccountForkChain {
         if chain_work < current.chain_work
             || (chain_work == current.chain_work && hash >= current_tip)
         {
+            if height % STATE_CHECKPOINT_INTERVAL == 0 {
+                self.states.insert(hash, state);
+            }
             return Ok(ChainUpdate {
                 became_best: false,
+                reorg_from_height: None,
+            });
+        }
+        if self.nodes[&current_tip].height % STATE_CHECKPOINT_INTERVAL != 0 {
+            self.states.remove(&current_tip);
+        }
+        self.states.insert(hash, state);
+        // Extending the selected tip is the common case. Rebuilding the entire
+        // ancestor path here made a long straight chain quadratic in height.
+        if parent == current_tip {
+            let height = self.canonical.len() as u64;
+            for (index, tx) in self.blocks[&hash].transactions.iter().enumerate() {
+                let txid = tx.txid().expect("validated transaction has a canonical id");
+                self.canonical_tx_index.insert(txid, (height, index));
+            }
+            self.canonical.push(hash);
+            return Ok(ChainUpdate {
+                became_best: true,
                 reorg_from_height: None,
             });
         }
@@ -256,6 +276,32 @@ impl AccountForkChain {
             became_best: true,
             reorg_from_height,
         })
+    }
+
+    fn state_at(&self, hash: Hash256) -> Result<AccountLedger, AccountForkChainError> {
+        let mut path = Vec::new();
+        let mut ancestor = hash;
+        while !self.states.contains_key(&ancestor) {
+            path.push(ancestor);
+            ancestor = self
+                .nodes
+                .get(&ancestor)
+                .ok_or(AccountForkChainError::UnknownParent)?
+                .parent;
+        }
+        let mut state = self.states[&ancestor].clone();
+        for hash in path.into_iter().rev() {
+            let block = &self.blocks[&hash];
+            let fees = validate_and_apply_account_block(
+                block,
+                self.nodes[&hash].difficulty_bits,
+                &mut state,
+            )
+            .map_err(AccountForkChainError::Validation)?;
+            apply_block_reward(&mut state, block.miner, fees, self.reward_params)
+                .map_err(AccountForkChainError::Reward)?;
+        }
+        Ok(state)
     }
 
     fn ancestor_at_height(
@@ -818,6 +864,63 @@ mod tests {
                 + chain.state().account(miner_b).balance.to_units(),
             parent_miner_issuance
         );
+    }
+
+    #[test]
+    fn sparse_state_checkpoints_preserve_deep_fork_rewards() {
+        let genesis = AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let miner_a = account(21);
+        let miner_b = account(22);
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(account(23)),
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
+        let mut fork_parent = Hash256::ZERO;
+        let mut state_at_fork = None;
+        for height in 1..=300u64 {
+            let block = AccountBlock::build_with_miner(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                height + 1,
+                0,
+                Some(miner_a),
+                vec![],
+            )
+            .unwrap();
+            chain.submit(block).unwrap();
+            if height == 250 {
+                fork_parent = chain.tip_hash();
+                state_at_fork = Some(chain.state().clone());
+            }
+        }
+        assert!(chain.states.len() <= 3);
+        let state_at_fork = state_at_fork.unwrap();
+        let mut parent = fork_parent;
+        for step in 1..=51u64 {
+            let block = AccountBlock::build_with_miner(
+                NetworkId::Regtest,
+                parent,
+                1_000 + step,
+                0,
+                Some(miner_b),
+                vec![],
+            )
+            .unwrap();
+            parent = block.header.hash().unwrap();
+            chain.submit(block).unwrap();
+        }
+        assert_eq!(chain.height(), 301);
+        assert_eq!(chain.tip_hash(), parent);
+        assert_eq!(
+            chain.state().account(miner_a),
+            state_at_fork.account(miner_a)
+        );
+        assert!(chain.state().account(miner_b).balance.to_units() > 0);
+        assert!(chain.states.len() <= 5);
     }
 
     #[test]

@@ -1,10 +1,15 @@
 //! End-to-end SPV inclusion verification from a testnet node.
-use std::{error::Error, net::SocketAddr};
+use std::{
+    error::Error,
+    net::SocketAddr,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use aurora_consensus::{
     light_header_chain::LightHeaderChain,
     testnet::{
         testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS,
+        TESTNET_MAX_FUTURE_BLOCK_SECS,
     },
 };
 use aurora_core::{hash::Hash256, merkle::verify_merkle_proof};
@@ -63,6 +68,8 @@ pub fn verify_transaction_inclusion(
             return Err("peer returned an incomplete SPV header page".into());
         }
         for header in page.headers {
+            let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            check_future_header_at(header.timestamp, now)?;
             chain.submit(header)?;
         }
         if start > announced_tip {
@@ -104,4 +111,24 @@ pub fn verify_transaction_inclusion(
         tip_height: chain.height(),
         confirmations,
     })
+}
+
+fn check_future_header_at(timestamp: u64, now: u64) -> Result<(), &'static str> {
+    if timestamp > now.saturating_add(TESTNET_MAX_FUTURE_BLOCK_SECS) {
+        return Err("SPV header timestamp exceeds local future allowance");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spv_future_header_admission_has_exact_boundary() {
+        let now = 1_700_000_000;
+        assert!(check_future_header_at(now + TESTNET_MAX_FUTURE_BLOCK_SECS, now).is_ok());
+        assert!(check_future_header_at(now + TESTNET_MAX_FUTURE_BLOCK_SECS + 1, now).is_err());
+        assert!(check_future_header_at(u64::MAX, u64::MAX).is_ok());
+    }
 }

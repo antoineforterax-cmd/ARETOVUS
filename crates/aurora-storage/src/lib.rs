@@ -998,6 +998,36 @@ mod tests {
     }
 
     #[test]
+    fn unpublished_v6_page_and_block_do_not_advance_recovered_tip() {
+        let path = dir();
+        let original = chain();
+        let old_tip = original.tip_hash();
+        save_snapshot(&path, &original).unwrap();
+
+        let mut newer = original.clone();
+        let block = AccountBlock::build(NetworkId::Regtest, old_tip, 2, 0, Vec::new()).unwrap();
+        newer.submit(block).unwrap();
+        let unpublished_manifest = save_snapshot(&path, &newer).unwrap();
+        // Model a crash after immutable objects reach disk but before the new
+        // manifest becomes visible. The old manifest is still the commit point.
+        fs::remove_file(unpublished_manifest).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), old_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        save_snapshot(&path, &recovered).unwrap();
+        assert_eq!(
+            fs::read_dir(path.join(INDEX_PAGE_DIRECTORY))
+                .unwrap()
+                .count(),
+            1
+        );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn copied_v6_data_directory_restores_all_branches() {
         let source = dir();
         let backup = dir();
@@ -1094,6 +1124,31 @@ mod tests {
             load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
             Err(StorageError::ChecksumMismatch)
         ));
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn corrupted_latest_v6_page_recovers_previous_manifest() {
+        let path = dir();
+        let mut original = chain();
+        let old_tip = original.tip_hash();
+        save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, old_tip, 2, 0, Vec::new()).unwrap();
+        original.submit(next).unwrap();
+        let latest = save_snapshot(&path, &original).unwrap();
+        let manifest = fs::read(latest).unwrap();
+        let page_id = Hash256::from_bytes(manifest[81..113].try_into().unwrap());
+        let page = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let mut bytes = fs::read(&page).unwrap();
+        bytes[24] ^= 1;
+        fs::write(page, bytes).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), old_tip);
         fs::remove_dir_all(path).unwrap();
     }
 
