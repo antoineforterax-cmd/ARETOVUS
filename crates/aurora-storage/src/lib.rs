@@ -914,6 +914,59 @@ mod tests {
     }
 
     #[test]
+    fn legacy_v5_index_can_be_migrated_to_v6() {
+        let path = dir();
+        let mut original = chain();
+        let genesis = original.tip_hash();
+        let first = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
+        original.submit(first).unwrap();
+        let side = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
+        original.submit(side).unwrap();
+        let v6_index = save_snapshot(&path, &original).unwrap();
+        let v6_bytes = fs::read(&v6_index).unwrap();
+        let mut legacy = v6_bytes[..69].to_vec();
+        legacy[8..12].copy_from_slice(&LEGACY_INDEX_VERSION.to_be_bytes());
+        legacy.extend_from_slice(&(original.known_block_count() as u32).to_be_bytes());
+        for block in original.all_blocks_by_arrival() {
+            legacy.extend_from_slice(block.header.hash().unwrap().as_bytes());
+        }
+        let checksum = sha256_plain(&legacy);
+        legacy.extend_from_slice(checksum.as_bytes());
+        fs::remove_file(v6_index).unwrap();
+        fs::write(path.join("legacy.auridx"), legacy).unwrap();
+
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        save_snapshot(&path, &restored).unwrap();
+        fs::remove_file(path.join("legacy.auridx")).unwrap();
+        let migrated = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(migrated.known_block_count(), original.known_block_count());
+        assert_eq!(migrated.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn corrupted_v6_index_page_is_rejected() {
+        let path = dir();
+        save_snapshot(&path, &chain()).unwrap();
+        let page = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let mut bytes = fs::read(&page).unwrap();
+        bytes[24] ^= 1;
+        fs::write(page, bytes).unwrap();
+        assert!(matches!(
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
+            Err(StorageError::ChecksumMismatch)
+        ));
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn legacy_v4_snapshot_can_be_migrated_to_v6() {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
