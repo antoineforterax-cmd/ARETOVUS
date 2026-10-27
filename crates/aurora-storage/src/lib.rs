@@ -320,7 +320,7 @@ pub fn load_latest_snapshot(
     let mut best_modified = None;
     let mut rejected_snapshot: Option<StorageError> = None;
     for path in paths {
-        let result = (|| {
+        let result: Result<(AccountForkChain, u32), StorageError> = (|| {
             let bytes = read_bounded(&path)?;
             if path.extension().is_some_and(|ext| ext == INDEX_EXTENSION) {
                 let chain = decode_index(&bytes, dir, initial_state.clone())?;
