@@ -5,6 +5,8 @@ on:
     branches: [feature/emission-schedule-v0]
     paths:
       - "Cargo.lock"
+      - "deny.toml"
+      - "rust-toolchain.toml"
       - "**/Cargo.toml"
       - ".github/workflows/dependency-audit.yml"
   workflow_dispatch:
@@ -18,9 +20,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Install stable Rust
-        run: rustup toolchain install stable --profile minimal
+      - name: Install Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
       - name: Install pinned cargo-audit
         run: cargo install cargo-audit --version 0.22.2 --locked
       - name: Audit locked Rust dependencies
         run: cargo audit --file Cargo.lock
+
+      - name: Install pinned cargo-deny
+        run: cargo install cargo-deny --version 0.19.9 --locked
+      - name: Check dependency licenses and sources
+        run: cargo deny --locked check licenses sources

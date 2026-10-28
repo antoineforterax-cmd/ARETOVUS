@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install stable Rust and cargo-fuzz
+      - name: Install Rust 1.99.1 and cargo-fuzz
         run: |
-          rustup toolchain install stable --profile minimal
-          cargo +stable install cargo-fuzz --version 0.13.2 --locked
+          rustup toolchain install 1.99.1 --profile minimal
+          cargo +1.99.1 install cargo-fuzz --version 0.13.2 --locked
       - name: Install nightly Rust
         run: rustup toolchain install nightly --profile minimal
       - name: Fuzz canonical decoders
