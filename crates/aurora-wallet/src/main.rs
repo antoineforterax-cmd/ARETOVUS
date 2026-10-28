@@ -110,7 +110,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let key = load_key(&args)?;
             let account = rpc::get_account(node_address(&args)?, key.account_id())?;
             println!(
-                "address={} confirmed_balance={} next_nonce={}",
+                "address={} pending_adjusted_balance={} next_nonce={}",
                 account_id_hex(key.account_id()),
                 account.balance,
                 account.next_nonce
@@ -126,7 +126,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let debit = amount.checked_add(fee)?;
             if account.balance < debit {
                 return Err(format!(
-                    "insufficient confirmed balance: have {}, need {}",
+                    "insufficient pending-adjusted balance: have {}, need {}",
                     account.balance, debit
                 )
                 .into());
@@ -188,6 +188,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet restore --from BACKUP_FILE --out NEW_FILE");
             println!("  aurora-wallet address --key-file FILE");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
+            println!("    Balance and next_nonce include this node's pending transactions; they are not proof of confirmed state.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT");
             println!("  aurora-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
             println!("  aurora-wallet status --node IP:PORT --txid TXID_HEX");

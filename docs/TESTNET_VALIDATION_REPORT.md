@@ -1,5 +1,15 @@
 # Rapport d’essais du testnet AURORA
 
+## Mise à jour du 28 octobre 2026
+
+La [Release expérimentale.1](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) publie les binaires de `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` pour Windows x86-64, Linux x86-64 et macOS arm64, avec SHA256SUMS. Le [workflow de publication](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40528021813) a réussi, comme la CI, le soak et le fuzzing de cette source. Ces binaires sont non signés et non audités par un humain.
+
+Le [test de volume](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40527921129) a réussi : hauteur 100 001, 100 003 blocs connus avec genèse et branche secondaire, sauvegarde puis rechargement v6. Construction 7,7 s, sauvegarde 69,9 s, contrôle de restauration à 87,0 s; test complet avec nettoyage 100,72 s. La commande, compilation comprise, a atteint 408 240 Kio de RSS maximal. Ce sont des blocs Regtest vides sans difficulté, pas une preuve de synchronisation P2P de 100 000 blocs ni une charge de nombreux comptes.
+
+Le lanceur avec paiements a passé un essai local distinct sur les binaires `421d443` : 6 blocs, 5 paiements confirmés, 2 redémarrages du pair B, sauvegarde restaurée, 82,49 secondes. Le résultat est `short_run_passed`, jamais un succès de 72 h. Le lancement long sur le Bureau a échoué avant le premier bloc le 28 octobre avec Windows 4551; le porteur a confirmé le refus Device Guard dans son terminal. Aucune protection Windows n'a été modifiée. Une procédure Ubuntu/WSL est préparée; la campagne longue reste à réaliser.
+
+Les sections ci-dessous sont l'historique des campagnes antérieures et gardent leurs propres commits et limites. Les mentions anciennes de volume non réalisé ou d'absence de Release sont dépassées par cette mise à jour. Le libellé historique du wallet `confirmed_balance` désignait en réalité le solde après application du mempool; la branche le corrige en `pending_adjusted_balance`, sans changement RPC.
+
 **Commit de code et CI multi-nœuds :** `37ec33c2ccc3e1d1be9dd6c2085c1a843e581578`  
 **Date des workflows :** 26 octobre 2026  
 **Branche :** `feature/emission-schedule-v0`  

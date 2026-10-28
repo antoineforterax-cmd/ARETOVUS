@@ -1,5 +1,7 @@
 # Essai d’endurance local
 
+Pour Ubuntu/WSL, suivre [ENDURANCE_WSL.md](ENDURANCE_WSL.md). Le lanceur de la branche accepte désormais `--wallet CHEMIN` pour créer deux comptes jetables et vérifier les transferts, les soldes, les nonces et les frais. L'archive expérimentale.1 contient encore le lanceur initial de blocs vides : ne pas lui attribuer cette option. Les clés du mode avec échanges sont en clair et exclusivement réservées aux tests.
+
 Trois nœuds peuvent fonctionner sur un seul PC. Chacun utilise un dossier et un port locaux distincts; un quatrième dossier sert au mineur. Le lanceur ne touche pas aux dossiers de vos nœuds habituels. Cet essai mesure la convergence et les redémarrages de processus, pas un réseau entre machines ni une panne électrique.
 
 Il faut Python 3.10 ou plus et une archive de binaires issue d’un commit identifié. Vérifiez son SHA-256 avec celui de la Release avant de l’extraire. Gardez le PC alimenté, éveillé et suffisamment ventilé. Ne désactivez pas les protections de Windows. Le lanceur arrête l’essai en cas d’erreur, de trou de suivi supérieur à cinq minutes en plus de l’intervalle prévu, de dépassement de 20 Gio sur disque ou de 4 Gio de mémoire pour un nœud. Ces limites sont modifiables par arguments.

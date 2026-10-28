@@ -1107,6 +1107,19 @@ fn sync_from_peer_with_request_limit(
     let mut accepted = 0;
     let mut last_block_hash = None;
     let mut announced_total = 0u64;
+    // An arrival inventory contains each block once, even when it is already
+    // known locally. Keep this across session rollover: otherwise a peer can
+    // repeat one valid block forever while inventing new cursor positions.
+    let mut inventory_hashes = HashSet::new();
+    inventory_hashes.insert(
+        chain
+            .blocks()
+            .next()
+            .expect("genesis exists")
+            .header
+            .hash()
+            .map_err(|_| P2pError::Protocol("block header hash failed"))?,
+    );
     loop {
         // A session cannot assume that an inventory fits within its byte, request, or
         // time budget. Reopen before any of those limits and prove that the last
@@ -1163,6 +1176,19 @@ fn sync_from_peer_with_request_limit(
             }
             break;
         }
+        // Check the complete page before cloning or publishing candidate state.
+        // The continuity probe above intentionally rereads one position and is
+        // not a new inventory entry, so it does not participate in this set.
+        let mut page_hashes = HashSet::with_capacity(blocks.len());
+        for block in &blocks {
+            let hash = block
+                .header
+                .hash()
+                .map_err(|_| P2pError::Protocol("block header hash failed"))?;
+            if inventory_hashes.contains(&hash) || !page_hashes.insert(hash) {
+                return Err(P2pError::Protocol("peer inventory repeats a block"));
+            }
+        }
         last_block_hash = Some(
             blocks
                 .last()
@@ -1193,6 +1219,11 @@ fn sync_from_peer_with_request_limit(
             *chain = candidate;
             accepted += page_accepted;
         }
+        // Never reserve from the peer's announced total. Retained entries name
+        // validated blocks in the local chain; only this page (<= PAGE_BLOCKS)
+        // is held provisionally. Invalid pages cannot grow the retained set.
+        inventory_hashes.extend(page_hashes);
+        debug_assert!(inventory_hashes.len() <= chain.known_block_count());
         if cursor >= total {
             break;
         }
@@ -1511,6 +1542,143 @@ mod tests {
             Err(P2pError::Protocol("peer inventory changed during sync"))
         ));
         assert_eq!(client.height(), 1);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn repeated_block_in_one_sync_page_is_rejected_before_persistence() {
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-repeated-page-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let mut remote = chain();
+        let first =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
+        remote.submit(first.clone()).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            set_timeouts(&stream).unwrap();
+            read_frame(&mut stream).unwrap();
+            send_hello(&mut stream, &remote).unwrap();
+            read_frame(&mut stream).unwrap();
+            let mut page = vec![BLOCKS_REPLY];
+            page.extend_from_slice(&3u64.to_be_bytes());
+            page.extend_from_slice(&2u32.to_be_bytes());
+            let encoded = first.to_canonical_bytes().unwrap();
+            for _ in 0..2 {
+                page.extend_from_slice(&(encoded.len() as u32).to_be_bytes());
+                page.extend_from_slice(&encoded);
+            }
+            write_frame(&mut stream, &page).unwrap();
+        });
+        let mut client = chain();
+        let original_tip = client.tip_hash();
+        assert!(matches!(
+            sync_from_peer(address, &mut client, &dir),
+            Err(P2pError::Protocol("peer inventory repeats a block"))
+        ));
+        assert_eq!(client.height(), 0);
+        assert_eq!(client.tip_hash(), original_tip);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn repeated_inventory_block_is_rejected_across_pages_and_session_rollover() {
+        for restart_after_requests in [10, 1] {
+            let mut remote = chain();
+            let first =
+                AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
+            let first_hash = first.header.hash().unwrap();
+            remote.submit(first.clone()).unwrap();
+            let mut client = chain();
+            client.submit(first.clone()).unwrap();
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                set_timeouts(&stream).unwrap();
+                read_frame(&mut stream).unwrap();
+                send_hello(&mut stream, &remote).unwrap();
+                let request = read_frame(&mut stream).unwrap();
+                assert_eq!(u64::from_be_bytes(request[1..9].try_into().unwrap()), 1);
+                let encoded = first.to_canonical_bytes().unwrap();
+                let mut page = vec![BLOCKS_REPLY];
+                // An enormous advertised total must not allocate an enormous
+                // table or let duplicate entries keep the client busy forever.
+                page.extend_from_slice(&u64::MAX.to_be_bytes());
+                page.extend_from_slice(&1u32.to_be_bytes());
+                page.extend_from_slice(&(encoded.len() as u32).to_be_bytes());
+                page.extend_from_slice(&encoded);
+                write_frame(&mut stream, &page).unwrap();
+                if restart_after_requests == 1 {
+                    drop(stream);
+                    (stream, _) = listener.accept().unwrap();
+                    set_timeouts(&stream).unwrap();
+                    read_frame(&mut stream).unwrap();
+                    send_hello(&mut stream, &remote).unwrap();
+                    let probe = read_frame(&mut stream).unwrap();
+                    assert_eq!(u64::from_be_bytes(probe[1..9].try_into().unwrap()), 1);
+                    write_frame(&mut stream, &page).unwrap();
+                }
+                let request = read_frame(&mut stream).unwrap();
+                assert_eq!(u64::from_be_bytes(request[1..9].try_into().unwrap()), 2);
+                write_frame(&mut stream, &page).unwrap();
+            });
+            // A block already held locally is legitimate once in the remote
+            // inventory. It must not become a bypass for repeated positions.
+            assert!(matches!(
+                sync_from_peer_with_request_limit(
+                    address,
+                    &mut client,
+                    Path::new("."),
+                    false,
+                    restart_after_requests
+                ),
+                Err(P2pError::Protocol("peer inventory repeats a block"))
+            ));
+            assert_eq!(client.height(), 1);
+            assert_eq!(client.tip_hash(), first_hash);
+            assert_eq!(client.known_block_count(), 2);
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn sync_accepts_remote_inventory_that_overlaps_local_blocks() {
+        let mut remote = chain();
+        let first =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
+        remote.submit(first.clone()).unwrap();
+        let mut client = chain();
+        client.submit(first).unwrap();
+        let second =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 3, 0, vec![]).unwrap();
+        remote.submit(second).unwrap();
+        let expected_tip = remote.tip_hash();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_peer_shared(
+                stream,
+                &Mutex::new(remote),
+                &Mutex::new(Vec::new()),
+                Path::new("."),
+                &[],
+            )
+            .unwrap();
+        });
+        assert_eq!(
+            sync_from_peer_with_request_limit(address, &mut client, Path::new("."), false, 10)
+                .unwrap(),
+            1
+        );
+        assert_eq!(client.height(), 2);
+        assert_eq!(client.tip_hash(), expected_tip);
+        assert_eq!(client.known_block_count(), 3);
         server.join().unwrap();
     }
 

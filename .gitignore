@@ -4,3 +4,7 @@
 *.key
 *.pem
 *.seed
+*.aurkey
+__pycache__/
+*.pyc
+/dist/

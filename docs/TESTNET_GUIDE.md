@@ -4,7 +4,9 @@ Cette procédure utilise des pairs connus sur la même machine ou un réseau pri
 
 ## Télécharger les binaires testnet
 
-Les archives **expérimentales et non signées** sont créées par la [CI `testnet-packages`](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml) pour Windows, Linux et macOS. Le dépôt est public depuis le 27 octobre 2026; ces artefacts restent expérimentaux et non signés. Ouvre une exécution verte, puis télécharge l’artefact correspondant à ton système dans **Artifacts**. GitHub fournit d’abord une archive ZIP contenant `aurora-testnet-...zip` : extrais les deux niveaux. Dans la seconde archive se trouvent `bin/aurora-node` (ou `.exe`), `bin/aurora-wallet`, le guide et `SHA256SUMS.txt`. Compare les sommes SHA-256 avant utilisation. Les artefacts CI expirent après 14 jours; ils ne constituent pas encore une publication GitHub Release ni un installateur.
+La [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) fournit des archives **non signées** pour Windows x86-64, Linux x86-64 et macOS arm64, construites depuis `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`. Télécharge l’archive correspondant à ton système et à ton architecture ainsi que le fichier externe `SHA256SUMS.txt`. Compare son empreinte SHA-256 à la ligne portant exactement le nom de l’archive avant de l’extraire. Le [guide d’installation détaillé](guide-fr/03-installation.md) montre les commandes.
+
+La Release s’extrait directement et contient `bin/aurora-node` (ou `.exe`), `bin/aurora-wallet`, les guides et un second `SHA256SUMS.txt` portant sur les fichiers internes. Ce n’est pas un installateur. La [CI `testnet-packages`](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml) continue aussi de produire des artefacts expirant après 14 jours; ceux-ci peuvent contenir une archive imbriquée. Ne confonds pas ces artefacts avec les fichiers pérennes de la Release, ni un build plus récent avec la version précise d’un essai.
 
 Ces binaires évitent de compiler Rust localement. Sur Linux ou macOS, rends le binaire exécutable si l’extraction a perdu cette permission (`chmod +x bin/aurora-node bin/aurora-wallet`). Sous Windows, `link.exe` est requis pour **compiler** depuis les sources, pas pour lancer le binaire fourni.
 
@@ -40,7 +42,7 @@ Une erreur Windows `os error 10048` au lancement de `serve` signifie que le port
 ## Prérequis
 
 - Pour compiler les sources : Rust stable et Cargo, avec accès aux dépendances. Sous Windows, Visual C++ Build Tools fournit l’éditeur de liens `link.exe`. Les archives CI ci-dessus n’exigent pas ces outils.
-- Pour le profil testnet natif ML-DSA-65 v3 et l’émission lissée, choisis un nouveau dossier de données. Les anciens réseaux de consensus sont incompatibles; conserve une copie de leurs données. Les snapshots v4 du **même** profil peuvent être relus puis enregistrés en v5.
+- Pour le profil testnet natif ML-DSA-65 v3 et l’émission lissée, choisis un nouveau dossier de données. Les anciens réseaux de consensus sont incompatibles; conserve une copie de leurs données. Les snapshots v4 et index v5 du **même** profil peuvent être relus puis enregistrés en v6.
 - Le mineur passé à `--miner` est un identifiant public de 32 octets en hexadécimal, pas une clé privée.
 
 Si tu utilises le code source, construis le nœud :
@@ -113,7 +115,11 @@ cargo run --locked -p aurora-wallet -- balance --key-file ./alice.aurkey --node 
 cargo run --locked -p aurora-wallet -- send --key-file ./alice.aurkey --to <64-hex-destinataire> --amount 1.25 --fee 0.00000003 --node 127.0.0.1:18444
 ```
 
-La commande `send` lit le nonce attendu, signe le transfert v3 avec ML-DSA-65 et le soumet au mempool du nœud. Elle imprime le txid. Vérifie ensuite son état et l’inclusion après minage :
+La commande `send` lit le nonce attendu, signe le transfert v3 avec ML-DSA-65 et le soumet au mempool du nœud. Elle imprime le txid.
+
+`balance` et `send` utilisent `GET_ACCOUNT` : le nœud rejoue son mempool sur l’état de sa chaîne avant de renvoyer le solde et le prochain nonce. Il s’agit donc d’un solde et d’un nonce projetés avec les transactions en attente, pas d’une preuve de confirmation. La branche de développement nomme le champ `pending_adjusted_balance`; la Release `421d443` affiche encore `confirmed_balance` pour cette même réponse. Le protocole réseau et le calcul ne changent pas avec cette correction de libellé.
+
+Vérifie ensuite le statut de la transaction et son inclusion après minage :
 
 ```sh
 cargo run --locked -p aurora-wallet -- status --node 127.0.0.1:18444 --txid <64-hex-txid>
@@ -134,7 +140,7 @@ Le scénario démarre des processus séparés, crée un wallet, soumet une trans
 
 ## Vérifier, sauvegarder et restaurer les données
 
-Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614); les essais de volume et de panne matérielle restent à faire. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
+Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614). Un [essai de 100 003 blocs connus](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40527921129) a aussi réussi avec branche secondaire, sauvegarde et rechargement. Il ne prouve pas la synchronisation réseau de ce volume ni la reprise après panne matérielle. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
 
 ```sh
 cargo run --locked -p aurora-node -- testnet verify --data-dir ./aurora-seed

@@ -24,12 +24,15 @@ La dépendance RustCrypto `ml-dsa` est épinglée à 0.1.1. L’utilisation d’
 
 Chaque transaction transporte plus de 5 KiB d’autorisation. Cela réduit le nombre de transactions par bloc de 4 MiB et augmente les coûts CPU, mémoire, stockage et bande passante. La taille maximale des blocs et des frames réseau ne change pas; les essais de charge réels restent à faire.
 
-## Suite prévue
+## Fonctions déjà présentes
 
-1. Mesurer vérification, mémoire, propagation et taille de blocs avec des transactions v3 réelles.
-2. Ajouter un portefeuille de test qui génère, sauvegarde et utilise des clés ML-DSA sans les exposer dans les journaux.
-3. Valider l’implémentation contre les vecteurs FIPS 204 et obtenir une revue indépendante.
+Le portefeuille CLI génère et utilise des clés ML-DSA-65. Il chiffre ses nouveaux fichiers par défaut et propose sauvegarde et restauration chiffrées. Les racines et preuves Merkle, le téléchargement et la vérification SPV d’en-têtes et la bibliothèque d’URI `aurora://` sont intégrés. Ces fonctions restent expérimentales; une preuve d’inclusion fournie par un pair ne garantit pas l’absence d’éclipse. Voir le [guide du portefeuille](guide-fr/05-portefeuille.md).
+
+## Vérifications et travaux restants
+
+1. Mesurer vérification, mémoire, propagation et taille de blocs avec des transactions v3 réelles sur des campagnes prolongées.
+2. Valider l’implémentation contre les vecteurs FIPS 204, consigner le commit et le résultat CI, puis obtenir une revue cryptographique indépendante. La présence d’un test dans la branche ne prouve pas à elle seule son exécution réussie.
+3. Éprouver les sauvegardes et restaurations de clés, les erreurs de mot de passe et le comportement sur les systèmes pris en charge.
 4. Concevoir séparément DID, authentification challenge-response, gardiens et time-locks. Ces mécanismes changent l’autorisation et l’état des comptes et ne doivent pas être ajoutés sans règles d’activation, révocation, seuil, récupération et délai.
-5. Ajouter les racines et preuves Merkle avant un protocole SPV; formaliser ensuite le format d’URI `aurora://`.
 
 Ne pas utiliser avec de vrais fonds.

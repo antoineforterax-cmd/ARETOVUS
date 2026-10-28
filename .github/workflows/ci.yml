@@ -25,4 +25,4 @@ jobs:
       - name: Testnet multi-nœuds
         run: python3 scripts/testnet_smoke.py
       - name: Vérifier le lanceur d’endurance et sa collecte de mesures
-        run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0
+        run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --wallet target/debug/aurora-wallet --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0
