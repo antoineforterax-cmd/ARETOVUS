@@ -37,3 +37,22 @@ Modèle de menace -> comparaison cryptographique -> preuve de concept isolée ->
 
 ## E. Non-objectifs
 Aucune promesse d'anonymat absolu, d'impossibilité de traçage, d'anti-51 % garanti ou de performance sans mesures. Aucune activation de confidentialité par simple changement de transport.
+
+
+## F. Matrice des fuites de confidentialité à prévenir (priorité produit)
+
+| Surface | Risque | Piste de conception | Limite / test à prévoir |
+|---|---|---|---|
+| IP et empreinte réseau | Association de pairs, de nœuds et de transactions à une adresse réseau | Transports préservant la confidentialité (Tor/I2P), isolation des circuits, minimisation des métadonnées, chiffrement authentifié | Chiffrement TCP seul ne masque pas les IP ; mesurer fuites DNS, bootstrap, connexions directes, corrélations et disponibilité |
+| Réutilisation d'adresse | Liaison de paiements et construction de graphes | Réception avec identifiants/adresses à usage unique ou mécanisme équivalent, gestion des clés de consultation | Une adresse furtive ne masque pas automatiquement expéditeur, montant, IP ou liens issus d'autres données |
+| Montants publics | Déduction des habitudes, revenus et contreparties | Étudier engagements de valeurs, preuves de plage, conservation, prévention des doubles dépenses, modèle notes/nullifiers | Engagements de Pedersen classiques non automatiquement post-quantiques ; ne pas assimiler engagement à preuve complète |
+| Horodatage et relais | Inférence probabiliste de l'émetteur par observation des premières diffusions | Étudier Dandelion++ ou autres politiques de relais, délais et protections contre corrélation | Pas d'anonymat absolu ; efficacité dépend de la topologie, des observateurs, de la gestion des nœuds et des mesures |
+| Wallet et récupération | Métadonnées révélées par synchronisation, sauvegarde ou gardiens | Vérifications locales, minimisation des données, récupération à divulgation limitée | Tester collusion des gardiens, vol d'appareil, restauration et fuites de métadonnées |
+
+### Contraintes transversales
+1. Concevoir une politique explicite des métadonnées : données strictement nécessaires, durée de conservation, accès, journalisation et divulgation volontaire.
+2. Séparer confidentialité **réseau**, **transactions**, **montants**, **wallet** et **récupération** ; aucune protection isolée ne suffit.
+3. Conserver une validation indépendante de l'offre, des frais, des récompenses et des doubles dépenses.
+4. Mesurer l'effet sur latence, propagation des blocs, bande passante, RAM, CPU, stockage et décentralisation.
+5. Évaluer les garanties post-quantiques de chaque primitive et ne pas annoncer de confidentialité absolue.
+6. Toute modification de l'état public actuel doit passer par un prototype isolé, une spécification versionnée et des tests adversariaux avant une éventuelle intégration.
