@@ -2455,3 +2455,26 @@ mod tests {
         assert!(check_hello(&hello, &local).is_err());
     }
 }
+
+#[cfg(test)]
+mod admission_vector_tests {
+    use super::*;
+
+    #[test]
+    fn independent_admission_vectors_match_local_policy() {
+        let mut count = 0;
+        for line in include_str!("../../../tests/vectors-retarget/admission.tsv")
+            .lines()
+            .skip(1)
+        {
+            let fields: Vec<_> = line.split('\t').collect();
+            assert_eq!(fields.len(), 3);
+            let timestamp = fields[0].parse().unwrap();
+            let now = fields[1].parse().unwrap();
+            let expected = fields[2] == "1";
+            assert_eq!(check_block_timestamp_at(timestamp, now).is_ok(), expected, "{line}");
+            count += 1;
+        }
+        assert_eq!(count, 8);
+    }
+}
