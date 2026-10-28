@@ -89,3 +89,24 @@ Les protections du portefeuille (alertes, limites volontaires, délais optionnel
 
 ### Décision de périmètre
 Il s'agit d'un **objectif produit prioritaire**, pas d'un changement immédiat du consensus testnet v3. L'architecture actuelle de comptes publics ne fournit pas cette confidentialité : une étude de faisabilité et éventuellement un nouveau modèle d'état seront nécessaires avant intégration.
+
+
+## 9. Idées complémentaires — évolutions futures non prioritaires
+
+**Statut : pistes facultatives, non validées, non planifiées et non implémentées.** Cette section est placée en fin de cahier des charges pour conserver les idées sans détourner les efforts des fondations, de la confidentialité et de la sécurité du réseau.
+
+1. **Coffre-fort intelligent à plusieurs niveaux** : séparer les fonds du quotidien et l'épargne, avec plafonds volontaires, délais de sécurité et confirmations renforcées pour les opérations sensibles.
+2. **Assistant anti-arnaque local** : avertissements avant signature, contrôle du destinataire et des permissions, analyse de risques sans télémétrie centralisée obligatoire. Aucune détection parfaite n'est promise.
+3. **Récupération sociale facultative** : gardiens choisis par l'utilisateur, délais et protections contre la collusion ; sans donner aux gardiens un accès direct et unilatéral aux fonds. À coordonner avec la section 7.
+4. **Paiements préparés hors ligne** : préparer et signer une transaction sans connexion, puis la transmettre ultérieurement ; la confirmation sur la blockchain nécessite toujours le réseau.
+5. **Divulgation sélective** : pouvoir démontrer volontairement un paiement ou une information limitée sans dévoiler tout l'historique, sous réserve de faisabilité cryptographique et de compatibilité post-quantique.
+6. **Portefeuille très simple d'utilisation** : protections compréhensibles, parcours guidés, affichage clair des frais et risques, sans masquer les conséquences d'une opération irréversible.
+
+### Conditions avant toute priorisation
+
+- Démontrer l'utilité réelle et éviter les doublons avec les fonctionnalités de sécurité déjà prévues.
+- Évaluer les risques de centralisation, de confidentialité, de vol et de verrouillage des fonds.
+- Mesurer les coûts en complexité, performances et maintenance.
+- Ne rien ajouter au consensus ni à la roadmap active sans décision explicite et tests.
+
+**Priorité actuelle inchangée :** consolider le protocole, sécuriser le testnet et étudier les deux axes différenciants majeurs — confidentialité et protection des fonds.
