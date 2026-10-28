@@ -2477,7 +2477,11 @@ mod self_transfer_tests {
             network: NetworkId::Testnet,
             sender,
             nonce,
-            recipient: if to_self { sender } else { AccountId([0x33; 32]) },
+            recipient: if to_self {
+                sender
+            } else {
+                AccountId([0x33; 32])
+            },
             amount: Amount::from_units(25).unwrap(),
             fee: Amount::from_units(2).unwrap(),
             auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
@@ -2540,8 +2544,7 @@ mod self_transfer_tests {
             let (stream, _) = listener.accept().unwrap();
             let chain = Mutex::new(chain);
             let pool = Mutex::new(Vec::new());
-            let result =
-                handle_peer_shared(stream, &chain, &pool, &std::env::temp_dir(), &[]);
+            let result = handle_peer_shared(stream, &chain, &pool, &std::env::temp_dir(), &[]);
             (
                 result,
                 chain.into_inner().unwrap(),
