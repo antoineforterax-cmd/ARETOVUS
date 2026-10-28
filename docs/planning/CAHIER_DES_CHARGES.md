@@ -36,3 +36,23 @@ Chaque fonctionnalité possède une spécification et un modèle de menace, des 
 
 ## 6. Points de divergence à conserver ouverts
 L'historique évoquait d'autres plafonds monétaires, une évolution possible du PoW et des exigences d'anonymat renforcées. Le testnet exécute aujourd'hui des règles précises différentes. Ne pas modifier l'une ou l'autre sans rapprocher le Word original, l'historique Git et le registre des décisions.
+
+
+## 7. Protection contre la perte de fonds, les erreurs et les arnaques (objectif prioritaire de recherche)
+
+AURORA vise un **parcours de sécurité volontaire** qui aide à prévenir la perte accidentelle de coins et certaines fraudes, sans promettre l'annulation d'une transaction irréversible ni confier les fonds à un administrateur central.
+
+### Protection contre la perte d'accès
+- Sauvegarde et restauration du portefeuille, y compris en cas de perte ou destruction de l'appareil.
+- Étude d'un coffre de récupération et de gardiens choisis par l'utilisateur, avec délais, notifications et protections contre la collusion.
+- Séparer récupération de l'accès et récupération d'un transfert déjà confirmé ; cette dernière n'est pas garantie.
+- Aucun tiers ne doit pouvoir récupérer ou saisir les fonds par défaut.
+
+### Protection contre les erreurs et arnaques
+- Vérification claire du destinataire, du réseau, du montant et des frais avant signature.
+- Alertes sur changements d'adresse, demandes de signature inhabituelles et destinations potentiellement risquées, avec limites explicites de la détection.
+- Confirmation renforcée, limites volontaires et délais optionnels pour les transferts importants ; prévoir des mécanismes de révocation **avant** exécution lorsqu'un délai est choisi.
+- Journal local des autorisations et notifications sans exposer les secrets ni compromettre la confidentialité.
+
+### Contraintes
+Ces protections doivent préserver l'autonomie de l'utilisateur, être facultatives lorsque possible, rester compatibles avec la confidentialité visée et ne pas créer de porte dérobée ou de gel arbitraire. Les mécanismes de récupération impliquant le consensus ne sont **pas implémentés** ; ils nécessitent une conception et une validation spécifiques.
