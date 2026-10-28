@@ -425,6 +425,20 @@ impl AccountForkChain {
         self.canonical.iter().map(|hash| &self.blocks[hash])
     }
 
+    /// Read a canonical page without visiting earlier blocks. Heights that do
+    /// not fit the host index type or lie beyond the tip yield an empty page.
+    pub fn canonical_block_page(
+        &self,
+        start: u64,
+        limit: usize,
+    ) -> impl Iterator<Item = &AccountBlock> {
+        let hashes = usize::try_from(start)
+            .ok()
+            .and_then(|start| self.canonical.get(start..))
+            .unwrap_or_default();
+        hashes.iter().take(limit).map(|hash| &self.blocks[hash])
+    }
+
     /// Locate a confirmed transaction on the selected branch without scanning all blocks.
     pub fn canonical_transaction(&self, txid: Hash256) -> Option<(u64, usize, &AccountBlock)> {
         let &(height, index) = self.canonical_tx_index.get(&txid)?;

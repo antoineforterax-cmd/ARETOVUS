@@ -698,7 +698,7 @@ fn handle_peer_shared(
                 let count_offset = reply.len();
                 reply.extend_from_slice(&0u16.to_be_bytes());
                 let mut count = 0u16;
-                for block in chain.blocks().skip(start as usize).take(limit) {
+                for block in chain.canonical_block_page(start, limit) {
                     let encoded = block
                         .header
                         .to_canonical_bytes()
@@ -1707,6 +1707,99 @@ mod tests {
         )
         .unwrap()
     }
+
+    #[test]
+    fn header_rpc_preserves_page_encoding_and_rejects_out_of_range_height() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_peer_shared(
+                stream,
+                &Mutex::new(chain()),
+                &Mutex::new(Vec::new()),
+                &std::env::temp_dir(),
+                &[],
+            )
+        });
+        let local = chain();
+        let mut client = TcpStream::connect(address).unwrap();
+        set_timeouts(&client).unwrap();
+        send_hello(&mut client, &local).unwrap();
+        check_hello(&read_frame(&mut client).unwrap(), &local).unwrap();
+        for start in [0u64, 1] {
+            let mut request = vec![GET_HEADERS];
+            request.extend_from_slice(&start.to_be_bytes());
+            request.extend_from_slice(&1u16.to_be_bytes());
+            write_frame(&mut client, &request).unwrap();
+            let reply = read_frame(&mut client).unwrap();
+            let mut expected = vec![HEADERS_REPLY];
+            expected.extend_from_slice(&0u64.to_be_bytes());
+            expected.extend_from_slice(&start.to_be_bytes());
+            expected.extend_from_slice(&(if start == 0 { 1u16 } else { 0 }).to_be_bytes());
+            if start == 0 {
+                let encoded = local
+                    .blocks()
+                    .next()
+                    .unwrap()
+                    .header
+                    .to_canonical_bytes()
+                    .unwrap();
+                expected.extend_from_slice(&(encoded.len() as u16).to_be_bytes());
+                expected.extend_from_slice(&encoded);
+            }
+            assert_eq!(reply, expected);
+        }
+        let mut invalid = vec![GET_HEADERS];
+        invalid.extend_from_slice(&u64::MAX.to_be_bytes());
+        invalid.extend_from_slice(&1u16.to_be_bytes());
+        write_frame(&mut client, &invalid).unwrap();
+        assert!(matches!(
+            server.join().unwrap(),
+            Err(P2pError::Protocol("header page starts beyond chain tip"))
+        ));
+    }
+
+    #[test]
+    fn canonical_header_pages_match_selected_branch_and_handle_large_heights() {
+        let mut chain = chain();
+        let genesis = chain.tip_hash();
+        for height in 1..=12 {
+            let block =
+                AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), height + 1, 0, vec![])
+                    .unwrap();
+            chain.submit(block).unwrap();
+        }
+        let check_pages = |chain: &AccountForkChain| {
+            for start in [0, 1, 10, 12, 13, 14, u32::MAX as u64 + 1, u64::MAX] {
+                for limit in [0, 1, 3, MAX_HEADERS_PAGE] {
+                    let actual: Vec<_> = chain
+                        .canonical_block_page(start, limit)
+                        .map(|block| block.header.hash().unwrap())
+                        .collect();
+                    let expected: Vec<_> = chain
+                        .blocks()
+                        .enumerate()
+                        .filter(|(height, _)| *height as u64 >= start)
+                        .take(limit)
+                        .map(|(_, block)| block.header.hash().unwrap())
+                        .collect();
+                    assert_eq!(actual, expected, "start={start}, limit={limit}");
+                }
+            }
+        };
+        check_pages(&chain);
+        let mut parent = genesis;
+        for height in 1..=13 {
+            let block =
+                AccountBlock::build(NetworkId::Regtest, parent, height + 100, 0, vec![]).unwrap();
+            parent = block.header.hash().unwrap();
+            chain.submit(block).unwrap();
+        }
+        assert_eq!(chain.tip_hash(), parent);
+        check_pages(&chain);
+    }
+
     #[test]
     fn background_sync_merges_remote_blocks_without_dropping_local_branch() {
         let dir =
