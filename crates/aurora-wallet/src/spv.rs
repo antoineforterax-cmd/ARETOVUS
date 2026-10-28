@@ -149,7 +149,11 @@ mod admission_vector_tests {
             let timestamp = fields[0].parse().unwrap();
             let now = fields[1].parse().unwrap();
             let expected = fields[2] == "1";
-            assert_eq!(check_future_header_at(timestamp, now).is_ok(), expected, "{line}");
+            assert_eq!(
+                check_future_header_at(timestamp, now).is_ok(),
+                expected,
+                "{line}"
+            );
             count += 1;
         }
         assert_eq!(count, 8);
