@@ -56,3 +56,36 @@ AURORA vise un **parcours de sécurité volontaire** qui aide à prévenir la pe
 
 ### Contraintes
 Ces protections doivent préserver l'autonomie de l'utilisateur, être facultatives lorsque possible, rester compatibles avec la confidentialité visée et ne pas créer de porte dérobée ou de gel arbitraire. Les mécanismes de récupération impliquant le consensus ne sont **pas implémentés** ; ils nécessitent une conception et une validation spécifiques.
+
+
+## 8. Différenciation stratégique : confidentialité maximale, données minimales et performance
+
+**Statut : vision prioritaire du projet, à concevoir et mesurer ; aucune garantie d'anonymat absolu.**
+
+AURORA doit chercher à réunir deux atouts forts : **la protection contre la perte et les arnaques** (section 7) et **une confidentialité poussée dès la conception**. Ces deux piliers doivent fonctionner ensemble sans rendre le réseau inutilement lourd, lent ou centralisé.
+
+### Principe de minimisation
+- Le portefeuille ne doit collecter, conserver ou transmettre que les informations nécessaires à l'opération demandée et à la sécurité de l'utilisateur.
+- Distinguer les données privées du portefeuille, les métadonnées réseau, les preuves nécessaires au consensus et les données réellement publiques.
+- Éviter la publication de données personnelles, de soldes, de relations entre adresses et d'historique financier lorsqu'une architecture cryptographique vérifiable permet de s'en passer.
+- Éviter les comptes centraux et la télémétrie identifiante obligatoires ; prévoir des journaux techniques sobres et sans secrets.
+- Préserver la possibilité de vérifier indépendamment les règles monétaires, l'absence de doubles dépenses et la validité des transactions.
+
+### Confidentialité de bout en bout à étudier
+- Confidentialité des montants, des expéditeurs et des destinataires, selon un modèle de menace explicite.
+- Protection de l'adresse IP et des corrélations de diffusion ; étude de Tor/I2P et des stratégies de relais.
+- Protection des métadonnées du portefeuille, y compris lors de la synchronisation et de la récupération.
+- Compatibilité avec les signatures et preuves post-quantiques à examiner primitive par primitive.
+- Possibilité d'une divulgation sélective sous contrôle de l'utilisateur, sans compromettre les autres utilisateurs.
+
+### Performance et fonctionnement du réseau
+- Rechercher un compromis mesuré entre confidentialité, frais, rapidité, bande passante, RAM, CPU et taille des preuves.
+- Permettre la vérification par des nœuds indépendants ; ne pas supprimer les données ou engagements nécessaires au consensus.
+- Établir des budgets de ressources et des benchmarks avant de retenir une architecture.
+- Comparer plusieurs options techniques plutôt que promettre simultanément confidentialité maximale et vitesse maximale sans preuve.
+
+### Articulation avec l'anti-perte et l'anti-arnaque
+Les protections du portefeuille (alertes, limites volontaires, délais optionnels, récupération avec gardiens) ne doivent pas exiger de dévoiler systématiquement les transactions à un opérateur central. Étudier des vérifications locales, des autorisations limitées et des procédures de récupération préservant la vie privée. Aucun mécanisme ne garantit de récupérer un transfert irréversible déjà confirmé ni de détecter toutes les fraudes.
+
+### Décision de périmètre
+Il s'agit d'un **objectif produit prioritaire**, pas d'un changement immédiat du consensus testnet v3. L'architecture actuelle de comptes publics ne fournit pas cette confidentialité : une étude de faisabilité et éventuellement un nouveau modèle d'état seront nécessaires avant intégration.
