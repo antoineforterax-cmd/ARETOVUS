@@ -1,5 +1,13 @@
 # Rapport d’essais du testnet AURORA
 
+## Campagne Ubuntu en cours — 28 octobre 2026
+
+La [CI de `6e6aaa0`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40695381103) a réussi, y compris les tests NIST, les nouveaux scénarios TCP, le smoke et le lanceur avec paiements. Les quatre tests NIST ont également réussi localement dans Ubuntu. Le test court Ubuntu a confirmé six blocs, cinq paiements, deux redémarrages et la restauration de sauvegarde en 124,21 s (`short_run_passed`).
+
+La campagne de 72 h a démarré le **28 octobre 2026 à 13:23:40 UTC** dans Ubuntu/WSL2, session tmux `aurora-essai`, avec trois nœuds, un mineur et deux comptes jetables. Le premier bloc a convergé. Il s'agit d'un essai **en cours**, pas d'un succès de 72 h. Les résultats finaux devront confirmer la durée, les paiements, les redémarrages et la restauration. Le lancement Linux n'a modifié aucune protection Windows.
+
+Provenance : binaires compilés depuis `f6afc7f38df50b2f7cd9a027096fedec48be3822`; lanceur et checkout au `6e6aaa03b8dfa4100686e75a39146f1e79a37714`. L'unique différence est la correction Clippy du décodeur hexadécimal dans le test NIST, sans changement du code des binaires. Empreintes SHA-256 : nœud `2935c1227a27c90133ca5915660bad27133ab750f58365efb50c5ca6896e6687`, wallet `b9638a08c9b2c05092999ac979e8c66e899a4f9431b67c793e373f5f55c76d7d`, lanceur `bf116d0c5e7f617e5ebc8b5918f140b080dcc127ee38849440cc098fc04b655e`. Les JSON du test court et de la campagne, les journaux et les commits sont à conserver. Ne pas publier les clés jetables.
+
 ## Mise à jour du 28 octobre 2026
 
 La [Release expérimentale.1](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) publie les binaires de `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` pour Windows x86-64, Linux x86-64 et macOS arm64, avec SHA256SUMS. Le [workflow de publication](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40528021813) a réussi, comme la CI, le soak et le fuzzing de cette source. Ces binaires sont non signés et non audités par un humain.
