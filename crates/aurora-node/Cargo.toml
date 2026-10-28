@@ -13,3 +13,6 @@ workspace = true
 aurora-core.workspace = true
 aurora-consensus = { path = "../aurora-consensus" }
 aurora-storage = { path = "../aurora-storage" }
+
+[dev-dependencies]
+ml-dsa.workspace = true
