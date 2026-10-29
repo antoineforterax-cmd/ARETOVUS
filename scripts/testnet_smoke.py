@@ -351,7 +351,11 @@ def main() -> int:
                 raise AssertionError("preview/rejected payments changed balance or nonce")
 
             # Sign without a node, then broadcast while the key file is unavailable.
-            nonce_match = re.search(r"next_nonce=(\d+)", after_review)
+            public_account = run_wallet(
+                wallet, "account", "--address", miner,
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            nonce_match = re.search(r"next_nonce=(\d+)", public_account)
             if nonce_match is None:
                 raise AssertionError("wallet did not report a nonce for offline preparation")
             signed_file = base / "signed-payment.aurtx"
@@ -429,6 +433,12 @@ def main() -> int:
             unavailable_key = base / "offline-key-unavailable.aurkey"
             keyfile.rename(unavailable_key)
             try:
+                public_without_key = run_wallet(
+                    wallet, "account", "--address", miner,
+                    "--node", f"{addr_b[0]}:{addr_b[1]}",
+                )
+                if public_without_key != public_account:
+                    raise AssertionError("keyless public account query changed before broadcast")
                 broadcast = subprocess.run(
                     [str(wallet), "broadcast", "--from", str(signed_file),
                      "--node", f"{addr_b[0]}:{addr_b[1]}"],

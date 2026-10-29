@@ -6,11 +6,16 @@ wallet (§7) et sans nouvelle règle de consensus.
 
 ## Préparation
 
-Sur un nœud connecté, relever le compte source et son prochain nonce. Le
-wallet `balance` fournit un solde et un nonce ajustés des transactions en
-attente sur ce nœud, sans constituer une preuve de l'état confirmé. Apporter
-ces informations sur la machine qui conserve la clé. Vérifier le destinataire
-et le montant par un canal de confiance.
+Sur la machine connectée, interroger uniquement l'adresse publique :
+```sh
+aurora-wallet account --address COMPTE_SOURCE_HEX --node 127.0.0.1:7000
+```
+
+Cette commande ne charge aucune clé privée. Le solde et le nonce affichés
+sont ajustés des transactions en attente sur ce nœud, sans constituer une
+preuve de l'état confirmé. Apporter ces informations sur la machine qui
+conserve la clé. Vérifier le destinataire et le montant par un canal de
+confiance.
 
 ## Machine qui conserve la clé, sans connexion
 

@@ -200,6 +200,17 @@ fn run() -> Result<(), Box<dyn Error>> {
             let key = load_key(&args)?;
             println!("{}", account_id_hex(key.account_id()));
         }
+        "account" => {
+            validate_options(&args, &["--address", "--node"], &[])?;
+            let address = parse_account_id(option(&args, "--address")?)?;
+            let account = rpc::get_account(node_address(&args)?, address)?;
+            println!(
+                "address={} pending_adjusted_balance={} next_nonce={}",
+                account_id_hex(address),
+                account.balance,
+                account.next_nonce
+            );
+        }
         "balance" => {
             let key = load_key(&args)?;
             let account = rpc::get_account(node_address(&args)?, key.account_id())?;
@@ -504,6 +515,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet restore --from BACKUP_FILE --out NEW_FILE");
             println!("  aurora-wallet verify-backup --from FILE --expected-account ACCOUNT_HEX");
             println!("  aurora-wallet address --key-file FILE");
+            println!("  aurora-wallet account --address ACCOUNT_HEX --node IP:PORT");
+            println!("    Query the public balance and next nonce without loading a key file.");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
             println!("    Balance and next_nonce include this node's pending transactions; they are not proof of confirmed state.");
             println!(
