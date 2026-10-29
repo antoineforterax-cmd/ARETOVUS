@@ -12,7 +12,7 @@ use aurora_core::hash::Hash256;
 use aurora_wallet::{
     account_id_hex, build_signed_transaction, parse_account_id, parse_amount, rpc, WalletKey,
 };
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 
 fn option<'a>(args: &'a [String], name: &str) -> Result<&'a str, Box<dyn Error>> {
     args.windows(2)
@@ -47,6 +47,67 @@ fn validate_options(
     Ok(())
 }
 
+fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dyn Error>> {
+    let (values, flags): (&[&str], &[&str]) = match command {
+        "keygen" => (&["--out"], &["--plain-testnet"]),
+        "backup" => (&["--key-file", "--out"], &[]),
+        "restore" => (&["--from", "--out"], &[]),
+        "recovery-export" => (&["--key-file", "--out"], &["--acknowledge-secret"]),
+        "recovery-verify" => (&["--from", "--expected-account"], &[]),
+        "recovery-restore" => (
+            &["--from", "--out", "--expected-account"],
+            &["--plain-testnet"],
+        ),
+        "verify-backup" => (&["--from", "--expected-account"], &[]),
+        "address" | "limits-show" => (&["--key-file"], &[]),
+        "account" => (&["--address", "--node"], &[]),
+        "balance" => (&["--key-file", "--node"], &[]),
+        "limits-create" => (&["--key-file", "--max-amount", "--max-fee"], &[]),
+        "send" => (
+            &[
+                "--key-file",
+                "--to",
+                "--amount",
+                "--fee",
+                "--node",
+                "--max-amount",
+                "--max-fee",
+            ],
+            &["--yes", "--dry-run"],
+        ),
+        "sign-offline" => (
+            &[
+                "--key-file",
+                "--to",
+                "--amount",
+                "--fee",
+                "--nonce",
+                "--out",
+                "--max-amount",
+                "--max-fee",
+            ],
+            &["--yes", "--dry-run"],
+        ),
+        "broadcast" => (&["--from", "--node"], &["--yes"]),
+        "verify" => (&["--node", "--txid", "--confirmations"], &[]),
+        "status" => (&["--node", "--txid"], &[]),
+        "wait" => (&["--node", "--txid", "--timeout-seconds"], &[]),
+        "help" | "-h" | "--help" => (&[], &[]),
+        _ => return Err("unknown command; use aurora-wallet --help".into()),
+    };
+    validate_options(args, values, flags)?;
+    if flag(args, "--yes") && flag(args, "--dry-run") {
+        return Err("--yes and --dry-run cannot be combined".into());
+    }
+    Ok(())
+}
+
+fn wait_deadline(seconds: u64) -> Result<Instant, Box<dyn Error>> {
+    Instant::now()
+        .checked_add(Duration::from_secs(seconds))
+        .ok_or_else(|| "wait timeout is out of range".into())
+}
+
 fn node_address(args: &[String]) -> Result<SocketAddr, Box<dyn Error>> {
     Ok(option(args, "--node")?.parse()?)
 }
@@ -63,10 +124,8 @@ fn flag(args: &[String], name: &str) -> bool {
 fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
     let path = Path::new(option(args, "--key-file")?);
     if WalletKey::file_is_encrypted(path)? {
-        let mut password = rpassword::prompt_password("Wallet password: ")?;
-        let result = WalletKey::load_encrypted_testnet_file(path, &password);
-        password.zeroize();
-        result
+        let password = Zeroizing::new(rpassword::prompt_password("Wallet password: ")?);
+        WalletKey::load_encrypted_testnet_file(path, &password)
     } else {
         eprintln!("WARNING: reading unencrypted testnet key file");
         WalletKey::load_plain_testnet_file(path)
@@ -84,9 +143,8 @@ fn load_recovery_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
 }
 
 fn copy_encrypted_key(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
-    let mut password = rpassword::prompt_password("Wallet password: ")?;
+    let password = Zeroizing::new(rpassword::prompt_password("Wallet password: ")?);
     let result = WalletKey::copy_encrypted_testnet_file(source, destination, &password);
-    password.zeroize();
     let account = result?;
     println!(
         "encrypted_key={} address={}",
@@ -101,6 +159,8 @@ fn run() -> Result<(), Box<dyn Error>> {
     let command = args.next().ok_or("Use aurora-wallet --help")?;
     let args = args.collect::<Vec<_>>();
 
+    validate_command_options(&command, &args)?;
+
     match command.as_str() {
         "keygen" => {
             let path = Path::new(option(&args, "--out")?);
@@ -112,17 +172,15 @@ fn run() -> Result<(), Box<dyn Error>> {
                     path.display()
                 );
             } else {
-                let mut password =
-                    rpassword::prompt_password("New wallet password (at least 12 characters): ")?;
-                let mut confirmation = rpassword::prompt_password("Confirm wallet password: ")?;
-                if password != confirmation {
-                    password.zeroize();
-                    confirmation.zeroize();
+                let password = Zeroizing::new(rpassword::prompt_password(
+                    "New wallet password (at least 12 characters): ",
+                )?);
+                let confirmation =
+                    Zeroizing::new(rpassword::prompt_password("Confirm wallet password: ")?);
+                if password.as_str() != confirmation.as_str() {
                     return Err("passwords do not match".into());
                 }
-                confirmation.zeroize();
                 let result = key.save_encrypted_testnet_file(path, &password);
-                password.zeroize();
                 result?;
                 println!("Encrypted testnet key saved at {}", path.display());
             }
@@ -190,9 +248,8 @@ fn run() -> Result<(), Box<dyn Error>> {
         "verify-backup" => {
             let source = Path::new(option(&args, "--from")?);
             let expected = parse_account_id(option(&args, "--expected-account")?)?;
-            let mut password = rpassword::prompt_password("Backup password: ")?;
+            let password = Zeroizing::new(rpassword::prompt_password("Backup password: ")?);
             let result = WalletKey::verify_encrypted_backup(source, &password, expected);
-            password.zeroize();
             result?;
             println!("backup_verified account={}", account_id_hex(expected));
         }
@@ -201,7 +258,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("{}", account_id_hex(key.account_id()));
         }
         "account" => {
-            validate_options(&args, &["--address", "--node"], &[])?;
             let address = parse_account_id(option(&args, "--address")?)?;
             let account = rpc::get_account(node_address(&args)?, address)?;
             println!(
@@ -252,20 +308,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
         }
         "sign-offline" => {
-            validate_options(
-                &args,
-                &[
-                    "--key-file",
-                    "--to",
-                    "--amount",
-                    "--fee",
-                    "--nonce",
-                    "--out",
-                    "--max-amount",
-                    "--max-fee",
-                ],
-                &["--yes", "--dry-run"],
-            )?;
             if flag(&args, "--yes") && flag(&args, "--dry-run") {
                 return Err("--yes and --dry-run cannot be combined".into());
             }
@@ -341,7 +383,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("not_broadcast: nonce and balance must be checked on the connected machine");
         }
         "broadcast" => {
-            validate_options(&args, &["--from", "--node"], &["--yes"])?;
             let transaction =
                 aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let node = node_address(&args)?;
@@ -491,7 +532,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let id = txid(option(&args, "--txid")?)?;
             let timeout = option(&args, "--timeout-seconds")?.parse::<u64>()?;
             let node = node_address(&args)?;
-            let deadline = Instant::now() + Duration::from_secs(timeout);
+            let deadline = wait_deadline(timeout)?;
             loop {
                 let status = rpc::transaction_status(node, id)?;
                 println!("{status:?}");
@@ -542,5 +583,22 @@ fn main() {
     if let Err(error) = run() {
         eprintln!("aurora-wallet: {error}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod wait_deadline_tests {
+    use super::*;
+
+    #[test]
+    fn zero_timeout_is_a_valid_immediate_deadline() {
+        let before = Instant::now();
+        let deadline = wait_deadline(0).unwrap();
+        assert!(deadline >= before && deadline <= Instant::now());
+    }
+
+    #[test]
+    fn overflowing_timeout_is_an_error_instead_of_a_panic() {
+        assert!(wait_deadline(u64::MAX).is_err());
     }
 }

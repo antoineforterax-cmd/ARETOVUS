@@ -126,6 +126,60 @@ pub fn reject_future_block_timestamp(timestamp: u64) -> Result<(), P2pError> {
     check_block_timestamp_at(timestamp, now)
 }
 
+#[derive(Default)]
+struct Mempool {
+    transactions: Vec<AccountTransaction>,
+    pending: Option<(Hash256, aurora_core::state::AccountLedger)>,
+    #[cfg(test)]
+    rebuilds: usize,
+}
+impl From<Vec<AccountTransaction>> for Mempool {
+    fn from(transactions: Vec<AccountTransaction>) -> Self {
+        Self {
+            transactions,
+            pending: None,
+            #[cfg(test)]
+            rebuilds: 0,
+        }
+    }
+}
+impl std::ops::Deref for Mempool {
+    type Target = Vec<AccountTransaction>;
+    fn deref(&self) -> &Self::Target {
+        &self.transactions
+    }
+}
+impl std::ops::DerefMut for Mempool {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.pending = None;
+        &mut self.transactions
+    }
+}
+impl Mempool {
+    fn replace(&mut self, transactions: Vec<AccountTransaction>) {
+        self.transactions = transactions;
+        self.pending = None;
+    }
+    fn account(
+        &mut self,
+        chain: &AccountForkChain,
+        id: AccountId,
+    ) -> aurora_core::state::AccountState {
+        if self.pending.as_ref().map(|(tip, _)| *tip) != Some(chain.tip_hash()) {
+            #[cfg(test)]
+            {
+                self.rebuilds += 1;
+            }
+            let mut state = chain.state().clone();
+            for tx in &self.transactions {
+                let _ = state.apply_transaction_cached(tx);
+            }
+            self.pending = Some((chain.tip_hash(), state));
+        }
+        self.pending.as_ref().unwrap().1.account(id)
+    }
+}
+
 type PeerCounts = Arc<Mutex<HashMap<IpAddr, usize>>>;
 
 struct PeerLease {
@@ -225,22 +279,168 @@ impl PendingHandshake {
     }
 }
 
-struct ReadyPeer {
-    stream: TcpStream,
-    hello: Vec<u8>,
-    _lease: PeerLease,
-    accepted: Instant,
-}
+const MAX_ACTIVE_SESSIONS: usize = 32;
+const IO_QUANTUM: usize = 64 * 1024;
 
-/// No socket reads block this dispatcher, and both application queues are bounded.
+struct ReadyPeer {
+    id: u64,
+    hello: Vec<u8>,
+    request: Option<Vec<u8>>,
+}
+struct ActivePeer {
+    id: u64,
+    stream: TcpStream,
+    _lease: PeerLease,
+    hello: Vec<u8>,
+    hello_done: bool,
+    in_flight: bool,
+    input: Vec<u8>,
+    request: Option<Vec<u8>>,
+    output: Vec<u8>,
+    written: usize,
+    started: Instant,
+    phase_started: Instant,
+    requests: usize,
+    bytes: usize,
+}
+impl ActivePeer {
+    fn poll(&mut self, ready: &std::sync::mpsc::SyncSender<ReadyPeer>) -> Result<(), P2pError> {
+        let deadline = if self.hello_done {
+            IO_TIMEOUT
+        } else {
+            HANDSHAKE_TIMEOUT
+        };
+        if self.started.elapsed() > MAX_SESSION_DURATION || self.phase_started.elapsed() >= deadline
+        {
+            return Err(P2pError::Protocol("session I/O deadline exceeded"));
+        }
+        if !self.output.is_empty() {
+            let end = (self.written + IO_QUANTUM).min(self.output.len());
+            match self.stream.write(&self.output[self.written..end]) {
+                Ok(0) => return Err(P2pError::Protocol("peer stopped reading")),
+                Ok(count) => self.written += count,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) => {}
+                Err(error) => return Err(error.into()),
+            }
+            if self.written == self.output.len() {
+                self.output = Vec::new();
+                self.written = 0;
+                self.phase_started = Instant::now();
+            }
+            return Ok(());
+        }
+        if self.in_flight {
+            return Ok(());
+        }
+        if self.hello_done && self.request.is_none() {
+            let mut budget = IO_QUANTUM;
+            while budget > 0 {
+                let end = if self.input.len() < 4 {
+                    4
+                } else {
+                    let length = u32::from_be_bytes(self.input[..4].try_into().unwrap()) as usize;
+                    if length == 0 || length > MAX_FRAME {
+                        return Err(P2pError::Protocol("frame length outside limit"));
+                    }
+                    length + 4
+                };
+                if self.input.len() == end {
+                    add_session_request(&mut self.requests)?;
+                    add_session_bytes(&mut self.bytes, end)?;
+                    self.request = Some(self.input.split_off(4));
+                    self.input = Vec::new();
+                    break;
+                }
+                let old = self.input.len();
+                let count = (end - old).min(budget);
+                self.input.resize(old + count, 0);
+                match self.stream.read(&mut self.input[old..]) {
+                    Ok(0) => return Err(P2pError::Protocol("peer closed")),
+                    Ok(read) => {
+                        self.input.truncate(old + read);
+                        budget -= read;
+                    }
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                        ) =>
+                    {
+                        self.input.truncate(old);
+                        return Ok(());
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            }
+        }
+        if !self.hello_done || self.request.is_some() {
+            let task = ReadyPeer {
+                id: self.id,
+                hello: self.hello.clone(),
+                request: self.request.take(),
+            };
+            match ready.try_send(task) {
+                Ok(()) => self.in_flight = true,
+                Err(std::sync::mpsc::TrySendError::Full(task)) => self.request = task.request,
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    return Err(P2pError::Protocol("workers stopped"))
+                }
+            }
+        }
+        Ok(())
+    }
+}
+type PeerResponse = (u64, Result<Vec<u8>, P2pError>);
+
+/// Only this bounded, nonblocking dispatcher owns production sockets.
+/// Workers execute one complete request against an in-memory transport.
 fn dispatch_handshakes(
     listener: TcpListener,
     ready: std::sync::mpsc::SyncSender<ReadyPeer>,
+    responses: std::sync::mpsc::Receiver<PeerResponse>,
     counts: PeerCounts,
 ) -> Result<(), P2pError> {
     listener.set_nonblocking(true)?;
-    let mut pending = Vec::<PendingHandshake>::with_capacity(MAX_PENDING_HANDSHAKES);
+    let mut pending = Vec::<PendingHandshake>::new();
+    let mut active = Vec::<ActivePeer>::new();
+    let mut next_id = 0u64;
     loop {
+        while let Ok((id, result)) = responses.try_recv() {
+            if let Some(index) = active.iter().position(|peer| peer.id == id) {
+                match result {
+                    Ok(output) => {
+                        let peer = &mut active[index];
+                        if add_session_bytes(&mut peer.bytes, output.len()).is_err() {
+                            active.swap_remove(index);
+                            continue;
+                        }
+                        peer.output = output;
+                        peer.in_flight = false;
+                        peer.hello_done = true;
+                        peer.phase_started = Instant::now();
+                    }
+                    Err(_) => {
+                        active.swap_remove(index);
+                    }
+                }
+            }
+        }
+        // Rotate the first serviced connection, including when the request queue is full.
+        if !active.is_empty() {
+            active.rotate_left(1);
+        }
+        let mut index = 0;
+        while index < active.len() {
+            if active[index].poll(&ready).is_err() {
+                active.swap_remove(index);
+            } else {
+                index += 1;
+            }
+        }
         let mut index = 0;
         while index < pending.len() {
             match pending[index].poll_at(Instant::now()) {
@@ -250,24 +450,31 @@ fn dispatch_handshakes(
                 }
                 Ok(Some(hello)) => {
                     let peer = pending.swap_remove(index);
-                    peer.stream.set_nonblocking(false)?;
-                    let task = ReadyPeer {
-                        stream: peer.stream,
-                        hello,
-                        _lease: peer.lease,
-                        accepted: peer.accepted,
-                    };
-                    match ready.try_send(task) {
-                        Ok(()) => {}
-                        Err(std::sync::mpsc::TrySendError::Full(_)) => {}
-                        Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
-                            return Err(P2pError::Protocol("all peer workers stopped"));
-                        }
+                    if active.len() == MAX_ACTIVE_SESSIONS {
+                        continue;
                     }
+                    next_id = next_id
+                        .checked_add(1)
+                        .ok_or(P2pError::Protocol("session id exhausted"))?;
+                    active.push(ActivePeer {
+                        id: next_id,
+                        stream: peer.stream,
+                        _lease: peer.lease,
+                        bytes: hello.len() + 4,
+                        hello,
+                        hello_done: false,
+                        in_flight: false,
+                        input: Vec::new(),
+                        request: None,
+                        output: Vec::new(),
+                        written: 0,
+                        started: peer.accepted,
+                        phase_started: peer.accepted,
+                        requests: 0,
+                    });
                 }
             }
         }
-        // Limit accepts per pass so a continuous connection flood cannot starve polling.
         for _ in 0..MAX_PENDING_HANDSHAKES {
             match listener.accept() {
                 Ok((stream, remote)) => {
@@ -287,13 +494,86 @@ fn dispatch_handshakes(
     }
 }
 
-fn set_timeouts(stream: &TcpStream) -> io::Result<()> {
+trait PeerIo: Read + Write {
+    fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()>;
+    fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()>;
+    fn read_timeout(&self) -> io::Result<Option<Duration>>;
+    fn write_timeout(&self) -> io::Result<Option<Duration>>;
+}
+impl PeerIo for TcpStream {
+    fn set_read_timeout(&self, t: Option<Duration>) -> io::Result<()> {
+        TcpStream::set_read_timeout(self, t)
+    }
+    fn set_write_timeout(&self, t: Option<Duration>) -> io::Result<()> {
+        TcpStream::set_write_timeout(self, t)
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        TcpStream::read_timeout(self)
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        TcpStream::write_timeout(self)
+    }
+}
+struct MemoryPeer {
+    input: io::Cursor<Vec<u8>>,
+    output: Vec<u8>,
+}
+impl Read for MemoryPeer {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        self.input.read(bytes)
+    }
+}
+impl Write for MemoryPeer {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.output.len().saturating_add(bytes.len()) > MAX_FRAME + 81 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "response exceeds memory transport limit",
+            ));
+        }
+        self.output.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+impl PeerIo for MemoryPeer {
+    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+}
+impl PeerIo for &mut MemoryPeer {
+    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+}
+
+fn set_timeouts(stream: &impl PeerIo) -> io::Result<()> {
     stream.set_read_timeout(Some(IO_TIMEOUT))?;
     stream.set_write_timeout(Some(IO_TIMEOUT))?;
     Ok(())
 }
 fn read_exact_before_deadline(
-    stream: &mut TcpStream,
+    stream: &mut impl PeerIo,
     bytes: &mut [u8],
     started: Instant,
     budget: Duration,
@@ -325,7 +605,7 @@ fn read_exact_before_deadline(
     Ok(())
 }
 
-fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, P2pError> {
+fn read_frame(stream: &mut impl PeerIo) -> Result<Vec<u8>, P2pError> {
     let original_timeout = stream.read_timeout()?;
     let budget = original_timeout.unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
     let started = Instant::now();
@@ -344,7 +624,7 @@ fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, P2pError> {
     result
 }
 fn write_all_before_deadline(
-    stream: &mut TcpStream,
+    stream: &mut impl PeerIo,
     bytes: &[u8],
     started: Instant,
     budget: Duration,
@@ -376,7 +656,7 @@ fn write_all_before_deadline(
     Ok(())
 }
 
-fn write_frame(stream: &mut TcpStream, frame: &[u8]) -> Result<(), P2pError> {
+fn write_frame(stream: &mut impl PeerIo, frame: &[u8]) -> Result<(), P2pError> {
     if frame.is_empty() || frame.len() > MAX_FRAME {
         return Err(P2pError::Protocol("outbound frame exceeds limit"));
     }
@@ -507,7 +787,7 @@ pub fn decode_peer_list(frame: &[u8]) -> Result<Vec<SocketAddr>, P2pError> {
     Ok(peers)
 }
 
-fn send_hello(stream: &mut TcpStream, chain: &AccountForkChain) -> Result<(), P2pError> {
+fn send_hello(stream: &mut impl PeerIo, chain: &AccountForkChain) -> Result<(), P2pError> {
     let mut frame = vec![HELLO];
     frame.extend_from_slice(protocol_fingerprint(chain).as_bytes());
     frame.extend_from_slice(&chain.height().to_be_bytes());
@@ -611,7 +891,7 @@ pub fn read_blocks(frame: &[u8]) -> Result<(u64, Vec<AccountBlock>), P2pError> {
 fn handle_peer_shared(
     mut stream: TcpStream,
     chain: &Mutex<AccountForkChain>,
-    mempool: &Mutex<Vec<AccountTransaction>>,
+    mempool: &Mutex<Mempool>,
     data_dir: &Path,
     advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
@@ -622,9 +902,9 @@ fn handle_peer_shared(
 }
 
 fn handle_peer_after_hello(
-    mut stream: TcpStream,
+    mut stream: impl PeerIo,
     chain: &Mutex<AccountForkChain>,
-    mempool: &Mutex<Vec<AccountTransaction>>,
+    mempool: &Mutex<Mempool>,
     data_dir: &Path,
     advertised_peers: &[SocketAddr],
     hello: Vec<u8>,
@@ -692,12 +972,8 @@ fn handle_peer_after_hello(
                 let id = AccountId(request[1..33].try_into().expect("fixed account id"));
                 let account = {
                     let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                    let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                    let mut state = chain.state().clone();
-                    for tx in pool.iter() {
-                        let _ = state.apply_transaction_cached(tx);
-                    }
-                    state.account(id)
+                    let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+                    pool.account(&chain, id)
                 };
                 let mut reply = vec![ACCOUNT_REPLY];
                 reply.extend_from_slice(&account.next_nonce.to_be_bytes());
@@ -746,6 +1022,7 @@ fn handle_peer_after_hello(
                     }
                     candidate.apply_transaction_cached(&tx).map_err(|_| 2u8)?;
                     pool.push(tx);
+                    pool.pending = Some((chain.tip_hash(), candidate));
                     Ok((txid, pool.len()))
                 })();
                 let reply = match admission {
@@ -919,13 +1196,18 @@ fn handle_peer_after_hello(
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
                 reject_future_block_timestamp(block.header.timestamp)?;
                 let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                let mut candidate = chain.clone();
-                match candidate.submit(block) {
-                    Ok(_) => {
-                        publish_chain_transition(&mut chain, candidate, mempool, data_dir)?;
+                let hash = block
+                    .header
+                    .hash()
+                    .map_err(|_| P2pError::Protocol("block hash encoding failed"))?;
+                if let Some(mut candidate) = candidate_for_new_block(&chain, hash) {
+                    match candidate.submit(block) {
+                        Ok(_) => {
+                            publish_chain_transition(&mut chain, candidate, mempool, data_dir)?;
+                        }
+                        Err(AccountForkChainError::DuplicateBlock) => {}
+                        Err(error) => return Err(P2pError::Chain(error)),
                     }
-                    Err(AccountForkChainError::DuplicateBlock) => {}
-                    Err(error) => return Err(P2pError::Chain(error)),
                 }
                 let mut reply = vec![BLOCK_ACCEPTED];
                 reply.extend_from_slice(&chain.height().to_be_bytes());
@@ -940,6 +1222,14 @@ fn handle_peer_after_hello(
 }
 
 /// Common-prefix search avoids scanning the entire canonical history on extensions.
+fn candidate_for_new_block(chain: &AccountForkChain, hash: Hash256) -> Option<AccountForkChain> {
+    if chain.contains_block(hash) {
+        None
+    } else {
+        Some(chain.clone())
+    }
+}
+
 fn common_chain_len(old: &AccountForkChain, new: &AccountForkChain) -> u64 {
     let mut low = 0;
     let mut high = old.height().min(new.height()) + 1;
@@ -1014,7 +1304,7 @@ fn rebuild_mempool(
 fn publish_chain_transition(
     current: &mut AccountForkChain,
     candidate: AccountForkChain,
-    mempool: &Mutex<Vec<AccountTransaction>>,
+    mempool: &Mutex<Mempool>,
     data_dir: &Path,
 ) -> Result<(), P2pError> {
     let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
@@ -1027,7 +1317,7 @@ fn publish_chain_transition(
     );
     save_snapshot(data_dir, &candidate)?;
     *current = candidate;
-    *pool = rebuilt;
+    pool.replace(rebuilt);
     Ok(())
 }
 
@@ -1035,7 +1325,7 @@ fn publish_chain_transition(
 fn sync_mempool_peer(
     address: SocketAddr,
     chain: &Mutex<AccountForkChain>,
-    mempool: &Mutex<Vec<AccountTransaction>>,
+    mempool: &Mutex<Mempool>,
 ) -> Result<usize, P2pError> {
     let handshake_chain = chain
         .lock()
@@ -1093,6 +1383,7 @@ fn sync_mempool_peer(
         pool_bytes += encoded_size;
         added += 1;
     }
+    pool.pending = Some((current.tip_hash(), state));
     Ok(added)
 }
 
@@ -1100,7 +1391,7 @@ fn sync_mempool_peer(
 fn sync_peer_into_shared(
     address: SocketAddr,
     chain: &Mutex<AccountForkChain>,
-    mempool: &Mutex<Vec<AccountTransaction>>,
+    mempool: &Mutex<Mempool>,
     data_dir: &Path,
 ) -> Result<usize, P2pError> {
     let mut candidate = chain
@@ -1136,7 +1427,7 @@ pub fn serve(
     let listener = TcpListener::bind(address)?;
     println!("testnet peer listening on {}", listener.local_addr()?);
     let chain = Arc::new(Mutex::new(chain.clone()));
-    let mempool = Arc::new(Mutex::new(Vec::<AccountTransaction>::new()));
+    let mempool = Arc::new(Mutex::new(Mempool::default()));
     let data_dir = Arc::new(data_dir.to_path_buf());
     let mut peers = advertised_peers.to_vec();
     peers.sort_unstable();
@@ -1167,12 +1458,14 @@ pub fn serve(
     }
     let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<ReadyPeer>(MAX_READY_HANDSHAKES);
     let ready_rx = Arc::new(Mutex::new(ready_rx));
+    let (response_tx, response_rx) = std::sync::mpsc::sync_channel::<PeerResponse>(PEER_WORKERS);
     for worker_id in 0..PEER_WORKERS {
         let chain = Arc::clone(&chain);
         let mempool = Arc::clone(&mempool);
         let data_dir = Arc::clone(&data_dir);
         let advertised_peers = Arc::clone(&advertised_peers);
         let ready_rx = Arc::clone(&ready_rx);
+        let responses = response_tx.clone();
         thread::Builder::new()
             .name(format!("aurora-peer-{worker_id}"))
             .spawn(move || loop {
@@ -1186,23 +1479,40 @@ pub fn serve(
                         Err(_) => return,
                     }
                 };
-                // Queue residence does not extend the original handshake deadline.
-                if task.accepted.elapsed() >= HANDSHAKE_TIMEOUT {
-                    continue;
+                let request_present = task.request.is_some();
+                let mut input = Vec::new();
+                if let Some(request) = task.request {
+                    input.extend_from_slice(&(request.len() as u32).to_be_bytes());
+                    input.extend_from_slice(&request);
                 }
-                if let Err(error) = handle_peer_after_hello(
-                    task.stream,
+                let mut transport = MemoryPeer {
+                    input: io::Cursor::new(input),
+                    output: Vec::new(),
+                };
+                let result = handle_peer_after_hello(
+                    &mut transport,
                     &chain,
                     &mempool,
                     &data_dir,
                     &advertised_peers,
                     task.hello,
-                ) {
-                    eprintln!("peer rejected: {error}");
+                )
+                .map(|()| {
+                    if request_present {
+                        let hello_size =
+                            4 + u32::from_be_bytes(transport.output[..4].try_into().unwrap())
+                                as usize;
+                        transport.output.split_off(hello_size)
+                    } else {
+                        transport.output
+                    }
+                });
+                if responses.send((task.id, result)).is_err() {
+                    return;
                 }
             })?;
     }
-    dispatch_handshakes(listener, ready_tx, peer_counts)
+    dispatch_handshakes(listener, ready_tx, response_rx, peer_counts)
 }
 
 fn retryable_peer_error(error: &P2pError) -> bool {
@@ -1868,7 +2178,7 @@ mod tests {
             handle_peer_shared(
                 stream,
                 &Mutex::new(remote),
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 Path::new("."),
                 &[],
             )
@@ -1899,6 +2209,21 @@ mod tests {
         assert!(PeerLease::acquire(ip, &counts).unwrap().is_some());
     }
 
+    #[test]
+    fn duplicate_block_does_not_allocate_a_candidate_chain() {
+        let mut chain = chain();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), 2, 0, vec![]).unwrap();
+        let hash = block.header.hash().unwrap();
+        assert!(candidate_for_new_block(&chain, hash).is_some());
+        chain.submit(block).unwrap();
+        for _ in 0..100 {
+            assert!(candidate_for_new_block(&chain, hash).is_none());
+        }
+        assert_eq!(chain.height(), 1);
+        assert_eq!(chain.known_block_count(), 2);
+    }
+
     fn chain() -> AccountForkChain {
         let genesis = AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, vec![]).unwrap();
         AccountForkChain::new_with_protocol_params(
@@ -1920,7 +2245,7 @@ mod tests {
             handle_peer_shared(
                 stream,
                 &Mutex::new(chain()),
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &std::env::temp_dir(),
                 &[],
             )
@@ -2021,7 +2346,7 @@ mod tests {
             handle_peer_shared(
                 stream,
                 &Mutex::new(remote),
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &server_dir,
                 &[],
             )
@@ -2032,7 +2357,7 @@ mod tests {
         let local_block = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, vec![]).unwrap();
         local.submit(local_block).unwrap();
         let shared = Mutex::new(local);
-        let mempool = Mutex::new(Vec::new());
+        let mempool = Mutex::new(Mempool::default());
         assert_eq!(
             sync_peer_into_shared(address, &shared, &mempool, &dir).unwrap(),
             1
@@ -2068,7 +2393,7 @@ mod tests {
             let result = handle_peer_shared(
                 stream,
                 &shared_chain,
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &server_dir,
                 &[],
             );
@@ -2111,7 +2436,7 @@ mod tests {
                     handle_peer_shared(
                         stream,
                         &chain,
-                        &Mutex::new(Vec::new()),
+                        &Mutex::new(Mempool::default()),
                         &data_dir,
                         &advertised_peers,
                     )
@@ -2160,7 +2485,7 @@ mod tests {
             let result = handle_peer_shared(
                 stream,
                 &shared_chain,
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &server_dir,
                 &[],
             );
@@ -2197,7 +2522,7 @@ mod tests {
             let result = handle_peer_shared(
                 stream,
                 &shared_chain,
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &server_dir,
                 &[],
             );
@@ -2259,7 +2584,7 @@ mod tests {
             handle_peer_shared(
                 stream,
                 &shared_chain,
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 Path::new("."),
                 &advertised,
             )
@@ -2618,7 +2943,7 @@ mod tests {
             handle_peer_shared(
                 stream,
                 &Mutex::new(chain()),
-                &Mutex::new(Vec::new()),
+                &Mutex::new(Mempool::default()),
                 &server_dir,
                 &[],
             )
@@ -2772,13 +3097,13 @@ mod orphan_reinsertion_tests {
         let (mut old, new, txs) = branches(1);
         let tip = old.tip_hash();
         let state = old.state().clone();
-        let pool = Mutex::new(vec![txs[1].clone()]);
+        let pool = Mutex::new(Mempool::from(vec![txs[1].clone()]));
         let path = directory("failure");
         std::fs::write(&path, b"not a directory").unwrap();
         assert!(publish_chain_transition(&mut old, new, &pool, &path).is_err());
         assert_eq!(old.tip_hash(), tip);
         assert_eq!(old.state(), &state);
-        assert_eq!(*pool.lock().unwrap(), vec![txs[1].clone()]);
+        assert_eq!(pool.lock().unwrap().transactions, vec![txs[1].clone()]);
         std::fs::remove_file(path).unwrap();
     }
 
@@ -2795,17 +3120,17 @@ mod orphan_reinsertion_tests {
             handle_peer_shared(
                 stream,
                 &Mutex::new(new),
-                &Mutex::new(vec![]),
+                &Mutex::new(Mempool::default()),
                 &server_path,
                 &[],
             )
         });
         let current = Mutex::new(old);
-        let pool = Mutex::new(vec![txs[1].clone()]);
+        let pool = Mutex::new(Mempool::from(vec![txs[1].clone()]));
         assert!(sync_peer_into_shared(address, &current, &pool, &path).unwrap() > 0);
         assert!(server.join().unwrap().is_ok());
         assert_eq!(current.lock().unwrap().tip_hash(), tip);
-        assert_eq!(*pool.lock().unwrap(), txs);
+        assert_eq!(pool.lock().unwrap().transactions, txs);
         std::fs::remove_dir_all(path).unwrap();
     }
 
@@ -2826,14 +3151,14 @@ mod orphan_reinsertion_tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let chain = Mutex::new(old);
-            let pool = Mutex::new(vec![txs[1].clone()]);
+            let pool = Mutex::new(Mempool::from(vec![txs[1].clone()]));
             handle_peer_shared(stream, &chain, &pool, &server_path, &[]).unwrap();
             (chain.into_inner().unwrap(), pool.into_inner().unwrap(), txs)
         });
         propagate_block(address, &client_chain, &winning).unwrap();
         let (chain, pool, txs) = server.join().unwrap();
         assert_eq!(chain.tip_hash(), expected_tip);
-        assert_eq!(pool, txs);
+        assert_eq!(pool.transactions, txs);
         std::fs::remove_dir_all(path).unwrap();
     }
 }
@@ -2978,6 +3303,57 @@ mod self_transfer_tests {
         tx
     }
 
+    #[test]
+    fn pending_view_reuses_one_build_and_invalidates_on_pool_and_chain_changes() {
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let mut chain = AccountForkChain::new(genesis, 0, funded_ledger()).unwrap();
+        let tx = signed_transfer(0, false);
+        let mut expected = chain.state().clone();
+        expected.apply_transaction_cached(&tx).unwrap();
+        let mut pool = Mempool::from(vec![tx.clone()]);
+        for _ in 0..100 {
+            assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
+            assert_eq!(
+                pool.account(&chain, tx.recipient),
+                expected.account(tx.recipient)
+            );
+        }
+        assert_eq!(pool.rebuilds, 1);
+        pool.clear();
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            chain.state().account(tx.sender)
+        );
+        assert_eq!(pool.rebuilds, 2);
+        pool.push(tx.clone());
+        assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
+        assert_eq!(pool.rebuilds, 3);
+        let first =
+            AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![tx.clone()])
+                .unwrap();
+        chain.submit(first).unwrap();
+        assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
+        assert_eq!(pool.rebuilds, 4);
+        pool.replace(Vec::new());
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            chain.state().account(tx.sender)
+        );
+        assert_eq!(pool.rebuilds, 5);
+        let genesis_hash = chain.blocks().next().unwrap().header.hash().unwrap();
+        let side = AccountBlock::build(NetworkId::Testnet, genesis_hash, 3, 0, vec![]).unwrap();
+        let side_hash = side.header.hash().unwrap();
+        chain.submit(side).unwrap();
+        let longer = AccountBlock::build(NetworkId::Testnet, side_hash, 4, 0, vec![]).unwrap();
+        chain.submit(longer).unwrap();
+        assert_eq!(chain.height(), 2);
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            funded_ledger().account(tx.sender)
+        );
+        assert_eq!(pool.rebuilds, 6);
+    }
+
     fn funded_ledger() -> AccountLedger {
         let mut ledger = AccountLedger::new(NetworkId::Testnet);
         ledger
@@ -3028,7 +3404,7 @@ mod self_transfer_tests {
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             let chain = Mutex::new(chain);
-            let pool = Mutex::new(Vec::new());
+            let pool = Mutex::new(Mempool::default());
             let result = handle_peer_shared(stream, &chain, &pool, &std::env::temp_dir(), &[]);
             (
                 result,
@@ -3064,14 +3440,15 @@ mod self_transfer_tests {
         let (result, chain, pool) = server.join().unwrap();
         assert!(result.is_ok());
         assert_eq!(chain.state(), &before);
-        assert_eq!(pool, vec![valid.clone()]);
+        assert_eq!(pool.transactions, vec![valid.clone()]);
 
         // Revalidation must also remove an invalid entry without consuming its nonce.
-        let pool = Mutex::new(vec![signed_transfer(0, true), valid.clone()]);
+        let pool = Mutex::new(Mempool::from(vec![signed_transfer(0, true), valid.clone()]));
         let mut guard = pool.lock().unwrap();
-        *guard = rebuild_mempool(&chain, &chain, &guard, MAX_MEMPOOL_TXS, MAX_MEMPOOL_BYTES);
+        let rebuilt = rebuild_mempool(&chain, &chain, &guard, MAX_MEMPOOL_TXS, MAX_MEMPOOL_BYTES);
+        guard.replace(rebuilt);
         drop(guard);
-        assert_eq!(*pool.lock().unwrap(), vec![valid]);
+        assert_eq!(pool.lock().unwrap().transactions, vec![valid]);
         assert_eq!(chain.state(), &before);
     }
 }
