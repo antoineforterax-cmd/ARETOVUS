@@ -70,8 +70,16 @@ impl CanonicalDecode for Hash256 {
 }
 
 const TAG_TXID: &[u8] = b"AURORA/exp/v0/txid";
+const TAG_ACCOUNT_TXID: &[u8] = b"AURORA/exp/v0/account-txid";
+const TAG_TX_SIGNING: &[u8] = b"AURORA/exp/v0/tx-signing";
 const TAG_BLOCK_HEADER: &[u8] = b"AURORA/exp/v0/block-header";
 const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
+const TAG_ACCOUNT_TX_LIST: &[u8] = b"AURORA/exp/v0/account-tx-list";
+const TAG_HYBRID_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/hybrid-account-id";
+const TAG_POST_QUANTUM_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/post-quantum-account-id";
+const TAG_MERKLE_LEAF: &[u8] = b"AURORA/exp/v1/merkle-leaf";
+const TAG_MERKLE_NODE: &[u8] = b"AURORA/exp/v1/merkle-node";
+const TAG_MERKLE_EMPTY: &[u8] = b"AURORA/exp/v1/merkle-empty";
 
 /// Domaine de hachage : deux domaines différents ne produisent jamais le même condensat
 /// pour les mêmes données.
@@ -79,10 +87,26 @@ const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
 pub enum Domain {
     /// Identifiant de transaction.
     TxId,
+    /// Account transaction identifier.
+    AccountTxId,
+    /// Empreinte des champs signés d'une transaction, sans les données d'autorisation.
+    TxSigning,
     /// En-tête de bloc.
     BlockHeader,
     /// Engagement sur la liste des transactions d'un bloc (pas un arbre de Merkle : TX-04 ouvert).
     TxList,
+    /// Ordered commitment for experimental account transactions.
+    AccountTxList,
+    /// Account identifier committing to both hybrid public keys.
+    HybridAccountId,
+    /// Account identifier derived from the native ML-DSA-65 public key.
+    PostQuantumAccountId,
+    /// Transaction Merkle leaf.
+    MerkleLeaf,
+    /// Transaction Merkle internal node.
+    MerkleNode,
+    /// Empty transaction Merkle tree.
+    MerkleEmpty,
 }
 
 impl Domain {
@@ -90,8 +114,16 @@ impl Domain {
     pub fn tag(self) -> &'static [u8] {
         match self {
             Domain::TxId => TAG_TXID,
+            Domain::AccountTxId => TAG_ACCOUNT_TXID,
+            Domain::TxSigning => TAG_TX_SIGNING,
             Domain::BlockHeader => TAG_BLOCK_HEADER,
             Domain::TxList => TAG_TX_LIST,
+            Domain::AccountTxList => TAG_ACCOUNT_TX_LIST,
+            Domain::HybridAccountId => TAG_HYBRID_ACCOUNT_ID,
+            Domain::PostQuantumAccountId => TAG_POST_QUANTUM_ACCOUNT_ID,
+            Domain::MerkleLeaf => TAG_MERKLE_LEAF,
+            Domain::MerkleNode => TAG_MERKLE_NODE,
+            Domain::MerkleEmpty => TAG_MERKLE_EMPTY,
         }
     }
 }
@@ -124,7 +156,19 @@ pub fn tagged_hash(domain: Domain, data: &[u8]) -> Hash256 {
 mod tests {
     use super::*;
 
-    const ALL_DOMAINS: [Domain; 3] = [Domain::TxId, Domain::BlockHeader, Domain::TxList];
+    const ALL_DOMAINS: [Domain; 11] = [
+        Domain::TxId,
+        Domain::AccountTxId,
+        Domain::TxSigning,
+        Domain::BlockHeader,
+        Domain::TxList,
+        Domain::AccountTxList,
+        Domain::HybridAccountId,
+        Domain::PostQuantumAccountId,
+        Domain::MerkleLeaf,
+        Domain::MerkleNode,
+        Domain::MerkleEmpty,
+    ];
 
     #[test]
     fn domain_tags_fit_in_one_byte_length() {

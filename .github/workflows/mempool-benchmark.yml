@@ -1,0 +1,37 @@
+name: mempool-benchmark
+on:
+  push:
+    paths:
+      - 'crates/aurora-core/**'
+      - '.github/workflows/mempool-benchmark.yml'
+  pull_request:
+    paths:
+      - 'crates/aurora-core/**'
+      - '.github/workflows/mempool-benchmark.yml'
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Métadonnées de reproduction
+        run: |
+          mkdir -p target/mempool-measurements
+          git rev-parse HEAD > target/mempool-measurements/commit.txt
+          rustc -Vv > target/mempool-measurements/rustc.txt
+          lscpu > target/mempool-measurements/cpu.txt
+      - name: Invariants et mesures release
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --release --locked -p aurora-core --test mempool_benchmark -- --include-ignored --nocapture --test-threads=1 2>&1 | tee target/mempool-measurements/results.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mempool-measurements
+          path: target/mempool-measurements/
+          retention-days: 14

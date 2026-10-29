@@ -2,7 +2,7 @@
 //!
 //! Hypothèses du prototype (non validées, voir `docs/DECISION_REGISTER.md`) :
 //! - unité minimale : 10^-8 AUR, soit 8 décimales (TX-06) ;
-//! - plafond de sécurité du type : 105 000 000 AUR (MON-01, simple borne de garde-fou ici,
+//! - plafond de sécurité du type : 500 000 000 AUR (plafond de garde-fou du prototype,
 //!   pas une règle d'émission).
 
 use std::fmt;
@@ -13,8 +13,8 @@ use crate::codec::{CanonicalDecode, CanonicalEncode, DecodeError, Decoder, Encod
 pub const DECIMALS: usize = 8;
 /// Nombre d'unités minimales dans 1 AUR (10^8).
 pub const UNITS_PER_COIN: u64 = 100_000_000;
-/// Plafond hypothétique en AUR (MON-01).
-pub const MAX_COINS: u64 = 105_000_000;
+/// Plafond de garde-fou en AUR (proposition de travail).
+pub const MAX_COINS: u64 = 500_000_000;
 /// Plafond hypothétique en unités minimales.
 pub const MAX_UNITS: u64 = MAX_COINS * UNITS_PER_COIN;
 
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn cap_fits_in_u64_with_room() {
-        assert_eq!(MAX_UNITS, 10_500_000_000_000_000);
+        assert_eq!(MAX_UNITS, 50_000_000_000_000_000);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
             Amount::from_units(150_000_000).unwrap().to_string(),
             "1.50000000"
         );
-        assert_eq!(Amount::MAX.to_string(), "105000000.00000000");
+        assert_eq!(Amount::MAX.to_string(), "500000000.00000000");
     }
 
     #[test]

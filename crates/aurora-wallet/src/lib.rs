@@ -1,5 +1,13 @@
-//! `aurora-wallet` : crate reservee.
-//!
-//! Aucune cle n'est generee ni stockee a ce stade. Le portefeuille depend des decisions
-//! CRY-01 (signatures), CRY-07 (derivation des cles) et TX-01 (modele de transaction),
-//! encore ouvertes dans `docs/DECISION_REGISTER.md`.
+//! Experimental ML-DSA-65 testnet wallet.
+pub mod builder;
+pub mod keys;
+pub mod policy;
+mod recovery;
+pub mod rpc;
+pub mod safety;
+pub mod signed_payment;
+pub mod spv;
+pub mod uri;
+
+pub use builder::{account_id_hex, build_signed_transaction, parse_account_id, parse_amount};
+pub use keys::WalletKey;

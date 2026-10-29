@@ -1,13 +1,10 @@
 # DECISION_REGISTER.md — AURORA
 
-**Version du registre :** 1.1 (cahier des charges v4.0 + corrections v4.1)
-**Dernière mise à jour :** 2026-10-25
-**Décideur unique :** le porteur du projet.
+**Statut :** registre historique des questions de conception de phase 0, conservé pour traçabilité. Les statuts du tableau ci-dessous n’ont pas tous été remis à jour après les prototypes et ne décrivent pas, à eux seuls, le protocole exécuté.  
+**Choix actifs du testnet expérimental :** [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md), [PROTOCOL.md](PROTOCOL.md) et [EMISSION_MODEL.md](EMISSION_MODEL.md).  
+**Dernière mise au point :** 2026-10-26. Le porteur a choisi de continuer le développement expérimental sans revue externe immédiate. Aucune revue indépendante n’a eu lieu et aucune sécurité mainnet n’est revendiquée.
 
-> **Aucun résultat de benchmark, de simulation ou d'audit indépendant n'existe à ce jour.**
-> Les contrôles automatisés Rust (formatage, Clippy, compilation et tests) ont passé sur le commit `e3b9102f3308c4bedc4dfa28b5681b1adaccd144` via GitHub Actions ; cela ne constitue pas un audit de sécurité. Voir annexe B pour la portée exacte.
-> Ce registre ne contient que des décisions à prendre, des hypothèses et des méthodes de vérification.
-> Les chiffres marqués « calcul indicatif » sont de l'arithmétique, pas des mesures.
+Les résultats automatisés récents figurent dans [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md). Le tableau historique ci-dessous garde les alternatives initiales; une ligne marquée « à comparer » peut avoir reçu un choix provisoire dans le profil testnet actuel. Pour toute lecture des règles réellement exécutées, consulter les documents actifs et le code au commit visé.
 
 ---
 
@@ -95,20 +92,20 @@ Passage normal : PROPOSÉ → (À COMPARER / À SIMULER / À TESTER) → VALIDÉ
 
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
-| MON-01 | Plafond monétaire | À SIMULER | 105 000 000 AUR (hypothèse) | Calcul par le code + vérification par un outil indépendant | 3 | MON-03, TX-06 | C V1 |
-| MON-02 | Récompense initiale | À SIMULER | 50 AUR (hypothèse) | Scénarios du cahier §7.3 | 3 | — | C V1 |
-| MON-03 | Calendrier de réduction | À COMPARER | Moitié tous les 1 050 000 blocs comme exemple ; alternatives plus courtes ou courbes différentes. Voir F-05 | Simulateur | 3 | POW-04 | C V1 |
-| MON-04 | Règles d'arrondi et dernière récompense | À COMPARER | Pas de récompense finale artificielle pour atteindre le chiffre affiché | Calcul indépendant | 3 | TX-06 | C V1 |
-| MON-05 | Distribution initiale et bloc de genèse | À COMPARER | Voir F-06 | Distribution publiée et vérifiable | 0b | — | C V1 |
-| MON-06 | Partage des frais (mineur / fonds éventuel) | À COMPARER | | Simulation | 3 | OPT-02 | C V1 |
-| MON-07 | Simulateur : méthode, hypothèses publiées | PROPOSÉ | Reproductible, scénarios défavorables inclus | Hypothèses et commandes publiées | 0b | — | O V1 |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
+| MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
+| MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
 
 ### FEE — Frais, poids, capacité
 
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
 | FEE-01 | Poids d'une transaction (octets, coût de validation) | À COMPARER | Pas de rabais artificiel sur les signatures (cahier §8.2). Voir F-07 | Benchmarks | 0b → 3 | CRY-01 | C V1 |
-| FEE-02 | Taille maximale d'un bloc | À TESTER | 1 Mio = point de comparaison seulement | Tests de charge et de propagation | 3 | FEE-01 | C V1 |
+| FEE-02 | Taille maximale d’un bloc | VALIDÉ POUR LE PROTOTYPE | 4 MiB d’octets canoniques, plafonds synchronisés transport/stockage | Tests de frontière et coûts de validation | 3 | FEE-01 | C V1 |
 | FEE-03 | Taille maximale d'une transaction | À TESTER | Idem | Idem | 3 | FEE-01 | C V1 |
 | FEE-04 | Modèle de frais | À COMPARER | | Simulation | 3 | FEE-01 | C P V1 |
 | FEE-05 | Politique de mempool (taille, expiration, dépendances) | À COMPARER | Cahier §8.4 | Tests | 3 | FEE-04 | P V1 |
@@ -371,6 +368,7 @@ Risques de la phase 0b : bibliothèque post-quantique non auditée ; benchmark n
 
 | Date | ID | Changement | Par |
 |---|---|---|---|
+| 2026-10-26 | MON-02–MON-04 | À la demande du porteur, implémentation testnet remplacée par une décroissance lissée proportionnelle au reliquat (1/1 000 000 par bloc, arrondi entier, plancher d’une unité); plafond strict, genèse sans préminage, trésorerie 5 %, frais 50/50 conservés. Aucune validation pour le protocole/mainnet | Codex, implémentation de prototype |
 | 2026-10-25 | tous | Version 1.1 : annexe A (justification et preuves requises pour les 88 lignes), annexe B (hypothèses du code), phases 0a/0b avec durées estimées, critères de décision du PoW avant testnet public, matrice d'évaluation des signatures, correction du compte de lignes (88). Aucun statut modifié | Claude (proposition), à valider par le porteur |
 | 2026-10-24 | tous | Création du registre v1.0 d'après le cahier v4.0 ; tous les statuts initiaux sont ceux du cahier ou PROPOSÉ / À COMPARER ; aucune décision validée | Claude (proposition), à valider par le porteur |
 
@@ -411,15 +409,15 @@ Chaque ligne du tableau maître. « Justification » explique pourquoi on part d
 | POW-11 | Checkpoints ou exceptions de consensus | PROPOSÉ | Un checkpoint centralisé est un pouvoir de décision | Aucun test ; réexamen seulement après étude |
 | POW-12 | Mesures pour un réseau naissant (hashrate initial faible) | À SIMULER | Un réseau naissant est vulnérable à une majorité de hashrate | Simulations à 10, 25, 40, 50 % ; hypothèses publiées ; aucune garantie de sécurité réelle |
 | POW-13 | Démarrage du réseau : qui mine au début, nœuds de départ | À COMPARER | Les premiers blocs concentrent la production | Plan de démarrage documenté |
-| MON-01 | Plafond monétaire | À SIMULER | Hypothèse du cahier, sans valeur économique propre | Calcul par le code + outil indépendant ; total exact publié |
-| MON-02 | Récompense initiale | À SIMULER | Hypothèse expérimentale | Comparaison de scénarios d'émission |
-| MON-03 | Calendrier de réduction | À COMPARER | L'exemple de 1 050 000 blocs (≈ 20 ans) étale très fortement l'émission | Simulateur : émission par année, part distribuée |
-| MON-04 | Règles d'arrondi et dernière récompense | À COMPARER | Les troncatures rendent le total légèrement inférieur au plafond | Deux calculs indépendants identiques |
-| MON-05 | Distribution initiale et bloc de genèse | À COMPARER | La genèse fixe qui détient quoi dès le départ | Distribution publiée et vérifiable dans le bloc de genèse |
-| MON-06 | Partage des frais (mineur / fonds éventuel) | À COMPARER | Dépend de l'existence d'un fonds | Simulation |
-| MON-07 | Simulateur : méthode, hypothèses publiées | PROPOSÉ | Les décisions monétaires doivent reposer sur des scénarios reproductibles | Hypothèses et commandes publiées ; scénarios défavorables inclus |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
+| MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
+| MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
+| MON-06 | Partage des frais | VALIDÉ POUR LE PROTOTYPE | `floor(frais/2)` au mineur; reliquat brûlé | Tests frais pairs/impairs, plafond brut | 3 | MON-01 | C V1 |
+| MON-07 | Simulateur : méthode, hypothèses publiées | À TESTER | Simulateur Python existant; confronter le profil au calcul du consensus | Sortie reproductible comparée à une seconde méthode | 0b | MON-03 | O V1 |
 | FEE-01 | Poids d'une transaction (octets, coût de validation) | À COMPARER | Les signatures post-quantiques sont lourdes : le coût doit refléter les ressources réelles | Benchmarks de taille et de vérification |
-| FEE-02 | Taille maximale d'un bloc | À TESTER | 1 Mio est une valeur héritée servant de point de comparaison | Tests de charge et de propagation ; matériel modeste |
+| FEE-02 | Taille maximale d’un bloc | VALIDÉ POUR LE PROTOTYPE | 4 MiB d’octets canoniques, plafonds synchronisés transport/stockage | Tests de frontière et coûts de validation | 3 | FEE-01 | C V1 |
 | FEE-03 | Taille maximale d'une transaction | À TESTER | Idem | Idem |
 | FEE-04 | Modèle de frais | À COMPARER | Les frais doivent dépendre de la taille et de la demande | Simulation sous faible et forte demande |
 | FEE-05 | Politique de mempool (taille, expiration, dépendances) | À COMPARER | Une mempool sans limite est un vecteur de déni de service | Tests de limites mémoire et d'expiration |

@@ -16,10 +16,11 @@ use aurora_core::codec::{
 };
 use aurora_core::experimental::{Transaction, TxError};
 use aurora_core::hash::{tagged_hash, Domain, Hash256};
+use aurora_core::merkle::{merkle_root, MAX_MERKLE_LEAVES};
 use aurora_core::network::NetworkId;
 
 /// Version de format de l'en-tête expérimental.
-pub const HEADER_VERSION: u32 = 0;
+pub const HEADER_VERSION: u32 = 1;
 /// Nombre maximal de transactions par bloc (valeur arbitraire de prototype).
 pub const MAX_BLOCK_TXS: usize = 10_000;
 
@@ -32,7 +33,9 @@ pub struct BlockHeader {
     pub network: NetworkId,
     /// Condensat de l'en-tête parent.
     pub prev_hash: Hash256,
-    /// Engagement sur les transactions.
+    /// Racine de Merkle des identifiants de transaction ordonnés.
+    pub tx_merkle_root: Hash256,
+    /// Engagement historique du contenu (égal à la racine dans le format générique).
     pub tx_commitment: Hash256,
     /// Horodatage déclaré, **non vérifié**.
     pub timestamp: u64,
@@ -88,12 +91,20 @@ impl std::error::Error for BlockError {}
 
 /// Engagement sur la liste ordonnée des transactions (hypothèse expérimentale, pas un Merkle).
 pub fn compute_tx_commitment(transactions: &[Transaction]) -> Result<Hash256, EncodeError> {
-    let mut enc = Encoder::new();
-    enc.put_len(transactions.len(), MAX_BLOCK_TXS)?;
-    for tx in transactions {
-        tx.txid()?.encode(&mut enc)?;
+    if transactions.len() > MAX_BLOCK_TXS || transactions.len() > MAX_MERKLE_LEAVES {
+        return Err(EncodeError::LengthTooLarge {
+            len: transactions.len(),
+            max: MAX_BLOCK_TXS.min(MAX_MERKLE_LEAVES),
+        });
     }
-    Ok(tagged_hash(Domain::TxList, &enc.into_bytes()))
+    let txids = transactions
+        .iter()
+        .map(|tx| tx.txid())
+        .collect::<Result<Vec<_>, _>>()?;
+    merkle_root(&txids).map_err(|_| EncodeError::LengthTooLarge {
+        len: transactions.len(),
+        max: MAX_BLOCK_TXS.min(MAX_MERKLE_LEAVES),
+    })
 }
 
 impl BlockHeader {
@@ -119,6 +130,7 @@ impl Block {
                 version: HEADER_VERSION,
                 network,
                 prev_hash,
+                tx_merkle_root: tx_commitment,
                 tx_commitment,
                 timestamp,
                 nonce,
@@ -149,7 +161,7 @@ impl Block {
             }
         }
         let expected = compute_tx_commitment(&self.transactions).map_err(BlockError::Encoding)?;
-        if expected != self.header.tx_commitment {
+        if expected != self.header.tx_merkle_root || expected != self.header.tx_commitment {
             return Err(BlockError::CommitmentMismatch);
         }
         Ok(())
@@ -162,6 +174,7 @@ impl CanonicalEncode for BlockHeader {
         self.network.encode(enc)?;
         self.prev_hash.encode(enc)?;
         self.tx_commitment.encode(enc)?;
+        self.tx_merkle_root.encode(enc)?;
         enc.put_u64(self.timestamp);
         enc.put_u64(self.nonce);
         Ok(())
@@ -177,6 +190,7 @@ impl CanonicalDecode for BlockHeader {
         let network = NetworkId::decode(dec)?;
         let prev_hash = Hash256::decode(dec)?;
         let tx_commitment = Hash256::decode(dec)?;
+        let tx_merkle_root = Hash256::decode(dec)?;
         let timestamp = dec.get_u64()?;
         let nonce = dec.get_u64()?;
         Ok(BlockHeader {
@@ -184,6 +198,7 @@ impl CanonicalDecode for BlockHeader {
             network,
             prev_hash,
             tx_commitment,
+            tx_merkle_root,
             timestamp,
             nonce,
         })
@@ -342,7 +357,7 @@ mod tests {
     fn unknown_header_version_is_rejected() {
         let block = block_of(vec![]);
         let mut bytes = block.to_canonical_bytes().unwrap();
-        bytes[3] = 1;
+        bytes[3] = 2;
         assert!(matches!(
             Block::from_canonical_bytes(&bytes),
             Err(DecodeError::InvalidValue(_))

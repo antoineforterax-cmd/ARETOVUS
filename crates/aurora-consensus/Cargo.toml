@@ -4,9 +4,14 @@ description = "AURORA (prototype experimental) : bloc experimental et verificati
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true
 
 [dependencies]
 aurora-core.workspace = true
+
+[dev-dependencies]
+ed25519-dalek.workspace = true
+ml-dsa.workspace = true

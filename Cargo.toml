@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/aurora-core",
     "crates/aurora-consensus",
+    "crates/aurora-storage",
     "crates/aurora-node",
     "crates/aurora-wallet",
 ]
@@ -11,11 +12,16 @@ members = [
 version = "0.0.1"
 edition = "2021"
 publish = false
+license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-# Dépendance externe unique du prototype : SHA-256 (RustCrypto). Voir README, section Dépendances.
+# Primitives cryptographiques externes; les profils actifs et leurs limites sont décrits dans docs/POST_QUANTUM.md.
 sha2 = "0.10"
+ed25519-dalek = { version = "2.1", default-features = false, features = ["std"] }
+ml-dsa = "=0.1.1"
+getrandom = "=0.2.17"
 aurora-core = { path = "crates/aurora-core" }
+aurora-consensus = { path = "crates/aurora-consensus" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

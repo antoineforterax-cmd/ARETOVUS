@@ -1,0 +1,24 @@
+name: volume-probe
+
+on:
+  push:
+    branches: [feature/emission-schedule-v0]
+    paths:
+      - "crates/aurora-storage/**"
+      - "crates/aurora-consensus/**"
+      - ".github/workflows/volume-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-storage-volume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Cross 100,000 blocks, retain a side branch and restart from v6 storage
+        run: /usr/bin/time -v cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture

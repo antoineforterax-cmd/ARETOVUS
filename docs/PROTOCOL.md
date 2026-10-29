@@ -1,191 +1,82 @@
-# AURORA Protocol — Phase 0 Draft
+# AURORA — spécification expérimentale v0
 
-**Status:** design proposal; not a consensus specification  
-**Version:** 0.1-draft  
-**Network:** none — this document does not define a deployable network  
-**Security status:** experimental; unaudited; never use real funds
+**Version de travail :** 0.1-expérimental. **Branche :** `feature/emission-schedule-v0`. **Usage :** expériences locales/testnet, aucun fonds réel. Les règles sont exécutables et couvertes par CI, mais le protocole n’a pas reçu de revue indépendante et n’est pas prêt pour un mainnet.
 
-> This document organizes the questions that must be answered before AURORA can be considered a functioning blockchain. It does not silently validate any open item in `docs/DECISION_REGISTER.md`. Only the project owner can mark a decision VALIDATED, and only after the evidence required by that register exists.
+Ce document décrit l’implémentation actuelle. Les choix actifs sont dans [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md); `DECISION_REGISTER.md` conserve les hypothèses historiques et questions de recherche. Le développement expérimental continue sans revue externe immédiate, sans garantie de sécurité.
 
-## 1. Purpose
+## Profil transaction/état
 
-AURORA is an experimental project to learn how to design, implement, test, and evaluate an independent blockchain in Rust. The objective is not to copy Bitcoin or Ethereum feature-for-feature, but to establish measurable requirements and compare alternatives before committing to protocol rules.
+Le passage au profil Testnet v3 est incompatible avec l’ancien testnet hybride. Il faut lancer les nœuds v3 avec un nouveau dossier `--data-dir`; conserver les snapshots antérieurs au cas où une comparaison ou une migration outil serait nécessaire. Aucune migration automatique des soldes ou des identifiants n’est définie. Ce profil remplace l’algorithme de signature des transactions, mais SHA-256 reste utilisé pour les hashes et le PoW: le protocole entier n’est donc pas qualifié de post-quantique.
 
-The initial implementation must prioritize correctness, reproducibility, bounded resource use, and clear failure modes over performance claims or feature count.
+- Le testnet accepte uniquement les transactions v3: clé publique ML-DSA-65 de 1 952 octets et signature ML-DSA-65 de 3 309 octets; `sender` est le hash domaine-séparé de la clé publique. Le digest signé engage la version, le réseau, l’expéditeur, le nonce, le destinataire, le montant et les frais. Les profils v1 Ed25519 et v2 hybride sont conservés pour Regtest et rejetés par consensus sur Testnet. Le handshake P2P distingue le nouveau profil.
+- Les montants sont des entiers non signés à 8 décimales. Encodage réseau big-endian et décodage canonique; formats incorrects, données excédentaires et dépassements sont rejetés.
+- Une transaction débite montant + frais, exige la signature exacte et le prochain nonce. Le lot de transactions est appliqué atomiquement.
+- Le bloc engage la liste ordonnée des identifiants de transactions par une racine Merkle domaine-séparée (feuille, nœud et arbre vide ont des domaines distincts); pour un niveau impair, le dernier nœud est dupliqué. Les preuves bornées incluent l’index et le nombre de feuilles. La racine est incluse dans l’en-tête canonique version 1.
 
-## 2. Scope and non-goals
+## Entête, PoW et sélection
 
-### In scope for the research phase
+L’en-tête version 1 porte l’identifiant réseau, le hash parent, l’engagement du bloc, la racine Merkle, l’horodatage et le nonce. Le changement casse la compatibilité avec les anciennes entêtes. Le hash SHA-256 de l’encodage canonique doit commencer par le nombre requis de bits nuls. Le bloc doit avoir un horodatage strictement supérieur à la médiane des onze ancêtres disponibles.
 
-- Transaction and state models, including a comparison of UTXO and account-based designs.
-- Canonical encoding, cryptographic hashes, transaction identifiers, and commitments.
-- Authentication and signature verification, including a benchmark of classical and post-quantum candidates.
-- Proof-of-Work (PoW), target representation, difficulty adjustment, and cumulative-chain-work rules.
-- Block validation, state transitions, fees, issuance, and overflow protection.
-- Peer-to-peer networking, denial-of-service controls, storage, reorganization handling, and node recovery.
-- Wallet key management, address design, backup and recovery trade-offs.
-- Privacy analysis, governance assumptions, test strategy, reproducible benchmarks, and a threat model.
+À chaque hauteur multiple de l’intervalle, le retarget mesure `timestamp_candidat - timestamp_ancêtre(H - intervalle)`, avec un minimum de 1 seconde. Ce delta couvre les espacements de blocs visés et inclut le candidat. Chaque timestamp est strictement supérieur à celui du parent et au temps médian des 11 ancêtres. La relecture des blocs reste déterministe et ne dépend pas de l’horloge locale. Pour l’admission sur le testnet, `serve`, `sync` et `mine` refusent un bloc dont l’horodatage dépasse l’heure locale de plus de deux heures. Un bloc ainsi refusé peut être réessayé quand l’horloge le rattrape; la machine doit donc avoir une heure correctement synchronisée. Cette borne réduit le saut temporel exploitable mais ne supprime pas toute manipulation de difficulté à l’intérieur de la fenêtre. L’ajustement reste borné par fenêtre et par difficulté min/max.
 
-### Out of scope for the first prototype
+## Émission et frais
 
-- Real-money use, exchange listings, price promises, or claims that mining will be profitable.
-- Mainnet launch before a functioning testnet, independent review, and security testing.
-- Marketing claims such as “more secure than Bitcoin,” “untraceable,” or “quantum-proof” without defined threat models and evidence.
-- Remote computer control or unrelated applications embedded in consensus. Any such product would require a separate design and threat model.
+Le testnet applique l’émission `proportional-remaining-1e6-v1` : en unités minimales, `R = min(cap - issued, max(1, floor((cap - issued) / 1_000_000)))`. Le plafond est 500 000 000 AUR et la genèse vide ne crée aucun jeton. Le premier bloc émet 500 AUR; ensuite l’émission décroît proportionnellement au reliquat, avec arrondis entiers et un plancher d’une unité.
 
-## 3. Design principles
+Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au compte trésorerie testnet `[0xA0; 32]`; le mineur reçoit le reste. La moitié des frais (arrondi inférieur) va au mineur, le reliquat des frais est brûlé. L’offre brute ne dépasse pas le plafond. Les récompenses sont incluses dans l’état par branche et recalculées lors d’une réorganisation. Les chaînes génériques désactivent les récompenses par défaut. Une fois le plafond atteint, l’émission est nulle et le revenu du mineur vient des frais; le partage de frais reste 50 % mineur / 50 % brûlé.
 
-1. **Determinism:** independent correct nodes must compute the same result from the same valid chain and rules.
-2. **Explicit rules:** consensus-critical behaviour must be specified, versioned, and covered by tests.
-3. **Canonical bytes:** the same logical object must not have multiple valid encodings.
-4. **Safe arithmetic:** monetary values use integer units; overflow, underflow, invalid ranges, and excessive values must be rejected.
-5. **Domain separation:** hashes used for different purposes must not be accidentally interchangeable.
-6. **Bounded work:** parsing, validation, memory use, block size, transaction count, and peer requests need explicit limits.
-7. **Independent verification:** a node must validate received data rather than trust a miner, peer, explorer, or wallet.
-8. **Evidence before claims:** tests, benchmarks, threat analysis, and independent review are required; generated code is not presumed secure.
-9. **Network separation:** testnet and any future production network must not accept each other's transactions or blocks by accident.
-10. **Conservative upgrades:** changes to consensus rules require explicit compatibility analysis and a documented activation plan.
+## Configuration testnet et persistance
 
-## 4. Current prototype versus intended protocol
+Le nœud construit une genèse testnet vide et déterministe. Paramètres actuels : 8 bits initiaux, cible 60 secondes, fenêtre de 10 blocs, ajustement maximal de 2 bits par fenêtre, bornes 4 à 20 bits. La configuration persistée et une empreinte de protocole distinguent ce testnet des configurations incompatibles.
 
-The existing repository is a skeleton, not a complete blockchain. Its current code includes experimental integer amounts, serialization and hash helpers, an experimental block/transaction commitment, and a node that warns that it is not a real node. The current transaction commitment is not a Merkle tree.
+Le stockage v6 de cette branche écrit les blocs acceptés une fois dans `blocks-v5/`, sous leur hash. Il écrit leur ordre d’arrivée dans des pages immuables checksummées dans `index-pages-v6/`, puis publie atomiquement un manifeste `AURORIDX` engageant les pages et les paramètres de consensus. Les trois derniers manifestes sont conservés. Le chargeur lit aussi les index v5 et les snapshots `AURORSNP` v4; il vérifie les hashes, rejoue tous les blocs et choisit la chaîne valide au travail cumulé maximal. La version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614); aucun essai de volume ou de panne matérielle n’en découle. Une sauvegarde doit copier le dossier entier, notamment les deux sous-dossiers et les manifestes. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
-At present there is no complete PoW, peer-to-peer network, wallet, signature verification, persistent chain state, complete double-spend prevention, block reward, fee market, or reorganization logic. Authentication data that is not actually verified must never be treated as proof of ownership.
+## Réseau expérimental
 
-Nothing in this draft changes those limitations.
+Le transport actuel est TCP push/pull vers des pairs configurés. Le fingerprint P2P `native-ml-dsa-65-merkle-header/v4` distingue l’inventaire de blocs u64 et la reprise de session du profil `/v3`; les pairs de versions différentes refusent le handshake. Les règles de bloc restent identiques; le stockage v6 est une migration de format. Sauvegarder le dossier complet avant toute mise à niveau. Le mempool RPC et le wallet sont disponibles sur Testnet seulement : handshake de fingerprint, frames à longueur préfixée, taille maximale de 4 MiB, blocs consensus au plus à 4 MiB, pages de 64 blocs, total et curseur de blocs u64, 256 MiB de trafic cumulé par session, 16 384 requêtes maximum, durée de session de 15 minutes et délai d’E/S de 10 secondes. Le serveur peut annoncer jusqu’à 32 adresses IP statiques via `GET_PEERS`; la commande `sync --discover` les explore en un seul saut, avec au plus 64 pairs contactés. La découverte est opt-in et n’utilise pas DNS. Chaque pair est soumis au handshake de fingerprint, et chaque bloc reçu est revalidé par le consensus. Le message `GET_BLOCKS` contient un curseur u64 big-endian; `BLOCKS_REPLY` contient un total u64, un compte u32 puis des blocs canoniques à longueur u32. Le client rouvre une session avant ses quotas et vérifie le hash au dernier curseur; un inventaire décroissant est rejeté. Il synchronise les blocs en ordre d’arrivée et n’enregistre que ceux que le consensus accepte; synchronisation et propagation réessaient jusqu’à trois fois les erreurs de connexion transitoires, avec délai croissant. Les erreurs de protocole et consensus ne sont pas répétées. `serve` répond aux pages, accepte les blocs validés et interroge périodiquement chaque `--peer` configuré (intervalle de 10 secondes après un tour); les branches téléchargées sont fusionnées avec les branches locales avant sauvegarde. `sync` récupère l’état annoncé une fois auprès de chaque `--peer` fourni, en séquence; `mine --peer` transmet les blocs fraîchement minés aux pairs indiqués.
 
-## 5. Proposed development phases
+La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiques. Le serveur possède huit workers et limite à quatre les sessions simultanées issues d’une même adresse IP; le handshake dispose de deux secondes, les échanges établis de dix secondes par trame. Cette limitation atténue la saturation par une seule source mais ne garantit pas la disponibilité face à plusieurs adresses hostiles. La lecture et l’écriture d’une trame entière sont chacune bornées par un délai total, même si le pair avance au compte-gouttes. Les blocs d’une page sont validés dans une copie de la chaîne; cette page n’est publiée en mémoire qu’après sauvegarde réussie. La reconnexion périodique ne concerne que les pairs explicitement configurés; il n’y a pas d’annonce spontanée multi-sauts. À chaque tour, le serveur télécharge aussi les pages de transactions en attente de ces pairs et n’accepte que celles qui passent ses propres contrôles de signature, nonce, solde et quotas. Cette propagation par interrogation est dirigée par la configuration des pairs, sans diffusion spontanée; le mempool n’est pas persisté. Une smoke test multi-processus est exécutée en CI : elle vérifie push, rechargement après arrêt des pairs, pull vers un stockage neuf et égalité de sommet. Ces contrôles ciblés ne remplacent pas les tests longue durée ni une défense éprouvée contre les attaques DoS. Garder cette testnet sur un réseau contrôlé.
 
-### Phase 0 — Specification and research
+## Portefeuille et RPC testnet
 
-- Inventory the existing code and document each assumption.
-- Compare transaction/state models and cryptographic options.
-- Define attacker capabilities, safety properties, and measurable acceptance criteria.
-- Keep unresolved choices in the decision register.
+Le CLI `aurora-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet et compare le fingerprint reçu au profil P2P v4 et aux paramètres de consensus testnet épinglés dans `aurora-consensus`. Un nœud utilisant d’autres paramètres est refusé avant toute requête de solde ou d’envoi. Le client SPV applique aussi la borne locale de deux heures aux en-têtes reçus; ce contrôle d’admission ne modifie pas le consensus.
 
-**Exit criteria:** each consensus-critical choice has a rationale, alternatives, test plan, and an owner decision; unresolved choices remain explicitly open.
+Les commandes utilisent les messages suivants :
 
-### Phase 1 — Deterministic core
-
-- Define canonical types and encoding.
-- Implement checked monetary arithmetic and domain-separated hashes.
-- Implement signature verification only after the authentication format is selected.
-- Add unit tests, property tests, fuzz targets, and known-answer vectors where applicable.
-
-**Exit criteria:** reproducible test suite; malformed inputs rejected; no unchecked assumptions about user-controlled data.
-
-### Phase 2 — State and transaction validation
-
-- Select and specify UTXO or account state.
-- Define transaction validity, replay protection, fee calculation, and double-spend prevention.
-- Define the state commitment and block transaction commitment.
-- Test invalid, duplicate, reordered, and adversarial transactions.
-
-### Phase 3 — Consensus and local chain
-
-- Specify block headers, target encoding, PoW validation, difficulty adjustment, chain selection by cumulative work, timestamps, and reorganization rules.
-- Add reward/issuance only after economic modelling and consensus rules are reviewed.
-- Test boundary conditions, timestamp manipulation, withheld blocks, and competing chains.
-
-### Phase 4 — Testnet and networking
-
-- Add peer discovery and message framing with strict size/time limits.
-- Validate all remote data and rate-limit expensive operations.
-- Test partitions, reconnects, peer churn, malformed messages, spam, and denial-of-service cases.
-- Publish a testnet with no real monetary value and clear reset/upgrade policies.
-
-### Phase 5 — Wallet, usability, and privacy
-
-- Design key creation, secure storage, backups, addresses, fee estimates, and transaction confirmation.
-- Evaluate hardware-wallet integration against supported standards and vendor constraints.
-- Evaluate privacy features against explicit adversaries and legal/operational trade-offs.
-- Treat lost-key recovery as a separate opt-in trust model, not a hidden administrator backdoor.
-
-### Phase 6 — External review before any production launch
-
-- Independent code and protocol review.
-- Security audit and remediation of findings.
-- Reproducible load, stress, and recovery tests.
-- Upgrade, incident response, key compromise, and disclosure procedures.
-- Explicit project-owner go/no-go decision. A successful CI run alone is not an audit.
-
-## 6. Open protocol decisions
-
-No item below is validated by this document.
-
-| Area | Questions to resolve | Evidence required |
+| Message | Charge après l’opcode | Réponse |
 |---|---|---|
-| State model | UTXO, account model, or another design? | Complexity, parallelism, privacy, and attack-surface comparison |
-| Encoding | Fixed-width binary, length-prefixed fields, or another canonical format? | Vectors, parser tests, compatibility review |
-| Hashes | SHA-256 construction and domain tags; where double hashing is useful or not | Known-answer tests and protocol analysis |
-| Transaction ID | Which fields are committed, including authentication data? | Malleability and replay analysis |
-| Signatures | Classical baseline and post-quantum options such as ML-DSA or SLH-DSA | Security-level comparison, signature/key sizes, verification and signing benchmarks |
-| Commitments | Merkle tree design, empty-tree rules, odd-leaf rules, and proof format | Vectors and edge-case tests |
-| PoW | SHA-256 versus memory-hard alternatives | Hardware centralization, energy, implementation, and attack analysis |
-| Difficulty | Retarget method, manipulation resistance, startup behaviour | Simulation over varied hash-rate and adversarial scenarios |
-| Timing | Target block interval and timestamp constraints | Simulation and usability/security trade-off |
-| Monetary units | Decimal places, maximum supply, issuance curve, fees, and subsidy schedule | Economic model, overflow tests, long-horizon simulations |
-| Block limits | Byte/weight limits, transaction count, execution cost | Adversarial resource tests and hardware measurements |
-| Chain selection | Cumulative-work rules and tie handling | Reorganization and fork simulations |
-| Addresses | Checksum, network prefix, versioning, and error detection | Human-error and interoperability tests |
-| Governance | Upgrade proposal, activation, emergency response, and decision rights | Threat model and transparent procedures |
+| `GET_ACCOUNT=6` | AccountId[32] | `0x86 || next_nonce[u64] || balance_units[u64]` |
+| `SUBMIT_TX=7` | Transaction v3 canonique | `0x87 || txid[32] || pending_count[u32]`, ou `0x89 || reason` |
+| `GET_MEMPOOL=8` | offset[u32] | `0x88 || count[u16] || (length[u32] || tx)*` |
+| `GET_TX_STATUS=9` | txid[32] | `0x8a || status` : 0 inconnu, 1 pending, 2 inclus dans la chaîne canonique |
 
-Existing repository hypotheses (including eight decimal places and a possible 105 million AUR cap) remain hypotheses until separately justified and approved. They must not be treated as settled monetary policy.
+Le compte et le nonce sont calculés en rejouant les transactions actuellement en attente sur l’état confirmé. L’admission au mempool exige le réseau et la version v3, l’encodage canonique, une signature valide, le prochain nonce et un solde suffisant, après application des transactions déjà en attente. Le mempool est borné à 4 096 transactions et 32 MiB; une page contient au plus 700 transactions et le client avance l’offset jusqu’à une page vide, avec au plus 16 pages par consultation. Il est en mémoire et ne survit pas à un redémarrage. Les serveurs interrogent périodiquement leurs pairs configurés et valident les transactions reçues avant admission. Le mineur récupère les transactions du premier pair `--peer`, vérifie les règles de consensus en construisant le bloc, puis propage le bloc. Le protocole n’a pas de diffusion spontanée, de persistance du mempool ni de sélection économique des frais.
 
-## 7. Mining and difficulty: design requirements
+Les commandes `aurora-wallet verify --txid <hex> --confirmations N` téléchargent des pages d’en-têtes depuis la genèse testnet épinglée, vérifient le PoW, les horodatages, les retargets et le travail cumulé, puis demandent une preuve d’inclusion Merkle au nœud. Le client vérifie que l’en-tête prouvant la transaction est canonique dans la chaîne téléchargée et respecte le nombre minimal de confirmations demandé. C’est une vérification légère dépendante de la vue des pairs; elle ne prouve pas à elle seule que le réseau n’a pas été éclipsé ou censuré.
 
-PoW difficulty is a threshold that blocks must satisfy; it is not a fixed measure of how “secure” a coin is. Difficulty should respond to observed block production according to a specified algorithm. Network security also depends on honest hash power, its distribution, incentives, connectivity, and attack cost.
+Le module `aurora_wallet::uri` encode les paiements comme `aurora://testnet/<adresse-hex>?amount=<AUR>&memo=<texte-percent-encodé>`. Le parseur refuse réseau, paramètres, montants, encodages et mémo invalides. Le montant et le mémo sont optionnels. L’URI ne transporte aucune preuve d’identité ni signature de demande.
 
-The design must not promise that an individual miner will earn a “good amount” before difficulty rises. If the network has little hash power, blocks may be cheap to find but the network can also be easier to attack. Early coins may have no market value, and a later price is unknowable.
+Les nouveaux fichiers de clés wallet `AURKEY4` contiennent une graine de 32 octets générée par le CSPRNG du système, chiffrée avec XChaCha20-Poly1305 et une clé dérivée du mot de passe par Argon2id (64 MiB, trois passes). La commande `backup` vérifie la source puis crée un fichier chiffré indépendant avec sel et nonce nouveaux; `restore` vérifie la sauvegarde et recrée une clé sans écraser un fichier existant. L’ancien `AURKEY3` en clair n’est conservé que pour les essais automatisés. L’adresse actuelle est l’identifiant de 32 octets dérivé de la clé publique ML-DSA-65; son affichage est 64 caractères hexadécimaux. Il n’y a pas encore de dérivation hiérarchique, de phrase de récupération, de gardiens/time-locks, de DID intégré aux comptes ou de protection matérielle des clés.
 
-Before testnet mining, implement a local regtest/development mode with deliberately easy, clearly non-production difficulty. For any future public testnet, publish the rules and make clear that its coins have no guaranteed value. For a future production network, measure expected block time, difficulty adjustment, hash-rate concentration, and attack scenarios rather than selecting an arbitrary difficulty “harder than Bitcoin.”
+`Confirmed` signifie uniquement que le txid est observé dans les blocs canoniques de ce nœud au moment de la requête; aucune règle de confirmations ou de finalité n’est promise. En cas de réorganisation, une transaction peut perdre cette inclusion. Le portefeuille doit alors réinterroger le statut.
 
-Any mining reward, supply cap, pre-mine, founder allocation, or early-miner advantage must be disclosed and modelled before consensus rules are finalized. No private shortcut or secret easier difficulty may exist for a founder.
+## Commandes
 
-## 8. Candidate differentiation: hypotheses, not slogans
+```bash
+cargo run -p aurora-node -- testnet mine --data-dir ./node-a --miner <64 caractères hex> --count 10
+cargo run -p aurora-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:18444 --peer 192.0.2.20:18444
+cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444 --discover
+```
 
-AURORA does not yet have a demonstrated advantage over Bitcoin or Ethereum. Differentiation must come from measurable trade-offs, not from accumulating features.
+## État de préparation
 
-Candidate areas to investigate:
+Le réseau expérimental fonctionne pour une testnet supervisée à pairs connus; le push/pull, la reprise du snapshot et la convergence de nœuds distincts passent le scénario multi-processus de CI. Ce jalon ne signifie pas que le réseau est décentralisé, toujours connecté ou résistant aux attaques.
 
-- **Post-quantum readiness:** benchmark standardized signature schemes and consider hybrid migration plans. Larger signatures and keys may increase bandwidth, storage, and fees; no scheme should be described as “quantum-proof.”
-- **Low fees and useful throughput:** measure total node resource costs, propagation, state growth, and congestion behaviour. A low fee alone can make spam cheaper.
-- **Privacy:** specify what observers can infer and which adversaries are considered. Privacy claims require dedicated analysis.
-- **Recovery:** compare self-custody with opt-in social or delayed recovery. Any recovery path creates additional trust, collusion, coercion, and attack risks.
-- **Anti-concentration:** investigate mining-pool and validator concentration using transparent metrics. Arbitrary penalties based on wallet size or “whale” status can be unfair, gameable, and harmful to credible neutrality.
-- **Wallet/hardware compatibility:** define supported signing standards and integration requirements rather than assuming compatibility.
-- **Networking efficiency:** benchmark propagation and resource use under realistic and adversarial conditions.
+Avant d’élargir les essais, restent à faire :
+1. Découverte et annonces multi-sauts spontanées, si l’usage les exige; le profil actuel garde des adresses statiques et un rattrapage périodique.
+2. Scénarios prolongés de coupure/reprise, inventaires menteurs, connexions lentes et saturation concurrente.
+3. Simulation indépendante du retarget avec dérive d’horloge, longues pauses, rafales et réorganisations.
+4. Essais avec disque réellement plein, panne électrique et sauvegardes hors machine malgré les tests de reprise, copie de sauvegarde et migrations v4→v5 déjà réalisées; la migration vers v6 a passé la CI, mais pas les essais de panne réelle.
+5. Campagnes fuzz prolongées et revue indépendante du consensus et du code avant toute prétention de sécurité pour des fonds réels.
 
-For each candidate, record the problem, baseline, proposed mechanism, measurable success threshold, costs, attack paths, and a kill criterion if evidence is poor.
-
-## 9. Threat model baseline
-
-Assume an attacker may:
-- send malformed, oversized, duplicated, delayed, or strategically ordered messages;
-- create many identities or peers, disconnect selectively, and partition parts of the network;
-- control some fraction of mining hash power and vary it over time;
-- attempt double spends, transaction replay, timestamp manipulation, and chain reorganizations;
-- exploit parser bugs, integer overflows, resource exhaustion, dependency vulnerabilities, and unsafe key handling;
-- socially engineer users, steal backups, or compromise endpoints.
-
-The design must state what it does **not** defend against, including sufficiently powerful majority-hash attacks, compromised user devices, lost keys without recovery, and failures in external infrastructure. Risk scores and mitigations must be added and tested; this baseline is not proof that these risks are mitigated.
-
-## 10. Required quality gates
-
-Before a feature is called complete, require relevant items from this list:
-
-- Unit and integration tests, including invalid inputs and boundary cases.
-- Property-based tests and fuzzing for parsers, serialization, and state transitions.
-- Known-answer vectors for cryptographic operations and canonical encodings.
-- Reproducible benchmarks with hardware, compiler, configuration, and dataset documented.
-- Dependency and supply-chain review; pinned and audited dependencies where practical.
-- No secrets or private keys in logs, test fixtures, commits, or telemetry.
-- Consensus changes documented in the decision register with compatibility impact.
-- CI passing on a clean checkout, with no claim that CI proves protocol security.
-- Independent review for cryptography, consensus, wallet security, and any production release.
-
-## 11. Working agreement and decision status
-
-The assistant may research, draft, implement, test, and recommend. The project owner retains the decision to validate protocol choices. An item should only be marked VALIDATED when the decision register's evidence requirements are satisfied and the owner explicitly approves it.
-
-The current phase is **Phase 0 — Specification and research**. This draft is a roadmap, not a promise of completion, a guarantee of mining returns, or authorization to use real funds.
+Le CLI wallet est expérimental et son essai multi-processus est couvert par le smoke test. DID et récupération restent au stade de conception (`docs/DID_RECOVERY_DESIGN.md`) et n’altèrent pas l’état consensus. L’explorateur, le site de présentation et la vente sont hors de ce jalon.

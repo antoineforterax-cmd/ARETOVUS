@@ -85,7 +85,7 @@ fn tagged_hash_of_empty_data_matches_reference() {
 #[test]
 fn max_amount_encoding_matches_reference() {
     let bytes = Amount::MAX.to_canonical_bytes().unwrap();
-    assert_eq!(hex(&bytes), "00254db1c2244000");
+    assert_eq!(hex(&bytes), "00b1a2bc2ec50000");
     assert_eq!(Amount::MAX.to_units(), MAX_UNITS);
     assert_eq!(Amount::from_canonical_bytes(&bytes).unwrap(), Amount::MAX);
 }

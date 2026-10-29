@@ -58,15 +58,15 @@ fn tx2() -> Transaction {
 fn commitments_match_reference() {
     assert_eq!(
         compute_tx_commitment(&[]).unwrap().to_hex(),
-        "f8c2cae75a91f9d2df0fc9d26ec0de98b103bb072049407ebde0b4cafa589516"
+        "a481414fc620e2ab059b4dab124d18f807f3239e2b46c54b8ded6b0009cc4cd1"
     );
     assert_eq!(
         compute_tx_commitment(&[tx1()]).unwrap().to_hex(),
-        "71b23551dbdcc79a762605698484299b6ba5c0dca1c261fa7b80568327b1b02d"
+        "451775c211bcb127d30aa0680d4b26c41dbb0687b159131c09e86c7b71f46532"
     );
     assert_eq!(
         compute_tx_commitment(&[tx1(), tx2()]).unwrap().to_hex(),
-        "41694d5373926956529de59351fe6f3a1f209ec1b139e2516364bcf659c69a0a"
+        "93fb7610a3eac93a03ba4e328ced8df4d39a22a7cce0676463ce806c0f9b7b27"
     );
 }
 
@@ -75,11 +75,11 @@ fn empty_block_header_matches_reference() {
     let block = Block::build(NetworkId::Regtest, Hash256::ZERO, 1_000_000, 42, vec![]).unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
-        "00000000010000000000000000000000000000000000000000000000000000000000000000f8c2cae75a91f9d2df0fc9d26ec0de98b103bb072049407ebde0b4cafa58951600000000000f4240000000000000002a"
+        "00000001010000000000000000000000000000000000000000000000000000000000000000a481414fc620e2ab059b4dab124d18f807f3239e2b46c54b8ded6b0009cc4cd1a481414fc620e2ab059b4dab124d18f807f3239e2b46c54b8ded6b0009cc4cd100000000000f4240000000000000002a"
     );
     assert_eq!(
         block.header.hash().unwrap().to_hex(),
-        "7cdc1b45083edb0ba682c8b9e325462c1330018c9ed2881dff9933dd66383c38"
+        "0a7a88e6ecfe3cc0f43f273a12ebf8c8178f7b6987531129dfea7edcb412e42c"
     );
 }
 
@@ -95,11 +95,11 @@ fn one_transaction_block_header_matches_reference() {
     .unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
-        "0000000001000000000000000000000000000000000000000000000000000000000000000071b23551dbdcc79a762605698484299b6ba5c0dca1c261fa7b80568327b1b02d00000000000f4240000000000000002a"
+        "00000001010000000000000000000000000000000000000000000000000000000000000000451775c211bcb127d30aa0680d4b26c41dbb0687b159131c09e86c7b71f46532451775c211bcb127d30aa0680d4b26c41dbb0687b159131c09e86c7b71f4653200000000000f4240000000000000002a"
     );
     assert_eq!(
         block.header.hash().unwrap().to_hex(),
-        "2e101bb47474581a451b11591a891b64e8f68b3516edfdba3edf547150ee617e"
+        "f497258b870d07d7f93e3c0b9057aa12a381e204b2b98e148a37a79ac164faef"
     );
     assert_eq!(block.check_stateless(), Ok(()));
 }
@@ -116,11 +116,11 @@ fn two_transaction_block_header_matches_reference() {
     .unwrap();
     assert_eq!(
         hex(&block.header.to_canonical_bytes().unwrap()),
-        "0000000001000000000000000000000000000000000000000000000000000000000000000041694d5373926956529de59351fe6f3a1f209ec1b139e2516364bcf659c69a0a00000000000f4240000000000000002a"
+        "0000000101000000000000000000000000000000000000000000000000000000000000000093fb7610a3eac93a03ba4e328ced8df4d39a22a7cce0676463ce806c0f9b7b2793fb7610a3eac93a03ba4e328ced8df4d39a22a7cce0676463ce806c0f9b7b2700000000000f4240000000000000002a"
     );
     assert_eq!(
         block.header.hash().unwrap().to_hex(),
-        "050e3fc83f1e69ad6eea800dbe4f7edad2b7da9c0ccc22da2ff0ff64ef7585e2"
+        "6ffd433a509a18bc262f28c4893dd785c46519dc121fafbbae56d74ccbc8060a"
     );
     assert_eq!(block.check_stateless(), Ok(()));
 }

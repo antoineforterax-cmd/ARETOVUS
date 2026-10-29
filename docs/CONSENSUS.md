@@ -1,53 +1,21 @@
-# CONSENSUS.md — AURORA
+# Consensus du testnet AURORA
 
-**Statut : aucune règle de consensus n'est validée.** Ce document liste ce qui est défini dans le
-prototype v0.0.1 (hypothèses), ce qui reste à spécifier, et les invariants qu'un futur consensus
-devra respecter. Les décisions sont suivies dans `DECISION_REGISTER.md` ; en cas de désaccord, le
-registre fait foi.
+État du 27 octobre 2026, branche `feature/emission-schedule-v0`. Le code reste expérimental et non audité par un humain indépendant.
 
-## 1. Ce que le code fait aujourd'hui
+| Élément | Règle exécutée |
+| --- | --- |
+| Transactions | Profil v3 natif ML-DSA-65 sur Testnet; sérialisation canonique et domaines de signature; adresse de compte dérivée de la clé publique. Les profils v1 Ed25519 et v2 hybride sont limités à Regtest. |
+| État | Montants entiers à huit décimales, nonce exact, solde et frais contrôlés avant mutation. Un transfert vers soi-même est rejeté. Le mempool existe mais ne fait pas partie du consensus. |
+| Blocs | En-tête v1, racine Merkle des txids et engagement du mineur; PoW SHA-256 avec nombre requis de bits nuls en tête. Corps borné à 4 MiB moins la marge de transport. |
+| Temps | Timestamp strictement supérieur au parent et à la médiane des onze ancêtres disponibles. Mineur, réseau et client SPV appliquent aussi une admission locale à au plus deux heures dans le futur; cette borne dépend de l’horloge locale et ne fait pas partie du rejeu du consensus. |
+| Difficulté | 8 bits initialement; cible 60 secondes, fenêtre de 10 blocs, retarget entier borné à deux bits, minimum 4 et maximum 20. Le candidat ferme la fenêtre mesurée depuis l’ancêtre H−10. |
+| Sélection | Travail `2^difficulty_bits` accumulé sur 320 bits; plus grand travail, puis plus petit hash en cas d’égalité. |
+| Émission | Genèse vide; plafond brut de 500 millions AUR; `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Premier bloc : 500 AUR. Le burn ne réouvre pas le plafond. |
+| Répartition | 5 % de l’émission à la trésorerie fixe `[0xA0; 32]`, reliquat au mineur. Moitié entière des frais au mineur, reliquat détruit. À plafond atteint, aucune nouvelle émission. |
+| Réorganisation | Validation contre l’état du parent, avec récompenses et frais propres à chaque branche. Le sommet canonique et des points de contrôle tous les 256 blocs sont conservés; les autres états sont rejoués. Aucun horizon de réorganisation n’est ajouté par ce cache. |
+| Stockage | Blocs immuables, pages et manifestes checksummés v6, trois points de reprise; lecture des snapshots v4 et index v5, puis revalidation. |
+| Transport | Fingerprint P2P v4, inventaires u64 en ordre d’arrivée, pages bornées, budgets de session et contrôle de continuité à la reconnexion. Les limites réseau ne remplacent jamais la validation consensus. |
 
-| Sujet | Comportement du prototype | Statut | Référence |
-|---|---|---|---|
-| Montants | Entiers 64 bits non signés, 8 décimales, plafond de garde 105 000 000 AUR | Hypothèse | TX-06, TX-07, MON-01 |
-| Encodage | Entiers big-endian largeur fixe ; longueurs bornées ; rejet des octets en trop | Hypothèse | TX-02 |
-| Hachage | SHA-256 de `longueur(tag) ‖ tag ‖ données`, trois domaines | Hypothèse | TX-03 |
-| Identifiant de transaction | Hachage de l'encodage complet, `auth_data` inclus | Hypothèse | TX-05 |
-| Engagement du bloc | Hachage de `nombre ‖ identifiants` (pas un Merkle) | Hypothèse | TX-04 |
-| Validation d'un bloc | **Sans état seulement** : réseau identique, transactions valides sans état, pas de doublon, engagement correct | Hypothèse | — |
+Le compte de trésorerie n’est pas un contrat gouverné. DID, gardiens, récupération et recyclage des fonds inactifs ne sont pas activés. Il n’existe pas de maturité différée des récompenses. Le profil SHA-256/PoW n’est pas présenté comme entièrement post-quantique.
 
-## 2. Ce que le code ne fait PAS (donc aucun consensus)
-
-Preuve de travail, difficulté, cible, travail cumulé, sélection de chaîne, horodatages, récompenses,
-émission, maturité, existence des fonds (état), signatures, doubles dépenses entre blocs, frais,
-taille maximale en octets, réorganisations, réseau.
-
-## 3. Règles à spécifier (par ordre de la chaîne de dépendances du registre)
-
-1. Modèle de transaction (TX-01) puis format canonique définitif (TX-02), hachage (TX-03), Merkle (TX-04).
-2. Signatures et format d'adresse (CRY-01 à CRY-06, TX-08).
-3. Poids et capacité (FEE-01 à FEE-03).
-4. PoW et en-tête (POW-01 à POW-03).
-5. Difficulté et règles temporelles (POW-04 à POW-07) ; sélection de chaîne (POW-08) ; maturité (POW-09).
-6. Unité, calendrier d'émission, arrondis, plafond (TX-06, MON-01 à MON-04) ; genèse (MON-05).
-
-Pour chaque règle : formule exacte, bornes, arrondis, cas limites, vecteurs de test indépendants.
-
-## 4. Invariants que tout consensus futur doit garantir (à transformer en tests)
-
-- **Déterminisme :** deux nœuds avec le même historique valide calculent le même état et la même difficulté.
-- **Aucune création monétaire hors règle :** la somme émise ne dépasse jamais le calendrier d'émission.
-- **Canonicité :** si une donnée est acceptée, son encodage canonique est exactement les octets reçus.
-- **Aucune dépense non autorisée, aucune double dépense** dans la chaîne active.
-- **Chaîne choisie :** la chaîne valide au plus grand travail cumulé, pas la plus longue.
-- **Séparation des réseaux :** une donnée d'un réseau n'est pas valide sur un autre.
-
-## 5. Critères de décision du PoW avant tout testnet public
-
-Voir `DECISION_REGISTER.md`, fiche F-02 (six conditions). Une simulation ne garantit pas la sécurité réelle.
-
-## 6. Journal
-
-| Date | Changement |
-|---|---|
-| 2026-10-25 | Création : état du prototype v0.0.1, aucune règle validée |
+Les tests couvrent signatures, montants, nonce, atomicité, Merkle, retarget, travail, réorganisations et récompenses, stockage et réseau. Les preuves sont rattachées à des commits dans [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md). Les coûts de rejeu d’état, la mémoire, les pairs hostiles et le comportement sur plusieurs machines pendant 72 heures restent à mesurer. Les formats détaillés sont dans [PROTOCOL.md](PROTOCOL.md).
