@@ -1037,6 +1037,7 @@ mod tests {
         let branch_b = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
         let branch_a_hash = branch_a.header.hash().unwrap();
         original.submit(branch_a).unwrap();
+        let branch_b_hash = branch_b.header.hash().unwrap();
         original.submit(branch_b).unwrap();
         save_snapshot(&source, &original).unwrap();
 
@@ -1074,7 +1075,11 @@ mod tests {
 
         // A restored copy must keep the losing fork usable for a later reorg.
         // Extend the noncanonical branch until it has strictly more work.
-        let side_parent = branch_a_hash;
+        let side_parent = if original.tip_hash() == branch_a_hash {
+            branch_b_hash
+        } else {
+            branch_a_hash
+        };
         let side_successor =
             AccountBlock::build(NetworkId::Regtest, side_parent, 4, 0, Vec::new()).unwrap();
         let side_tip = side_successor.header.hash().unwrap();
