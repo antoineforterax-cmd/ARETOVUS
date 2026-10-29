@@ -1,0 +1,33 @@
+name: state-fuzz
+on:
+  push:
+    branches: [test/fuzz-cached-account-transitions]
+  pull_request:
+    paths:
+      - 'fuzz/fuzz_targets/account_state.rs'
+      - '.github/workflows/state-fuzz.yml'
+permissions:
+  contents: read
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly install cargo-fuzz --version 0.13.2 --locked
+      - name: Campagne différentielle des comptes
+        shell: bash
+        run: |
+          mkdir -p target/state-fuzz
+          set -o pipefail
+          cargo +nightly fuzz run account_state -- -max_total_time=60 -max_len=40 -print_final_stats=1 2>&1 | tee target/state-fuzz/results.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: account-state-fuzz
+          path: |
+            target/state-fuzz/
+            fuzz/artifacts/account_state/
+            fuzz/corpus/account_state/
+          retention-days: 14
