@@ -5,6 +5,7 @@ import subprocess
 import tomllib
 
 BASELINE = "eada9effb11d7ef0ad96f082f55feb1558cb90bb"
+APPROVED_README_COMMIT = "83d6a8a64580ef6360192edc989f0d4adc4c08a4"
 ALLOWED = {
     "Cargo.lock", "rust-toolchain.toml", ".github/workflows/ci.yml",
     ".github/workflows/foundation-check.yml", "AGENTS.md",
@@ -60,14 +61,24 @@ def tree(ref):
     return result
 
 
+def assert_approved_readme(expected, actual, approved_blob):
+    """Only allow the exact README written on main before the foundation merge."""
+    if expected.get("README.md") != actual.get("README.md"):
+        if actual.get("README.md") != ("100644", "blob", approved_blob):
+            raise ValueError("unexpected README.md change")
+
+
 def main():
     expected, actual = tree(BASELINE), tree("HEAD")
     assert_source_identity(expected, actual)
+    approved_blob = git("rev-parse", APPROVED_README_COMMIT + ":README.md").decode().strip()
+    assert_approved_readme(expected, actual, approved_blob)
     assert_clean_sources()
     changed = {p for p in expected.keys() | actual.keys()
                if expected.get(p) != actual.get(p)}
-    if changed - ALLOWED:
-        raise ValueError("unplanned changes: " + repr(sorted(changed - ALLOWED)))
+    unexpected = changed - (ALLOWED | {"README.md"})
+    if unexpected:
+        raise ValueError("unplanned changes: " + repr(sorted(unexpected)))
     files = {}
     for path in ("Cargo.lock", "rust-toolchain.toml"):
         if path not in actual or actual[path][0:2] != ("100644", "blob"):
