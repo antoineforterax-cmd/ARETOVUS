@@ -347,7 +347,11 @@ mod hex_input_tests {
         for character in ['é', '€', '😀', '\u{200b}'] {
             let width = character.len_utf8();
             for offset in 0..=64 - width {
-                let value = format!("{}{character}{}", "0".repeat(offset), "0".repeat(64 - width - offset));
+                let value = format!(
+                    "{}{character}{}",
+                    "0".repeat(offset),
+                    "0".repeat(64 - width - offset)
+                );
                 assert_eq!(value.len(), 64);
                 assert!(AccountId::from_hex(&value).is_err());
             }
