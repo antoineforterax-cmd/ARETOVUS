@@ -102,7 +102,13 @@ pub fn save_snapshot(
     for block in blocks {
         let block_id = block.header.hash()?;
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        if !block_path.exists() {
+        if block_path.exists() {
+            // A directory at a content-addressed block path is not a valid block.
+            // Do not publish a manifest that would reference this object.
+            if !block_path.is_file() {
+                return Err(StorageError::InvalidFormat("block object is not a file"));
+            }
+        } else {
             let encoded = block.to_canonical_bytes()?;
             write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
         }
