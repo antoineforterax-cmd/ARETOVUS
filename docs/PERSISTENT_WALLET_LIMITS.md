@@ -29,8 +29,9 @@ Le fichier utilise un en-tête de version et de réseau fixe, le compte
 attendu et deux montants. Une erreur de format, un compte différent, un
 fichier illisible, trop grand, un lien symbolique ou un dossier bloquent
 l'envoi. Seule l'absence du fichier signifie qu'aucune politique persistante
-n'est configurée. Le wallet relit la politique après confirmation et annule
-si elle a changé, avant de vérifier à nouveau le compte et de signer.
+n'est configurée. Après confirmation, le wallet vérifie à nouveau le compte puis relit la
+politique. Il annule avant signature si l'une de ces vérifications détecte
+un changement.
 
 ## Portée et contrôle de l'utilisateur
 
