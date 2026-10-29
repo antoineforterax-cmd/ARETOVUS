@@ -43,3 +43,13 @@ fn valid_help_and_unknown_command_have_stable_exit_codes() {
     }
     rejected(&["not-a-command"], "unknown command");
 }
+
+#[test]
+fn extreme_wait_timeout_fails_before_network_without_a_panic() {
+    let txid = "00".repeat(32);
+    let output = run(&["wait", "--node", "127.0.0.1:1", "--txid", &txid, "--timeout-seconds", "18446744073709551615"]);
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success());
+    assert!(error.contains("wait timeout is out of range"));
+    assert!(!error.contains("panicked"));
+}

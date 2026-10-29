@@ -76,6 +76,12 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
     Ok(())
 }
 
+fn wait_deadline(seconds: u64) -> Result<Instant, Box<dyn Error>> {
+    Instant::now()
+        .checked_add(Duration::from_secs(seconds))
+        .ok_or_else(|| "wait timeout is out of range".into())
+}
+
 fn node_address(args: &[String]) -> Result<SocketAddr, Box<dyn Error>> {
     Ok(option(args, "--node")?.parse()?)
 }
@@ -506,7 +512,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let id = txid(option(&args, "--txid")?)?;
             let timeout = option(&args, "--timeout-seconds")?.parse::<u64>()?;
             let node = node_address(&args)?;
-            let deadline = Instant::now() + Duration::from_secs(timeout);
+            let deadline = wait_deadline(timeout)?;
             loop {
                 let status = rpc::transaction_status(node, id)?;
                 println!("{status:?}");
@@ -557,5 +563,22 @@ fn main() {
     if let Err(error) = run() {
         eprintln!("aurora-wallet: {error}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod wait_deadline_tests {
+    use super::*;
+
+    #[test]
+    fn zero_timeout_is_a_valid_immediate_deadline() {
+        let before = Instant::now();
+        let deadline = wait_deadline(0).unwrap();
+        assert!(deadline >= before && deadline <= Instant::now());
+    }
+
+    #[test]
+    fn overflowing_timeout_is_an_error_instead_of_a_panic() {
+        assert!(wait_deadline(u64::MAX).is_err());
     }
 }
