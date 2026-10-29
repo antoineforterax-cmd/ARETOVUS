@@ -30,3 +30,41 @@
 
 ## Livrables attendus par phase
 Spécification, commit/branche, tests reproductibles, métriques, limites connues, rapport de revue et décision de poursuite.
+
+
+## Point de situation vérifié — 29 octobre 2026
+
+**À lire avec la branche et le commit :** le README de `main` a été actualisé pour expliquer l'avancement, mais le code avancé du testnet reste sur `feature/emission-schedule-v0` et dans des PR empilées non fusionnées. Une CI verte sur une PR ne valide pas automatiquement `main`.
+
+| Sujet | Réalisé / démontré | Encore à faire ou confirmer |
+| --- | --- | --- |
+| Base testnet | Comptes, signatures ML-DSA-65 v3, PoW SHA-256, émission plafonnée, stockage v6, TCP P2P, wallet CLI | Stabilisation, revue et intégration des branches |
+| Publication | Guide français et release expérimentale Windows/Linux/macOS datée du 27/10 | Binaires signés, installation guidée, version stable, communication accessible |
+| Horodatages et difficulté | Simulateur indépendant et vecteurs testés sur PR #14 | Horloges divergentes en réseau, partitions, réessais, clôture de #3 |
+| Admission P2P | Dispatcher de préfaces et mesures hostiles sur PR #16 | Saturation après handshake, NAT partagés, essais Internet, clôture de #4/#8 |
+| Signatures et mempool | Benchmark PR #17, cache borné PR #18, fuzz comptes PR #19, réorganisations PR #20/#21 | Revue, intégration et mesures de bout en bout ; mempool non persistant |
+| Adresses | Parseur hexadécimal strict et tests sur PR #22 | Intégration et tests sur la branche de référence |
+| Gros volumes | Test de stockage et rechargement de 100 003 blocs | Sync P2P 100k+ et charge prolongée sur machines réelles (#5) |
+| Endurance | Test court réussi ; campagne 72 h lancée le 28/10 | Rapport final de 72 h et réplication multi-hôtes |
+| Sécurité | CI, tests de propriétés, fuzz court, revue IA | Audit humain indépendant, campagnes longues, pannes réelles, tests de pairs hostiles |
+| Confidentialité | Exigences et menaces documentées | Prototype isolé, comparaison cryptographique, mesures, décisions de consensus |
+| Anti-perte / anti-arnaque | Wallet chiffré et sauvegarde/restauration ; principes produit documentés | Coffre, contrôles volontaires, récupération sociale, tests de collusion |
+| Gouvernance | 5 % d'émission crédités à la trésorerie de test | Contrôle, dépense, audit, politique et responsabilité |
+| Applications | Wallet CLI | GUI, explorateur, site complet, mobile et intégrations |
+
+### Ordre d'intégration conseillé
+
+1. **Réconcilier les branches et leurs dépendances** : #1, #2, #12 et les PR #13 à #22 ; vérifier les bases exactes et les conflits avant chaque fusion.
+2. **Tester l'ensemble intégré** : formatage, Clippy, compilation, tests Rust, smoke multi-nœuds, essais de réorganisation et de récupération, puis comparer les résultats à chaque PR.
+3. **Clore les risques P0 par preuves** : #3, #4 et #5, endurance, partitions, stockage et réseau sous charge.
+4. **Geler un testnet de référence** : version, commit, compatibilité, binaires et instructions d'installation vérifiables.
+5. **Étudier sans activer prématurément** : confidentialité native, protection des fonds, gouvernance, évolution du PoW et post-quantique complet.
+6. **Après validation des dépendances** : explorer, interface graphique, applications et réseau public expérimental.
+7. **Avant toute annonce mainnet** : audit humain indépendant, corrections vérifiées, opérations et cadre juridique.
+
+### Points de vigilance documentaires
+
+- Le numéro historique `v0.0.1` ne désigne pas la maturité actuelle du projet. La release `testnet-v0.0.1-experimental.1` reste une archive datée et liée à son commit, à ne pas supprimer ni présenter comme dernière version du code.
+- Ne pas confondre **fonction implémentée sur une PR**, **fonction fusionnée**, **test passé sur un commit**, **fonctionnalité disponible dans la release** et **fonctionnalité simplement proposée**.
+- Les anciennes décisions de comparaison UTXO/comptes et les anciennes règles monétaires restent des traces historiques, pas la spécification du testnet actuel.
+- Toute fonctionnalité qui modifie les droits de propriété, l'offre, la validité des transactions ou les formats réseau nécessite décision explicite, versionnement et essais de migration.
