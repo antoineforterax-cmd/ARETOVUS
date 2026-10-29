@@ -1,6 +1,6 @@
 # AURORA — Registre de consolidation des décisions
 
-**Important** : `Implémenté testnet` ne signifie pas `validé mainnet`. Ce document ne change pas le statut d'approbation du porteur de projet. Les décisions historiques demeurent dans `docs/DECISION_REGISTER.md`.
+**État au 29 octobre 2026 :** le testnet avancé se trouve sur `feature/emission-schedule-v0`. Les PR #13 à #22 apportent des tests et correctifs supplémentaires encore en attente de fusion. `Implémenté testnet` ne signifie pas `validé mainnet`. Ce document ne change pas le statut d'approbation du porteur de projet. Les décisions historiques demeurent dans `docs/DECISION_REGISTER.md`.
 
 | ID | Sujet | État vérifiable | Statut de gouvernance |
 |---|---|---|---|
