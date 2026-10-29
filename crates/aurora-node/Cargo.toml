@@ -16,6 +16,3 @@ aurora-storage = { path = "../aurora-storage" }
 
 [dev-dependencies]
 ml-dsa.workspace = true
-
-[dev-dependencies]
-ml-dsa.workspace = true
