@@ -1,5 +1,4 @@
-# GOV-01 : « stable » flottant pour l'instant. Après le premier build local réussi,
-# remplacer par une version exacte (ex. channel = "1.XX.Y") et committer Cargo.lock.
+# GOV-01: version épinglée pour les builds locaux et la CI.
 [toolchain]
-channel = "stable"
+channel = "1.99.1"
 components = ["rustfmt", "clippy"]
