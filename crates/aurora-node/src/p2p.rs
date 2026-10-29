@@ -556,7 +556,7 @@ fn handle_peer_shared(
                     let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                     let mut state = chain.state().clone();
                     for tx in pool.iter() {
-                        let _ = state.apply_transaction(tx);
+                        let _ = state.apply_transaction_cached(tx);
                     }
                     state.account(id)
                 };
@@ -601,9 +601,11 @@ fn handle_peer_shared(
                     }
                     let mut candidate = chain.state().clone();
                     for pending in pool.iter() {
-                        candidate.apply_transaction(pending).map_err(|_| 2u8)?;
+                        candidate
+                            .apply_transaction_cached(pending)
+                            .map_err(|_| 2u8)?;
                     }
-                    candidate.apply_transaction(&tx).map_err(|_| 2u8)?;
+                    candidate.apply_transaction_cached(&tx).map_err(|_| 2u8)?;
                     pool.push(tx);
                     Ok((txid, pool.len()))
                 })();
@@ -808,7 +810,7 @@ fn revalidate_mempool(
     let mut pending = Vec::with_capacity(pool.len());
     let mut state = chain.state().clone();
     for tx in pool.drain(..) {
-        if state.apply_transaction(&tx).is_ok() {
+        if state.apply_transaction_cached(&tx).is_ok() {
             pending.push(tx);
         }
     }
@@ -847,7 +849,7 @@ fn sync_mempool_peer(
             )
             .ok_or(P2pError::Protocol("local mempool size overflow"))?;
         state
-            .apply_transaction(pending)
+            .apply_transaction_cached(pending)
             .map_err(|_| P2pError::Protocol("local mempool state invalid"))?;
     }
     let mut added = 0;
@@ -870,7 +872,7 @@ fn sync_mempool_peer(
         {
             break;
         }
-        if state.apply_transaction(&tx).is_err() {
+        if state.apply_transaction_cached(&tx).is_err() {
             continue;
         }
         pool.push(tx);
