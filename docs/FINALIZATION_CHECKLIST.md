@@ -1,5 +1,20 @@
 # AURORA — fiche complète des travaux restants
 
+## Actualisation du 29 octobre 2026
+
+Cette liste conserve l'historique des essais. Pour connaître l'état d'une fonctionnalité, vérifiez toujours la branche et le commit : les PR #13 à #22 sont encore en brouillon, et leur code n'est pas intégré à `main`.
+
+**Travaux confirmés sur des PR :** tests d'auto-transfert signés (#13), simulation indépendante du retarget (#14), réconciliation documentaire (#15), protection contre les préfaces P2P lentes (#16), benchmark et cache des signatures (#17-#18), fuzzing des transitions de comptes (#19), tests de réorganisation avec cache (#20), réinsertion des transactions orphelines (#21), validation stricte des adresses hexadécimales (#22). Les comptes rendus des PR donnent les commits et liens de CI. Le dernier commit de #22 a une CI réussie ; il reste à relire et intégrer l'ensemble.
+
+**Essais acquis :** la release expérimentale du 27 octobre fournit des archives pour trois systèmes ; le test de stockage a chargé et restauré 100 003 blocs connus. Le rapport du 28 octobre confirme un essai Ubuntu court (six blocs, cinq paiements, deux redémarrages, sauvegarde restaurée). La campagne de 72 heures a été lancée, mais son résultat final n'est pas documenté ici.
+
+**Travaux toujours ouverts :** fusion et validation intégrée des PR, essais réseau avec horloges divergentes, saturation P2P après handshake et sous NAT, synchronisation réelle de plus de 100 000 blocs, campagne 72 h achevée, partitions prolongées, disque réellement plein, restauration hors machine, audit humain indépendant. Les projets de confidentialité native, récupération sociale, gouvernance de trésorerie et applications grand public restent à concevoir ou à implémenter.
+
+La mention « essais de volume restent à faire » dans les notes historiques ci-dessous est dépassée pour **le stockage seul**, mais demeure vraie pour **la synchronisation réseau à cette échelle**. Les résultats de CI d'une PR ne constituent ni un audit ni une validation du code de `main`.
+
+---
+
+
 **État au 27 octobre 2026 :** testnet expérimental v3, branche `feature/emission-schedule-v0`, [PR #2](https://github.com/antoineforterax-cmd/AURORA/pull/2) en brouillon et non fusionnée. Aucun fonds réel; aucune affirmation de sécurité mainnet. La [CI v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds; les [archives Windows, Linux et macOS](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261646) ont été construites. Ce texte est une liste de critères à satisfaire, pas une promesse de date.
 
 ## Ce qui existe déjà
