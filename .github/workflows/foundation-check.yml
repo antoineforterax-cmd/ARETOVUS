@@ -1,0 +1,67 @@
+name: foundation-check
+
+on:
+  push:
+    branches: [build/reproducible-foundation]
+  pull_request:
+    paths:
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'scripts/*foundation*'
+      - '.github/workflows/*'
+      - 'docs/consolidation/**'
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-reproduction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: eada9effb11d7ef0ad96f082f55feb1558cb90bb
+          persist-credentials: false
+      - name: Installer la toolchain candidate pour isoler le défaut de verrou
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Reproduire le verrou manquant avant Clippy
+        env:
+          RUSTUP_TOOLCHAIN: 1.99.1
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          assert not Path("Cargo.lock").exists()
+          result = subprocess.run(
+              ["cargo", "metadata", "--locked", "--format-version", "1"],
+              capture_output=True, text=True)
+          print(result.stderr)
+          message = result.stderr.lower()
+          assert result.returncode != 0, "baseline unexpectedly resolved without a lock"
+          assert "--locked" in message and ("lockfile" in message or "lock file" in message)
+          assert not Path("Cargo.lock").exists(), "baseline wrote a lock despite --locked"
+          print("REPRODUCED: clean foundation cannot resolve with --locked before Clippy")
+          PY
+  pinned-testnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0fbf9545a5bd60319d08ee64c9932e5ce04c2543
+          persist-credentials: false
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Enregistrer la provenance et résoudre sans réécrire le verrou
+        run: |
+          git rev-parse HEAD
+          cargo metadata --locked --format-version 1 > "$RUNNER_TEMP/testnet-metadata.json"
+      - name: Formatage, Clippy, compilation et tests
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo build --workspace --locked
+          cargo test --workspace --locked
+      - name: Smoke multi-processus du testnet épinglé
+        run: python3 scripts/testnet_smoke.py
+      - name: Vérifier le verrou
+        run: git diff --exit-code -- Cargo.lock

@@ -12,14 +12,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Installer Rust stable
-        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Tests adversariaux du garde
+        run: python3 -m unittest discover -s scripts -p 'test_foundation_guard.py' -v
+      - name: Identité des sources et verrou versionné
+        run: python3 scripts/foundation_guard.py
+      - name: Résolution verrouillée avant toute compilation
+        run: cargo metadata --locked --format-version 1 > "$RUNNER_TEMP/foundation-metadata.json"
       - name: Formatage
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Compilation
         run: cargo build --workspace --locked
       - name: Tests
         run: cargo test --workspace --locked
-# À ajouter plus tard (GOV-03) : cargo audit et cargo deny, une fois Cargo.lock committé.
+      - name: Vérifier que Cargo n'a pas réécrit le verrou
+        run: git diff --exit-code -- Cargo.lock
