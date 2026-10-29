@@ -47,6 +47,35 @@ fn validate_options(
     Ok(())
 }
 
+fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dyn Error>> {
+    let (values, flags): (&[&str], &[&str]) = match command {
+        "keygen" => (&["--out"], &["--plain-testnet"]),
+        "backup" => (&["--key-file", "--out"], &[]),
+        "restore" => (&["--from", "--out"], &[]),
+        "recovery-export" => (&["--key-file", "--out"], &["--acknowledge-secret"]),
+        "recovery-verify" => (&["--from", "--expected-account"], &[]),
+        "recovery-restore" => (&["--from", "--out", "--expected-account"], &["--plain-testnet"]),
+        "verify-backup" => (&["--from", "--expected-account"], &[]),
+        "address" | "limits-show" => (&["--key-file"], &[]),
+        "account" => (&["--address", "--node"], &[]),
+        "balance" => (&["--key-file", "--node"], &[]),
+        "limits-create" => (&["--key-file", "--max-amount", "--max-fee"], &[]),
+        "send" => (&["--key-file", "--to", "--amount", "--fee", "--node", "--max-amount", "--max-fee"], &["--yes", "--dry-run"]),
+        "sign-offline" => (&["--key-file", "--to", "--amount", "--fee", "--nonce", "--out", "--max-amount", "--max-fee"], &["--yes", "--dry-run"]),
+        "broadcast" => (&["--from", "--node"], &["--yes"]),
+        "verify" => (&["--node", "--txid", "--confirmations"], &[]),
+        "status" => (&["--node", "--txid"], &[]),
+        "wait" => (&["--node", "--txid", "--timeout-seconds"], &[]),
+        "help" | "-h" | "--help" => (&[], &[]),
+        _ => return Err("unknown command; use aurora-wallet --help".into()),
+    };
+    validate_options(args, values, flags)?;
+    if flag(args, "--yes") && flag(args, "--dry-run") {
+        return Err("--yes and --dry-run cannot be combined".into());
+    }
+    Ok(())
+}
+
 fn node_address(args: &[String]) -> Result<SocketAddr, Box<dyn Error>> {
     Ok(option(args, "--node")?.parse()?)
 }
@@ -100,6 +129,8 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
     let command = args.next().ok_or("Use aurora-wallet --help")?;
     let args = args.collect::<Vec<_>>();
+
+    validate_command_options(&command, &args)?;
 
     match command.as_str() {
         "keygen" => {
@@ -201,7 +232,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("{}", account_id_hex(key.account_id()));
         }
         "account" => {
-            validate_options(&args, &["--address", "--node"], &[])?;
             let address = parse_account_id(option(&args, "--address")?)?;
             let account = rpc::get_account(node_address(&args)?, address)?;
             println!(
@@ -252,20 +282,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
         }
         "sign-offline" => {
-            validate_options(
-                &args,
-                &[
-                    "--key-file",
-                    "--to",
-                    "--amount",
-                    "--fee",
-                    "--nonce",
-                    "--out",
-                    "--max-amount",
-                    "--max-fee",
-                ],
-                &["--yes", "--dry-run"],
-            )?;
             if flag(&args, "--yes") && flag(&args, "--dry-run") {
                 return Err("--yes and --dry-run cannot be combined".into());
             }
@@ -341,7 +357,6 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("not_broadcast: nonce and balance must be checked on the connected machine");
         }
         "broadcast" => {
-            validate_options(&args, &["--from", "--node"], &["--yes"])?;
             let transaction =
                 aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let node = node_address(&args)?;
