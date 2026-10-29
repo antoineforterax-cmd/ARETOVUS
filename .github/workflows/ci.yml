@@ -20,6 +20,8 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Compilation
         run: cargo build --workspace --locked
+      - name: Vérifier les vecteurs indépendants du retarget
+        run: python3 scripts/retarget_sim.py --check
       - name: Tests
         run: cargo test --workspace --locked
       - name: Testnet multi-nœuds
