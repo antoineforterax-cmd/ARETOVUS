@@ -1047,7 +1047,8 @@ mod tests {
         assert!(save_snapshot(&path, &original).is_err());
         assert!(previous_manifest.exists());
 
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.height(), 0);
         assert_eq!(recovered.tip_hash(), previous_tip);
         assert_eq!(recovered.known_block_count(), 1);
