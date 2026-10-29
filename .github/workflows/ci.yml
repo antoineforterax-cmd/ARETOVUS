@@ -33,4 +33,6 @@ jobs:
       - name: Tests
         run: cargo test --workspace --locked
       - name: Vérifier que Cargo n'a pas réécrit le verrou
-        run: git diff --exit-code -- Cargo.lock
+        run: |
+          git diff --exit-code -- Cargo.lock
+          python3 scripts/foundation_guard.py

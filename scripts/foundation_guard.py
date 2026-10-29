@@ -19,9 +19,9 @@ def validate_files(files):
     try:
         lock = tomllib.loads(files["Cargo.lock"].decode("utf-8"))
         config = tomllib.loads(files["rust-toolchain.toml"].decode("utf-8"))["toolchain"]
-        if lock.get("version") != 4 or not isinstance(lock.get("package"), list) or not lock["package"]:
+        if type(lock.get("version")) is not int or lock["version"] != 4 or not isinstance(lock.get("package"), list) or not lock["package"]:
             raise ValueError("expected a non-empty version 4 Cargo.lock")
-        if config.get("channel") != "1.99.1":
+        if not isinstance(config, dict) or config.get("channel") != "1.99.1":
             raise ValueError("Rust must be pinned to 1.99.1")
         components = config.get("components", [])
         if not isinstance(components, list) or not {"rustfmt", "clippy"}.issubset(components):
@@ -42,6 +42,14 @@ def git(*args):
     return subprocess.check_output(["git", *args])
 
 
+def assert_clean_sources(cwd=None):
+    status = subprocess.check_output(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all", "--ignored",
+         "--", "Cargo.toml", "crates"], cwd=cwd)
+    if status:
+        raise ValueError("production working tree is dirty: " + status.decode())
+
+
 def tree(ref):
     result = {}
     for entry in git("ls-tree", "-r", "-z", ref).split(b"\0"):
@@ -55,6 +63,7 @@ def tree(ref):
 def main():
     expected, actual = tree(BASELINE), tree("HEAD")
     assert_source_identity(expected, actual)
+    assert_clean_sources()
     changed = {p for p in expected.keys() | actual.keys()
                if expected.get(p) != actual.get(p)}
     if changed - ALLOWED:
