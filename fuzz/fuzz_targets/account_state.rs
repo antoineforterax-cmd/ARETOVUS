@@ -17,12 +17,14 @@ fuzz_target!(|data: &[u8]| {
     plain.credit_issuance(sender, Amount::from_units(balance).unwrap()).unwrap();
     let mut cached = plain.clone();
     let initial = plain.clone();
+    let mut accepted = Vec::new();
     for chunk in data.chunks(5).take(8) {
         let byte = |i: usize| chunk.get(i).copied().unwrap_or(0);
         if byte(0) & 8 != 0 {
             // Simulate restoration of an ancestor state while cache entries survive.
             plain = initial.clone();
             cached = initial.clone();
+            accepted.clear();
         }
         let mut tx = AccountTransaction {
             version: ACCOUNT_TX_VERSION,
@@ -47,5 +49,17 @@ fuzz_target!(|data: &[u8]| {
             assert_eq!(plain, before);
         }
         assert_eq!(plain.total_issued(), initial.total_issued());
+        // A failing final transaction must roll back the entire valid prefix.
+        let mut sequence = accepted.clone();
+        sequence.push(tx.clone());
+        let mut batch = initial.clone();
+        let batch_result = batch.apply_batch(&sequence);
+        assert_eq!(batch_result.is_ok(), expected.is_ok());
+        if expected.is_ok() {
+            assert_eq!(batch, plain);
+            accepted.push(tx);
+        } else {
+            assert_eq!(batch, initial);
+        }
     }
 });
