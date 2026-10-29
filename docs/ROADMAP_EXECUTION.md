@@ -45,7 +45,7 @@ Les sections suivantes conservent leurs dates et résultats d'origine ; les ment
 
 ## 2. Revue indépendante — reportée pour le développement expérimental
 
-Le dossier [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md) décrit le périmètre, les commandes et les limites connues. Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a produit des tâches vérifiables et un correctif d’indexation des lectures réseau; elle ne remplace pas la revue humaine indépendante. Aucune revue humaine indépendante n’a été réalisée. Les contrôles CI, ce travail d’implémentation et les outils automatisés ne comptent pas comme une telle revue.
+Le dossier [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md) décrit le périmètre, les commandes et les limites connues. Une [contre-revue automatisée](AI_COUNTER_REVIEW.md) a relevé des problèmes vérifiables et conduit à corriger l'indexation des lectures réseau. Elle ne remplace pas une revue humaine indépendante. Aucune revue humaine indépendante n’a été réalisée. Les contrôles CI, ce travail d’implémentation et les outils automatisés ne comptent pas comme une telle revue.
 
 Le 26 octobre 2026, le porteur a choisi de continuer le développement expérimental sans revue externe immédiate. Aucun reviewer indépendant n’est actuellement désigné et aucune demande n’a été envoyée. Cette décision permet de poursuivre les outils et essais locaux; elle ne donne aucune assurance de sécurité. Avant toute revendication mainnet ou usage de fonds réels, il faut un auditeur humain indépendant, un commit épinglé, un rapport écrit, des corrections et de nouveaux tests.
 
