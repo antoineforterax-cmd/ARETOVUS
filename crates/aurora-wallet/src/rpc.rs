@@ -321,14 +321,21 @@ pub fn submit_transaction(
     node: SocketAddr,
     tx: &AccountTransaction,
 ) -> Result<(Hash256, u32), Box<dyn Error>> {
+    let encoded = tx.to_canonical_bytes()?;
+    let expected = aurora_core::hash::tagged_hash(aurora_core::hash::Domain::AccountTxId, &encoded);
     let mut stream = connect(node)?;
     let mut request = vec![SUBMIT_TX];
-    request.extend_from_slice(&tx.to_canonical_bytes()?);
+    request.extend_from_slice(&encoded);
     write_frame(&mut stream, &request)?;
     let reply = read_frame(&mut stream)?;
     match reply.first() {
         Some(&TX_ACCEPTED) if reply.len() == 37 => {
             let txid = Hash256::from_bytes(reply[1..33].try_into()?);
+            if txid != expected {
+                return Err(format!(
+                    "node acknowledged a different transaction id; submission outcome unknown; check status for {expected}"
+                ).into());
+            }
             let pending_count = u32::from_be_bytes(reply[33..37].try_into()?);
             Ok((txid, pending_count))
         }
@@ -506,5 +513,68 @@ mod deadline_tests {
         assert!(blocked);
         assert!(started.elapsed() < Duration::from_secs(2));
         assert_eq!(client.write_timeout().unwrap(), original);
+    }
+}
+
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+    use crate::{build_signed_transaction, WalletKey};
+    use std::{net::TcpListener, thread};
+
+    fn payment() -> AccountTransaction {
+        build_signed_transaction(
+            &WalletKey::from_seed_bytes([61; 32]), AccountId([62; 32]),
+            Amount::from_units(100).unwrap(), Amount::from_units(3).unwrap(), 0,
+        ).unwrap()
+    }
+
+    fn submit_with_receipt(tx: &AccountTransaction, receipt: Vec<u8>) -> Result<(Hash256, u32), Box<dyn Error>> {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let encoded = tx.to_canonical_bytes().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            assert_eq!(read_frame(&mut stream).unwrap(), vec![WALLET_HELLO]);
+            let mut hello = vec![WALLET_HELLO_REPLY, 2];
+            hello.extend_from_slice(testnet_protocol_fingerprint().as_bytes());
+            hello.extend_from_slice(&0u64.to_be_bytes());
+            hello.extend_from_slice(&[0; 32]);
+            write_frame(&mut stream, &hello).unwrap();
+            let request = read_frame(&mut stream).unwrap();
+            assert_eq!(request[0], SUBMIT_TX);
+            assert_eq!(&request[1..], encoded);
+            write_frame(&mut stream, &receipt).unwrap();
+        });
+        let result = submit_transaction(address, tx);
+        server.join().unwrap();
+        result
+    }
+
+    fn accepted(id: Hash256) -> Vec<u8> {
+        let mut reply = vec![TX_ACCEPTED];
+        reply.extend_from_slice(id.as_bytes());
+        reply.extend_from_slice(&1u32.to_be_bytes());
+        reply
+    }
+
+    #[test]
+    fn submission_accepts_only_the_exact_prepared_transaction_id() {
+        let tx = payment();
+        assert_eq!(submit_with_receipt(&tx, accepted(tx.txid().unwrap())).unwrap(), (tx.txid().unwrap(), 1));
+        let error = submit_with_receipt(&tx, accepted(Hash256::ZERO)).unwrap_err().to_string();
+        assert!(error.contains("different transaction id"));
+        assert!(error.contains("outcome unknown"));
+        assert!(error.contains(&tx.txid().unwrap().to_string()));
+    }
+
+    #[test]
+    fn truncated_trailing_and_rejected_receipts_never_report_success() {
+        let tx = payment();
+        let mut trailing = accepted(tx.txid().unwrap());
+        trailing.push(0);
+        for reply in [vec![TX_ACCEPTED], trailing, vec![TX_REJECTED, 2]] {
+            assert!(submit_with_receipt(&tx, reply).is_err());
+        }
     }
 }
