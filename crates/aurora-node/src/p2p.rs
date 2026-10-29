@@ -806,8 +806,20 @@ fn common_chain_len(old: &AccountForkChain, new: &AccountForkChain) -> u64 {
     let mut high = old.height().min(new.height()) + 1;
     while low < high {
         let mid = low + (high - low) / 2;
-        let old_hash = old.canonical_block_page(mid, 1).next().unwrap().header.hash().unwrap();
-        let new_hash = new.canonical_block_page(mid, 1).next().unwrap().header.hash().unwrap();
+        let old_hash = old
+            .canonical_block_page(mid, 1)
+            .next()
+            .unwrap()
+            .header
+            .hash()
+            .unwrap();
+        let new_hash = new
+            .canonical_block_page(mid, 1)
+            .next()
+            .unwrap()
+            .header
+            .hash()
+            .unwrap();
         if old_hash == new_hash {
             low = mid + 1;
         } else {
@@ -825,7 +837,8 @@ fn rebuild_mempool(
     max_bytes: usize,
 ) -> Vec<AccountTransaction> {
     let common = common_chain_len(old, new);
-    let detached = old.canonical_block_page(common, usize::MAX)
+    let detached = old
+        .canonical_block_page(common, usize::MAX)
         .flat_map(|block| block.transactions.iter());
     let mut result = Vec::new();
     let mut known = HashSet::new();
@@ -843,7 +856,9 @@ fn rebuild_mempool(
         if known.contains(&id) || new.canonical_transaction(id).is_some() {
             continue;
         }
-        let Ok(encoded) = tx.to_canonical_bytes() else { continue };
+        let Ok(encoded) = tx.to_canonical_bytes() else {
+            continue;
+        };
         if encoded.len() > max_bytes.saturating_sub(bytes) {
             continue;
         }
@@ -864,7 +879,13 @@ fn publish_chain_transition(
     data_dir: &Path,
 ) -> Result<(), P2pError> {
     let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-    let rebuilt = rebuild_mempool(current, &candidate, &pool, MAX_MEMPOOL_TXS, MAX_MEMPOOL_BYTES);
+    let rebuilt = rebuild_mempool(
+        current,
+        &candidate,
+        &pool,
+        MAX_MEMPOOL_TXS,
+        MAX_MEMPOOL_BYTES,
+    );
     save_snapshot(data_dir, &candidate)?;
     *current = candidate;
     *pool = rebuilt;
@@ -2520,38 +2541,37 @@ mod orphan_reinsertion_tests {
     };
     use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey};
 
-fn transactions(count: usize) -> Vec<AccountTransaction> {
-    // Public test seed; signing and key generation are outside timed sections.
-    let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
-    let public = key.verifying_key().encode();
-    (0..count)
-        .map(|nonce| {
-            let mut tx = AccountTransaction {
-                version: POST_QUANTUM_ACCOUNT_TX_VERSION,
-                network: NetworkId::Testnet,
-                sender: post_quantum_account_id(public.as_slice()),
-                nonce: nonce as u64,
-                recipient: AccountId([0x33; 32]),
-                amount: Amount::from_units(5).unwrap(),
-                fee: Amount::from_units(1).unwrap(),
-                auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
-            };
-            tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public.as_slice());
-            let signature = key.sign(tx.signing_digest().unwrap().as_bytes()).encode();
-            tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
-            tx
-        })
-        .collect()
-}
+    fn transactions(count: usize) -> Vec<AccountTransaction> {
+        // Public test seed; signing and key generation are outside timed sections.
+        let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public = key.verifying_key().encode();
+        (0..count)
+            .map(|nonce| {
+                let mut tx = AccountTransaction {
+                    version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+                    network: NetworkId::Testnet,
+                    sender: post_quantum_account_id(public.as_slice()),
+                    nonce: nonce as u64,
+                    recipient: AccountId([0x33; 32]),
+                    amount: Amount::from_units(5).unwrap(),
+                    fee: Amount::from_units(1).unwrap(),
+                    auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+                };
+                tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public.as_slice());
+                let signature = key.sign(tx.signing_digest().unwrap().as_bytes()).encode();
+                tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
+                tx
+            })
+            .collect()
+    }
 
-fn funded(tx: &AccountTransaction) -> AccountLedger {
-    let mut ledger = AccountLedger::new(NetworkId::Testnet);
-    ledger
-        .credit_issuance(tx.sender, Amount::from_units(100_000).unwrap())
-        .unwrap();
-    ledger
-}
-
+    fn funded(tx: &AccountTransaction) -> AccountLedger {
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger
+            .credit_issuance(tx.sender, Amount::from_units(100_000).unwrap())
+            .unwrap();
+        ledger
+    }
 
     fn block(parent: Hash256, time: u64, txs: Vec<AccountTransaction>) -> AccountBlock {
         AccountBlock::build(NetworkId::Testnet, parent, time, 0, txs).unwrap()
@@ -2574,15 +2594,24 @@ fn funded(tx: &AccountTransaction) -> AccountLedger {
     fn directory(label: &str) -> std::path::PathBuf {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        std::env::temp_dir().join(format!("aurora-orphans-{label}-{}-{id}", std::process::id()))
+        std::env::temp_dir().join(format!(
+            "aurora-orphans-{label}-{}-{id}",
+            std::process::id()
+        ))
     }
 
     #[test]
     fn detached_predecessors_return_before_pending_successors_without_duplicates() {
         let (old, new, txs) = branches(2);
         let pool = vec![txs[2].clone(), txs[0].clone()];
-        assert_eq!(rebuild_mempool(&old, &new, &pool, 10, MAX_MEMPOOL_BYTES), txs);
-        assert_eq!(rebuild_mempool(&old, &new, &pool, 1, MAX_MEMPOOL_BYTES), txs[..1]);
+        assert_eq!(
+            rebuild_mempool(&old, &new, &pool, 10, MAX_MEMPOOL_BYTES),
+            txs
+        );
+        assert_eq!(
+            rebuild_mempool(&old, &new, &pool, 1, MAX_MEMPOOL_BYTES),
+            txs[..1]
+        );
         let bytes = txs[0].to_canonical_bytes().unwrap().len();
         assert!(rebuild_mempool(&old, &new, &pool, 10, bytes - 1).is_empty());
         assert!(rebuild_mempool(&old, &new, &pool, 0, MAX_MEMPOOL_BYTES).is_empty());
@@ -2596,11 +2625,14 @@ fn funded(tx: &AccountTransaction) -> AccountLedger {
         assert!(rebuild_mempool(&old, &extension, &txs[..1], 10, MAX_MEMPOOL_BYTES).is_empty());
 
         let root = old.blocks().next().unwrap().header.hash().unwrap();
-        let mut new = AccountForkChain::new(block(Hash256::ZERO, 1, vec![]), 0, funded(&txs[0])).unwrap();
+        let mut new =
+            AccountForkChain::new(block(Hash256::ZERO, 1, vec![]), 0, funded(&txs[0])).unwrap();
         let mut conflict = txs[0].clone();
         conflict.recipient = AccountId([0x44; 32]);
         let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
-        let sig = key.sign(conflict.signing_digest().unwrap().as_bytes()).encode();
+        let sig = key
+            .sign(conflict.signing_digest().unwrap().as_bytes())
+            .encode();
         conflict.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(sig.as_slice());
         new.submit(block(root, 3, vec![conflict])).unwrap();
         assert!(rebuild_mempool(&old, &new, &[], 10, MAX_MEMPOOL_BYTES).is_empty());
@@ -2631,7 +2663,13 @@ fn funded(tx: &AccountTransaction) -> AccountLedger {
         let tip = new.tip_hash();
         let server = thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
-            handle_peer_shared(stream, &Mutex::new(new), &Mutex::new(vec![]), &server_path, &[])
+            handle_peer_shared(
+                stream,
+                &Mutex::new(new),
+                &Mutex::new(vec![]),
+                &server_path,
+                &[],
+            )
         });
         let current = Mutex::new(old);
         let pool = Mutex::new(vec![txs[1].clone()]);
@@ -2646,8 +2684,10 @@ fn funded(tx: &AccountTransaction) -> AccountLedger {
     fn direct_block_rpc_restores_orphans_after_tie_break_reorg() {
         let (old, _, txs) = branches(1);
         let root = old.blocks().next().unwrap().header.hash().unwrap();
-        let winning = (3..1000).map(|time| block(root, time, vec![]))
-            .find(|candidate| candidate.header.hash().unwrap() < old.tip_hash()).unwrap();
+        let winning = (3..1000)
+            .map(|time| block(root, time, vec![]))
+            .find(|candidate| candidate.header.hash().unwrap() < old.tip_hash())
+            .unwrap();
         let client_chain = old.clone();
         let path = directory("direct");
         let server_path = path.clone();
