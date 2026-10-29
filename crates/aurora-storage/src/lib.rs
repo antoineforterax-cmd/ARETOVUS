@@ -1070,6 +1070,26 @@ mod tests {
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.state(), original.state());
+
+        // A restored copy must keep the losing fork usable for a later reorg.
+        // Extend the noncanonical branch until it has strictly more work.
+        let side_parent = branch_a.header.hash().unwrap();
+        let side_successor =
+            AccountBlock::build(NetworkId::Regtest, side_parent, 4, 0, Vec::new()).unwrap();
+        let side_tip = side_successor.header.hash().unwrap();
+        let mut recovered = restored;
+        recovered.submit(side_successor).unwrap();
+        assert_eq!(recovered.height(), 2);
+        assert_eq!(recovered.tip_hash(), side_tip);
+        assert_eq!(recovered.known_block_count(), 4);
+
+        // Persist the reorg on the copied directory and verify a second recovery.
+        save_snapshot(&backup, &recovered).unwrap();
+        let second_restore =
+            load_latest_snapshot(&backup, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(second_restore.tip_hash(), side_tip);
+        assert_eq!(second_restore.known_block_count(), 4);
+        assert_eq!(second_restore.state(), recovered.state());
         fs::remove_dir_all(source).unwrap();
         fs::remove_dir_all(backup).unwrap();
     }
