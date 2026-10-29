@@ -34,7 +34,8 @@ impl DifficultyParams {
 
     /// Retarget by whole powers of two, bounded per window. Actual time below half
     /// target raises one bit; above double target lowers one bit, up to the cap.
-    /// Inputs are medians from the chain, never the local wall clock.
+    /// Elapsed time spans the candidate and its H-interval ancestor, not medians.
+    /// The local wall clock is not an input to consensus retargeting.
     pub fn retarget(self, parent_bits: u16, actual_elapsed: u64) -> u16 {
         if self.adjustment_interval == 0 {
             return parent_bits;
