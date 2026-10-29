@@ -48,7 +48,7 @@ Spécification, commit/branche, tests reproductibles, métriques, limites connue
 | Endurance | Test court réussi ; campagne 72 h lancée le 28/10 | Rapport final de 72 h et réplication multi-hôtes |
 | Sécurité | CI, tests de propriétés, fuzz court, revue IA | Audit humain indépendant, campagnes longues, pannes réelles, tests de pairs hostiles |
 | Confidentialité | Exigences et menaces documentées | Prototype isolé, comparaison cryptographique, mesures, décisions de consensus |
-| Anti-perte / anti-arnaque | Wallet chiffré et sauvegarde/restauration ; principes produit documentés | Coffre, contrôles volontaires, récupération sociale, tests de collusion |
+| Anti-perte / anti-arnaque | Wallet chiffré ; confirmation/aperçu #26, secours hors ligne #27, plafonds persistants #28, signature hors ligne #29 sur PR non fusionnées | Intégration, essais physiques, délais révocables, notifications, récupération sociale et tests de collusion |
 | Gouvernance | 5 % d'émission crédités à la trésorerie de test | Contrôle, dépense, audit, politique et responsabilité |
 | Applications | Wallet CLI | GUI, explorateur, site complet, mobile et intégrations |
 

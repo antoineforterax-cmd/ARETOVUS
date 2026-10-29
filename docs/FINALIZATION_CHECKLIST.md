@@ -20,6 +20,26 @@ Les résultats d'exécution sont dans la PR et le workflow network-partitions.
 Le scénario reste local à un hôte ; les partitions multi-hôtes et essais
 prolongés restent ouverts.
 
+## Suivi wallet — lot de stabilisation du 29 octobre 2026
+
+Sur des **PR empilées non fusionnées**, le wallet dispose désormais de la
+confirmation et de l'aperçu avant signature (#26), du secours hors ligne
+pour régénérer la clé si le code a été conservé avant la perte (#27), des
+plafonds persistants locaux (#28), puis de la signature hors ligne et de la
+diffusion sans clé privée (#29). Les validations sont référencées dans ces PR.
+Ces fonctions ne décrivent pas le contenu de main ou des anciennes archives.
+
+Un lot de petites corrections traite les options CLI ambiguës (#30), les
+reçus de soumission incohérents (#31), les limites et contrôles de direction
+des URI (#32), les délais de wait extrêmes (#33) et les buffers temporaires
+de secrets (#34). Voir [le suivi du lot](ESSENTIAL_WALLET_CLEANUPS.md).
+Ne pas clore les issues sur la seule présence du code : conserver les
+preuves CI dans la PR et distinguer leur intégration effective.
+
+La récupération par gardiens, les délais révocables, les notifications,
+l'audit indépendant et les essais multi-hôtes restent ouverts. Les lots
+wallet ne soldent pas les risques P0 du cœur ni les essais prolongés.
+
 ## 1 — Corriger les risques du cœur avant un testnet durable
 
 | Priorité | Travail | Preuve de fin attendue |

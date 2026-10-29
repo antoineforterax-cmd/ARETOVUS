@@ -13,7 +13,7 @@ use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
 };
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
 const KEY_FILE_BYTES: usize = 8 + 32 + 32;
@@ -34,27 +34,34 @@ pub struct WalletKey {
 impl WalletKey {
     /// Generate a fresh seed using the operating system CSPRNG.
     pub fn generate() -> Result<Self, Box<dyn Error>> {
-        let mut seed = [0u8; 32];
-        getrandom::getrandom(&mut seed).map_err(|error| format!("OS CSPRNG failed: {error}"))?;
-        Ok(Self::from_seed(seed))
+        let mut seed = Zeroizing::new([0u8; 32]);
+        getrandom::getrandom(&mut *seed).map_err(|error| format!("OS CSPRNG failed: {error}"))?;
+        Ok(Self::from_seed(*seed))
     }
 
-    fn from_seed(seed_bytes: [u8; 32]) -> Self {
+    fn from_seed(mut seed_bytes: [u8; 32]) -> Self {
         let mut seed = ml_dsa::Seed::default();
         seed.copy_from_slice(&seed_bytes);
         let signing_key = SigningKey::<MlDsa65>::from_seed(&seed);
+        for byte in seed.iter_mut() {
+            byte.zeroize();
+        }
         let public_key = signing_key.verifying_key().encode().as_slice().to_vec();
         let account_id = post_quantum_account_id(&public_key);
-        Self {
+        let key = Self {
             seed: seed_bytes,
             public_key,
             account_id,
-        }
+        };
+        seed_bytes.zeroize();
+        key
     }
 
     /// Restore a wallet key from its 32-byte FIPS 204 key-generation seed.
-    pub fn from_seed_bytes(seed: [u8; 32]) -> Self {
-        Self::from_seed(seed)
+    pub fn from_seed_bytes(mut seed: [u8; 32]) -> Self {
+        let key = Self::from_seed(seed);
+        seed.zeroize();
+        key
     }
 
     pub fn public_key(&self) -> &[u8] {
@@ -68,7 +75,11 @@ impl WalletKey {
     pub(crate) fn signing_key(&self) -> SigningKey<MlDsa65> {
         let mut seed = ml_dsa::Seed::default();
         seed.copy_from_slice(&self.seed);
-        SigningKey::<MlDsa65>::from_seed(&seed)
+        let key = SigningKey::<MlDsa65>::from_seed(&seed);
+        for byte in seed.iter_mut() {
+            byte.zeroize();
+        }
+        key
     }
 
     /// Whether a key file uses the authenticated encrypted AURKEY4 format.
@@ -106,8 +117,8 @@ impl WalletKey {
         header.extend_from_slice(&salt);
         header.extend_from_slice(&nonce);
 
-        let mut key = derive_password_key(password, &salt)?;
-        let cipher = XChaCha20Poly1305::new_from_slice(&key)
+        let mut key = Zeroizing::new(derive_password_key(password, &salt)?);
+        let cipher = XChaCha20Poly1305::new_from_slice(&*key)
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
         let nonce_ref = XNonce::try_from(nonce.as_slice())
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid nonce"))?;
@@ -152,8 +163,8 @@ impl WalletKey {
         }
         let salt: [u8; 16] = payload[20..36].try_into()?;
         let nonce: [u8; 24] = payload[36..60].try_into()?;
-        let mut key = derive_password_key(password, &salt)?;
-        let cipher = XChaCha20Poly1305::new_from_slice(&key)
+        let mut key = Zeroizing::new(derive_password_key(password, &salt)?);
+        let cipher = XChaCha20Poly1305::new_from_slice(&*key)
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid derived key"))?;
         let nonce_ref = XNonce::try_from(nonce.as_slice())
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid nonce"))?;
@@ -175,10 +186,23 @@ impl WalletKey {
             decrypted.zeroize();
             return Err("invalid decrypted seed length".into());
         }
-        let mut seed = [0u8; 32];
+        let mut seed = Zeroizing::new([0u8; 32]);
         seed.copy_from_slice(&decrypted);
         decrypted.zeroize();
-        Ok(Self::from_seed(seed))
+        Ok(Self::from_seed(*seed))
+    }
+
+    /// Authenticate an encrypted backup and verify its expected account, without writing files.
+    pub fn verify_encrypted_backup(
+        path: &Path,
+        password: &str,
+        expected: AccountId,
+    ) -> Result<(), Box<dyn Error>> {
+        let restored = Self::load_encrypted_testnet_file(path, password)?;
+        if restored.account_id() != expected {
+            return Err("backup belongs to a different account".into());
+        }
+        Ok(())
     }
 
     /// Verify an encrypted key, then create an independent encrypted copy.
@@ -197,12 +221,42 @@ impl WalletKey {
         Ok(key.account_id())
     }
 
+    /// Export an unencrypted recovery secret. Anyone holding it can spend this account.
+    pub fn save_recovery_file(&self, path: &Path) -> Result<(), Box<dyn Error>> {
+        let mut code = crate::recovery::encode_seed(&self.seed);
+        code.push('\n');
+        write_new_private_file(path, code.as_bytes())?;
+        Ok(())
+    }
+
+    /// Recover the same v3 identity, without the original file or its password.
+    pub fn from_recovery_code(code: &str, expected: AccountId) -> Result<Self, Box<dyn Error>> {
+        let seed = crate::recovery::decode_seed(code)?;
+        let key = Self::from_seed(*seed);
+        if key.account_id() != expected {
+            return Err("recovery code belongs to a different account".into());
+        }
+        Ok(key)
+    }
+
+    /// Read only a bounded recovery text file and validate its expected identity.
+    pub fn load_recovery_file(path: &Path, expected: AccountId) -> Result<Self, Box<dyn Error>> {
+        let file = File::open(path)?;
+        // Reserve beyond the read limit so secret bytes never move through reallocation.
+        let mut code = Zeroizing::new(Vec::with_capacity(258));
+        file.take(257).read_to_end(&mut code)?;
+        if code.len() > 256 {
+            return Err("recovery file exceeds size limit".into());
+        }
+        Self::from_recovery_code(std::str::from_utf8(&code)?, expected)
+    }
+
     /// Save a plain testnet seed without replacing an existing file.
     ///
     /// The checksum detects accidental corruption; it does not encrypt the seed or
     /// authenticate it against deliberate modification.
     pub fn save_plain_testnet_file(&self, path: &Path) -> Result<(), Box<dyn Error>> {
-        let mut payload = Vec::with_capacity(KEY_FILE_BYTES);
+        let mut payload = Zeroizing::new(Vec::with_capacity(KEY_FILE_BYTES));
         payload.extend_from_slice(KEY_MAGIC);
         payload.extend_from_slice(&self.seed);
         let checksum = sha256_plain(&payload);
@@ -218,8 +272,8 @@ impl WalletKey {
         if file.metadata()?.len() != KEY_FILE_BYTES as u64 {
             return Err("invalid AURKEY3 file length".into());
         }
-        let mut payload = [0u8; KEY_FILE_BYTES];
-        file.read_exact(&mut payload)?;
+        let mut payload = Zeroizing::new([0u8; KEY_FILE_BYTES]);
+        file.read_exact(&mut *payload)?;
         if &payload[..8] != KEY_MAGIC {
             return Err("invalid AURKEY3 file header".into());
         }
@@ -227,8 +281,8 @@ impl WalletKey {
         if expected.as_bytes() != &payload[40..72] {
             return Err("AURKEY3 checksum mismatch".into());
         }
-        let seed: [u8; 32] = payload[8..40].try_into()?;
-        Ok(Self::from_seed(seed))
+        let seed = Zeroizing::new(<[u8; 32]>::try_from(&payload[8..40])?);
+        Ok(Self::from_seed(*seed))
     }
 }
 
@@ -241,9 +295,9 @@ impl Drop for WalletKey {
 fn derive_password_key(password: &str, salt: &[u8; 16]) -> Result<[u8; 32], Box<dyn Error>> {
     let params = Params::new(ARGON_MEMORY_KIB, ARGON_PASSES, ARGON_LANES, Some(32))?;
     let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-    let mut key = [0u8; 32];
-    argon.hash_password_into(password.as_bytes(), salt, &mut key)?;
-    Ok(key)
+    let mut key = Zeroizing::new([0u8; 32]);
+    argon.hash_password_into(password.as_bytes(), salt, &mut *key)?;
+    Ok(*key)
 }
 
 fn write_new_private_file(path: &Path, payload: &[u8]) -> io::Result<()> {
@@ -328,6 +382,18 @@ mod tests {
         let key = WalletKey::from_seed_bytes([44; 32]);
         key.save_encrypted_testnet_file(&source, "another long test password")
             .unwrap();
+        WalletKey::verify_encrypted_backup(&source, "another long test password", key.account_id())
+            .unwrap();
+        assert!(WalletKey::verify_encrypted_backup(
+            &source,
+            "another long test password",
+            AccountId([0; 32])
+        )
+        .is_err());
+        assert!(
+            WalletKey::verify_encrypted_backup(&source, "wrong password", key.account_id())
+                .is_err()
+        );
         let account =
             WalletKey::copy_encrypted_testnet_file(&source, &backup, "another long test password")
                 .unwrap();
@@ -352,6 +418,78 @@ mod tests {
         for path in [source, backup, restored] {
             fs::remove_file(path).unwrap();
         }
+    }
+
+    #[test]
+    fn recovery_survives_original_file_and_password_loss_and_signs() {
+        let base = std::env::temp_dir().join(format!(
+            "aurora-recovery-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&base).unwrap();
+        let original = base.join("original.aurkey");
+        let secret = base.join("recovery.txt");
+        let replacement = base.join("replacement.aurkey");
+        let key = WalletKey::from_seed_bytes([73; 32]);
+        let expected = key.account_id();
+        key.save_encrypted_testnet_file(&original, "old password forgotten later")
+            .unwrap();
+        key.save_recovery_file(&secret).unwrap();
+        assert!(key.save_recovery_file(&secret).is_err());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&secret).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+        drop(key);
+        fs::remove_file(&original).unwrap();
+        assert!(!original.exists());
+        assert!(WalletKey::load_recovery_file(&secret, AccountId([0; 32])).is_err());
+        let recovered = WalletKey::load_recovery_file(&secret, expected).unwrap();
+        recovered
+            .save_encrypted_testnet_file(&replacement, "entirely new password")
+            .unwrap();
+        drop(recovered);
+        let restored =
+            WalletKey::load_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
+        assert_eq!(restored.account_id(), expected);
+        let tx = crate::build_signed_transaction(
+            &restored,
+            AccountId([25; 32]),
+            aurora_core::amount::Amount::from_units(100).unwrap(),
+            aurora_core::amount::Amount::from_units(3).unwrap(),
+            7,
+        )
+        .unwrap();
+        aurora_core::signature::verify_account_transaction(&tx).unwrap();
+        assert!(restored
+            .save_encrypted_testnet_file(&replacement, "entirely new password")
+            .is_err());
+        fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn recovery_file_rejects_corruption_oversize_and_foreign_identity() {
+        let path = std::env::temp_dir().join(format!(
+            "aurora-recovery-bad-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let key = WalletKey::from_seed_bytes([74; 32]);
+        key.save_recovery_file(&path).unwrap();
+        let mut bytes = Zeroizing::new(fs::read(&path).unwrap());
+        bytes[40] = if bytes[40] == b'0' { b'1' } else { b'0' };
+        fs::write(&path, &*bytes).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::write(&path, [b'x'; 257]).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::write(&path, [0xff; 155]).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
