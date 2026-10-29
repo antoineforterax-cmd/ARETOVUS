@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 import subprocess
 import tempfile
-from foundation_guard import assert_clean_sources, assert_source_identity, validate_files
+from foundation_guard import assert_clean_sources, assert_source_identity, assert_approved_readme, validate_files
 
 VALID = {
     "Cargo.lock": b'version = 4\n[[package]]\nname = "example"\nversion = "0.1.0"\n',
@@ -120,6 +120,33 @@ class IdentityTests(unittest.TestCase):
                        "Cargo.lock": ("100644", "b" * 40),
                        "rust-toolchain.toml": ("100644", "c" * 40)})
         assert_source_identity(self.expected, actual)
+
+
+class ApprovedReadmeTests(unittest.TestCase):
+    def setUp(self):
+        self.expected = {"README.md": ("100644", "blob", "1" * 40)}
+        self.approved = "2" * 40
+
+    def test_pinned_readme_is_accepted(self):
+        assert_approved_readme(
+            self.expected, {"README.md": ("100644", "blob", self.approved)}, self.approved)
+
+    def test_unapproved_readme_rejected(self):
+        with self.assertRaises(ValueError):
+            assert_approved_readme(
+                self.expected, {"README.md": ("100644", "blob", "3" * 40)}, self.approved)
+
+    def test_deleted_readme_rejected(self):
+        with self.assertRaises(ValueError):
+            assert_approved_readme(self.expected, {}, self.approved)
+
+    def test_readme_mode_change_rejected(self):
+        with self.assertRaises(ValueError):
+            assert_approved_readme(
+                self.expected, {"README.md": ("100755", "blob", self.approved)}, self.approved)
+
+    def test_unchanged_readme_accepted(self):
+        assert_approved_readme(self.expected, self.expected.copy(), self.approved)
 
 
 class WorkingTreeTests(unittest.TestCase):
