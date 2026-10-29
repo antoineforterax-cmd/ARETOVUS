@@ -922,9 +922,7 @@ fn handle_peer_after_hello(
                 let mut candidate = chain.clone();
                 match candidate.submit(block) {
                     Ok(_) => {
-                        save_snapshot(data_dir, &candidate)?;
-                        *chain = candidate;
-                        revalidate_mempool(&chain, mempool)?;
+                        publish_chain_transition(&mut chain, candidate, mempool, data_dir)?;
                     }
                     Err(AccountForkChainError::DuplicateBlock) => {}
                     Err(error) => return Err(P2pError::Chain(error)),
@@ -941,19 +939,95 @@ fn handle_peer_after_hello(
     }
 }
 
-fn revalidate_mempool(
-    chain: &AccountForkChain,
-    mempool: &Mutex<Vec<AccountTransaction>>,
-) -> Result<(), P2pError> {
-    let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-    let mut pending = Vec::with_capacity(pool.len());
-    let mut state = chain.state().clone();
-    for tx in pool.drain(..) {
-        if state.apply_transaction_cached(&tx).is_ok() {
-            pending.push(tx);
+/// Common-prefix search avoids scanning the entire canonical history on extensions.
+fn common_chain_len(old: &AccountForkChain, new: &AccountForkChain) -> u64 {
+    let mut low = 0;
+    let mut high = old.height().min(new.height()) + 1;
+    while low < high {
+        let mid = low + (high - low) / 2;
+        let old_hash = old
+            .canonical_block_page(mid, 1)
+            .next()
+            .unwrap()
+            .header
+            .hash()
+            .unwrap();
+        let new_hash = new
+            .canonical_block_page(mid, 1)
+            .next()
+            .unwrap()
+            .header
+            .hash()
+            .unwrap();
+        if old_hash == new_hash {
+            low = mid + 1;
+        } else {
+            high = mid;
         }
     }
-    *pool = pending;
+    low
+}
+
+fn rebuild_mempool(
+    old: &AccountForkChain,
+    new: &AccountForkChain,
+    existing: &[AccountTransaction],
+    max_count: usize,
+    max_bytes: usize,
+) -> Vec<AccountTransaction> {
+    let common = common_chain_len(old, new);
+    let detached = old
+        .canonical_block_page(common, usize::MAX)
+        .flat_map(|block| block.transactions.iter());
+    let mut result = Vec::new();
+    let mut known = HashSet::new();
+    let mut bytes = 0usize;
+    let mut state = new.state().clone();
+    // Detached payments precede pending successors, preserving nonce dependencies.
+    for tx in detached.chain(existing.iter()) {
+        if result.len() == max_count {
+            break;
+        }
+        if tx.network != NetworkId::Testnet || tx.version != POST_QUANTUM_ACCOUNT_TX_VERSION {
+            continue;
+        }
+        let Ok(id) = tx.txid() else { continue };
+        if known.contains(&id) || new.canonical_transaction(id).is_some() {
+            continue;
+        }
+        let Ok(encoded) = tx.to_canonical_bytes() else {
+            continue;
+        };
+        if encoded.len() > max_bytes.saturating_sub(bytes) {
+            continue;
+        }
+        if state.apply_transaction_cached(tx).is_ok() {
+            bytes += encoded.len();
+            known.insert(id);
+            result.push(tx.clone());
+        }
+    }
+    result
+}
+
+/// Publish chain and mempool only after the snapshot is durably accepted by storage.
+fn publish_chain_transition(
+    current: &mut AccountForkChain,
+    candidate: AccountForkChain,
+    mempool: &Mutex<Vec<AccountTransaction>>,
+    data_dir: &Path,
+) -> Result<(), P2pError> {
+    let mut pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
+    let rebuilt = rebuild_mempool(
+        current,
+        &candidate,
+        &pool,
+        MAX_MEMPOOL_TXS,
+        MAX_MEMPOOL_BYTES,
+    );
+    save_snapshot(data_dir, &candidate)?;
+    *current = candidate;
+    *pool = rebuilt;
     Ok(())
 }
 
@@ -1048,9 +1122,7 @@ fn sync_peer_into_shared(
         }
     }
     if added != 0 {
-        save_snapshot(data_dir, &merged)?;
-        *current = merged;
-        revalidate_mempool(&current, mempool)?;
+        publish_chain_transition(&mut current, merged, mempool, data_dir)?;
     }
     Ok(added)
 }
@@ -2718,6 +2790,185 @@ mod handshake_admission_tests {
 }
 
 #[cfg(test)]
+mod orphan_reinsertion_tests {
+    use super::*;
+    use aurora_core::{
+        accounts::{ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_AUTH_BYTES},
+        amount::Amount,
+        signature::post_quantum_account_id,
+        state::AccountLedger,
+    };
+    use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey};
+
+    fn transactions(count: usize) -> Vec<AccountTransaction> {
+        // Public test seed; signing and key generation are outside timed sections.
+        let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public = key.verifying_key().encode();
+        (0..count)
+            .map(|nonce| {
+                let mut tx = AccountTransaction {
+                    version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+                    network: NetworkId::Testnet,
+                    sender: post_quantum_account_id(public.as_slice()),
+                    nonce: nonce as u64,
+                    recipient: AccountId([0x33; 32]),
+                    amount: Amount::from_units(5).unwrap(),
+                    fee: Amount::from_units(1).unwrap(),
+                    auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+                };
+                tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public.as_slice());
+                let signature = key.sign(tx.signing_digest().unwrap().as_bytes()).encode();
+                tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
+                tx
+            })
+            .collect()
+    }
+
+    fn funded(tx: &AccountTransaction) -> AccountLedger {
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger
+            .credit_issuance(tx.sender, Amount::from_units(100_000).unwrap())
+            .unwrap();
+        ledger
+    }
+
+    fn block(parent: Hash256, time: u64, txs: Vec<AccountTransaction>) -> AccountBlock {
+        AccountBlock::build(NetworkId::Testnet, parent, time, 0, txs).unwrap()
+    }
+
+    fn branches(count: usize) -> (AccountForkChain, AccountForkChain, Vec<AccountTransaction>) {
+        let txs = transactions(count + 1);
+        let genesis = block(Hash256::ZERO, 1, vec![]);
+        let mut old = AccountForkChain::new(genesis, 0, funded(&txs[0])).unwrap();
+        let root = old.tip_hash();
+        old.submit(block(root, 2, txs[..count].to_vec())).unwrap();
+        let mut new = old.clone();
+        let side = block(root, 3, vec![]);
+        let parent = side.header.hash().unwrap();
+        new.submit(side).unwrap();
+        new.submit(block(parent, 4, vec![])).unwrap();
+        (old, new, txs)
+    }
+
+    fn directory(label: &str) -> std::path::PathBuf {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "aurora-orphans-{label}-{}-{id}",
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn detached_predecessors_return_before_pending_successors_without_duplicates() {
+        let (old, new, txs) = branches(2);
+        let pool = vec![txs[2].clone(), txs[0].clone()];
+        assert_eq!(
+            rebuild_mempool(&old, &new, &pool, 10, MAX_MEMPOOL_BYTES),
+            txs
+        );
+        assert_eq!(
+            rebuild_mempool(&old, &new, &pool, 1, MAX_MEMPOOL_BYTES),
+            txs[..1]
+        );
+        let bytes = txs[0].to_canonical_bytes().unwrap().len();
+        assert!(rebuild_mempool(&old, &new, &pool, 10, bytes - 1).is_empty());
+        assert!(rebuild_mempool(&old, &new, &pool, 0, MAX_MEMPOOL_BYTES).is_empty());
+    }
+
+    #[test]
+    fn newly_confirmed_and_conflicting_transactions_do_not_return() {
+        let (old, _, txs) = branches(1);
+        let mut extension = old.clone();
+        extension.submit(block(old.tip_hash(), 3, vec![])).unwrap();
+        assert!(rebuild_mempool(&old, &extension, &txs[..1], 10, MAX_MEMPOOL_BYTES).is_empty());
+
+        let root = old.blocks().next().unwrap().header.hash().unwrap();
+        let mut new =
+            AccountForkChain::new(block(Hash256::ZERO, 1, vec![]), 0, funded(&txs[0])).unwrap();
+        let mut conflict = txs[0].clone();
+        conflict.recipient = AccountId([0x44; 32]);
+        let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let sig = key
+            .sign(conflict.signing_digest().unwrap().as_bytes())
+            .encode();
+        conflict.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(sig.as_slice());
+        new.submit(block(root, 3, vec![conflict])).unwrap();
+        assert!(rebuild_mempool(&old, &new, &[], 10, MAX_MEMPOOL_BYTES).is_empty());
+    }
+
+    #[test]
+    fn failed_persistence_preserves_both_chain_and_pool() {
+        let (mut old, new, txs) = branches(1);
+        let tip = old.tip_hash();
+        let state = old.state().clone();
+        let pool = Mutex::new(vec![txs[1].clone()]);
+        let path = directory("failure");
+        std::fs::write(&path, b"not a directory").unwrap();
+        assert!(publish_chain_transition(&mut old, new, &pool, &path).is_err());
+        assert_eq!(old.tip_hash(), tip);
+        assert_eq!(old.state(), &state);
+        assert_eq!(*pool.lock().unwrap(), vec![txs[1].clone()]);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn background_tcp_sync_restores_orphaned_payment_and_pending_successor() {
+        let (old, new, txs) = branches(1);
+        let path = directory("sync");
+        let server_path = path.clone();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let tip = new.tip_hash();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            handle_peer_shared(
+                stream,
+                &Mutex::new(new),
+                &Mutex::new(vec![]),
+                &server_path,
+                &[],
+            )
+        });
+        let current = Mutex::new(old);
+        let pool = Mutex::new(vec![txs[1].clone()]);
+        assert!(sync_peer_into_shared(address, &current, &pool, &path).unwrap() > 0);
+        assert!(server.join().unwrap().is_ok());
+        assert_eq!(current.lock().unwrap().tip_hash(), tip);
+        assert_eq!(*pool.lock().unwrap(), txs);
+        std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn direct_block_rpc_restores_orphans_after_tie_break_reorg() {
+        let (old, _, txs) = branches(1);
+        let root = old.blocks().next().unwrap().header.hash().unwrap();
+        let winning = (3..1000)
+            .map(|time| block(root, time, vec![]))
+            .find(|candidate| candidate.header.hash().unwrap() < old.tip_hash())
+            .unwrap();
+        let client_chain = old.clone();
+        let path = directory("direct");
+        let server_path = path.clone();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let expected_tip = winning.header.hash().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let chain = Mutex::new(old);
+            let pool = Mutex::new(vec![txs[1].clone()]);
+            handle_peer_shared(stream, &chain, &pool, &server_path, &[]).unwrap();
+            (chain.into_inner().unwrap(), pool.into_inner().unwrap(), txs)
+        });
+        propagate_block(address, &client_chain, &winning).unwrap();
+        let (chain, pool, txs) = server.join().unwrap();
+        assert_eq!(chain.tip_hash(), expected_tip);
+        assert_eq!(pool, txs);
+        std::fs::remove_dir_all(path).unwrap();
+    }
+}
+
+#[cfg(test)]
 mod self_transfer_tests {
     use super::*;
     use aurora_core::{
@@ -2843,9 +3094,14 @@ mod self_transfer_tests {
         assert_eq!(pool, vec![valid.clone()]);
 
         // Revalidation must also remove an invalid entry without consuming its nonce.
-        let pool = Mutex::new(vec![signed_transfer(0, true), valid.clone()]);
-        revalidate_mempool(&chain, &pool).unwrap();
-        assert_eq!(*pool.lock().unwrap(), vec![valid]);
+        let rebuilt = rebuild_mempool(
+            &chain,
+            &chain,
+            &[signed_transfer(0, true), valid.clone()],
+            MAX_MEMPOOL_TXS,
+            MAX_MEMPOOL_BYTES,
+        );
+        assert_eq!(rebuilt, vec![valid]);
         assert_eq!(chain.state(), &before);
     }
 }
