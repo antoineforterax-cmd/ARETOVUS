@@ -2835,9 +2835,14 @@ mod self_transfer_tests {
         assert_eq!(pool, vec![valid.clone()]);
 
         // Revalidation must also remove an invalid entry without consuming its nonce.
-        let pool = Mutex::new(vec![signed_transfer(0, true), valid.clone()]);
-        revalidate_mempool(&chain, &pool).unwrap();
-        assert_eq!(*pool.lock().unwrap(), vec![valid]);
+        let rebuilt = rebuild_mempool(
+            &chain,
+            &chain,
+            &[signed_transfer(0, true), valid.clone()],
+            MAX_MEMPOOL_TXS,
+            MAX_MEMPOOL_BYTES,
+        );
+        assert_eq!(rebuilt, vec![valid]);
         assert_eq!(chain.state(), &before);
     }
 }
