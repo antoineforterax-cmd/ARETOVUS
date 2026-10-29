@@ -1,6 +1,6 @@
-# AURORA — Feuille de route à portes de validation
+# AURORA — Feuille de route technique et critères de validation
 
-**Règle** : les phases peuvent avoir des recherches parallèles, mais une fonctionnalité critique ne franchit pas sa porte de validation sur la base d'une démonstration superficielle.
+Les études peuvent avancer en parallèle. En revanche, une fonction sensible n'est considérée comme terminée qu'après les essais et la revue prévus. Les résultats ci-dessous sont rattachés à leurs branches : les PR ouvertes ne sont pas des fonctionnalités fusionnées.
 
 | Phase | Travaux | Porte de sortie |
 |---|---|---|
