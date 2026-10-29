@@ -318,6 +318,31 @@ def main() -> int:
                 )
                 if rejected.returncode == 0 or expected_error not in rejected.stderr:
                     raise AssertionError(f"unsafe payment was not rejected: {rejected.stdout}{rejected.stderr}")
+            # A policy changed while the user reviews must cancel before signing.
+            reviewing = subprocess.Popen(
+                [str(wallet), "send", *payment_args],
+                cwd=ROOT, text=True, stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            try:
+                while True:
+                    line = reviewing.stdout.readline()
+                    if not line:
+                        raise AssertionError("payment exited before showing confirmation")
+                    if "A confirmed payment is irreversible." in line:
+                        break
+                policy_file.write_text(original_policy.replace(
+                    "max_amount=1.00000000", "max_amount=0.50000000"
+                ))
+                output, errors = reviewing.communicate(input=f"SEND {RECIPIENT}\n", timeout=20)
+                if reviewing.returncode == 0 or "wallet limits changed during review" not in errors:
+                    raise AssertionError(f"changed policy was not detected: {output}{errors}")
+            finally:
+                if reviewing.poll() is None:
+                    reviewing.kill()
+                    reviewing.wait(timeout=5)
+                policy_file.write_text(original_policy)
+
             after_review = run_wallet(
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",

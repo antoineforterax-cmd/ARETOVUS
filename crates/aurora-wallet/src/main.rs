@@ -192,7 +192,11 @@ fn run() -> Result<(), Box<dyn Error>> {
             };
             let path = Path::new(option(&args, "--key-file")?);
             aurora_wallet::policy::create(path, key.account_id(), limits)?;
-            println!("limits_created={} account={}", aurora_wallet::policy::policy_path(path).display(), account_id_hex(key.account_id()));
+            println!(
+                "limits_created={} account={}",
+                aurora_wallet::policy::policy_path(path).display(),
+                account_id_hex(key.account_id())
+            );
         }
         "limits-show" => {
             let key = load_key(&args)?;
@@ -271,12 +275,12 @@ fn run() -> Result<(), Box<dyn Error>> {
                     return Err("payment cancelled before signing".into());
                 }
             }
-            if aurora_wallet::policy::load(key_path, key.account_id())? != stored_limits {
-                return Err("wallet limits changed during review; review the payment again".into());
-            }
             let refreshed = rpc::get_account(node, key.account_id())?;
             if refreshed.next_nonce != account.next_nonce || refreshed.balance != account.balance {
                 return Err("account changed during review; review the payment again".into());
+            }
+            if aurora_wallet::policy::load(key_path, key.account_id())? != stored_limits {
+                return Err("wallet limits changed during review; review the payment again".into());
             }
             let transaction =
                 build_signed_transaction(&key, recipient, amount, fee, account.next_nonce)?;
@@ -341,7 +345,9 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet address --key-file FILE");
             println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
             println!("    Balance and next_nonce include this node's pending transactions; they are not proof of confirmed state.");
-            println!("  aurora-wallet limits-create --key-file FILE --max-amount AUR --max-fee AUR");
+            println!(
+                "  aurora-wallet limits-create --key-file FILE --max-amount AUR --max-fee AUR"
+            );
             println!("  aurora-wallet limits-show --key-file FILE");
             println!("    A FILE.limits policy is applied automatically to send, including --yes; one-shot limits only tighten it.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");

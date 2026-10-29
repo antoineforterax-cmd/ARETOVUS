@@ -74,11 +74,20 @@ mod tests {
 
     #[test]
     fn one_shot_limits_can_only_tighten_persistent_limits() {
-        let stored = PaymentLimits { max_amount: Some(units(10)), max_fee: Some(units(2)) };
+        let stored = PaymentLimits {
+            max_amount: Some(units(10)),
+            max_fee: Some(units(2)),
+        };
         assert_eq!(stored.stricter(PaymentLimits::default()), stored);
-        let looser = PaymentLimits { max_amount: Some(units(100)), max_fee: Some(units(20)) };
+        let looser = PaymentLimits {
+            max_amount: Some(units(100)),
+            max_fee: Some(units(20)),
+        };
         assert_eq!(stored.stricter(looser), stored);
-        let tighter = PaymentLimits { max_amount: Some(units(5)), max_fee: Some(units(1)) };
+        let tighter = PaymentLimits {
+            max_amount: Some(units(5)),
+            max_fee: Some(units(1)),
+        };
         assert_eq!(stored.stricter(tighter), tighter);
         assert_eq!(PaymentLimits::default().stricter(stored), stored);
     }

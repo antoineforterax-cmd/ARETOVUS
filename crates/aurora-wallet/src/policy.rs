@@ -47,10 +47,7 @@ pub fn create(
 }
 
 /// Only absence is optional; unreadable, dangling, oversized or invalid files fail closed.
-pub fn load(
-    key_file: &Path,
-    expected: AccountId,
-) -> Result<Option<PaymentLimits>, Box<dyn Error>> {
+pub fn load(key_file: &Path, expected: AccountId) -> Result<Option<PaymentLimits>, Box<dyn Error>> {
     let path = policy_path(key_file);
     let metadata = match fs::symlink_metadata(&path) {
         Ok(metadata) => metadata,
@@ -77,12 +74,23 @@ fn parse(text: &str, expected: AccountId) -> Result<PaymentLimits, Box<dyn Error
     if lines[1] != format!("account={}", account_id_hex(expected)) {
         return Err("wallet limits belong to a different account".into());
     }
-    let amount = parse_amount(lines[2].strip_prefix("max_amount=").ok_or("missing maximum amount")?)?;
-    let fee = parse_amount(lines[3].strip_prefix("max_fee=").ok_or("missing maximum fee")?)?;
+    let amount = parse_amount(
+        lines[2]
+            .strip_prefix("max_amount=")
+            .ok_or("missing maximum amount")?,
+    )?;
+    let fee = parse_amount(
+        lines[3]
+            .strip_prefix("max_fee=")
+            .ok_or("missing maximum fee")?,
+    )?;
     if amount.to_units() == 0 {
         return Err("maximum payment amount must be positive".into());
     }
-    Ok(PaymentLimits { max_amount: Some(amount), max_fee: Some(fee) })
+    Ok(PaymentLimits {
+        max_amount: Some(amount),
+        max_fee: Some(fee),
+    })
 }
 
 #[cfg(test)]
@@ -94,7 +102,9 @@ mod tests {
 
     fn path() -> PathBuf {
         std::env::temp_dir().join(format!(
-            "aurora-limits-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+            "aurora-limits-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
         ))
     }
 
@@ -120,7 +130,14 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(fs::metadata(policy_path(&wallet)).unwrap().permissions().mode() & 0o777, 0o600);
+            assert_eq!(
+                fs::metadata(policy_path(&wallet))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
         }
         fs::remove_file(policy_path(&wallet)).unwrap();
     }
@@ -129,7 +146,10 @@ mod tests {
     fn malformed_or_oversized_policies_are_never_treated_as_absent() {
         let wallet = path();
         let a = AccountId([1; 32]);
-        let valid = format!("{HEADER}\naccount={}\nmax_amount=1\nmax_fee=0.00000003\n", account_id_hex(a));
+        let valid = format!(
+            "{HEADER}\naccount={}\nmax_amount=1\nmax_fee=0.00000003\n",
+            account_id_hex(a)
+        );
         for bad in [
             valid.replace(HEADER, "AURORA-MAINNET-LIMITS-v1"),
             valid.replace("max_fee=", "unknown="),
