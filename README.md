@@ -1,56 +1,61 @@
-# AURORA — prototype expérimental
+# AURORA — blockchain indépendante en développement
 
-> **Statut : base expérimentale. Ce n'est PAS une blockchain utilisable, PAS sécurisée, PAS auditée.**
-> Aucune preuve de travail, aucun réseau, aucun portefeuille, aucune signature. Ne jamais utiliser
-> avec de vrais fonds. Toutes les règles ici sont des **hypothèses** listées dans
-> `docs/DECISION_REGISTER.md` (annexe B) ; aucune décision n'est validée.
+> **État au 29 octobre 2026 : projet open source expérimental, sans mainnet ni audit humain indépendant. Ne pas utiliser avec des fonds réels.**
 
-## Ce que contient ce dépôt (v0.0.1)
+## Où en est AURORA ?
 
-| Crate | Contenu actuel |
-|---|---|
-| `aurora-core` | montants entiers, sérialisation canonique, hachage SHA-256 avec domaines, transaction expérimentale |
-| `aurora-consensus` | bloc expérimental, engagement sur les transactions (pas un Merkle), validation **sans état** |
-| `aurora-node` | exécutable qui affiche un avertissement, rien d'autre |
-| `aurora-wallet` | crate vide et réservée (aucune clé) |
+**Attention aux branches :** la branche `main` contient toujours le **prototype historique initial** (code Rust minimal). Le testnet nettement plus avancé est développé sur [`feature/emission-schedule-v0`](https://github.com/antoineforterax-cmd/AURORA/tree/feature/emission-schedule-v0), via la [PR #2](https://github.com/antoineforterax-cmd/AURORA/pull/2), non fusionnée. **Ce README décrit l'ensemble du projet, pas les fonctions présentes dans `main`.**
 
-Le stockage sera extrait en premier dans une crate indépendante quand sa complexité et ses tests le
-justifieront (pas avant).
+Le nom **v0.0.1** correspond au prototype historique ; il ne représente pas l'avancement global. Une [release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) a été publiée le 27 octobre 2026 à partir d'un commit précis ; ce n'est ni un mainnet ni la dernière branche de développement.
 
-## Commandes
+## Ce qui est déjà développé sur la branche testnet
 
-Prérequis : Rust stable (https://rustup.rs) et accès à crates.io pour télécharger `sha2`.
+| Composant | État sur la branche de développement |
+| --- | --- |
+| Noyau Rust et comptes | Montants entiers, encodage canonique, comptes, soldes et nonces |
+| Signatures | ML-DSA-65 natives v3 pour le testnet ; formats anciens limités au Regtest |
+| Consensus | PoW SHA-256, blocs et preuves Merkle, difficulté ajustée, travail cumulé, réorganisations |
+| Économie expérimentale | Plafond brut 500 millions AUR, huit décimales, émission décroissante, 95 % mineur / 5 % trésorerie de test, moitié des frais brûlée |
+| Stockage | Persistance v6, index paginés, vérifications et reprise après certaines pannes |
+| Réseau | P2P TCP expérimental, pairs configurés, synchronisation et relais des transactions |
+| Portefeuille | CLI : clés chiffrées, paiements, sauvegarde/restauration, vérification SPV |
+| Vérification | CI Rust, smoke multi-nœuds, fuzzing et essais ciblés documentés |
 
-```bash
-cargo fmt --all            # première fois : formate le code (le code a été écrit sans rustfmt)
-./scripts/check.sh         # fmt --check + clippy + build + tests
-cargo test --workspace     # tests seuls
-cargo run -p aurora-node   # affiche l'avertissement
-python3 scripts/reference_vectors.py   # recalcule les valeurs attendues des vecteurs (Python indépendant)
-```
+**Ces capacités ne sont pas toutes présentes dans `main`.** Les améliorations plus récentes sont réparties entre des PR supplémentaires non fusionnées, notamment [#13 à #22](https://github.com/antoineforterax-cmd/AURORA/pulls). Leurs résultats ne doivent pas être attribués à la branche de base sans intégration et nouveaux tests.
 
-Après le premier build réussi : committer `Cargo.lock` et figer la version de Rust dans
-`rust-toolchain.toml` (GOV-01).
+## Ce qui reste à faire
 
-## Dépendances
+### Priorité 0 — fiabiliser et intégrer
+- Revoir et intégrer les PR dans un ordre contrôlé ; obtenir une branche de référence cohérente, CI verte et versionnée.
+- Achever les scénarios d'horodatages futurs et de retarget ([#3](https://github.com/antoineforterax-cmd/AURORA/issues/3)).
+- Poursuivre les tests de saturation P2P, y compris après handshake, sous NAT et avec plusieurs sources ([#4](https://github.com/antoineforterax-cmd/AURORA/issues/4)).
+- Prouver la synchronisation réseau et les réorganisations sur de gros volumes, pas seulement le stockage de 100 003 blocs ([#5](https://github.com/antoineforterax-cmd/AURORA/issues/5)).
+- Obtenir et publier les résultats complets de l'essai 72 h, puis mener des tests multi-machines, pannes et fuzzing prolongé.
 
-| Dépendance | Rôle | Pourquoi |
-|---|---|---|
-| `sha2` 0.10 (RustCrypto) | SHA-256 | Évite toute primitive cryptographique maison. À re-vérifier : maintenance, version, `cargo audit`. |
+### Priorité 1 — spécifier les innovations avant implémentation
+- Confidentialité : protection des IP et métadonnées, destinataires, expéditeurs et montants. Tor/I2P, relais anonymisants et preuves confidentielles restent **à étudier** ; aucune garantie d'anonymat absolu.
+- Sécurité des fonds : prévention locale des arnaques, coffre optionnel, délais et récupération sécurisée. Les mécanismes avancés ne sont **pas implémentés**.
+- Trésorerie et gouvernance : règles de dépense, contrôle, sécurité et transparence encore à décider.
+- Évaluer la compatibilité post-quantique du système complet ; ML-DSA-65 seul ne suffit pas.
 
-Aucune autre dépendance. Les « tests de propriétés » utilisent un générateur maison déterministe
-(non cryptographique, tests uniquement) ; `proptest` et `cargo-fuzz` sont prévus (TST-03).
+### Priorité 2 — écosystème et accessibilité
+- Explorateur, site de présentation, portefeuille graphique, installation simplifiée et mobile.
+- Tests d'ergonomie, exploitation publique, guides utilisateurs et contributions externes.
+- Revue humaine indépendante et analyse juridique avant tout usage financier réel ou annonce mainnet.
 
-## Règles de travail (GOV-04)
+## Comprendre et essayer le projet
 
-- Le code généré par IA est du code **non vérifié** tant qu'il n'a pas été compilé, testé et relu.
-- Aucune règle de consensus, de politique monétaire ou de cryptographie n'est ajoutée ou changée
-  sans décision du porteur dans `docs/DECISION_REGISTER.md`.
-- Aucune clé, aucun secret dans le dépôt (`.gitignore` exclut `.env`, `*.key`, `*.pem`, `*.seed`).
-- Distinguer toujours : tests **exécutés**, tests **écrits mais non exécutés**, tests **prévus**.
+1. [Guide français « AURORA, de A à Z »](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/docs/guide-fr/README.md).
+2. [README technique du testnet](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/README.md).
+3. [Cahier des charges et ambitions](https://github.com/antoineforterax-cmd/AURORA/blob/docs/aurora-master-plan-2026-10/docs/planning/CAHIER_DES_CHARGES.md).
+4. [Feuille de route stratégique](https://github.com/antoineforterax-cmd/AURORA/blob/docs/aurora-master-plan-2026-10/docs/planning/ROADMAP.md).
+5. [Checklist technique et limites](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/docs/FINALIZATION_CHECKLIST.md).
+6. [Release testnet expérimentale](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) (binaires liés à un commit ancien, non signés et non audités).
 
-## Documentation
+Pour contribuer au **testnet avancé**, suivre [CONTRIBUTING.md sur la branche de développement](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/CONTRIBUTING.md). Un simple `git clone` récupère `main`, **pas** le testnet : sélectionner explicitement la branche indiquée.
 
-- `docs/DECISION_REGISTER.md` : décisions, statuts, justifications, tests requis, hypothèses du code.
-- `docs/CONSENSUS.md` : état des règles de consensus (aucune validée).
-- `docs/THREAT_MODEL.md` : menaces et mesures, sans score tant que la méthode n'est pas validée.
+## Règles de prudence
+
+Les tests automatisés, revues IA et benchmarks ponctuels ne remplacent pas un audit humain indépendant. Les paramètres du testnet ne sont pas une promesse pour le mainnet. Les propositions de confidentialité et de récupération ne doivent pas être présentées comme livrées. Tout changement de consensus exige une décision explicite, une spécification, des tests et un plan de compatibilité.
+
+**Licence :** MIT OR Apache-2.0 (voir les fichiers de licence du dépôt).
