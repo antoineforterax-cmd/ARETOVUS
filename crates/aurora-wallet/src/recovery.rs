@@ -9,7 +9,7 @@ const CODE_LEN: usize = PREFIX.len() + 64 + 1 + 64;
 const HEX: &[u8; 16] = b"0123456789abcdef";
 
 pub(crate) fn encode_seed(seed: &[u8; 32]) -> Zeroizing<String> {
-    let mut code = Zeroizing::new(String::with_capacity(CODE_LEN));
+    let mut code = Zeroizing::new(String::with_capacity(CODE_LEN + 2));
     code.push_str(PREFIX);
     for &byte in seed {
         code.push(HEX[usize::from(byte >> 4)] as char);

@@ -231,7 +231,8 @@ impl WalletKey {
     /// Read only a bounded recovery text file and validate its expected identity.
     pub fn load_recovery_file(path: &Path, expected: AccountId) -> Result<Self, Box<dyn Error>> {
         let file = File::open(path)?;
-        let mut code = Zeroizing::new(Vec::new());
+        // Reserve beyond the read limit so secret bytes never move through reallocation.
+        let mut code = Zeroizing::new(Vec::with_capacity(258));
         file.take(257).read_to_end(&mut code)?;
         if code.len() > 256 {
             return Err("recovery file exceeds size limit".into());
