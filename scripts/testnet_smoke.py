@@ -350,15 +350,115 @@ def main() -> int:
             if before_review != after_review:
                 raise AssertionError("preview/rejected payments changed balance or nonce")
 
+            # Sign without a node, then broadcast while the key file is unavailable.
+            public_account = run_wallet(
+                wallet, "account", "--address", miner,
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            nonce_match = re.search(r"next_nonce=(\d+)", public_account)
+            if nonce_match is None:
+                raise AssertionError("wallet did not report a nonce for offline preparation")
+            signed_file = base / "signed-payment.aurtx"
+            signing_args = [
+                "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--nonce", nonce_match.group(1), "--out", str(signed_file),
+            ]
+            for extra, expected_error in [
+                ([], "offline payment cancelled before signing"),
+                (["--yes", "--node", "127.0.0.1:1"], "unsupported option"),
+                (["--yes", "--nonce", "99"], "duplicate command option"),
+            ]:
+                refused = subprocess.run(
+                    [str(wallet), "sign-offline", *signing_args, *extra],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if refused.returncode == 0 or expected_error not in refused.stderr or signed_file.exists():
+                    raise AssertionError(f"unsafe offline signing was allowed: {refused.stderr}")
+            excessive = list(signing_args)
+            excessive[excessive.index("--amount") + 1] = "1.00000001"
+            refused = subprocess.run(
+                [str(wallet), "sign-offline", *excessive, "--yes", "--max-amount", "100"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused.returncode == 0 or "voluntary amount limit" not in refused.stderr or signed_file.exists():
+                raise AssertionError("offline signing bypassed persistent limits")
+            preview = run_wallet(wallet, "sign-offline", *signing_args, "--dry-run")
+            if "preview_only:" not in preview or signed_file.exists():
+                raise AssertionError("offline preview wrote a signed file")
             authorized = subprocess.run(
-                [str(wallet), "send", *payment_args,
-                 "--max-amount", "1.00000000", "--max-fee", "0.00000003"],
+                [str(wallet), "sign-offline", *signing_args],
                 cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
                 capture_output=True, timeout=20,
             )
-            sent = authorized.stdout + authorized.stderr
-            if authorized.returncode:
-                raise AssertionError(f"explicitly confirmed payment failed: {sent}")
+            prepared = authorized.stdout + authorized.stderr
+            if authorized.returncode or not signed_file.is_file():
+                raise AssertionError(f"offline signing failed: {prepared}")
+            prepared_match = re.search(r"prepared_txid=([0-9a-f]{64})", prepared)
+            if prepared_match is None or "network_requests=none" not in prepared:
+                raise AssertionError("offline signer did not identify the prepared transaction")
+            balance_after_signing = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if balance_after_signing != before_review:
+                raise AssertionError("offline preparation changed balance or nonce")
+
+            damaged = base / "damaged-payment.aurtx"
+            damaged_bytes = bytearray(signed_file.read_bytes())
+            damaged_bytes[-1] ^= 1
+            damaged.write_bytes(damaged_bytes)
+            rejected_broadcast = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(damaged),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if rejected_broadcast.returncode == 0:
+                raise AssertionError("broadcast accepted a corrupted signed payment")
+            override = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--to", RECIPIENT, "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if override.returncode == 0 or "unsupported option" not in override.stderr:
+                raise AssertionError("broadcast silently accepted signed-field overrides")
+            cancelled = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if cancelled.returncode == 0 or "broadcast cancelled" not in cancelled.stderr:
+                raise AssertionError("broadcast did not require explicit authorization")
+
+            unavailable_key = base / "offline-key-unavailable.aurkey"
+            keyfile.rename(unavailable_key)
+            try:
+                public_without_key = run_wallet(
+                    wallet, "account", "--address", miner,
+                    "--node", f"{addr_b[0]}:{addr_b[1]}",
+                )
+                if public_without_key != public_account:
+                    raise AssertionError("keyless public account query changed before broadcast")
+                broadcast = subprocess.run(
+                    [str(wallet), "broadcast", "--from", str(signed_file),
+                     "--node", f"{addr_b[0]}:{addr_b[1]}"],
+                    cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                    capture_output=True, timeout=20,
+                )
+                sent = broadcast.stdout + broadcast.stderr
+                if broadcast.returncode:
+                    raise AssertionError(f"broadcast without a key failed: {sent}")
+            finally:
+                unavailable_key.rename(keyfile)
+            if f"transaction_id={prepared_match.group(1)}" not in sent:
+                raise AssertionError("broadcast changed the offline-signed transaction")
+            duplicate = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if duplicate.returncode == 0 or "signed nonce differs" not in duplicate.stderr:
+                raise AssertionError("broadcast did not detect a consumed nonce")
             tx_match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
             if tx_match is None or "mempool=pending" not in sent:
                 raise AssertionError(f"wallet did not submit transaction to mempool:\n{sent}")
@@ -621,7 +721,7 @@ def main() -> int:
                 binary, base / "write-limit-node", miner
             )
             print(
-                "persistent wallet limits, lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
+                "offline signing and keyless broadcast, persistent wallet limits, lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"

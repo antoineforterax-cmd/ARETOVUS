@@ -34,7 +34,7 @@ jobs:
       - name: Mesurer la référence
         run: python3 scripts/testnet_admission_probe.py --binary target/admission-baseline/debug/aurora-node --report target/admission-before.json
       - name: Vérifier l'isolation des handshakes lents
-        run: python3 scripts/testnet_admission_probe.py --binary target/debug/aurora-node --max-wallet-seconds 1.5 --report target/admission-after.json
+        run: python3 scripts/testnet_admission_probe.py --binary target/debug/aurora-node --post-handshake --max-wallet-seconds 1.5 --report target/admission-after.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
