@@ -1,5 +1,7 @@
 # Contribuer à AURORA
 
+Pour tout développement assisté par Codex, lire d'abord [AGENTS.md](AGENTS.md) : ordre de travail, cartographie des PR, tests de sécurité adversariaux et règles avant fusion. Les décisions de protocole restent sous le contrôle du responsable du projet.
+
 Le travail courant est sur `feature/emission-schedule-v0`, PR #2. Ne partez pas du principe que `main` contient ce testnet. Commencez par lire [ARCHITECTURE.md](ARCHITECTURE.md), [PROVENANCE.md](PROVENANCE.md) et les [règles de consensus](docs/CONSENSUS.md).
 
 ## Compiler et vérifier
@@ -29,7 +31,7 @@ Il couvre le stockage et le rejeu; il ne constitue pas un essai réseau de 72 he
 
 Ouvrir une issue avec un scénario précis, ou choisir une `good first issue`. Faire une branche, ajouter un test qui reproduit le problème, puis proposer une PR vers la branche de travail. Décrire le comportement avant/après, le coût en ressources, les résultats des tests et les effets sur les anciennes données. Ne pas modifier silencieusement genèse, émission, sérialisation, signatures ou règles de réorganisation. Une modification de protocole demande une spécification et une décision de compatibilité.
 
-Ne jamais ajouter de clé privée, mot de passe, jeton ou dossier de nœud. Les fins de ligne sont LF. Les contributions sont proposées sous `MIT OR Apache-2.0`; les licences des dépendances et leurs avis restent applicables. Signaler l’aide d’outils de génération quand elle compte pour la relecture, et vérifier le code proposé.
+Ne jamais ajouter de clé privée, mot de passe, jeton ou dossier de nœud. Les fins de ligne sont LF. Les contributions sont proposées sous `MIT OR Apache-2.0`; les licences des dépendances et leurs avis restent applicables. Décrire les outils et méthodes utiles à la relecture, puis vérifier chaque modification proposée.
 
 ## Périmètre
 

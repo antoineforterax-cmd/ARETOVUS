@@ -49,6 +49,7 @@ dependencies = [
  "aurora-consensus",
  "aurora-core",
  "aurora-storage",
+ "ml-dsa",
 ]
 
 [[package]]

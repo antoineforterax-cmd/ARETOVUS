@@ -1,7 +1,29 @@
 # AURORA — Baseline de décisions de travail et plan d'exécution
 
-**Statut général : propositions de travail. Aucun choix n'est validé pour le protocole.**  
-**But :** éviter de rouvrir toutes les questions à chaque étape et faire avancer le prototype dans un ordre sûr.
+**Statut général : propositions historiques de phase 0, conservées pour traçabilité.**
+
+**Mise en contexte du 29 octobre 2026 :** les tableaux et étapes ci-dessous ne
+décrivent pas tous les choix du testnet actuel. Les règles exécutées sont dans
+[CONSENSUS.md](CONSENSUS.md), [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md) et
+[ARCHITECTURE.md](../ARCHITECTURE.md). Les travaux restants sont suivis dans
+[FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) et les issues ouvertes.
+
+| Proposition historique ci-dessous | État du testnet constaté |
+| --- | --- |
+| Comptes proposés, prototype à tester | Comptes avec soldes et nonces implémentés |
+| Émission par paliers à simuler | Émission proportionnelle au reliquat, plafond brut de 500 millions |
+| Cible 120 secondes et ASERT à tester | Cible 60 secondes et retarget entier par fenêtres de 10 blocs |
+| Signatures classiques à comparer, PQ différé | Transactions v3 natives ML-DSA-65 |
+| Réseau, stockage et wallet à construire | TCP P2P v4, stockage v6 et wallet CLI disponibles |
+| Licence à choisir | MIT OR Apache-2.0 dans le workspace |
+
+Ces constats décrivent le code, pas une validation de sécurité ni une décision
+mainnet. La date ci-dessus est celle de la réconciliation documentaire. Les
+propositions non implémentées, notamment ASERT, ne deviennent pas des tâches
+autorisées de modification du consensus du seul fait de leur présence ici.
+
+**But historique :** éviter de rouvrir toutes les questions à chaque étape et
+faire avancer le prototype dans un ordre sûr.
 
 ## Règle de décision
 
@@ -72,7 +94,7 @@ Ne pas inventer les hauteurs de paliers avant que les simulations soient disponi
 
 ## 3. Ordre d'implémentation recommandé
 
-### Étape A — Stabiliser le noyau (prochaine étape)
+### Étape A — Stabiliser le noyau (ordre historique)
 1. Inventaire des crates et API actuelles.
 2. Types de montants entiers et opérations checked.
 3. Encodage canonique + vecteurs indépendants.
@@ -122,4 +144,4 @@ Stockage persistant, réseau P2P, portefeuille utilisable, testnet isolée, revu
 - La structure de stockage, la P2P et la politique de réorganisation.
 - La procédure de migration cryptographique et la récupération de portefeuille.
 
-**Conclusion :** cette baseline réduit le nombre de choix à refaire, mais ne transforme pas les inconnues en faits. Le prochain livrable utile est un simulateur d'émission, puis la stabilisation du noyau déterministe avant l'ajout du réseau.
+**Lecture actuelle :** cet ordre de travail est conservé comme historique. Le simulateur d'émission, le noyau par comptes et le réseau existent désormais ; consulter les règles exécutées et la liste des preuves restantes liées en tête avant de reprendre le développement.
