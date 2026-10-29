@@ -1028,6 +1028,43 @@ mod tests {
     }
 
     #[test]
+    fn failed_block_write_preserves_last_snapshot_and_can_retry() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_hash = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+
+        // Force the immutable block write to fail without filling a real disk.
+        // A directory at the block object's destination prevents its creation.
+        let blocked_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_hash}.{BLOCK_EXTENSION}"));
+        fs::create_dir(&blocked_path).unwrap();
+        assert!(save_snapshot(&path, &original).is_err());
+        assert!(previous_manifest.exists());
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        // Removing the simulated failure must allow an ordinary retry.
+        fs::remove_dir(&blocked_path).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let retried =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retried.height(), 1);
+        assert_eq!(retried.tip_hash(), next_hash);
+        assert_eq!(retried.known_block_count(), 2);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn copied_v6_data_directory_restores_all_branches() {
         let source = dir();
         let backup = dir();
