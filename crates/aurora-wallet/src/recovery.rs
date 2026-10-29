@@ -34,7 +34,7 @@ pub(crate) fn decode_seed(code: &str) -> Result<Zeroizing<[u8; 32]>, &'static st
     }
     let mut seed = Zeroizing::new([0u8; 32]);
     let encoded = &code.as_bytes()[PREFIX.len()..PREFIX.len() + 64];
-    for (byte, pair) in seed.iter_mut().zip(encoded.chunks_exact(2)) {
+    for (byte, pair) in seed.iter_mut().zip(encoded.as_chunks::<2>().0) {
         let digit = |value| match value {
             b'0'..=b'9' => Ok(value - b'0'),
             b'a'..=b'f' => Ok(value - b'a' + 10),
