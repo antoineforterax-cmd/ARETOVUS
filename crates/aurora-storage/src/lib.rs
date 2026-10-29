@@ -1179,6 +1179,41 @@ mod tests {
     }
 
     #[test]
+    fn missing_latest_index_page_falls_back_without_publishing_invalid_tip() {
+        let path = dir();
+        let mut original = chain();
+        let safe_tip = original.tip_hash();
+        save_snapshot(&path, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        original.submit(next).unwrap();
+        let invalid_latest = save_snapshot(&path, &original).unwrap();
+        let manifest = fs::read(&invalid_latest).unwrap();
+        let page_id = Hash256::from_bytes(manifest[81..113].try_into().unwrap());
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        assert!(page_path.exists());
+        fs::remove_file(&page_path).unwrap();
+
+        // The latest manifest references a missing immutable page. Recovery must
+        // fall back to the older complete snapshot, never publish a partial tip.
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), safe_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        // A normal save after recovery must itself be restartable.
+        save_snapshot(&path, &recovered).unwrap();
+        let after_restart =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(after_restart.tip_hash(), safe_tip);
+        assert_eq!(after_restart.known_block_count(), 1);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn legacy_v4_snapshot_can_be_migrated_to_v6() {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
