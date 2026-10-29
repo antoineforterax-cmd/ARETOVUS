@@ -125,8 +125,7 @@ fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
     let path = Path::new(option(args, "--key-file")?);
     if WalletKey::file_is_encrypted(path)? {
         let password = Zeroizing::new(rpassword::prompt_password("Wallet password: ")?);
-        let result = WalletKey::load_encrypted_testnet_file(path, &password);
-        result
+        WalletKey::load_encrypted_testnet_file(path, &password)
     } else {
         eprintln!("WARNING: reading unencrypted testnet key file");
         WalletKey::load_plain_testnet_file(path)
