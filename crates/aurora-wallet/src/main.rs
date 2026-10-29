@@ -54,14 +54,40 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
         "restore" => (&["--from", "--out"], &[]),
         "recovery-export" => (&["--key-file", "--out"], &["--acknowledge-secret"]),
         "recovery-verify" => (&["--from", "--expected-account"], &[]),
-        "recovery-restore" => (&["--from", "--out", "--expected-account"], &["--plain-testnet"]),
+        "recovery-restore" => (
+            &["--from", "--out", "--expected-account"],
+            &["--plain-testnet"],
+        ),
         "verify-backup" => (&["--from", "--expected-account"], &[]),
         "address" | "limits-show" => (&["--key-file"], &[]),
         "account" => (&["--address", "--node"], &[]),
         "balance" => (&["--key-file", "--node"], &[]),
         "limits-create" => (&["--key-file", "--max-amount", "--max-fee"], &[]),
-        "send" => (&["--key-file", "--to", "--amount", "--fee", "--node", "--max-amount", "--max-fee"], &["--yes", "--dry-run"]),
-        "sign-offline" => (&["--key-file", "--to", "--amount", "--fee", "--nonce", "--out", "--max-amount", "--max-fee"], &["--yes", "--dry-run"]),
+        "send" => (
+            &[
+                "--key-file",
+                "--to",
+                "--amount",
+                "--fee",
+                "--node",
+                "--max-amount",
+                "--max-fee",
+            ],
+            &["--yes", "--dry-run"],
+        ),
+        "sign-offline" => (
+            &[
+                "--key-file",
+                "--to",
+                "--amount",
+                "--fee",
+                "--nonce",
+                "--out",
+                "--max-amount",
+                "--max-fee",
+            ],
+            &["--yes", "--dry-run"],
+        ),
         "broadcast" => (&["--from", "--node"], &["--yes"]),
         "verify" => (&["--node", "--txid", "--confirmations"], &[]),
         "status" => (&["--node", "--txid"], &[]),
@@ -147,10 +173,11 @@ fn run() -> Result<(), Box<dyn Error>> {
                     path.display()
                 );
             } else {
-                let password = Zeroizing::new(
-                    rpassword::prompt_password("New wallet password (at least 12 characters): ")?
-                );
-                let confirmation = Zeroizing::new(rpassword::prompt_password("Confirm wallet password: ")?);
+                let password = Zeroizing::new(rpassword::prompt_password(
+                    "New wallet password (at least 12 characters): ",
+                )?);
+                let confirmation =
+                    Zeroizing::new(rpassword::prompt_password("Confirm wallet password: ")?);
                 if password.as_str() != confirmation.as_str() {
                     return Err("passwords do not match".into());
                 }

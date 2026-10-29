@@ -239,20 +239,42 @@ mod resource_and_display_tests {
         let uri = encode_payment_uri(&request).unwrap();
         assert!(uri.len() <= MAX_URI_BYTES);
         assert_eq!(parse_payment_uri(&uri).unwrap(), request);
-        assert!(parse_payment_uri(&format!("aurora://testnet/{}?memo={}", "03".repeat(32), "%20".repeat(129))).is_err());
+        assert!(parse_payment_uri(&format!(
+            "aurora://testnet/{}?memo={}",
+            "03".repeat(32),
+            "%20".repeat(129)
+        ))
+        .is_err());
         assert!(parse_payment_uri(&"x".repeat(MAX_URI_BYTES + 1)).is_err());
         assert!(percent_decode(&"%20".repeat(MAX_MEMO_BYTES + 1)).is_err());
     }
 
     #[test]
     fn directional_controls_are_rejected_without_banning_visible_utf8() {
-        for ch in ['\u{061c}', '\u{200e}', '\u{200f}', '\u{202a}', '\u{202e}', '\u{2066}', '\u{2069}'] {
-            let request = PaymentRequest { account: AccountId([3; 32]), amount: None, memo: Some(format!("invoice{ch}123")) };
+        for ch in [
+            '\u{061c}', '\u{200e}', '\u{200f}', '\u{202a}', '\u{202e}', '\u{2066}', '\u{2069}',
+        ] {
+            let request = PaymentRequest {
+                account: AccountId([3; 32]),
+                amount: None,
+                memo: Some(format!("invoice{ch}123")),
+            };
             assert!(encode_payment_uri(&request).is_err());
-            let uri = format!("aurora://testnet/{}?memo={}", "03".repeat(32), percent_encode(request.memo.as_ref().unwrap().as_bytes()));
+            let uri = format!(
+                "aurora://testnet/{}?memo={}",
+                "03".repeat(32),
+                percent_encode(request.memo.as_ref().unwrap().as_bytes())
+            );
             assert!(parse_payment_uri(&uri).is_err());
         }
-        let request = PaymentRequest { account: AccountId([3; 32]), amount: None, memo: Some("café مرحبا".to_owned()) };
-        assert_eq!(parse_payment_uri(&encode_payment_uri(&request).unwrap()).unwrap(), request);
+        let request = PaymentRequest {
+            account: AccountId([3; 32]),
+            amount: None,
+            memo: Some("café مرحبا".to_owned()),
+        };
+        assert_eq!(
+            parse_payment_uri(&encode_payment_uri(&request).unwrap()).unwrap(),
+            request
+        );
     }
 }

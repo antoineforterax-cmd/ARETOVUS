@@ -524,12 +524,19 @@ mod receipt_tests {
 
     fn payment() -> AccountTransaction {
         build_signed_transaction(
-            &WalletKey::from_seed_bytes([61; 32]), AccountId([62; 32]),
-            Amount::from_units(100).unwrap(), Amount::from_units(3).unwrap(), 0,
-        ).unwrap()
+            &WalletKey::from_seed_bytes([61; 32]),
+            AccountId([62; 32]),
+            Amount::from_units(100).unwrap(),
+            Amount::from_units(3).unwrap(),
+            0,
+        )
+        .unwrap()
     }
 
-    fn submit_with_receipt(tx: &AccountTransaction, receipt: Vec<u8>) -> Result<(Hash256, u32), Box<dyn Error>> {
+    fn submit_with_receipt(
+        tx: &AccountTransaction,
+        receipt: Vec<u8>,
+    ) -> Result<(Hash256, u32), Box<dyn Error>> {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let address = listener.local_addr().unwrap();
         let encoded = tx.to_canonical_bytes().unwrap();
@@ -561,8 +568,13 @@ mod receipt_tests {
     #[test]
     fn submission_accepts_only_the_exact_prepared_transaction_id() {
         let tx = payment();
-        assert_eq!(submit_with_receipt(&tx, accepted(tx.txid().unwrap())).unwrap(), (tx.txid().unwrap(), 1));
-        let error = submit_with_receipt(&tx, accepted(Hash256::ZERO)).unwrap_err().to_string();
+        assert_eq!(
+            submit_with_receipt(&tx, accepted(tx.txid().unwrap())).unwrap(),
+            (tx.txid().unwrap(), 1)
+        );
+        let error = submit_with_receipt(&tx, accepted(Hash256::ZERO))
+            .unwrap_err()
+            .to_string();
         assert!(error.contains("different transaction id"));
         assert!(error.contains("outcome unknown"));
         assert!(error.contains(&tx.txid().unwrap().to_string()));
