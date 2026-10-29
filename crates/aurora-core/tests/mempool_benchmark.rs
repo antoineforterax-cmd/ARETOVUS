@@ -3,8 +3,8 @@ use std::{collections::HashSet, hint::black_box, time::Instant};
 
 use aurora_core::{
     accounts::{
-        AccountId, AccountTransaction, ML_DSA_65_PUBLIC_KEY_BYTES,
-        POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
+        AccountId, AccountTransaction, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
+        POST_QUANTUM_AUTH_BYTES,
     },
     amount::Amount,
     network::NetworkId,
@@ -67,7 +67,9 @@ fn cache_identity_cannot_replace_state_validation() {
     assert_eq!(state, before);
     // A rollback restores eligibility; validity cannot be cached by txid alone.
     assert!(funded(&tx).apply_transaction(&tx).is_ok());
-    assert!(AccountLedger::new(NetworkId::Testnet).apply_transaction(&tx).is_err());
+    assert!(AccountLedger::new(NetworkId::Testnet)
+        .apply_transaction(&tx)
+        .is_err());
 }
 
 #[test]
