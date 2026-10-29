@@ -7,6 +7,7 @@ use crate::builder::{account_id_hex, parse_account_id, parse_amount};
 
 const PREFIX: &str = "aurora://testnet/";
 const MAX_MEMO_BYTES: usize = 128;
+const MAX_URI_BYTES: usize = 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PaymentRequest {
@@ -38,6 +39,9 @@ pub fn encode_payment_uri(request: &PaymentRequest) -> Result<String, Box<dyn Er
 }
 
 pub fn parse_payment_uri(uri: &str) -> Result<PaymentRequest, Box<dyn Error>> {
+    if uri.len() > MAX_URI_BYTES {
+        return Err("payment URI exceeds 1024 bytes".into());
+    }
     if !uri.is_ascii() || uri.contains('#') {
         return Err("payment URI must be ASCII encoded and contain no fragment".into());
     }
@@ -104,8 +108,10 @@ fn validate_memo(memo: &str) -> Result<(), Box<dyn Error>> {
     if memo.len() > MAX_MEMO_BYTES {
         return Err("payment memo exceeds 128 UTF-8 bytes".into());
     }
-    if memo.chars().any(char::is_control) {
-        return Err("payment memo cannot contain control characters".into());
+    if memo.chars().any(|ch| {
+        ch.is_control() || matches!(ch, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+    }) {
+        return Err("payment memo cannot contain control or directional formatting characters".into());
     }
     Ok(())
 }
@@ -126,6 +132,9 @@ fn percent_encode(bytes: &[u8]) -> String {
 }
 
 fn percent_decode(value: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    if value.len() > MAX_MEMO_BYTES * 3 {
+        return Err("encoded payment memo exceeds size limit".into());
+    }
     let bytes = value.as_bytes();
     let mut output = Vec::with_capacity(bytes.len());
     let mut cursor = 0;
@@ -213,5 +222,37 @@ mod tests {
         assert!(encode_payment_uri(&request)
             .unwrap()
             .ends_with("?amount=1.2"));
+    }
+}
+
+#[cfg(test)]
+mod resource_and_display_tests {
+    use super::*;
+
+    #[test]
+    fn maximum_valid_memo_roundtrips_but_oversize_input_is_rejected() {
+        let request = PaymentRequest {
+            account: AccountId([3; 32]),
+            amount: Some(Amount::MAX),
+            memo: Some(" ".repeat(MAX_MEMO_BYTES)),
+        };
+        let uri = encode_payment_uri(&request).unwrap();
+        assert!(uri.len() <= MAX_URI_BYTES);
+        assert_eq!(parse_payment_uri(&uri).unwrap(), request);
+        assert!(parse_payment_uri(&format!("aurora://testnet/{}?memo={}", "03".repeat(32), "%20".repeat(129))).is_err());
+        assert!(parse_payment_uri(&"x".repeat(MAX_URI_BYTES + 1)).is_err());
+        assert!(percent_decode(&"%20".repeat(MAX_MEMO_BYTES + 1)).is_err());
+    }
+
+    #[test]
+    fn directional_controls_are_rejected_without_banning_visible_utf8() {
+        for ch in ['\u{061c}', '\u{200e}', '\u{200f}', '\u{202a}', '\u{202e}', '\u{2066}', '\u{2069}'] {
+            let request = PaymentRequest { account: AccountId([3; 32]), amount: None, memo: Some(format!("invoice{ch}123")) };
+            assert!(encode_payment_uri(&request).is_err());
+            let uri = format!("aurora://testnet/{}?memo={}", "03".repeat(32), percent_encode(request.memo.as_ref().unwrap().as_bytes()));
+            assert!(parse_payment_uri(&uri).is_err());
+        }
+        let request = PaymentRequest { account: AccountId([3; 32]), amount: None, memo: Some("café مرحبا".to_owned()) };
+        assert_eq!(parse_payment_uri(&encode_payment_uri(&request).unwrap()).unwrap(), request);
     }
 }
