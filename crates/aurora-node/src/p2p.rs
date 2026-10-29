@@ -161,7 +161,6 @@ impl Drop for PeerLease {
     }
 }
 
-
 const PEER_WORKERS: usize = 8;
 const MAX_PENDING_HANDSHAKES: usize = 32;
 const MAX_READY_HANDSHAKES: usize = 8;
@@ -2597,7 +2596,11 @@ mod handshake_admission_tests {
         let (stream, remote) = listener.accept().unwrap();
         let counts = Arc::new(Mutex::new(HashMap::new()));
         let lease = PeerLease::acquire(remote.ip(), &counts).unwrap().unwrap();
-        (PendingHandshake::new(stream, lease).unwrap(), client, counts)
+        (
+            PendingHandshake::new(stream, lease).unwrap(),
+            client,
+            counts,
+        )
     }
 
     fn poll_until_ready(peer: &mut PendingHandshake) -> Result<Vec<u8>, P2pError> {
@@ -2606,7 +2609,10 @@ mod handshake_admission_tests {
             if let Some(hello) = peer.poll_at(Instant::now())? {
                 return Ok(hello);
             }
-            assert!(Instant::now() < deadline, "local test handshake did not arrive");
+            assert!(
+                Instant::now() < deadline,
+                "local test handshake did not arrive"
+            );
             thread::sleep(Duration::from_millis(1));
         }
     }
@@ -2616,7 +2622,9 @@ mod handshake_admission_tests {
         let (mut peer, mut client, counts) = pending();
         client.write_all(&[0, 0]).unwrap();
         assert!(peer.poll_at(Instant::now()).unwrap().is_none());
-        client.write_all(&[0, 1, WALLET_HELLO, 0, 0, 0, 1, GET_PEERS]).unwrap();
+        client
+            .write_all(&[0, 1, WALLET_HELLO, 0, 0, 0, 1, GET_PEERS])
+            .unwrap();
         assert_eq!(poll_until_ready(&mut peer).unwrap(), vec![WALLET_HELLO]);
         peer.stream.set_nonblocking(false).unwrap();
         set_timeouts(&peer.stream).unwrap();
@@ -2651,7 +2659,10 @@ mod handshake_admission_tests {
         ] {
             let (mut peer, mut client, counts) = pending();
             client.write_all(&bytes).unwrap();
-            assert!(matches!(poll_until_ready(&mut peer), Err(P2pError::Protocol(_))));
+            assert!(matches!(
+                poll_until_ready(&mut peer),
+                Err(P2pError::Protocol(_))
+            ));
             assert_eq!(peer.bytes.len(), 77);
             drop(peer);
             assert!(counts.lock().unwrap().is_empty());
