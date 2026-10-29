@@ -2,7 +2,7 @@ name: testnet-packages
 
 on:
   push:
-    branches: [feature/emission-schedule-v0]
+    branches: [feature/emission-schedule-v0, integration/two-pc-testnet]
     paths:
       - "Cargo.toml"
       - "Cargo.lock"

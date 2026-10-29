@@ -161,6 +161,132 @@ impl Drop for PeerLease {
     }
 }
 
+const PEER_WORKERS: usize = 8;
+const MAX_PENDING_HANDSHAKES: usize = 32;
+const MAX_READY_HANDSHAKES: usize = 8;
+const HANDSHAKE_POLL_INTERVAL: Duration = Duration::from_millis(5);
+
+/// Fixed-size preface storage: four length bytes and at most a 73-byte HELLO.
+struct PendingHandshake {
+    stream: TcpStream,
+    lease: PeerLease,
+    accepted: Instant,
+    bytes: [u8; 77],
+    filled: usize,
+}
+
+impl PendingHandshake {
+    fn new(stream: TcpStream, lease: PeerLease) -> Result<Self, P2pError> {
+        stream.set_nonblocking(true)?;
+        Ok(Self {
+            stream,
+            lease,
+            accepted: Instant::now(),
+            bytes: [0; 77],
+            filled: 0,
+        })
+    }
+
+    fn poll_at(&mut self, now: Instant) -> Result<Option<Vec<u8>>, P2pError> {
+        if now.duration_since(self.accepted) >= HANDSHAKE_TIMEOUT {
+            return Err(P2pError::Protocol("handshake deadline exceeded"));
+        }
+        loop {
+            let end = if self.filled < 4 {
+                4
+            } else {
+                let size = u32::from_be_bytes(self.bytes[..4].try_into().unwrap()) as usize;
+                if size != 1 && size != 73 {
+                    return Err(P2pError::Protocol("invalid handshake length"));
+                }
+                4 + size
+            };
+            if self.filled == end {
+                let hello = &self.bytes[4..end];
+                if !matches!((hello.len(), hello[0]), (1, WALLET_HELLO) | (73, HELLO)) {
+                    return Err(P2pError::Protocol("invalid handshake type"));
+                }
+                return Ok(Some(hello.to_vec()));
+            }
+            match self.stream.read(&mut self.bytes[self.filled..end]) {
+                Ok(0) => return Err(P2pError::Protocol("peer closed during handshake")),
+                Ok(count) => self.filled += count,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    return Ok(None);
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+}
+
+struct ReadyPeer {
+    stream: TcpStream,
+    hello: Vec<u8>,
+    _lease: PeerLease,
+    accepted: Instant,
+}
+
+/// No socket reads block this dispatcher, and both application queues are bounded.
+fn dispatch_handshakes(
+    listener: TcpListener,
+    ready: std::sync::mpsc::SyncSender<ReadyPeer>,
+    counts: PeerCounts,
+) -> Result<(), P2pError> {
+    listener.set_nonblocking(true)?;
+    let mut pending = Vec::<PendingHandshake>::with_capacity(MAX_PENDING_HANDSHAKES);
+    loop {
+        let mut index = 0;
+        while index < pending.len() {
+            match pending[index].poll_at(Instant::now()) {
+                Ok(None) => index += 1,
+                Err(_) => {
+                    pending.swap_remove(index);
+                }
+                Ok(Some(hello)) => {
+                    let peer = pending.swap_remove(index);
+                    peer.stream.set_nonblocking(false)?;
+                    let task = ReadyPeer {
+                        stream: peer.stream,
+                        hello,
+                        _lease: peer.lease,
+                        accepted: peer.accepted,
+                    };
+                    match ready.try_send(task) {
+                        Ok(()) => {}
+                        Err(std::sync::mpsc::TrySendError::Full(_)) => {}
+                        Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                            return Err(P2pError::Protocol("all peer workers stopped"));
+                        }
+                    }
+                }
+            }
+        }
+        // Limit accepts per pass so a continuous connection flood cannot starve polling.
+        for _ in 0..MAX_PENDING_HANDSHAKES {
+            match listener.accept() {
+                Ok((stream, remote)) => {
+                    if pending.len() >= MAX_PENDING_HANDSHAKES {
+                        continue;
+                    }
+                    if let Some(lease) = PeerLease::acquire(remote.ip(), &counts)? {
+                        pending.push(PendingHandshake::new(stream, lease)?);
+                    }
+                }
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+        thread::sleep(HANDSHAKE_POLL_INTERVAL);
+    }
+}
+
 fn set_timeouts(stream: &TcpStream) -> io::Result<()> {
     stream.set_read_timeout(Some(IO_TIMEOUT))?;
     stream.set_write_timeout(Some(IO_TIMEOUT))?;
@@ -481,6 +607,7 @@ pub fn read_blocks(frame: &[u8]) -> Result<(u64, Vec<AccountBlock>), P2pError> {
 }
 
 /// Handle one bounded pull-only peer session; this server never trusts remote state.
+#[cfg(test)]
 fn handle_peer_shared(
     mut stream: TcpStream,
     chain: &Mutex<AccountForkChain>,
@@ -490,10 +617,22 @@ fn handle_peer_shared(
 ) -> Result<(), P2pError> {
     set_timeouts(&stream)?;
     stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT))?;
+    let hello = read_frame(&mut stream)?;
+    handle_peer_after_hello(stream, chain, mempool, data_dir, advertised_peers, hello)
+}
+
+fn handle_peer_after_hello(
+    mut stream: TcpStream,
+    chain: &Mutex<AccountForkChain>,
+    mempool: &Mutex<Vec<AccountTransaction>>,
+    data_dir: &Path,
+    advertised_peers: &[SocketAddr],
+    hello: Vec<u8>,
+) -> Result<(), P2pError> {
+    set_timeouts(&stream)?;
     let session_started = Instant::now();
     let mut session_bytes = 0usize;
     let mut session_requests = 0usize;
-    let hello = read_frame(&mut stream)?;
     add_session_bytes(&mut session_bytes, hello.len() + 4)?;
     {
         let chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
@@ -994,7 +1133,6 @@ pub fn serve(
     data_dir: &Path,
     advertised_peers: &[SocketAddr],
 ) -> Result<(), P2pError> {
-    const PEER_WORKERS: usize = 8;
     let listener = TcpListener::bind(address)?;
     println!("testnet peer listening on {}", listener.local_addr()?);
     let chain = Arc::new(Mutex::new(chain.clone()));
@@ -1027,53 +1165,44 @@ pub fn serve(
                 thread::sleep(PEER_POLL_INTERVAL);
             })?;
     }
-    let mut workers = Vec::with_capacity(PEER_WORKERS);
+    let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<ReadyPeer>(MAX_READY_HANDSHAKES);
+    let ready_rx = Arc::new(Mutex::new(ready_rx));
     for worker_id in 0..PEER_WORKERS {
-        let listener = listener.try_clone()?;
         let chain = Arc::clone(&chain);
         let mempool = Arc::clone(&mempool);
         let data_dir = Arc::clone(&data_dir);
         let advertised_peers = Arc::clone(&advertised_peers);
-        let peer_counts = Arc::clone(&peer_counts);
-        workers.push(
-            thread::Builder::new()
-                .name(format!("aurora-peer-{worker_id}"))
-                .spawn(move || loop {
-                    match listener.accept() {
-                        Ok((stream, remote)) => {
-                            let _lease = match PeerLease::acquire(remote.ip(), &peer_counts) {
-                                Ok(Some(lease)) => lease,
-                                Ok(None) => continue,
-                                Err(error) => {
-                                    eprintln!("peer admission failed: {error}");
-                                    continue;
-                                }
-                            };
-                            if let Err(error) = handle_peer_shared(
-                                stream,
-                                &chain,
-                                &mempool,
-                                &data_dir,
-                                &advertised_peers,
-                            ) {
-                                eprintln!("peer rejected: {error}");
-                            }
-                        }
-                        Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                        Err(error) => {
-                            eprintln!("peer accept failed: {error}");
-                            break;
-                        }
+        let ready_rx = Arc::clone(&ready_rx);
+        thread::Builder::new()
+            .name(format!("aurora-peer-{worker_id}"))
+            .spawn(move || loop {
+                let task = {
+                    let receiver = match ready_rx.lock() {
+                        Ok(receiver) => receiver,
+                        Err(_) => return,
+                    };
+                    match receiver.recv() {
+                        Ok(task) => task,
+                        Err(_) => return,
                     }
-                })?,
-        );
+                };
+                // Queue residence does not extend the original handshake deadline.
+                if task.accepted.elapsed() >= HANDSHAKE_TIMEOUT {
+                    continue;
+                }
+                if let Err(error) = handle_peer_after_hello(
+                    task.stream,
+                    &chain,
+                    &mempool,
+                    &data_dir,
+                    &advertised_peers,
+                    task.hello,
+                ) {
+                    eprintln!("peer rejected: {error}");
+                }
+            })?;
     }
-    for worker in workers {
-        worker
-            .join()
-            .map_err(|_| P2pError::Protocol("peer worker panicked"))?;
-    }
-    Ok(())
+    dispatch_handshakes(listener, ready_tx, peer_counts)
 }
 
 fn retryable_peer_error(error: &P2pError) -> bool {
@@ -2706,5 +2835,270 @@ mod orphan_reinsertion_tests {
         assert_eq!(chain.tip_hash(), expected_tip);
         assert_eq!(pool, txs);
         std::fs::remove_dir_all(path).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod handshake_admission_tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    fn pending() -> (PendingHandshake, TcpStream, PeerCounts) {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (stream, remote) = listener.accept().unwrap();
+        let counts = Arc::new(Mutex::new(HashMap::new()));
+        let lease = PeerLease::acquire(remote.ip(), &counts).unwrap().unwrap();
+        (
+            PendingHandshake::new(stream, lease).unwrap(),
+            client,
+            counts,
+        )
+    }
+
+    fn poll_until_ready(peer: &mut PendingHandshake) -> Result<Vec<u8>, P2pError> {
+        let deadline = Instant::now() + Duration::from_secs(1);
+        loop {
+            if let Some(hello) = peer.poll_at(Instant::now())? {
+                return Ok(hello);
+            }
+            assert!(
+                Instant::now() < deadline,
+                "local test handshake did not arrive"
+            );
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    #[test]
+    fn fragmented_preface_does_not_consume_the_next_frame() {
+        let (mut peer, mut client, counts) = pending();
+        client.write_all(&[0, 0]).unwrap();
+        assert!(peer.poll_at(Instant::now()).unwrap().is_none());
+        client
+            .write_all(&[0, 1, WALLET_HELLO, 0, 0, 0, 1, GET_PEERS])
+            .unwrap();
+        assert_eq!(poll_until_ready(&mut peer).unwrap(), vec![WALLET_HELLO]);
+        peer.stream.set_nonblocking(false).unwrap();
+        set_timeouts(&peer.stream).unwrap();
+        assert_eq!(read_frame(&mut peer.stream).unwrap(), vec![GET_PEERS]);
+        drop(peer);
+        assert!(counts.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn silent_and_partial_handshakes_expire_without_extending_the_deadline() {
+        for prefix in [vec![], vec![0, 0], vec![0, 0, 0, 73, HELLO]] {
+            let (mut peer, mut client, counts) = pending();
+            client.write_all(&prefix).unwrap();
+            assert!(peer.poll_at(Instant::now()).unwrap().is_none());
+            let expired = peer.accepted + HANDSHAKE_TIMEOUT;
+            assert!(matches!(
+                peer.poll_at(expired),
+                Err(P2pError::Protocol("handshake deadline exceeded"))
+            ));
+            drop(peer);
+            assert!(counts.lock().unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn invalid_prefaces_are_rejected_without_allocating_the_advertised_payload() {
+        for bytes in [
+            vec![0, 0, 0, 0],
+            vec![0, 64, 0, 0],
+            vec![255, 255, 255, 255],
+            vec![0, 0, 0, 1, HELLO],
+        ] {
+            let (mut peer, mut client, counts) = pending();
+            client.write_all(&bytes).unwrap();
+            assert!(matches!(
+                poll_until_ready(&mut peer),
+                Err(P2pError::Protocol(_))
+            ));
+            assert_eq!(peer.bytes.len(), 77);
+            drop(peer);
+            assert!(counts.lock().unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn peer_hello_passes_the_preface_gate_without_skipping_consensus_checks() {
+        let (mut peer, mut client, _) = pending();
+        let mut hello = vec![HELLO];
+        hello.extend_from_slice(&[0; 72]);
+        write_frame(&mut client, &hello).unwrap();
+        let received = poll_until_ready(&mut peer).unwrap();
+        assert_eq!(received, hello);
+        let genesis = aurora_consensus::testnet::testnet_genesis_block();
+        let chain = AccountForkChain::new(
+            genesis,
+            aurora_consensus::testnet::TESTNET_INITIAL_BITS,
+            aurora_core::state::AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+        assert!(check_hello(&received, &chain).is_err());
+    }
+}
+
+#[cfg(test)]
+mod self_transfer_tests {
+    use super::*;
+    use aurora_core::{
+        accounts::{AccountTxError, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_AUTH_BYTES},
+        amount::Amount,
+        signature::{post_quantum_account_id, verify_account_transaction},
+        state::{AccountLedger, StateError},
+    };
+    use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey};
+
+    fn signed_transfer(nonce: u64, to_self: bool) -> AccountTransaction {
+        // Public deterministic seed for tests only.
+        let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public = key.verifying_key().encode();
+        let sender = post_quantum_account_id(public.as_slice());
+        let mut tx = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender,
+            nonce,
+            recipient: if to_self {
+                sender
+            } else {
+                AccountId([0x33; 32])
+            },
+            amount: Amount::from_units(25).unwrap(),
+            fee: Amount::from_units(2).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public.as_slice());
+        let signature = key.sign(tx.signing_digest().unwrap().as_bytes()).encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
+        tx
+    }
+
+    fn funded_ledger() -> AccountLedger {
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger
+            .credit_issuance(
+                signed_transfer(0, false).sender,
+                Amount::from_units(1_000).unwrap(),
+            )
+            .unwrap();
+        ledger
+    }
+
+    #[test]
+    fn signed_v3_self_transfer_preserves_ledger_and_batch_atomically() {
+        let invalid = signed_transfer(0, true);
+        assert_eq!(
+            invalid.check_stateless(),
+            Err(AccountTxError::SameSenderAndRecipient)
+        );
+        let mut ledger = funded_ledger();
+        let before = ledger.clone();
+        assert_eq!(
+            ledger.apply_transaction(&invalid),
+            Err(StateError::InvalidTransaction)
+        );
+        // Full equality includes every balance, nonce and total issuance.
+        assert_eq!(ledger, before);
+        let valid = signed_transfer(0, false);
+        assert_eq!(
+            ledger.apply_batch(&[valid.clone(), signed_transfer(1, true)]),
+            Err(StateError::InvalidTransaction)
+        );
+        assert_eq!(ledger, before);
+        assert_eq!(ledger.apply_transaction(&valid), Ok(valid.fee));
+        assert_eq!(ledger.account(valid.sender).balance.to_units(), 973);
+        assert_eq!(ledger.account(valid.sender).next_nonce, 1);
+        assert_eq!(ledger.account(valid.recipient).balance.to_units(), 25);
+        assert_eq!(ledger.total_issued(), before.total_issued());
+    }
+
+    #[test]
+    fn signed_v3_self_transfer_rpc_rejection_preserves_pending_payments() {
+        let ledger = funded_ledger();
+        let before = ledger.clone();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let chain = AccountForkChain::new(genesis, 0, ledger).unwrap();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let chain = Mutex::new(chain);
+            let pool = Mutex::new(Vec::new());
+            let result = handle_peer_shared(stream, &chain, &pool, &std::env::temp_dir(), &[]);
+            (
+                result,
+                chain.into_inner().unwrap(),
+                pool.into_inner().unwrap(),
+            )
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        set_timeouts(&client).unwrap();
+        write_frame(&mut client, &[WALLET_HELLO]).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap()[0], WALLET_HELLO_REPLY);
+
+        let submit = |client: &mut TcpStream, tx: &AccountTransaction| {
+            let mut request = vec![SUBMIT_TX];
+            request.extend_from_slice(&tx.to_canonical_bytes().unwrap());
+            write_frame(client, &request).unwrap();
+            read_frame(client).unwrap()
+        };
+        assert_eq!(
+            submit(&mut client, &signed_transfer(0, true)),
+            vec![TX_REJECTED, 1]
+        );
+        write_frame(&mut client, &[GET_MEMPOOL, 0, 0, 0, 0]).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap(), vec![MEMPOOL_REPLY, 0, 0]);
+
+        let valid = signed_transfer(0, false);
+        assert_eq!(submit(&mut client, &valid)[0], TX_ACCEPTED);
+        assert_eq!(
+            submit(&mut client, &signed_transfer(1, true)),
+            vec![TX_REJECTED, 1]
+        );
+        drop(client);
+        let (result, chain, pool) = server.join().unwrap();
+        assert!(result.is_ok());
+        assert_eq!(chain.state(), &before);
+        assert_eq!(pool, vec![valid.clone()]);
+
+        // Revalidation must also remove an invalid entry without consuming its nonce.
+        let pool = Mutex::new(vec![signed_transfer(0, true), valid.clone()]);
+        let mut guard = pool.lock().unwrap();
+        *guard = rebuild_mempool(&chain, &chain, &guard, MAX_MEMPOOL_TXS, MAX_MEMPOOL_BYTES);
+        drop(guard);
+        assert_eq!(*pool.lock().unwrap(), vec![valid]);
+        assert_eq!(chain.state(), &before);
+    }
+}
+
+#[cfg(test)]
+mod admission_vector_tests {
+    use super::*;
+
+    #[test]
+    fn independent_admission_vectors_match_local_policy() {
+        let mut count = 0;
+        for line in include_str!("../../../tests/vectors-retarget/admission.tsv")
+            .lines()
+            .skip(1)
+        {
+            let fields: Vec<_> = line.split('\t').collect();
+            assert_eq!(fields.len(), 3);
+            let timestamp = fields[0].parse().unwrap();
+            let now = fields[1].parse().unwrap();
+            let expected = fields[2] == "1";
+            assert_eq!(
+                check_block_timestamp_at(timestamp, now).is_ok(),
+                expected,
+                "{line}"
+            );
+            count += 1;
+        }
+        assert_eq!(count, 8);
     }
 }
