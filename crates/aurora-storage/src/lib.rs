@@ -1070,6 +1070,49 @@ mod tests {
     }
 
     #[test]
+    fn failed_index_page_write_keeps_previous_snapshot_and_allows_retry() {
+        let path = dir();
+        let mut chain = chain();
+        let previous_tip = chain.tip_hash();
+        let old_manifest = save_snapshot(&path, &chain).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let new_tip = next.header.hash().unwrap();
+        chain.submit(next).unwrap();
+
+        // Discover the page's content-addressed path, then model a write
+        // interrupted before a new manifest can be published.
+        let staged_manifest = save_snapshot(&path, &chain).unwrap();
+        let bytes = fs::read(&staged_manifest).unwrap();
+        // This test has one index page. Its hash is the last page ID before
+        // the manifest checksum; avoid a hard-coded manifest field offset.
+        let page_id_start = bytes.len().checked_sub(CHECKSUM_LEN + 32).unwrap();
+        let page_id =
+            Hash256::from_bytes(bytes[page_id_start..page_id_start + 32].try_into().unwrap());
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        fs::remove_file(&staged_manifest).unwrap();
+        fs::remove_file(&page_path).unwrap();
+        fs::create_dir(&page_path).unwrap();
+
+        assert!(save_snapshot(&path, &chain).is_err());
+        assert!(old_manifest.exists());
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), previous_tip);
+        assert_eq!(restored.known_block_count(), 1);
+
+        fs::remove_dir(&page_path).unwrap();
+        save_snapshot(&path, &chain).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.tip_hash(), new_tip);
+        assert_eq!(recovered.height(), 1);
+        assert_eq!(recovered.known_block_count(), 2);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn copied_v6_data_directory_restores_all_branches() {
         let source = dir();
         let backup = dir();
