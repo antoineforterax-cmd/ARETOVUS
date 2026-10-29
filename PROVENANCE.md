@@ -2,7 +2,7 @@
 
 Le prototype initial d’AURORA a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
 
-Le porteur définit le projet et ses choix économiques. Des agents Codex ont produit et modifié une grande partie du code, des tests et de la documentation. Ce texte décrit le processus; il ne garantit pas l’origine exclusive ni l’absence de similitudes avec d’autres logiciels. Les primitives cryptographiques proviennent de dépendances Rust nommées et verrouillées dans `Cargo.lock`.
+Le porteur du projet définit la vision d’AURORA, propose les orientations d’architecture, fixe les priorités et les choix économiques, et dirige les étapes de développement. Il pilote les décisions et les essais du projet. L’IA est utilisée comme outil d’assistance pour accélérer la mise en œuvre de ces orientations : des agents Codex ont produit ou modifié une grande partie du code, des tests et de la documentation, et ont également aidé à la recherche de défauts et aux revues techniques. Les propositions et le code restent soumis aux décisions du porteur et aux vérifications nécessaires. Ce texte décrit le processus; il ne garantit pas l’origine exclusive ni l’absence de similitudes avec d’autres logiciels. Les primitives cryptographiques proviennent de dépendances Rust nommées et verrouillées dans `Cargo.lock`.
 
 ## Ce qui a réellement été vérifié
 
