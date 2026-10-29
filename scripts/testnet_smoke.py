@@ -216,6 +216,34 @@ def main() -> int:
                     f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
                 )
 
+            # Recover an already funded account after deleting its original key file.
+            recovery_file = base / "offline-recovery.txt"
+            balance_before_loss = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            exported = run_wallet(
+                wallet, "recovery-export", "--key-file", str(keyfile),
+                "--out", str(recovery_file), "--acknowledge-secret",
+            )
+            if recovery_file.read_text().strip() in exported:
+                raise AssertionError("recovery secret leaked to command output")
+            run_wallet(wallet, "recovery-verify", "--from", str(recovery_file),
+                       "--expected-account", miner)
+            keyfile.unlink()
+            restored_key = run_wallet(
+                wallet, "recovery-restore", "--from", str(recovery_file),
+                "--out", str(keyfile), "--expected-account", miner, "--plain-testnet",
+            )
+            if f"account={miner}" not in restored_key:
+                raise AssertionError("recovery changed the funded account identity")
+            balance_after_loss = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if balance_before_loss != balance_after_loss:
+                raise AssertionError("recovery changed the funded balance or nonce")
+
             # Preview, voluntary limits and cancellation must leave pending state untouched.
             payment_args = [
                 "--key-file", str(keyfile), "--to", RECIPIENT,
@@ -520,7 +548,7 @@ def main() -> int:
                 binary, base / "write-limit-node", miner
             )
             print(
-                "wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
+                "lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"

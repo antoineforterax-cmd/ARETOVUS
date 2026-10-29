@@ -12,7 +12,7 @@ use aurora_core::hash::Hash256;
 use aurora_wallet::{
     account_id_hex, build_signed_transaction, parse_account_id, parse_amount, rpc, WalletKey,
 };
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 fn option<'a>(args: &'a [String], name: &str) -> Result<&'a str, Box<dyn Error>> {
     args.windows(2)
@@ -44,6 +44,16 @@ fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
     } else {
         eprintln!("WARNING: reading unencrypted testnet key file");
         WalletKey::load_plain_testnet_file(path)
+    }
+}
+
+fn load_recovery_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
+    let expected = parse_account_id(option(args, "--expected-account")?)?;
+    if flag(args, "--from") {
+        WalletKey::load_recovery_file(Path::new(option(args, "--from")?), expected)
+    } else {
+        let code = Zeroizing::new(rpassword::prompt_password("Recovery code (hidden): ")?);
+        WalletKey::from_recovery_code(&code, expected)
     }
 }
 
@@ -102,6 +112,38 @@ fn run() -> Result<(), Box<dyn Error>> {
             let source = Path::new(option(&args, "--from")?);
             let destination = Path::new(option(&args, "--out")?);
             copy_encrypted_key(source, destination)?;
+        }
+        "recovery-export" => {
+            if !flag(&args, "--acknowledge-secret") {
+                return Err("recovery export is an unencrypted spending secret; add --acknowledge-secret and store it offline".into());
+            }
+            let destination = Path::new(option(&args, "--out")?);
+            let key = load_key(&args)?;
+            key.save_recovery_file(destination)?;
+            println!("recovery_file={} account={}", destination.display(), account_id_hex(key.account_id()));
+            println!("SECRET: anyone with this recovery code can spend. Store it separately offline.");
+            println!("Verify the recovery copy before relying on it. No secret is printed here.");
+        }
+        "recovery-verify" => {
+            let key = load_recovery_key(&args)?;
+            println!("recovery_verified account={}", account_id_hex(key.account_id()));
+        }
+        "recovery-restore" => {
+            let destination = Path::new(option(&args, "--out")?);
+            let key = load_recovery_key(&args)?;
+            if flag(&args, "--plain-testnet") {
+                key.save_plain_testnet_file(destination)?;
+                println!("WARNING: restored an unencrypted testnet key");
+            } else {
+                let password = Zeroizing::new(rpassword::prompt_password("New wallet password (at least 12 characters): ")?);
+                let confirmation = Zeroizing::new(rpassword::prompt_password("Confirm new wallet password: ")?);
+                if *password != *confirmation {
+                    return Err("passwords do not match".into());
+                }
+                key.save_encrypted_testnet_file(destination, &password)?;
+            }
+            println!("recovered_key={} account={}", destination.display(), account_id_hex(key.account_id()));
+            println!("The original signing key is restored, not revoked or rotated.");
         }
         "verify-backup" => {
             let source = Path::new(option(&args, "--from")?);
@@ -235,6 +277,10 @@ fn run() -> Result<(), Box<dyn Error>> {
         "--help" | "-h" | "help" => {
             println!("AURORA ML-DSA-65 testnet wallet (experimental)");
             println!("  aurora-wallet keygen --out FILE [--plain-testnet]");
+            println!("  aurora-wallet recovery-export --key-file FILE --out SECRET_FILE --acknowledge-secret");
+            println!("  aurora-wallet recovery-verify --expected-account ACCOUNT_HEX [--from SECRET_FILE]");
+            println!("  aurora-wallet recovery-restore --out NEW_FILE --expected-account ACCOUNT_HEX [--from SECRET_FILE] [--plain-testnet]");
+            println!("    Recovery requires a secret saved BEFORE loss. Without --from, the code is entered with hidden input.");
             println!("  aurora-wallet backup --key-file FILE --out BACKUP_FILE");
             println!("  aurora-wallet restore --from BACKUP_FILE --out NEW_FILE");
             println!("  aurora-wallet verify-backup --from FILE --expected-account ACCOUNT_HEX");

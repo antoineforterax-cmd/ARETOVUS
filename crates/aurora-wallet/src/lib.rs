@@ -1,6 +1,7 @@
 //! Experimental ML-DSA-65 testnet wallet.
 pub mod builder;
 pub mod keys;
+mod recovery;
 pub mod rpc;
 pub mod safety;
 pub mod spv;

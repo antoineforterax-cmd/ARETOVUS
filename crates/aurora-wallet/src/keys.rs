@@ -13,7 +13,7 @@ use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
 };
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
 const KEY_FILE_BYTES: usize = 8 + 32 + 32;
@@ -210,6 +210,35 @@ impl WalletKey {
         Ok(key.account_id())
     }
 
+    /// Export an unencrypted recovery secret. Anyone holding it can spend this account.
+    pub fn save_recovery_file(&self, path: &Path) -> Result<(), Box<dyn Error>> {
+        let mut code = crate::recovery::encode_seed(&self.seed);
+        code.push('\n');
+        write_new_private_file(path, code.as_bytes())?;
+        Ok(())
+    }
+
+    /// Recover the same v3 identity, without the original file or its password.
+    pub fn from_recovery_code(code: &str, expected: AccountId) -> Result<Self, Box<dyn Error>> {
+        let seed = crate::recovery::decode_seed(code)?;
+        let key = Self::from_seed(*seed);
+        if key.account_id() != expected {
+            return Err("recovery code belongs to a different account".into());
+        }
+        Ok(key)
+    }
+
+    /// Read only a bounded recovery text file and validate its expected identity.
+    pub fn load_recovery_file(path: &Path, expected: AccountId) -> Result<Self, Box<dyn Error>> {
+        let file = File::open(path)?;
+        let mut code = Zeroizing::new(Vec::new());
+        file.take(257).read_to_end(&mut code)?;
+        if code.len() > 256 {
+            return Err("recovery file exceeds size limit".into());
+        }
+        Self::from_recovery_code(std::str::from_utf8(&code)?, expected)
+    }
+
     /// Save a plain testnet seed without replacing an existing file.
     ///
     /// The checksum detects accidental corruption; it does not encrypt the seed or
@@ -377,6 +406,63 @@ mod tests {
         for path in [source, backup, restored] {
             fs::remove_file(path).unwrap();
         }
+    }
+
+
+    #[test]
+    fn recovery_survives_original_file_and_password_loss_and_signs() {
+        let base = std::env::temp_dir().join(format!(
+            "aurora-recovery-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&base).unwrap();
+        let original = base.join("original.aurkey");
+        let secret = base.join("recovery.txt");
+        let replacement = base.join("replacement.aurkey");
+        let key = WalletKey::from_seed_bytes([73; 32]);
+        let expected = key.account_id();
+        key.save_encrypted_testnet_file(&original, "old password forgotten later").unwrap();
+        key.save_recovery_file(&secret).unwrap();
+        assert!(key.save_recovery_file(&secret).is_err());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(fs::metadata(&secret).unwrap().permissions().mode() & 0o777, 0o600);
+        }
+        drop(key);
+        fs::remove_file(&original).unwrap();
+        assert!(!original.exists());
+        assert!(WalletKey::load_recovery_file(&secret, AccountId([0; 32])).is_err());
+        let recovered = WalletKey::load_recovery_file(&secret, expected).unwrap();
+        recovered.save_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
+        drop(recovered);
+        let restored = WalletKey::load_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
+        assert_eq!(restored.account_id(), expected);
+        let tx = crate::build_signed_transaction(
+            &restored, AccountId([25; 32]),
+            aurora_core::amount::Amount::from_units(100).unwrap(),
+            aurora_core::amount::Amount::from_units(3).unwrap(), 7,
+        ).unwrap();
+        aurora_core::signature::verify_account_transaction(&tx).unwrap();
+        assert!(restored.save_encrypted_testnet_file(&replacement, "entirely new password").is_err());
+        fs::remove_dir_all(base).unwrap();
+    }
+
+    #[test]
+    fn recovery_file_rejects_corruption_oversize_and_foreign_identity() {
+        let path = std::env::temp_dir().join(format!(
+            "aurora-recovery-bad-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let key = WalletKey::from_seed_bytes([74; 32]);
+        key.save_recovery_file(&path).unwrap();
+        let mut bytes = Zeroizing::new(fs::read(&path).unwrap());
+        bytes[40] = if bytes[40] == b'0' { b'1' } else { b'0' };
+        fs::write(&path, &*bytes).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::write(&path, [b'x'; 257]).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::write(&path, [0xff; 155]).unwrap();
+        assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
+        fs::remove_file(path).unwrap();
     }
 
     #[test]

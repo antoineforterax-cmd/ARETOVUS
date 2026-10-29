@@ -50,6 +50,12 @@ utilisent déjà un sel et un nonce neufs et refusent d'écraser une destination
 Conserver la sauvegarde et le mot de passe séparément ; tester régulièrement
 la sauvegarde avec l'identité attendue conservée par un autre moyen.
 
+## Code de secours hors ligne
+
+Le [code de secours](OFFLINE_RECOVERY.md), créé avant la perte, permet désormais
+de restaurer le même compte sans le fichier wallet ni son ancien mot de passe.
+Il reste un secret de dépense à conserver séparément ; il ne révoque pas la clé.
+
 ## État du cahier des charges et limites
 
 - Réalisé : sauvegarde/restauration chiffrées, vérification de sauvegarde,
@@ -58,9 +64,9 @@ la sauvegarde avec l'identité attendue conservée par un autre moyen.
 - À concevoir et valider au niveau protocole : récupération par gardiens,
   rotation des clés et identité stable, voir [le dossier de conception](DID_RECOVERY_DESIGN.md).
 
-Les comptes v3 sont dérivés de la clé publique. La perte de toutes les copies
-de la clé ou de leur mot de passe n'est pas récupérable avec ces seules
-protections. Une adresse hexadécimale valide ne prouve pas l'identité de son
+Les comptes v3 sont dérivés de la clé publique. La perte du wallet et de son mot de passe est récupérable si un code de secours
+a été conservé. Si toutes les copies de la clé et tous les moyens de secours
+sont perdus, ces protections ne peuvent pas récupérer le compte. Une adresse hexadécimale valide ne prouve pas l'identité de son
 propriétaire. Ces contrôles locaux ne remboursent pas un paiement confirmé et
 ne donnent aucun pouvoir de gel ou de récupération à un administrateur.
 Le testnet reste expérimental et requiert des audits indépendants avant un
