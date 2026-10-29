@@ -695,7 +695,7 @@ fn handle_peer_after_hello(
                     let pool = mempool.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
                     let mut state = chain.state().clone();
                     for tx in pool.iter() {
-                        let _ = state.apply_transaction(tx);
+                        let _ = state.apply_transaction_cached(tx);
                     }
                     state.account(id)
                 };
@@ -740,9 +740,11 @@ fn handle_peer_after_hello(
                     }
                     let mut candidate = chain.state().clone();
                     for pending in pool.iter() {
-                        candidate.apply_transaction(pending).map_err(|_| 2u8)?;
+                        candidate
+                            .apply_transaction_cached(pending)
+                            .map_err(|_| 2u8)?;
                     }
-                    candidate.apply_transaction(&tx).map_err(|_| 2u8)?;
+                    candidate.apply_transaction_cached(&tx).map_err(|_| 2u8)?;
                     pool.push(tx);
                     Ok((txid, pool.len()))
                 })();
@@ -947,7 +949,7 @@ fn revalidate_mempool(
     let mut pending = Vec::with_capacity(pool.len());
     let mut state = chain.state().clone();
     for tx in pool.drain(..) {
-        if state.apply_transaction(&tx).is_ok() {
+        if state.apply_transaction_cached(&tx).is_ok() {
             pending.push(tx);
         }
     }
@@ -986,7 +988,7 @@ fn sync_mempool_peer(
             )
             .ok_or(P2pError::Protocol("local mempool size overflow"))?;
         state
-            .apply_transaction(pending)
+            .apply_transaction_cached(pending)
             .map_err(|_| P2pError::Protocol("local mempool state invalid"))?;
     }
     let mut added = 0;
@@ -1009,7 +1011,7 @@ fn sync_mempool_peer(
         {
             break;
         }
-        if state.apply_transaction(&tx).is_err() {
+        if state.apply_transaction_cached(&tx).is_err() {
             continue;
         }
         pool.push(tx);
@@ -2685,5 +2687,138 @@ mod handshake_admission_tests {
         )
         .unwrap();
         assert!(check_hello(&received, &chain).is_err());
+    }
+}
+
+#[cfg(test)]
+mod self_transfer_tests {
+    use super::*;
+    use aurora_core::{
+        accounts::{AccountTxError, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_AUTH_BYTES},
+        amount::Amount,
+        signature::{post_quantum_account_id, verify_account_transaction},
+        state::{AccountLedger, StateError},
+    };
+    use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey};
+
+    fn signed_transfer(nonce: u64, to_self: bool) -> AccountTransaction {
+        // Public deterministic seed for tests only.
+        let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public = key.verifying_key().encode();
+        let sender = post_quantum_account_id(public.as_slice());
+        let mut tx = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender,
+            nonce,
+            recipient: if to_self {
+                sender
+            } else {
+                AccountId([0x33; 32])
+            },
+            amount: Amount::from_units(25).unwrap(),
+            fee: Amount::from_units(2).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public.as_slice());
+        let signature = key.sign(tx.signing_digest().unwrap().as_bytes()).encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
+        tx
+    }
+
+    fn funded_ledger() -> AccountLedger {
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger
+            .credit_issuance(
+                signed_transfer(0, false).sender,
+                Amount::from_units(1_000).unwrap(),
+            )
+            .unwrap();
+        ledger
+    }
+
+    #[test]
+    fn signed_v3_self_transfer_preserves_ledger_and_batch_atomically() {
+        let invalid = signed_transfer(0, true);
+        assert_eq!(
+            invalid.check_stateless(),
+            Err(AccountTxError::SameSenderAndRecipient)
+        );
+        let mut ledger = funded_ledger();
+        let before = ledger.clone();
+        assert_eq!(
+            ledger.apply_transaction(&invalid),
+            Err(StateError::InvalidTransaction)
+        );
+        // Full equality includes every balance, nonce and total issuance.
+        assert_eq!(ledger, before);
+        let valid = signed_transfer(0, false);
+        assert_eq!(
+            ledger.apply_batch(&[valid.clone(), signed_transfer(1, true)]),
+            Err(StateError::InvalidTransaction)
+        );
+        assert_eq!(ledger, before);
+        assert_eq!(ledger.apply_transaction(&valid), Ok(valid.fee));
+        assert_eq!(ledger.account(valid.sender).balance.to_units(), 973);
+        assert_eq!(ledger.account(valid.sender).next_nonce, 1);
+        assert_eq!(ledger.account(valid.recipient).balance.to_units(), 25);
+        assert_eq!(ledger.total_issued(), before.total_issued());
+    }
+
+    #[test]
+    fn signed_v3_self_transfer_rpc_rejection_preserves_pending_payments() {
+        let ledger = funded_ledger();
+        let before = ledger.clone();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let chain = AccountForkChain::new(genesis, 0, ledger).unwrap();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let chain = Mutex::new(chain);
+            let pool = Mutex::new(Vec::new());
+            let result = handle_peer_shared(stream, &chain, &pool, &std::env::temp_dir(), &[]);
+            (
+                result,
+                chain.into_inner().unwrap(),
+                pool.into_inner().unwrap(),
+            )
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        set_timeouts(&client).unwrap();
+        write_frame(&mut client, &[WALLET_HELLO]).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap()[0], WALLET_HELLO_REPLY);
+
+        let submit = |client: &mut TcpStream, tx: &AccountTransaction| {
+            let mut request = vec![SUBMIT_TX];
+            request.extend_from_slice(&tx.to_canonical_bytes().unwrap());
+            write_frame(client, &request).unwrap();
+            read_frame(client).unwrap()
+        };
+        assert_eq!(
+            submit(&mut client, &signed_transfer(0, true)),
+            vec![TX_REJECTED, 1]
+        );
+        write_frame(&mut client, &[GET_MEMPOOL, 0, 0, 0, 0]).unwrap();
+        assert_eq!(read_frame(&mut client).unwrap(), vec![MEMPOOL_REPLY, 0, 0]);
+
+        let valid = signed_transfer(0, false);
+        assert_eq!(submit(&mut client, &valid)[0], TX_ACCEPTED);
+        assert_eq!(
+            submit(&mut client, &signed_transfer(1, true)),
+            vec![TX_REJECTED, 1]
+        );
+        drop(client);
+        let (result, chain, pool) = server.join().unwrap();
+        assert!(result.is_ok());
+        assert_eq!(chain.state(), &before);
+        assert_eq!(pool, vec![valid.clone()]);
+
+        // Revalidation must also remove an invalid entry without consuming its nonce.
+        let pool = Mutex::new(vec![signed_transfer(0, true), valid.clone()]);
+        revalidate_mempool(&chain, &pool).unwrap();
+        assert_eq!(*pool.lock().unwrap(), vec![valid]);
+        assert_eq!(chain.state(), &before);
     }
 }
