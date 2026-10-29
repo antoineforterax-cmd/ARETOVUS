@@ -21,7 +21,11 @@ fn option<'a>(args: &'a [String], name: &str) -> Result<&'a str, Box<dyn Error>>
         .ok_or_else(|| format!("missing required option {name}").into())
 }
 
-fn validate_options(args: &[String], values: &[&str], flags: &[&str]) -> Result<(), Box<dyn Error>> {
+fn validate_options(
+    args: &[String],
+    values: &[&str],
+    flags: &[&str],
+) -> Result<(), Box<dyn Error>> {
     let mut seen = std::collections::BTreeSet::new();
     let mut cursor = 0;
     while cursor < args.len() {
@@ -237,7 +241,20 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
         }
         "sign-offline" => {
-            validate_options(&args, &["--key-file", "--to", "--amount", "--fee", "--nonce", "--out", "--max-amount", "--max-fee"], &["--yes", "--dry-run"])?;
+            validate_options(
+                &args,
+                &[
+                    "--key-file",
+                    "--to",
+                    "--amount",
+                    "--fee",
+                    "--nonce",
+                    "--out",
+                    "--max-amount",
+                    "--max-fee",
+                ],
+                &["--yes", "--dry-run"],
+            )?;
             if flag(&args, "--yes") && flag(&args, "--dry-run") {
                 return Err("--yes and --dry-run cannot be combined".into());
             }
@@ -254,20 +271,40 @@ fn run() -> Result<(), Box<dyn Error>> {
             let stored = aurora_wallet::policy::load(key_path, key.account_id())?;
             use aurora_wallet::safety::{check_payment, read_confirmation, PaymentLimits};
             let requested = PaymentLimits {
-                max_amount: if flag(&args, "--max-amount") { Some(parse_amount(option(&args, "--max-amount")?)?) } else { None },
-                max_fee: if flag(&args, "--max-fee") { Some(parse_amount(option(&args, "--max-fee")?)?) } else { None },
+                max_amount: if flag(&args, "--max-amount") {
+                    Some(parse_amount(option(&args, "--max-amount")?)?)
+                } else {
+                    None
+                },
+                max_fee: if flag(&args, "--max-fee") {
+                    Some(parse_amount(option(&args, "--max-fee")?)?)
+                } else {
+                    None
+                },
             };
             let limits = stored.unwrap_or_default().stricter(requested);
             let debit = check_payment(
-                key.account_id(), recipient, amount, fee, aurora_core::amount::Amount::MAX, limits,
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                aurora_core::amount::Amount::MAX,
+                limits,
             )?;
             let destination = account_id_hex(recipient);
             println!("Review OFFLINE payment on AURORA Testnet");
-            println!("sender={} recipient={destination}", account_id_hex(key.account_id()));
+            println!(
+                "sender={} recipient={destination}",
+                account_id_hex(key.account_id())
+            );
             println!("amount={amount} fee={fee} total_debit={debit} nonce={nonce}");
             println!("balance=unverified nonce_source=manual network_requests=none");
-            if let Some(maximum) = limits.max_amount { println!("effective_max_amount={maximum}"); }
-            if let Some(maximum) = limits.max_fee { println!("effective_max_fee={maximum}"); }
+            if let Some(maximum) = limits.max_amount {
+                println!("effective_max_amount={maximum}");
+            }
+            if let Some(maximum) = limits.max_fee {
+                println!("effective_max_fee={maximum}");
+            }
             if flag(&args, "--dry-run") {
                 println!("preview_only: no transaction signed or written");
                 return Ok(());
@@ -285,22 +322,34 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce)?;
             aurora_wallet::signed_payment::save(destination_file, &transaction)?;
-            println!("signed_file={} prepared_txid={}", destination_file.display(), transaction.txid()?);
+            println!(
+                "signed_file={} prepared_txid={}",
+                destination_file.display(),
+                transaction.txid()?
+            );
             println!("not_broadcast: nonce and balance must be checked on the connected machine");
         }
         "broadcast" => {
             validate_options(&args, &["--from", "--node"], &["--yes"])?;
-            let transaction = aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+            let transaction =
+                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let node = node_address(&args)?;
             let id = transaction.txid()?;
             let destination = account_id_hex(transaction.recipient);
             println!("Review SIGNED payment on AURORA Testnet txid={id}");
-            println!("sender={} recipient={destination}", account_id_hex(transaction.sender));
-            println!("amount={} fee={} nonce={} node={node}", transaction.amount, transaction.fee, transaction.nonce);
+            println!(
+                "sender={} recipient={destination}",
+                account_id_hex(transaction.sender)
+            );
+            println!(
+                "amount={} fee={} nonce={} node={node}",
+                transaction.amount, transaction.fee, transaction.nonce
+            );
             if !flag(&args, "--yes") {
                 print!("Type SEND {destination} to broadcast: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_confirmation(&mut io::stdin().lock(), &destination)? {
+                if !aurora_wallet::safety::read_confirmation(&mut io::stdin().lock(), &destination)?
+                {
                     return Err("broadcast cancelled; the signed file remains spendable".into());
                 }
             }
@@ -309,12 +358,19 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err("signed nonce differs from the node's next nonce; check transaction status before signing another payment".into());
             }
             aurora_wallet::safety::check_payment(
-                transaction.sender, transaction.recipient, transaction.amount, transaction.fee,
-                account.balance, aurora_wallet::safety::PaymentLimits::default(),
+                transaction.sender,
+                transaction.recipient,
+                transaction.amount,
+                transaction.fee,
+                account.balance,
+                aurora_wallet::safety::PaymentLimits::default(),
             )?;
             let (accepted, pending) = rpc::submit_transaction(node, &transaction)?;
             if accepted != id {
-                return Err("node acknowledged a different transaction id; check the prepared txid status".into());
+                return Err(
+                    "node acknowledged a different transaction id; check the prepared txid status"
+                        .into(),
+                );
             }
             println!("transaction_id={id}");
             println!("mempool=pending transactions={pending}");

@@ -57,7 +57,9 @@ pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err("signed payment exceeds file size limit".into());
     }
-    let encoded = bytes.strip_prefix(MAGIC).ok_or("invalid signed payment file header")?;
+    let encoded = bytes
+        .strip_prefix(MAGIC)
+        .ok_or("invalid signed payment file header")?;
     let transaction = AccountTransaction::from_canonical_bytes(encoded)?;
     validate(&transaction)?;
     Ok(transaction)
@@ -66,23 +68,32 @@ pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::{accounts::AccountId, amount::Amount};
     use crate::{build_signed_transaction, WalletKey};
-    use std::{path::PathBuf, sync::atomic::{AtomicU64, Ordering}};
+    use aurora_core::{accounts::AccountId, amount::Amount};
+    use std::{
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
 
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
     fn path() -> PathBuf {
         std::env::temp_dir().join(format!(
-            "aurora-signed-payment-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+            "aurora-signed-payment-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
         ))
     }
 
     fn payment() -> AccountTransaction {
         build_signed_transaction(
-            &WalletKey::from_seed_bytes([55; 32]), AccountId([22; 32]),
-            Amount::from_units(100).unwrap(), Amount::from_units(3).unwrap(), 0,
-        ).unwrap()
+            &WalletKey::from_seed_bytes([55; 32]),
+            AccountId([22; 32]),
+            Amount::from_units(100).unwrap(),
+            Amount::from_units(3).unwrap(),
+            0,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -97,7 +108,10 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
+            assert_eq!(
+                fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
         }
         fs::remove_file(path).unwrap();
     }
