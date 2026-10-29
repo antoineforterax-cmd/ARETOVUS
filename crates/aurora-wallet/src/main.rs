@@ -12,7 +12,7 @@ use aurora_core::hash::Hash256;
 use aurora_wallet::{
     account_id_hex, build_signed_transaction, parse_account_id, parse_amount, rpc, WalletKey,
 };
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 
 fn option<'a>(args: &'a [String], name: &str) -> Result<&'a str, Box<dyn Error>> {
     args.windows(2)
@@ -98,9 +98,8 @@ fn flag(args: &[String], name: &str) -> bool {
 fn load_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
     let path = Path::new(option(args, "--key-file")?);
     if WalletKey::file_is_encrypted(path)? {
-        let mut password = rpassword::prompt_password("Wallet password: ")?;
+        let password = Zeroizing::new(rpassword::prompt_password("Wallet password: ")?);
         let result = WalletKey::load_encrypted_testnet_file(path, &password);
-        password.zeroize();
         result
     } else {
         eprintln!("WARNING: reading unencrypted testnet key file");
@@ -119,9 +118,8 @@ fn load_recovery_key(args: &[String]) -> Result<WalletKey, Box<dyn Error>> {
 }
 
 fn copy_encrypted_key(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
-    let mut password = rpassword::prompt_password("Wallet password: ")?;
+    let password = Zeroizing::new(rpassword::prompt_password("Wallet password: ")?);
     let result = WalletKey::copy_encrypted_testnet_file(source, destination, &password);
-    password.zeroize();
     let account = result?;
     println!(
         "encrypted_key={} address={}",
@@ -149,17 +147,14 @@ fn run() -> Result<(), Box<dyn Error>> {
                     path.display()
                 );
             } else {
-                let mut password =
-                    rpassword::prompt_password("New wallet password (at least 12 characters): ")?;
-                let mut confirmation = rpassword::prompt_password("Confirm wallet password: ")?;
-                if password != confirmation {
-                    password.zeroize();
-                    confirmation.zeroize();
+                let password = Zeroizing::new(
+                    rpassword::prompt_password("New wallet password (at least 12 characters): ")?
+                );
+                let confirmation = Zeroizing::new(rpassword::prompt_password("Confirm wallet password: ")?);
+                if password.as_str() != confirmation.as_str() {
                     return Err("passwords do not match".into());
                 }
-                confirmation.zeroize();
                 let result = key.save_encrypted_testnet_file(path, &password);
-                password.zeroize();
                 result?;
                 println!("Encrypted testnet key saved at {}", path.display());
             }
@@ -227,9 +222,8 @@ fn run() -> Result<(), Box<dyn Error>> {
         "verify-backup" => {
             let source = Path::new(option(&args, "--from")?);
             let expected = parse_account_id(option(&args, "--expected-account")?)?;
-            let mut password = rpassword::prompt_password("Backup password: ")?;
+            let password = Zeroizing::new(rpassword::prompt_password("Backup password: ")?);
             let result = WalletKey::verify_encrypted_backup(source, &password, expected);
-            password.zeroize();
             result?;
             println!("backup_verified account={}", account_id_hex(expected));
         }
