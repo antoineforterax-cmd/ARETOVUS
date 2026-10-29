@@ -42,14 +42,7 @@ pub fn parse_amount(value: &str) -> Result<Amount, Box<dyn Error>> {
 
 /// Decode the current 32-byte account identifier representation (64 lowercase/uppercase hex).
 pub fn parse_account_id(value: &str) -> Result<AccountId, Box<dyn Error>> {
-    if value.len() != 64 {
-        return Err("account id must contain exactly 64 hexadecimal characters".into());
-    }
-    let mut bytes = [0u8; 32];
-    for (i, slot) in bytes.iter_mut().enumerate() {
-        *slot = u8::from_str_radix(&value[i * 2..i * 2 + 2], 16)?;
-    }
-    Ok(AccountId(bytes))
+    Ok(AccountId::from_hex(value)?)
 }
 
 pub fn account_id_hex(id: AccountId) -> String {
@@ -124,5 +117,18 @@ mod tests {
         .unwrap();
         assert_eq!(tx.auth_data.len(), 5_261);
         assert!(aurora_core::signature::verify_account_transaction(&tx).is_ok());
+    }
+}
+
+#[cfg(test)]
+mod untrusted_account_input_tests {
+    use super::*;
+
+    #[test]
+    fn wallet_rejects_unicode_and_signed_hex_pairs() {
+        let unicode = format!("a€{}", "0".repeat(60));
+        assert_eq!(unicode.len(), 64);
+        assert!(parse_account_id(&unicode).is_err());
+        assert!(parse_account_id(&format!("+f{}", "0".repeat(62))).is_err());
     }
 }
