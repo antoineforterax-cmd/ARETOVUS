@@ -270,8 +270,40 @@ def main() -> int:
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
+            run_wallet(
+                wallet, "limits-create", "--key-file", str(keyfile),
+                "--max-amount", "1.00000000", "--max-fee", "0.00000003",
+            )
+            saved_limits = run_wallet(wallet, "limits-show", "--key-file", str(keyfile))
+            if "limits=active" not in saved_limits or "max_amount=1.00000000" not in saved_limits:
+                raise AssertionError(f"wallet did not reload its limits: {saved_limits}")
+            policy_file = Path(str(keyfile) + ".limits")
+            original_policy = policy_file.read_text()
+            for name, value, expected_error in [
+                ("--amount", "1.00000001", "voluntary amount limit"),
+                ("--fee", "0.00000004", "voluntary fee limit"),
+            ]:
+                excessive = list(payment_args)
+                excessive[excessive.index(name) + 1] = value
+                blocked = subprocess.run(
+                    [str(wallet), "send", *excessive, "--yes",
+                     "--max-amount", "100", "--max-fee", "1"],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if blocked.returncode == 0 or expected_error not in blocked.stderr:
+                    raise AssertionError("one-shot flags bypassed persistent wallet limits")
+            policy_file.write_text("invalid-policy\n")
+            malformed = subprocess.run(
+                [str(wallet), "send", *payment_args, "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if malformed.returncode == 0 or "invalid wallet limits" not in malformed.stderr:
+                raise AssertionError("malformed wallet policy did not block sending")
+            policy_file.write_text(original_policy)
+
             preview = run_wallet(wallet, "send", *payment_args, "--dry-run")
-            if "preview_only:" not in preview or "transaction_id=" in preview:
+            if ("preview_only:" not in preview or "transaction_id=" in preview
+                    or "effective_max_amount=1.00000000" not in preview):
                 raise AssertionError(f"preview unexpectedly submitted a payment: {preview}")
             for extra, reply, expected_error in [
                 ([], "", "payment cancelled before signing"),
@@ -564,7 +596,7 @@ def main() -> int:
                 binary, base / "write-limit-node", miner
             )
             print(
-                "lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
+                "persistent wallet limits, lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"

@@ -21,8 +21,8 @@ aurora-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.
 Remplacer l'adresse et le port par ceux du testnet utilisé. L'aperçu
 `--dry-run` consulte le compte mais ne signe et ne soumet aucune transaction.
 Les plafonds sont inclusifs, exprimés en AUR et vérifiés avec l'arithmétique
-entière du protocole. Ils s'appliquent à cet appel uniquement ; ils ne sont
-pas enregistrés comme politique permanente et ne sont pas imposés par le
+entière du protocole. Les options de ligne de commande s'appliquent à cet appel ; elles peuvent être renforcés par une [politique persistante](PERSISTENT_WALLET_LIMITS.md)
+chargée automatiquement pour ce fichier wallet. Ils ne sont pas imposés par le
 consensus. Le solde et le nonce tiennent compte des transactions en attente
 sur le nœud interrogé. Une nouvelle lecture juste avant signature refuse
 l'envoi si le compte a changé pendant la relecture. Un changement ultérieur
@@ -60,7 +60,8 @@ Il reste un secret de dépense à conserver séparément ; il ne révoque pas la
 
 - Réalisé : sauvegarde/restauration chiffrées, vérification de sauvegarde,
   récapitulatif avant signature, confirmation renforcée et plafonds par appel.
-- À concevoir : délais volontaires avec annulation et politique persistante.
+- Réalisé : plafonds persistants locaux, liés au compte et au chemin du wallet.
+- À concevoir : délais volontaires avec annulation et notifications locales.
 - À concevoir et valider au niveau protocole : récupération par gardiens,
   rotation des clés et identité stable, voir [le dossier de conception](DID_RECOVERY_DESIGN.md).
 

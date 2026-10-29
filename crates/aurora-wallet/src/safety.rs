@@ -3,10 +3,26 @@ use std::io::{self, BufRead, Read};
 
 use aurora_core::{accounts::AccountId, amount::Amount};
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PaymentLimits {
     pub max_amount: Option<Amount>,
     pub max_fee: Option<Amount>,
+}
+
+impl PaymentLimits {
+    /// Compose persistent and one-shot limits by retaining the stricter bound.
+    pub fn stricter(self, other: Self) -> Self {
+        fn minimum<T: Ord>(a: Option<T>, b: Option<T>) -> Option<T> {
+            match (a, b) {
+                (Some(a), Some(b)) => Some(a.min(b)),
+                (a, None) | (None, a) => a,
+            }
+        }
+        Self {
+            max_amount: minimum(self.max_amount, other.max_amount),
+            max_fee: minimum(self.max_fee, other.max_fee),
+        }
+    }
 }
 
 pub fn check_payment(
@@ -54,6 +70,17 @@ mod tests {
     use super::*;
     fn units(value: u64) -> Amount {
         Amount::from_units(value).unwrap()
+    }
+
+    #[test]
+    fn one_shot_limits_can_only_tighten_persistent_limits() {
+        let stored = PaymentLimits { max_amount: Some(units(10)), max_fee: Some(units(2)) };
+        assert_eq!(stored.stricter(PaymentLimits::default()), stored);
+        let looser = PaymentLimits { max_amount: Some(units(100)), max_fee: Some(units(20)) };
+        assert_eq!(stored.stricter(looser), stored);
+        let tighter = PaymentLimits { max_amount: Some(units(5)), max_fee: Some(units(1)) };
+        assert_eq!(stored.stricter(tighter), tighter);
+        assert_eq!(PaymentLimits::default().stricter(stored), stored);
     }
 
     #[test]
