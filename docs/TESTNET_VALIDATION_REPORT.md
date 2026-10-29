@@ -96,7 +96,7 @@ Le contrôle local `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous 
 ## Ce que ces essais ne valident pas
 
 - Une saturation réelle du disque, une panne électrique, la durabilité après redémarrage matériel, ou une restauration interversion.
-- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. La [contre-revue IA](AI_COUNTER_REVIEW.md) a identifié des risques de temps futurs, de saturation des workers et de limite à 100 000 blocs; les correctifs partiels doivent encore être éprouvés à grande échelle. L’essai local de 490,2 secondes ne couvre pas ces cas.
+- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. La [contre-revue technique](AI_COUNTER_REVIEW.md) a identifié des risques de temps futurs, de saturation des workers et de limite à 100 000 blocs; les correctifs partiels doivent encore être éprouvés à grande échelle. L’essai local de 490,2 secondes ne couvre pas ces cas.
 - La résistance à une attaque d’éclipse contre le client SPV.
 - Une revue indépendante du consensus, de la cryptographie, du portefeuille ou du réseau. Aucun reviewer n’est encore désigné.
 - Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles. Les clés nouvelles du wallet CLI sont chiffrées par défaut, mais son stockage, son UX et ses sauvegardes n’ont pas subi de revue indépendante.
