@@ -1,6 +1,6 @@
 # Dossier de revue indépendante — AURORA
 
-**Statut :** dossier préparatoire; aucune revue indépendante n’a été réalisée. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
+**Statut :** dossier préparatoire ; aucune revue extérieure qualifiée, approfondie et documentée n’est confirmée. Le responsable a déjà relu et corrigé du code, notamment en Python, et réalisé des essais : cela relève des vérifications internes, distinctes de la revue demandée ici. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
 **Branche concernée :** `feature/emission-schedule-v0`.  
 **Base proposée pour la revue du consensus :** `7d0f1ee598235b7194f92081424c008c4c628ceb`; les changements documentaires et de lanceurs suivants doivent être examinés séparément et identifiés dans le rapport.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
@@ -51,7 +51,7 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 
 ## Voie pratique sans engager d’audit payant
 
-Le dépôt est public depuis le 27 octobre 2026. Une personne compétente et extérieure au développement peut lire la branche, examiner la PR et remettre ses constats sans invitation ni droit d’écriture. Cette voie dépend de sa disponibilité et ne garantit ni une revue gratuite ni sa qualité.
+Le dépôt est public depuis le 27 octobre 2026. Un étudiant, un développeur indépendant ou un passionné ayant les compétences nécessaires peut lire la branche, examiner la PR et remettre des constats reproductibles sans invitation ni droit d’écriture. Aucun diplôme, poste ou cabinet d'audit n'est exigé pour contribuer ; ce sont la méthode, la rigueur et la capacité à vérifier les corrections qui comptent. Cette voie dépend de sa disponibilité et ne garantit ni une revue gratuite ni sa qualité.
 
 Le porteur a choisi users.rust-lang.org et les Discussions GitHub pour un appel à relecture. Le [texte préparé](HUMAN_REVIEW_CALL.md) n’a pas encore été publié : l’accès à une session authentifiée n’est pas disponible dans cette intervention. Quand un reviewer se propose, lui communiquer le périmètre et le commit, conserver ses constats écrits, corriger les défauts puis demander la vérification des correctifs. Une auto-revue, un second outil automatique ou une autre session d’IA peuvent aider à trouver des défauts, mais ne remplissent pas cette étape humaine indépendante.
 
