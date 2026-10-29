@@ -30,6 +30,21 @@ pub const MAX_AUTH_BYTES: usize = 8_192;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AccountId(pub [u8; ACCOUNT_ID_LEN]);
 
+impl AccountId {
+    /// Parse exactly 64 ASCII hexadecimal digits; validate before slicing UTF-8.
+    pub fn from_hex(value: &str) -> Result<Self, &'static str> {
+        if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err("account id must contain exactly 64 ASCII hexadecimal digits");
+        }
+        let mut bytes = [0u8; ACCOUNT_ID_LEN];
+        for (index, slot) in bytes.iter_mut().enumerate() {
+            *slot = u8::from_str_radix(&value[index * 2..index * 2 + 2], 16)
+                .map_err(|_| "invalid hexadecimal account id")?;
+        }
+        Ok(Self(bytes))
+    }
+}
+
 impl CanonicalEncode for AccountId {
     fn encode(&self, enc: &mut Encoder) -> Result<(), EncodeError> {
         enc.put_fixed(&self.0);
@@ -310,5 +325,43 @@ mod tests {
             AccountTransaction::from_canonical_bytes(&bytes),
             Err(DecodeError::TrailingBytes { remaining: 1 })
         ));
+    }
+}
+
+#[cfg(test)]
+mod hex_input_tests {
+    use super::*;
+
+    #[test]
+    fn every_byte_roundtrips_in_both_hex_cases() {
+        for byte in 0..=255u8 {
+            let lower = format!("{byte:02x}").repeat(32);
+            let upper = lower.to_ascii_uppercase();
+            assert_eq!(AccountId::from_hex(&lower), Ok(AccountId([byte; 32])));
+            assert_eq!(AccountId::from_hex(&upper), Ok(AccountId([byte; 32])));
+        }
+    }
+
+    #[test]
+    fn unicode_at_every_possible_byte_offset_is_rejected_without_panicking() {
+        for character in ['é', '€', '😀', '\u{200b}'] {
+            let width = character.len_utf8();
+            for offset in 0..=64 - width {
+                let value = format!("{}{character}{}", "0".repeat(offset), "0".repeat(64 - width - offset));
+                assert_eq!(value.len(), 64);
+                assert!(AccountId::from_hex(&value).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn signs_whitespace_prefixes_and_wrong_lengths_are_rejected() {
+        for bad in ["+f", "-1", " f", "f ", "0x", "\n0", "\t0", "gg"] {
+            let value = format!("{bad}{}", "0".repeat(62));
+            assert!(AccountId::from_hex(&value).is_err());
+        }
+        for length in [0, 1, 63, 65, 1000] {
+            assert!(AccountId::from_hex(&"0".repeat(length)).is_err());
+        }
     }
 }

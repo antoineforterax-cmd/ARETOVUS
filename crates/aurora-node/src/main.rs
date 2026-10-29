@@ -219,15 +219,7 @@ fn run_testnet_peer(
 }
 
 fn parse_account(value: &str) -> Result<AccountId, Box<dyn Error>> {
-    if value.len() != 64 {
-        return Err("--miner requires exactly 64 hexadecimal characters (32 bytes)".into());
-    }
-    let mut bytes = [0u8; 32];
-    for (i, slot) in bytes.iter_mut().enumerate() {
-        *slot = u8::from_str_radix(&value[i * 2..i * 2 + 2], 16)
-            .map_err(|_| "--miner contains a non-hexadecimal character")?;
-    }
-    Ok(AccountId(bytes))
+    AccountId::from_hex(value).map_err(|error| format!("--miner: {error}").into())
 }
 
 fn mine_one(
@@ -437,5 +429,18 @@ mod tests {
         );
         assert!(parse_account("abcd").is_err());
         assert!(parse_account(&"gg".repeat(32)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod untrusted_miner_input_tests {
+    use super::*;
+
+    #[test]
+    fn miner_rejects_unicode_and_signed_hex_pairs() {
+        let unicode = format!("a€{}", "0".repeat(60));
+        assert_eq!(unicode.len(), 64);
+        assert!(parse_account(&unicode).is_err());
+        assert!(parse_account(&format!("+f{}", "0".repeat(62))).is_err());
     }
 }
