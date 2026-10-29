@@ -3158,7 +3158,7 @@ mod orphan_reinsertion_tests {
         propagate_block(address, &client_chain, &winning).unwrap();
         let (chain, pool, txs) = server.join().unwrap();
         assert_eq!(chain.tip_hash(), expected_tip);
-        assert_eq!(pool, txs);
+        assert_eq!(pool.transactions, txs);
         std::fs::remove_dir_all(path).unwrap();
     }
 }
@@ -3440,7 +3440,7 @@ mod self_transfer_tests {
         let (result, chain, pool) = server.join().unwrap();
         assert!(result.is_ok());
         assert_eq!(chain.state(), &before);
-        assert_eq!(pool, vec![valid.clone()]);
+        assert_eq!(pool.transactions, vec![valid.clone()]);
 
         // Revalidation must also remove an invalid entry without consuming its nonce.
         let pool = Mutex::new(Mempool::from(vec![signed_transfer(0, true), valid.clone()]));
