@@ -1,5 +1,26 @@
 # Rapport d’essais du testnet AURORA
 
+## Relevé des vérifications au 29 octobre 2026
+
+Ce rapport garde les résultats de chaque campagne avec leur date et leur commit. Depuis sa dernière mise à jour, plusieurs PR supplémentaires ont publié des résultats de CI :
+
+| PR | Vérification annoncée | Limite |
+| --- | --- | --- |
+| [#13](https://github.com/antoineforterax-cmd/AURORA/pull/13) | Rejet atomique des auto-transferts ML-DSA-65, tests Rust et smoke réussis | Branche non fusionnée |
+| [#14](https://github.com/antoineforterax-cmd/AURORA/pull/14) | Simulateur indépendant du retarget, 323 vecteurs et sept traces de 30 blocs ; CI réussie | Pas d'essai réseau avec horloges divergentes |
+| [#16](https://github.com/antoineforterax-cmd/AURORA/pull/16) | Mesures de préfaces P2P lentes, tests de synchronisation et de reprise ; CI réussie | Attaques après handshake et NAT encore à tester |
+| [#17](https://github.com/antoineforterax-cmd/AURORA/pull/17) et [#18](https://github.com/antoineforterax-cmd/AURORA/pull/18) | Benchmark de signatures et cache borné, avec CI réussie | Gain cryptographique ciblé, pas débit global du réseau |
+| [#19](https://github.com/antoineforterax-cmd/AURORA/pull/19) | 339 455 exécutions de fuzzing en 301 s, sans divergence rapportée ; rejeu du corpus | Campagne courte, profil Regtest Ed25519 |
+| [#20](https://github.com/antoineforterax-cmd/AURORA/pull/20) et [#21](https://github.com/antoineforterax-cmd/AURORA/pull/21) | Tests de réorganisation avec cache et réinsertion des paiements orphelins ; CI réussie | Mempool non persistant ; PR non fusionnées |
+| [#22](https://github.com/antoineforterax-cmd/AURORA/pull/22) | Parseur hexadécimal strict ; CI du dernier commit réussie | Revue et intégration à terminer |
+
+Ces résultats proviennent des descriptions des PR et des workflows associés. Ils n'ont pas été reproduits indépendamment dans cette mise à jour. Toutes ces PR restent en brouillon. Leur réussite séparée ne prouve pas que leur intégration commune passera.
+
+La campagne de 72 h démarrée le 28 octobre à 13:23:40 UTC était encore notée « en cours » dans le rapport précédent. **Son résultat final n'est pas confirmé** ; il ne faut pas la compter parmi les essais réussis. Le test de 100 003 blocs concerne le stockage et la restauration, pas la synchronisation P2P du même volume.
+
+---
+
+
 ## Campagne Ubuntu en cours — 28 octobre 2026
 
 La [CI de `6e6aaa0`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40695381103) a réussi, y compris les tests NIST, les nouveaux scénarios TCP, le smoke et le lanceur avec paiements. Les quatre tests NIST ont également réussi localement dans Ubuntu. Le test court Ubuntu a confirmé six blocs, cinq paiements, deux redémarrages et la restauration de sauvegarde en 124,21 s (`short_run_passed`).
