@@ -126,7 +126,6 @@ pub fn reject_future_block_timestamp(timestamp: u64) -> Result<(), P2pError> {
     check_block_timestamp_at(timestamp, now)
 }
 
-
 #[derive(Default)]
 struct Mempool {
     transactions: Vec<AccountTransaction>,
@@ -136,12 +135,19 @@ struct Mempool {
 }
 impl From<Vec<AccountTransaction>> for Mempool {
     fn from(transactions: Vec<AccountTransaction>) -> Self {
-        Self { transactions, pending: None, #[cfg(test)] rebuilds: 0 }
+        Self {
+            transactions,
+            pending: None,
+            #[cfg(test)]
+            rebuilds: 0,
+        }
     }
 }
 impl std::ops::Deref for Mempool {
     type Target = Vec<AccountTransaction>;
-    fn deref(&self) -> &Self::Target { &self.transactions }
+    fn deref(&self) -> &Self::Target {
+        &self.transactions
+    }
 }
 impl std::ops::DerefMut for Mempool {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -154,9 +160,16 @@ impl Mempool {
         self.transactions = transactions;
         self.pending = None;
     }
-    fn account(&mut self, chain: &AccountForkChain, id: AccountId) -> aurora_core::state::AccountState {
+    fn account(
+        &mut self,
+        chain: &AccountForkChain,
+        id: AccountId,
+    ) -> aurora_core::state::AccountState {
         if self.pending.as_ref().map(|(tip, _)| *tip) != Some(chain.tip_hash()) {
-            #[cfg(test)] { self.rebuilds += 1; }
+            #[cfg(test)]
+            {
+                self.rebuilds += 1;
+            }
             let mut state = chain.state().clone();
             for tx in &self.transactions {
                 let _ = state.apply_transaction_cached(tx);
@@ -292,8 +305,13 @@ struct ActivePeer {
 }
 impl ActivePeer {
     fn poll(&mut self, ready: &std::sync::mpsc::SyncSender<ReadyPeer>) -> Result<(), P2pError> {
-        let deadline = if self.hello_done { IO_TIMEOUT } else { HANDSHAKE_TIMEOUT };
-        if self.started.elapsed() > MAX_SESSION_DURATION || self.phase_started.elapsed() >= deadline {
+        let deadline = if self.hello_done {
+            IO_TIMEOUT
+        } else {
+            HANDSHAKE_TIMEOUT
+        };
+        if self.started.elapsed() > MAX_SESSION_DURATION || self.phase_started.elapsed() >= deadline
+        {
             return Err(P2pError::Protocol("session I/O deadline exceeded"));
         }
         if !self.output.is_empty() {
@@ -301,7 +319,11 @@ impl ActivePeer {
             match self.stream.write(&self.output[self.written..end]) {
                 Ok(0) => return Err(P2pError::Protocol("peer stopped reading")),
                 Ok(count) => self.written += count,
-                Err(error) if matches!(error.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted) => {}
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                    ) => {}
                 Err(error) => return Err(error.into()),
             }
             if self.written == self.output.len() {
@@ -311,11 +333,15 @@ impl ActivePeer {
             }
             return Ok(());
         }
-        if self.in_flight { return Ok(()); }
+        if self.in_flight {
+            return Ok(());
+        }
         if self.hello_done && self.request.is_none() {
             let mut budget = IO_QUANTUM;
             while budget > 0 {
-                let end = if self.input.len() < 4 { 4 } else {
+                let end = if self.input.len() < 4 {
+                    4
+                } else {
                     let length = u32::from_be_bytes(self.input[..4].try_into().unwrap()) as usize;
                     if length == 0 || length > MAX_FRAME {
                         return Err(P2pError::Protocol("frame length outside limit"));
@@ -338,7 +364,12 @@ impl ActivePeer {
                         self.input.truncate(old + read);
                         budget -= read;
                     }
-                    Err(error) if matches!(error.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted) => {
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+                        ) =>
+                    {
                         self.input.truncate(old);
                         return Ok(());
                     }
@@ -347,11 +378,17 @@ impl ActivePeer {
             }
         }
         if !self.hello_done || self.request.is_some() {
-            let task = ReadyPeer { id: self.id, hello: self.hello.clone(), request: self.request.take() };
+            let task = ReadyPeer {
+                id: self.id,
+                hello: self.hello.clone(),
+                request: self.request.take(),
+            };
             match ready.try_send(task) {
                 Ok(()) => self.in_flight = true,
                 Err(std::sync::mpsc::TrySendError::Full(task)) => self.request = task.request,
-                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => return Err(P2pError::Protocol("workers stopped")),
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    return Err(P2pError::Protocol("workers stopped"))
+                }
             }
         }
         Ok(())
@@ -386,31 +423,54 @@ fn dispatch_handshakes(
                         peer.hello_done = true;
                         peer.phase_started = Instant::now();
                     }
-                    Err(_) => { active.swap_remove(index); }
+                    Err(_) => {
+                        active.swap_remove(index);
+                    }
                 }
             }
         }
         // Rotate the first serviced connection, including when the request queue is full.
-        if !active.is_empty() { active.rotate_left(1); }
+        if !active.is_empty() {
+            active.rotate_left(1);
+        }
         let mut index = 0;
         while index < active.len() {
-            if active[index].poll(&ready).is_err() { active.swap_remove(index); }
-            else { index += 1; }
+            if active[index].poll(&ready).is_err() {
+                active.swap_remove(index);
+            } else {
+                index += 1;
+            }
         }
         let mut index = 0;
         while index < pending.len() {
             match pending[index].poll_at(Instant::now()) {
                 Ok(None) => index += 1,
-                Err(_) => { pending.swap_remove(index); }
+                Err(_) => {
+                    pending.swap_remove(index);
+                }
                 Ok(Some(hello)) => {
                     let peer = pending.swap_remove(index);
-                    if active.len() == MAX_ACTIVE_SESSIONS { continue; }
-                    next_id = next_id.checked_add(1).ok_or(P2pError::Protocol("session id exhausted"))?;
+                    if active.len() == MAX_ACTIVE_SESSIONS {
+                        continue;
+                    }
+                    next_id = next_id
+                        .checked_add(1)
+                        .ok_or(P2pError::Protocol("session id exhausted"))?;
                     active.push(ActivePeer {
-                        id: next_id, stream: peer.stream, _lease: peer.lease,
-                        bytes: hello.len() + 4, hello, hello_done: false, in_flight: false,
-                        input: Vec::new(), request: None, output: Vec::new(), written: 0,
-                        started: peer.accepted, phase_started: peer.accepted, requests: 0,
+                        id: next_id,
+                        stream: peer.stream,
+                        _lease: peer.lease,
+                        bytes: hello.len() + 4,
+                        hello,
+                        hello_done: false,
+                        in_flight: false,
+                        input: Vec::new(),
+                        request: None,
+                        output: Vec::new(),
+                        written: 0,
+                        started: peer.accepted,
+                        phase_started: peer.accepted,
+                        requests: 0,
                     });
                 }
             }
@@ -418,7 +478,9 @@ fn dispatch_handshakes(
         for _ in 0..MAX_PENDING_HANDSHAKES {
             match listener.accept() {
                 Ok((stream, remote)) => {
-                    if pending.len() >= MAX_PENDING_HANDSHAKES { continue; }
+                    if pending.len() >= MAX_PENDING_HANDSHAKES {
+                        continue;
+                    }
                     if let Some(lease) = PeerLease::acquire(remote.ip(), &counts)? {
                         pending.push(PendingHandshake::new(stream, lease)?);
                     }
@@ -439,39 +501,70 @@ trait PeerIo: Read + Write {
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
 }
 impl PeerIo for TcpStream {
-    fn set_read_timeout(&self, t: Option<Duration>) -> io::Result<()> { TcpStream::set_read_timeout(self, t) }
-    fn set_write_timeout(&self, t: Option<Duration>) -> io::Result<()> { TcpStream::set_write_timeout(self, t) }
-    fn read_timeout(&self) -> io::Result<Option<Duration>> { TcpStream::read_timeout(self) }
-    fn write_timeout(&self) -> io::Result<Option<Duration>> { TcpStream::write_timeout(self) }
+    fn set_read_timeout(&self, t: Option<Duration>) -> io::Result<()> {
+        TcpStream::set_read_timeout(self, t)
+    }
+    fn set_write_timeout(&self, t: Option<Duration>) -> io::Result<()> {
+        TcpStream::set_write_timeout(self, t)
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        TcpStream::read_timeout(self)
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        TcpStream::write_timeout(self)
+    }
 }
 struct MemoryPeer {
     input: io::Cursor<Vec<u8>>,
     output: Vec<u8>,
 }
 impl Read for MemoryPeer {
-    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> { self.input.read(bytes) }
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        self.input.read(bytes)
+    }
 }
 impl Write for MemoryPeer {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         if self.output.len().saturating_add(bytes.len()) > MAX_FRAME + 81 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "response exceeds memory transport limit"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "response exceeds memory transport limit",
+            ));
         }
         self.output.extend_from_slice(bytes);
         Ok(bytes.len())
     }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }
 impl PeerIo for MemoryPeer {
-    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> { Ok(()) }
-    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> { Ok(()) }
-    fn read_timeout(&self) -> io::Result<Option<Duration>> { Ok(Some(IO_TIMEOUT)) }
-    fn write_timeout(&self) -> io::Result<Option<Duration>> { Ok(Some(IO_TIMEOUT)) }
+    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
 }
 impl PeerIo for &mut MemoryPeer {
-    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> { Ok(()) }
-    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> { Ok(()) }
-    fn read_timeout(&self) -> io::Result<Option<Duration>> { Ok(Some(IO_TIMEOUT)) }
-    fn write_timeout(&self) -> io::Result<Option<Duration>> { Ok(Some(IO_TIMEOUT)) }
+    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+        Ok(())
+    }
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        Ok(Some(IO_TIMEOUT))
+    }
 }
 
 fn set_timeouts(stream: &impl PeerIo) -> io::Result<()> {
@@ -1103,15 +1196,18 @@ fn handle_peer_after_hello(
                     .map_err(|_| P2pError::Protocol("invalid canonical block"))?;
                 reject_future_block_timestamp(block.header.timestamp)?;
                 let mut chain = chain.lock().map_err(|_| P2pError::ChainLockPoisoned)?;
-                let hash = block.header.hash().map_err(|_| P2pError::Protocol("block hash encoding failed"))?;
+                let hash = block
+                    .header
+                    .hash()
+                    .map_err(|_| P2pError::Protocol("block hash encoding failed"))?;
                 if let Some(mut candidate) = candidate_for_new_block(&chain, hash) {
-                match candidate.submit(block) {
-                    Ok(_) => {
-                        publish_chain_transition(&mut chain, candidate, mempool, data_dir)?;
+                    match candidate.submit(block) {
+                        Ok(_) => {
+                            publish_chain_transition(&mut chain, candidate, mempool, data_dir)?;
+                        }
+                        Err(AccountForkChainError::DuplicateBlock) => {}
+                        Err(error) => return Err(P2pError::Chain(error)),
                     }
-                    Err(AccountForkChainError::DuplicateBlock) => {}
-                    Err(error) => return Err(P2pError::Chain(error)),
-                }
                 }
                 let mut reply = vec![BLOCK_ACCEPTED];
                 reply.extend_from_slice(&chain.height().to_be_bytes());
@@ -1127,7 +1223,11 @@ fn handle_peer_after_hello(
 
 /// Common-prefix search avoids scanning the entire canonical history on extensions.
 fn candidate_for_new_block(chain: &AccountForkChain, hash: Hash256) -> Option<AccountForkChain> {
-    if chain.contains_block(hash) { None } else { Some(chain.clone()) }
+    if chain.contains_block(hash) {
+        None
+    } else {
+        Some(chain.clone())
+    }
 }
 
 fn common_chain_len(old: &AccountForkChain, new: &AccountForkChain) -> u64 {
@@ -1385,16 +1485,31 @@ pub fn serve(
                     input.extend_from_slice(&(request.len() as u32).to_be_bytes());
                     input.extend_from_slice(&request);
                 }
-                let mut transport = MemoryPeer { input: io::Cursor::new(input), output: Vec::new() };
+                let mut transport = MemoryPeer {
+                    input: io::Cursor::new(input),
+                    output: Vec::new(),
+                };
                 let result = handle_peer_after_hello(
-                    &mut transport, &chain, &mempool, &data_dir, &advertised_peers, task.hello,
-                ).map(|()| {
+                    &mut transport,
+                    &chain,
+                    &mempool,
+                    &data_dir,
+                    &advertised_peers,
+                    task.hello,
+                )
+                .map(|()| {
                     if request_present {
-                        let hello_size = 4 + u32::from_be_bytes(transport.output[..4].try_into().unwrap()) as usize;
+                        let hello_size =
+                            4 + u32::from_be_bytes(transport.output[..4].try_into().unwrap())
+                                as usize;
                         transport.output.split_off(hello_size)
-                    } else { transport.output }
+                    } else {
+                        transport.output
+                    }
                 });
-                if responses.send((task.id, result)).is_err() { return; }
+                if responses.send((task.id, result)).is_err() {
+                    return;
+                }
             })?;
     }
     dispatch_handshakes(listener, ready_tx, response_rx, peer_counts)
@@ -2094,11 +2209,11 @@ mod tests {
         assert!(PeerLease::acquire(ip, &counts).unwrap().is_some());
     }
 
-
     #[test]
     fn duplicate_block_does_not_allocate_a_candidate_chain() {
         let mut chain = chain();
-        let block = AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), 2, 0, vec![]).unwrap();
+        let block =
+            AccountBlock::build(NetworkId::Regtest, chain.tip_hash(), 2, 0, vec![]).unwrap();
         let hash = block.header.hash().unwrap();
         assert!(candidate_for_new_block(&chain, hash).is_some());
         chain.submit(block).unwrap();
@@ -3188,7 +3303,6 @@ mod self_transfer_tests {
         tx
     }
 
-
     #[test]
     fn pending_view_reuses_one_build_and_invalidates_on_pool_and_chain_changes() {
         let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
@@ -3199,22 +3313,42 @@ mod self_transfer_tests {
         let mut pool = Mempool::from(vec![tx.clone()]);
         for _ in 0..100 {
             assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
-            assert_eq!(pool.account(&chain, tx.recipient), expected.account(tx.recipient));
+            assert_eq!(
+                pool.account(&chain, tx.recipient),
+                expected.account(tx.recipient)
+            );
         }
         assert_eq!(pool.rebuilds, 1);
         pool.clear();
-        assert_eq!(pool.account(&chain, tx.sender), chain.state().account(tx.sender));
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            chain.state().account(tx.sender)
+        );
         assert_eq!(pool.rebuilds, 2);
         pool.push(tx.clone());
         assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
         assert_eq!(pool.rebuilds, 3);
-        let first = AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![tx.clone()]).unwrap();
+        let first =
+            AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![tx.clone()])
+                .unwrap();
         chain.submit(first).unwrap();
         assert_eq!(pool.account(&chain, tx.sender), expected.account(tx.sender));
         assert_eq!(pool.rebuilds, 4);
         pool.replace(Vec::new());
-        assert_eq!(pool.account(&chain, tx.sender), chain.state().account(tx.sender));
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            chain.state().account(tx.sender)
+        );
         assert_eq!(pool.rebuilds, 5);
+        let genesis_hash = chain.blocks().next().unwrap().header.hash().unwrap();
+        let side = AccountBlock::build(NetworkId::Testnet, genesis_hash, 3, 0, vec![]).unwrap();
+        let side_hash = side.header.hash().unwrap();
+        chain.submit(side).unwrap();
+        let longer = AccountBlock::build(NetworkId::Testnet, side_hash, 4, 0, vec![]).unwrap();
+        chain.submit(longer).unwrap();
+        assert_eq!(chain.height(), 2);
+        assert_eq!(pool.account(&chain, tx.sender), funded_ledger().account(tx.sender));
+        assert_eq!(pool.rebuilds, 6);
     }
 
     fn funded_ledger() -> AccountLedger {

@@ -484,7 +484,9 @@ impl AccountForkChain {
     }
 
     /// Constant-size lookup used before allocating a candidate chain.
-    pub fn contains_block(&self, hash: Hash256) -> bool { self.blocks.contains_key(&hash) }
+    pub fn contains_block(&self, hash: Hash256) -> bool {
+        self.blocks.contains_key(&hash)
+    }
 
     pub fn known_block_count(&self) -> usize {
         self.blocks.len()
