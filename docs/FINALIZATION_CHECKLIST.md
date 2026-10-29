@@ -1,5 +1,20 @@
 # AURORA — fiche complète des travaux restants
 
+## Actualisation du 29 octobre 2026
+
+Cette liste conserve l'historique des essais. Pour connaître l'état d'une fonctionnalité, vérifiez toujours la branche et le commit : les PR #13 à #22 sont encore en brouillon, et leur code n'est pas intégré à `main`.
+
+**Travaux confirmés sur des PR :** tests d'auto-transfert signés (#13), simulation indépendante du retarget (#14), réconciliation documentaire (#15), protection contre les préfaces P2P lentes (#16), benchmark et cache des signatures (#17-#18), fuzzing des transitions de comptes (#19), tests de réorganisation avec cache (#20), réinsertion des transactions orphelines (#21), validation stricte des adresses hexadécimales (#22). Les comptes rendus des PR donnent les commits et liens de CI. Le dernier commit de #22 a une CI réussie ; il reste à relire et intégrer l'ensemble.
+
+**Essais acquis :** la release expérimentale du 27 octobre fournit des archives pour trois systèmes ; le test de stockage a chargé et restauré 100 003 blocs connus. Le rapport du 28 octobre confirme un essai Ubuntu court (six blocs, cinq paiements, deux redémarrages, sauvegarde restaurée). La campagne de 72 heures a été lancée, mais son résultat final n'est pas documenté ici.
+
+**Travaux toujours ouverts :** fusion et validation intégrée des PR, essais réseau avec horloges divergentes, saturation P2P après handshake et sous NAT, synchronisation réelle de plus de 100 000 blocs, campagne 72 h achevée, partitions prolongées, disque réellement plein, restauration hors machine, audit humain indépendant. Les projets de confidentialité native, récupération sociale, gouvernance de trésorerie et applications grand public restent à concevoir ou à implémenter.
+
+La mention « essais de volume restent à faire » dans les notes historiques ci-dessous est dépassée pour **le stockage seul**, mais demeure vraie pour **la synchronisation réseau à cette échelle**. Les résultats de CI d'une PR ne constituent ni un audit ni une validation du code de `main`.
+
+---
+
+
 **État au 27 octobre 2026 :** testnet expérimental v3, branche `feature/emission-schedule-v0`, [PR #2](https://github.com/antoineforterax-cmd/AURORA/pull/2) en brouillon et non fusionnée. Aucun fonds réel; aucune affirmation de sécurité mainnet. La [CI v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds; les [archives Windows, Linux et macOS](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261646) ont été construites. Ce texte est une liste de critères à satisfaire, pas une promesse de date.
 
 ## Ce qui existe déjà
@@ -26,8 +41,8 @@ Le [rapport d’essais](TESTNET_VALIDATION_REPORT.md) distingue les preuves déj
 
 ## 2 — Contre-revues et assurance de sécurité
 
-1. **Contre-revue IA initiale : faite, mais partielle.** Un second agent a lu le code sans le modifier et a relevé quatre risques; un correctif de lectures réseau est passé en CI. Les trois autres ont leurs issues et leurs tests à écrire. Voir [le rapport de contre-revue](AI_COUNTER_REVIEW.md).
-2. **Contre-revues IA répétées : à faire après les correctifs.** Repartir d’un contexte vierge et d’un commit épinglé. Demander séparément une revue consensus/économie, une revue cryptographie/wallet, une revue stockage, et une revue réseau/SPV. Chaque constat doit préciser chemin, scénario, gravité, test reproductible, correction et résultat de réexamen. Une revue par IA peut manquer les mêmes classes de défauts qu’une autre.
+1. **Première contre-revue technique : faite, mais partielle.** Un second agent a lu le code sans le modifier et a relevé quatre risques; un correctif de lectures réseau est passé en CI. Les trois autres ont leurs issues et leurs tests à écrire. Voir [le rapport de contre-revue](AI_COUNTER_REVIEW.md).
+2. **Nouvelles contre-revues : à faire après les correctifs.** Repartir d’un contexte vierge et d’un commit épinglé. Demander séparément une revue consensus/économie, une revue cryptographie/wallet, une revue stockage, et une revue réseau/SPV. Chaque constat doit préciser chemin, scénario, gravité, test reproductible, correction et résultat de réexamen. Une revue par IA peut manquer les mêmes classes de défauts qu’une autre.
 3. **Outils automatiques : à approfondir.** Maintenir RustSec et CI; conserver et enrichir les corpus libFuzzer des décodeurs et preuves, exécuter des campagnes de plusieurs heures/jours, mesurer la couverture, examiner les crashs, ajouter des tests différentiels ou invariants sur émission, état et reorg. Aucun résultat vert n’est une preuve générale de sécurité.
 4. **Revue humaine indépendante : non faite.** Préparer un commit stable, le [dossier de revue](INDEPENDENT_REVIEW.md), les spécifications et les résultats reproductibles; faire examiner le tout par une personne compétente distincte des auteurs; recevoir un rapport écrit, corriger les constats élevés/critiques et faire vérifier les corrections. Le dépôt est devenu public le 27 octobre 2026; le propriétaire peut fournir le commit précis à un reviewer. Une voie possible est une collaboration GitHub avec un reviewer volontaire; aucun reviewer ni budget n’est engagé aujourd’hui.
 
@@ -67,4 +82,4 @@ Le porteur a gelé ce périmètre le 27 octobre 2026. Les éléments ci-dessous 
 
 AURORA ne sera « finalisée » que si tous les points suivants sont prouvés sur la même version gelée : défauts P0 corrigés, essais hostiles et multi-hôtes prolongés, stockage au-delà de l’horizon visé, fuzzing/mesures conservés, économie et gouvernance décidées, revue humaine indépendante avec corrections revérifiées, procédures d’exploitation et wallet CLI testé. Les applications et la vente réelle sont exclues du périmètre courant par décision du porteur.
 
-Ce qui nécessite une intervention extérieure : choix d’un reviewer humain et remise du commit public précis; machines/hébergement et opérateurs du réseau public de test; décisions de gouvernance de la trésorerie, DID et inactivité; analyse juridique pour une vente réelle. L’agent peut continuer le code, les tests, la documentation et les prototypes sans attendre ces éléments, mais ne peut pas fabriquer leurs preuves ni décider à la place du propriétaire.
+Ce qui nécessite une intervention extérieure : choix d’un reviewer humain et remise du commit public précis; machines/hébergement et opérateurs du réseau public de test; décisions de gouvernance de la trésorerie, DID et inactivité; analyse juridique pour une vente réelle. Le développement, les tests, la documentation et les prototypes peuvent avancer en attendant. Les preuves d'essai et les décisions du responsable du projet restent indispensables.
