@@ -3347,7 +3347,10 @@ mod self_transfer_tests {
         let longer = AccountBlock::build(NetworkId::Testnet, side_hash, 4, 0, vec![]).unwrap();
         chain.submit(longer).unwrap();
         assert_eq!(chain.height(), 2);
-        assert_eq!(pool.account(&chain, tx.sender), funded_ledger().account(tx.sender));
+        assert_eq!(
+            pool.account(&chain, tx.sender),
+            funded_ledger().account(tx.sender)
+        );
         assert_eq!(pool.rebuilds, 6);
     }
 
