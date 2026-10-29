@@ -1185,8 +1185,7 @@ mod tests {
         let safe_tip = original.tip_hash();
         save_snapshot(&path, &original).unwrap();
 
-        let next =
-            AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
         original.submit(next).unwrap();
         let invalid_latest = save_snapshot(&path, &original).unwrap();
         let manifest = fs::read(&invalid_latest).unwrap();
