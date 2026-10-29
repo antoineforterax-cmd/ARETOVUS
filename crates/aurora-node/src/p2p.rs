@@ -601,7 +601,9 @@ fn handle_peer_shared(
                     }
                     let mut candidate = chain.state().clone();
                     for pending in pool.iter() {
-                        candidate.apply_transaction_cached(pending).map_err(|_| 2u8)?;
+                        candidate
+                            .apply_transaction_cached(pending)
+                            .map_err(|_| 2u8)?;
                     }
                     candidate.apply_transaction_cached(&tx).map_err(|_| 2u8)?;
                     pool.push(tx);

@@ -137,7 +137,10 @@ impl AccountLedger {
     }
 
     /// Rechecks all state rules, reusing only successful cryptographic checks.
-    pub fn apply_transaction_cached(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
+    pub fn apply_transaction_cached(
+        &mut self,
+        tx: &AccountTransaction,
+    ) -> Result<Amount, StateError> {
         self.apply_transaction_verified(tx, crate::signature::verify_account_transaction_cached)
     }
 

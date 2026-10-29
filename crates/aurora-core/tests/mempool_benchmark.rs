@@ -142,7 +142,10 @@ fn cached_checks_preserve_state_and_reject_mutations() {
     let mut cached = funded(&txs[0]);
     let mut plain = cached.clone();
     for tx in &txs {
-        assert_eq!(cached.apply_transaction_cached(tx), plain.apply_transaction(tx));
+        assert_eq!(
+            cached.apply_transaction_cached(tx),
+            plain.apply_transaction(tx)
+        );
         assert_eq!(cached, plain);
     }
     let before = cached.clone();

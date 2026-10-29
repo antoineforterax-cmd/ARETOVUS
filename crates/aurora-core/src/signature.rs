@@ -307,3 +307,23 @@ pub fn verify_account_transaction_cached(tx: &AccountTransaction) -> Result<(), 
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod cache_bound_tests {
+    use super::*;
+
+    #[test]
+    fn fifo_capacity_and_duplicates_remain_bounded() {
+        let mut cache = SignatureCache::new(2);
+        let ids: Vec<_> = (0..3).map(|n| crate::hash::sha256_plain(&[n])).collect();
+        cache.remember(ids[0]);
+        cache.remember(ids[1]);
+        cache.remember(ids[1]);
+        assert_eq!(cache.order.len(), 2);
+        cache.remember(ids[2]);
+        assert_eq!(cache.entries.len(), 2);
+        assert!(!cache.entries.contains(&ids[0]));
+        assert!(cache.entries.contains(&ids[1]));
+        assert!(cache.entries.contains(&ids[2]));
+    }
+}
