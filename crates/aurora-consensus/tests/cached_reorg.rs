@@ -1,8 +1,5 @@
 //! Real branch selection with native ML-DSA-65 transactions and a warm cache.
-use aurora_consensus::{
-    account_block::AccountBlock,
-    account_fork_chain::AccountForkChain,
-};
+use aurora_consensus::{account_block::AccountBlock, account_fork_chain::AccountForkChain};
 use aurora_core::{
     accounts::{
         AccountId, AccountTransaction, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
@@ -47,7 +44,6 @@ fn funded(tx: &AccountTransaction) -> AccountLedger {
         .unwrap();
     ledger
 }
-
 
 fn block(parent: Hash256, time: u64, txs: Vec<AccountTransaction>) -> AccountBlock {
     AccountBlock::build(NetworkId::Testnet, parent, time, 0, txs).unwrap()
@@ -128,18 +124,25 @@ fn warm_signature_cache_rejects_a_payment_conflicting_with_the_new_branch() {
     let key = SigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
     let mut conflicting = tx.clone();
     conflicting.recipient = AccountId([0x44; 32]);
-    let signature = key.sign(conflicting.signing_digest().unwrap().as_bytes()).encode();
+    let signature = key
+        .sign(conflicting.signing_digest().unwrap().as_bytes())
+        .encode();
     conflicting.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
     let side = block(genesis, 3, vec![conflicting.clone()]);
     let side_hash = side.header.hash().unwrap();
     chain.submit(side).unwrap();
     chain.submit(block(side_hash, 4, vec![])).unwrap();
     assert!(chain.canonical_transaction(tx.txid().unwrap()).is_none());
-    assert!(chain.canonical_transaction(conflicting.txid().unwrap()).is_some());
+    assert!(chain
+        .canonical_transaction(conflicting.txid().unwrap())
+        .is_some());
     assert!(matches!(
         admission(&chain, &tx),
         Err(StateError::NonceMismatch { .. })
     ));
     assert_eq!(chain.state().account(tx.recipient).balance, Amount::ZERO);
-    assert_eq!(chain.state().account(conflicting.recipient).balance, tx.amount);
+    assert_eq!(
+        chain.state().account(conflicting.recipient).balance,
+        tx.amount
+    );
 }
