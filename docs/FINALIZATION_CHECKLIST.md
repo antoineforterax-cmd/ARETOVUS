@@ -11,6 +11,15 @@
 - Archives CI non signées Windows, Linux et macOS; essai du verrou sur ces trois systèmes. Le porteur a miné sur Windows jusqu’à 367 et vérifié localement le dossier à 311. La synchronisation manuelle vers le second dossier n’a été démontrée qu’à la hauteur 3, parce qu’un ancien serveur occupait toujours le port.
 - Tests unitaires, smoke, essais à trois processus, fuzzing court et [audit RustSec](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40402139677) des 78 dépendances verrouillées sans vulnérabilité signalée lors de cette exécution.
 
+## Suivi ajouté le 29 octobre 2026
+
+Une campagne de trois partitions successives avec branches concurrentes,
+rattrapage automatique, conservation des branches et synchronisation d'un pair
+neuf est ajoutée en PR. Voir [NETWORK_PARTITIONS.md](NETWORK_PARTITIONS.md).
+Les résultats d'exécution sont dans la PR et le workflow network-partitions.
+Le scénario reste local à un hôte ; les partitions multi-hôtes et essais
+prolongés restent ouverts.
+
 ## 1 — Corriger les risques du cœur avant un testnet durable
 
 | Priorité | Travail | Preuve de fin attendue |

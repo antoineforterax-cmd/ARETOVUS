@@ -1,0 +1,28 @@
+name: network-partitions
+on:
+  push:
+    branches: [test/repeated-network-partitions]
+  pull_request:
+    paths:
+      - 'scripts/testnet_partitions.py'
+      - '.github/workflows/network-partitions.yml'
+permissions:
+  contents: read
+jobs:
+  partitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo build --locked -p aurora-node
+      - name: Trois partitions et reconnexions successives
+        run: python3 scripts/testnet_partitions.py --binary target/debug/aurora-node --output target/partitions --rounds 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: network-partition-evidence
+          path: |
+            target/partitions/*.json
+            target/partitions/*.log
+          retention-days: 14
