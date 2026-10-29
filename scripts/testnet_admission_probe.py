@@ -57,9 +57,20 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                     for index in range(8):
                         sock = clients.enter_context(socket.socket())
                         sock.settimeout(5)
-                        source = "127.0.0.2" if kind == "same_ip" else f"127.0.0.{index + 2}"
+                        source = ("127.0.0.2" if index < 4 else "127.0.0.3") if kind.endswith("after_hello") else ("127.0.0.2" if kind == "same_ip" else f"127.0.0.{index + 2}")
                         sock.bind((source, 0))
                         sock.connect(("127.0.0.1", port))
+                        if kind.endswith("after_hello"):
+                            sock.sendall(struct.pack(">I", 1) + bytes([5]))
+                            size = struct.unpack(">I", receive(sock, 4))[0]
+                            if size != 74 or receive(sock, size)[:2] != bytes([0x85, 2]):
+                                raise AssertionError("post-handshake session was not established")
+                            if kind == "partial_after_hello":
+                                sock.sendall(struct.pack(">I", 4 * 1024 * 1024) + bytes([4]))
+                            else:
+                                sock.sendall(struct.pack(">I", 1) + bytes([4]))
+                                size = struct.unpack(">I", receive(sock, 4))[0]
+                                receive(sock, size)
                         if kind == "partial_multi_ip":
                             sock.sendall(struct.pack(">I", 73) + bytes([1]))
                     # Let the baseline workers accept the eight test connections.
@@ -95,12 +106,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--max-wallet-seconds", type=float)
+    parser.add_argument("--post-handshake", action="store_true")
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     results = []
     try:
-        for kind in ("same_ip", "silent_multi_ip", "partial_multi_ip"):
+        cases = ["same_ip", "silent_multi_ip", "partial_multi_ip"]
+        if args.post_handshake:
+            cases += ["idle_after_hello", "partial_after_hello"]
+        for kind in cases:
             result = run_case(binary, kind, args.max_wallet_seconds)
             results.append(result)
             print(json.dumps(result), flush=True)

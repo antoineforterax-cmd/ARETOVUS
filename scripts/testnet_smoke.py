@@ -216,11 +216,249 @@ def main() -> int:
                     f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
                 )
 
-            sent = run_wallet(
-                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
-                "--amount", "1.00000000", "--fee", "0.00000003",
+            # Recover an already funded account after deleting its original key file.
+            recovery_file = base / "offline-recovery.txt"
+            balance_before_loss = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
+            refused_export = subprocess.run(
+                [str(wallet), "recovery-export", "--key-file", str(keyfile),
+                 "--out", str(recovery_file)],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused_export.returncode == 0 or recovery_file.exists():
+                raise AssertionError("recovery export did not require secret acknowledgement")
+            exported = run_wallet(
+                wallet, "recovery-export", "--key-file", str(keyfile),
+                "--out", str(recovery_file), "--acknowledge-secret",
+            )
+            if recovery_file.read_text().strip() in exported:
+                raise AssertionError("recovery secret leaked to command output")
+            run_wallet(wallet, "recovery-verify", "--from", str(recovery_file),
+                       "--expected-account", miner)
+            bad_restore = base / "wrong-account.aurkey"
+            refused_restore = subprocess.run(
+                [str(wallet), "recovery-restore", "--from", str(recovery_file),
+                 "--out", str(bad_restore), "--expected-account", RECIPIENT,
+                 "--plain-testnet"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused_restore.returncode == 0 or bad_restore.exists():
+                raise AssertionError("recovery wrote a wallet for the wrong expected account")
+            keyfile.unlink()
+            restored_key = run_wallet(
+                wallet, "recovery-restore", "--from", str(recovery_file),
+                "--out", str(keyfile), "--expected-account", miner, "--plain-testnet",
+            )
+            if f"account={miner}" not in restored_key:
+                raise AssertionError("recovery changed the funded account identity")
+            balance_after_loss = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if balance_before_loss != balance_after_loss:
+                raise AssertionError("recovery changed the funded balance or nonce")
+
+            # Preview, voluntary limits and cancellation must leave pending state untouched.
+            payment_args = [
+                "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            ]
+            before_review = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            run_wallet(
+                wallet, "limits-create", "--key-file", str(keyfile),
+                "--max-amount", "1.00000000", "--max-fee", "0.00000003",
+            )
+            saved_limits = run_wallet(wallet, "limits-show", "--key-file", str(keyfile))
+            if "limits=active" not in saved_limits or "max_amount=1.00000000" not in saved_limits:
+                raise AssertionError(f"wallet did not reload its limits: {saved_limits}")
+            policy_file = Path(str(keyfile) + ".limits")
+            original_policy = policy_file.read_text()
+            for name, value, expected_error in [
+                ("--amount", "1.00000001", "voluntary amount limit"),
+                ("--fee", "0.00000004", "voluntary fee limit"),
+            ]:
+                excessive = list(payment_args)
+                excessive[excessive.index(name) + 1] = value
+                blocked = subprocess.run(
+                    [str(wallet), "send", *excessive, "--yes",
+                     "--max-amount", "100", "--max-fee", "1"],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if blocked.returncode == 0 or expected_error not in blocked.stderr:
+                    raise AssertionError("one-shot flags bypassed persistent wallet limits")
+            policy_file.write_text("invalid-policy\n")
+            malformed = subprocess.run(
+                [str(wallet), "send", *payment_args, "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if malformed.returncode == 0 or "invalid wallet limits" not in malformed.stderr:
+                raise AssertionError("malformed wallet policy did not block sending")
+            policy_file.write_text(original_policy)
+
+            preview = run_wallet(wallet, "send", *payment_args, "--dry-run")
+            if ("preview_only:" not in preview or "transaction_id=" in preview
+                    or "effective_max_amount=1.00000000" not in preview):
+                raise AssertionError(f"preview unexpectedly submitted a payment: {preview}")
+            for extra, reply, expected_error in [
+                ([], "", "payment cancelled before signing"),
+                ([], "SEND " + "44" * 32 + "\n", "payment cancelled before signing"),
+                (["--yes", "--max-amount", "0.99999999"], "", "voluntary amount limit"),
+                (["--yes", "--max-fee", "0.00000002"], "", "voluntary fee limit"),
+                (["--yes", "--dry-run"], "", "cannot be combined"),
+            ]:
+                rejected = subprocess.run(
+                    [str(wallet), "send", *payment_args, *extra],
+                    cwd=ROOT, text=True, input=reply, capture_output=True, timeout=20,
+                )
+                if rejected.returncode == 0 or expected_error not in rejected.stderr:
+                    raise AssertionError(f"unsafe payment was not rejected: {rejected.stdout}{rejected.stderr}")
+            # A policy changed while the user reviews must cancel before signing.
+            reviewing = subprocess.Popen(
+                [str(wallet), "send", *payment_args],
+                cwd=ROOT, text=True, stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            try:
+                while True:
+                    line = reviewing.stdout.readline()
+                    if not line:
+                        raise AssertionError("payment exited before showing confirmation")
+                    if "A confirmed payment is irreversible." in line:
+                        break
+                policy_file.write_text(original_policy.replace(
+                    "max_amount=1.00000000", "max_amount=0.50000000"
+                ))
+                output, errors = reviewing.communicate(input=f"SEND {RECIPIENT}\n", timeout=20)
+                if reviewing.returncode == 0 or "wallet limits changed during review" not in errors:
+                    raise AssertionError(f"changed policy was not detected: {output}{errors}")
+            finally:
+                if reviewing.poll() is None:
+                    reviewing.kill()
+                    reviewing.wait(timeout=5)
+                policy_file.write_text(original_policy)
+
+            after_review = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if before_review != after_review:
+                raise AssertionError("preview/rejected payments changed balance or nonce")
+
+            # Sign without a node, then broadcast while the key file is unavailable.
+            public_account = run_wallet(
+                wallet, "account", "--address", miner,
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            nonce_match = re.search(r"next_nonce=(\d+)", public_account)
+            if nonce_match is None:
+                raise AssertionError("wallet did not report a nonce for offline preparation")
+            signed_file = base / "signed-payment.aurtx"
+            signing_args = [
+                "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--nonce", nonce_match.group(1), "--out", str(signed_file),
+            ]
+            for extra, expected_error in [
+                ([], "offline payment cancelled before signing"),
+                (["--yes", "--node", "127.0.0.1:1"], "unsupported option"),
+                (["--yes", "--nonce", "99"], "duplicate command option"),
+            ]:
+                refused = subprocess.run(
+                    [str(wallet), "sign-offline", *signing_args, *extra],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if refused.returncode == 0 or expected_error not in refused.stderr or signed_file.exists():
+                    raise AssertionError(f"unsafe offline signing was allowed: {refused.stderr}")
+            excessive = list(signing_args)
+            excessive[excessive.index("--amount") + 1] = "1.00000001"
+            refused = subprocess.run(
+                [str(wallet), "sign-offline", *excessive, "--yes", "--max-amount", "100"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused.returncode == 0 or "voluntary amount limit" not in refused.stderr or signed_file.exists():
+                raise AssertionError("offline signing bypassed persistent limits")
+            preview = run_wallet(wallet, "sign-offline", *signing_args, "--dry-run")
+            if "preview_only:" not in preview or signed_file.exists():
+                raise AssertionError("offline preview wrote a signed file")
+            authorized = subprocess.run(
+                [str(wallet), "sign-offline", *signing_args],
+                cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                capture_output=True, timeout=20,
+            )
+            prepared = authorized.stdout + authorized.stderr
+            if authorized.returncode or not signed_file.is_file():
+                raise AssertionError(f"offline signing failed: {prepared}")
+            prepared_match = re.search(r"prepared_txid=([0-9a-f]{64})", prepared)
+            if prepared_match is None or "network_requests=none" not in prepared:
+                raise AssertionError("offline signer did not identify the prepared transaction")
+            balance_after_signing = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if balance_after_signing != before_review:
+                raise AssertionError("offline preparation changed balance or nonce")
+
+            damaged = base / "damaged-payment.aurtx"
+            damaged_bytes = bytearray(signed_file.read_bytes())
+            damaged_bytes[-1] ^= 1
+            damaged.write_bytes(damaged_bytes)
+            rejected_broadcast = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(damaged),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if rejected_broadcast.returncode == 0:
+                raise AssertionError("broadcast accepted a corrupted signed payment")
+            override = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--to", RECIPIENT, "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if override.returncode == 0 or "unsupported option" not in override.stderr:
+                raise AssertionError("broadcast silently accepted signed-field overrides")
+            cancelled = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if cancelled.returncode == 0 or "broadcast cancelled" not in cancelled.stderr:
+                raise AssertionError("broadcast did not require explicit authorization")
+
+            unavailable_key = base / "offline-key-unavailable.aurkey"
+            keyfile.rename(unavailable_key)
+            try:
+                public_without_key = run_wallet(
+                    wallet, "account", "--address", miner,
+                    "--node", f"{addr_b[0]}:{addr_b[1]}",
+                )
+                if public_without_key != public_account:
+                    raise AssertionError("keyless public account query changed before broadcast")
+                broadcast = subprocess.run(
+                    [str(wallet), "broadcast", "--from", str(signed_file),
+                     "--node", f"{addr_b[0]}:{addr_b[1]}"],
+                    cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                    capture_output=True, timeout=20,
+                )
+                sent = broadcast.stdout + broadcast.stderr
+                if broadcast.returncode:
+                    raise AssertionError(f"broadcast without a key failed: {sent}")
+            finally:
+                unavailable_key.rename(keyfile)
+            if f"transaction_id={prepared_match.group(1)}" not in sent:
+                raise AssertionError("broadcast changed the offline-signed transaction")
+            duplicate = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if duplicate.returncode == 0 or "signed nonce differs" not in duplicate.stderr:
+                raise AssertionError("broadcast did not detect a consumed nonce")
             tx_match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
             if tx_match is None or "mempool=pending" not in sent:
                 raise AssertionError(f"wallet did not submit transaction to mempool:\n{sent}")
@@ -445,7 +683,7 @@ def main() -> int:
             # A wallet submits to C; D must learn the pending transaction via
             # its configured peer and serve it to a miner without contacting C.
             relayed = run_wallet(
-                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
+                wallet, "send", "--yes", "--key-file", str(keyfile), "--to", RECIPIENT,
                 "--amount", "1.00000000", "--fee", "0.00000003",
                 "--node", f"{addr_c[0]}:{addr_c[1]}",
             )
@@ -483,7 +721,7 @@ def main() -> int:
                 binary, base / "write-limit-node", miner
             )
             print(
-                "wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
+                "offline signing and keyless broadcast, persistent wallet limits, lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
                 "and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"

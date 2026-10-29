@@ -32,6 +32,8 @@ def main() -> int:
         (ROOT / "docs" / "TESTNET_OPERATIONS.md", "docs/TESTNET_OPERATIONS.md"),
         (ROOT / "docs" / "PROTOCOL.md", "docs/PROTOCOL.md"),
     ]
+    for name in ("TWO_PC_TEST.md", "INTEGRATION_TWO_PC.md"):
+        files.append((ROOT / "docs" / name, f"docs/{name}"))
     for name in ("LICENSE", "LICENSE-MIT", "LICENSE-APACHE", "PROVENANCE.md", "SECURITY.md"):
         files.append((ROOT / name, name))
     for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py"):

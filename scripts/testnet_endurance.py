@@ -186,7 +186,7 @@ def main() -> int:
             if wallet and rounds > 1:
                 sender = rounds % 2
                 amount = "1.00000000" if sender == 0 else "0.50000000"
-                sent = run_wallet(wallet, "send", "--key-file", str(keys[sender]),
+                sent = run_wallet(wallet, "send", "--yes", "--key-file", str(keys[sender]),
                                   "--to", accounts[1 - sender], "--amount", amount,
                                   "--fee", "0.00000003", "--node", endpoint("b"))
                 match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
