@@ -249,3 +249,61 @@ mod tests {
         );
     }
 }
+
+/// Successful cryptographic checks only; FIFO eviction bounds retained txids.
+pub struct SignatureCache {
+    capacity: usize,
+    entries: std::collections::HashSet<crate::hash::Hash256>,
+    order: std::collections::VecDeque<crate::hash::Hash256>,
+}
+
+impl SignatureCache {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity,
+            entries: std::collections::HashSet::new(),
+            order: std::collections::VecDeque::new(),
+        }
+    }
+
+    pub fn verify(&mut self, tx: &AccountTransaction) -> Result<(), SignatureError> {
+        let id = tx.txid().map_err(|_| SignatureError::InvalidSignature)?;
+        if self.entries.contains(&id) {
+            return Ok(());
+        }
+        verify_account_transaction(tx)?;
+        self.remember(id);
+        Ok(())
+    }
+
+    fn remember(&mut self, id: crate::hash::Hash256) {
+        if self.capacity == 0 || self.entries.contains(&id) {
+            return;
+        }
+        if self.entries.len() == self.capacity {
+            let oldest = self.order.pop_front().expect("cache order matches entries");
+            self.entries.remove(&oldest);
+        }
+        self.entries.insert(id);
+        self.order.push_back(id);
+    }
+}
+
+/// Process-local cache used only by mempool state transitions.
+/// Locks are released during cryptography; concurrent misses may duplicate work.
+pub fn verify_account_transaction_cached(tx: &AccountTransaction) -> Result<(), SignatureError> {
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<SignatureCache>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(SignatureCache::new(4096)));
+    let id = tx.txid().map_err(|_| SignatureError::InvalidSignature)?;
+    if let Ok(guard) = cache.lock() {
+        if guard.entries.contains(&id) {
+            return Ok(());
+        }
+    }
+    verify_account_transaction(tx)?;
+    if let Ok(mut guard) = cache.lock() {
+        guard.remember(id);
+    }
+    Ok(())
+}

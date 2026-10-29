@@ -1,5 +1,5 @@
 //! Reproducible microbenchmark; never installs a cache in production.
-use std::{collections::HashSet, hint::black_box, time::Instant};
+use std::{hint::black_box, time::Instant};
 
 use aurora_core::{
     accounts::{
@@ -8,7 +8,7 @@ use aurora_core::{
     },
     amount::Amount,
     network::NetworkId,
-    signature::{post_quantum_account_id, verify_account_transaction},
+    signature::{post_quantum_account_id, verify_account_transaction, SignatureCache},
     state::AccountLedger,
 };
 use ml_dsa::{Keypair, MlDsa65, Signer, SigningKey};
@@ -109,23 +109,47 @@ fn measure_repeated_mempool_validation() {
             }
             let replay = start.elapsed().as_nanos();
             let start = Instant::now();
-            let mut verified = HashSet::with_capacity(size);
-            let mut misses = 0;
+            let mut verified = SignatureCache::new(4096);
             for _ in 0..ROUNDS {
                 for tx in &txs {
-                    let id = tx.txid().unwrap();
-                    if !verified.contains(&id) {
-                        verify_account_transaction(black_box(tx)).unwrap();
-                        verified.insert(id);
-                        misses += 1;
-                    }
-                    black_box(verified.contains(&id));
+                    verified.verify(black_box(tx)).unwrap();
                 }
             }
             let cache = start.elapsed().as_nanos();
-            assert_eq!(misses, size);
-            assert_eq!(verified.len(), size);
             println!("BENCH,{size},{trial},{ROUNDS},{verify},{txid},{replay},{cache}");
         }
     }
+}
+
+#[test]
+fn cached_checks_preserve_state_and_reject_mutations() {
+    let txs = transactions(3);
+    let mut cache = SignatureCache::new(2);
+    for tx in &txs {
+        cache.verify(tx).unwrap();
+    }
+    // Eviction must only cause a recheck, never alter acceptance.
+    cache.verify(&txs[0]).unwrap();
+    let mut invalid = txs[0].clone();
+    invalid.fee = Amount::from_units(2).unwrap();
+    assert!(cache.verify(&invalid).is_err());
+    assert!(cache.verify(&invalid).is_err());
+    for capacity in [0, 1, 2] {
+        let mut local = SignatureCache::new(capacity);
+        local.verify(&txs[0]).unwrap();
+        local.verify(&txs[0]).unwrap();
+    }
+    let mut cached = funded(&txs[0]);
+    let mut plain = cached.clone();
+    for tx in &txs {
+        assert_eq!(cached.apply_transaction_cached(tx), plain.apply_transaction(tx));
+        assert_eq!(cached, plain);
+    }
+    let before = cached.clone();
+    assert!(cached.apply_transaction_cached(&txs[0]).is_err());
+    assert_eq!(cached, before);
+    let mut rolled_back = funded(&txs[0]);
+    assert!(rolled_back.apply_transaction_cached(&txs[0]).is_ok());
+    let mut unfunded = AccountLedger::new(NetworkId::Testnet);
+    assert!(unfunded.apply_transaction_cached(&txs[0]).is_err());
 }

@@ -133,6 +133,19 @@ impl AccountLedger {
     /// Applique un transfert atomiquement après les contrôles d'état et d'autorisation.
     /// La signature est vérifiée avant toute mutation.
     pub fn apply_transaction(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
+        self.apply_transaction_verified(tx, verify_account_transaction)
+    }
+
+    /// Rechecks all state rules, reusing only successful cryptographic checks.
+    pub fn apply_transaction_cached(&mut self, tx: &AccountTransaction) -> Result<Amount, StateError> {
+        self.apply_transaction_verified(tx, crate::signature::verify_account_transaction_cached)
+    }
+
+    fn apply_transaction_verified(
+        &mut self,
+        tx: &AccountTransaction,
+        verify: fn(&AccountTransaction) -> Result<(), crate::signature::SignatureError>,
+    ) -> Result<Amount, StateError> {
         tx.check_stateless()
             .map_err(|_| StateError::InvalidTransaction)?;
         if tx.network != self.network {
@@ -152,7 +165,7 @@ impl AccountLedger {
             });
         }
 
-        if verify_account_transaction(tx).is_err() {
+        if verify(tx).is_err() {
             return Err(StateError::InvalidAuthorization);
         }
 
