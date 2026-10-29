@@ -2,6 +2,7 @@
 pub mod builder;
 pub mod keys;
 pub mod rpc;
+pub mod safety;
 pub mod spv;
 pub mod uri;
 

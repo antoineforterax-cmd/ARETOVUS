@@ -216,8 +216,41 @@ def main() -> int:
                     f"mined blocks do not follow smooth emission and 95/5 split:\n{mined}"
                 )
 
+            # Preview, voluntary limits and cancellation must leave pending state untouched.
+            payment_args = [
+                "--key-file", str(keyfile), "--to", RECIPIENT,
+                "--amount", "1.00000000", "--fee", "0.00000003",
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            ]
+            before_review = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            preview = run_wallet(wallet, "send", *payment_args, "--dry-run")
+            if "preview_only:" not in preview or "transaction_id=" in preview:
+                raise AssertionError(f"preview unexpectedly submitted a payment: {preview}")
+            for extra, reply, expected_error in [
+                ([], "", "payment cancelled before signing"),
+                ([], "SEND " + "44" * 32 + "\n", "payment cancelled before signing"),
+                (["--yes", "--max-amount", "0.99999999"], "", "voluntary amount limit"),
+                (["--yes", "--max-fee", "0.00000002"], "", "voluntary fee limit"),
+                (["--yes", "--dry-run"], "", "cannot be combined"),
+            ]:
+                rejected = subprocess.run(
+                    [str(wallet), "send", *payment_args, *extra],
+                    cwd=ROOT, text=True, input=reply, capture_output=True, timeout=20,
+                )
+                if rejected.returncode == 0 or expected_error not in rejected.stderr:
+                    raise AssertionError(f"unsafe payment was not rejected: {rejected.stdout}{rejected.stderr}")
+            after_review = run_wallet(
+                wallet, "balance", "--key-file", str(keyfile),
+                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            )
+            if before_review != after_review:
+                raise AssertionError("preview/rejected payments changed balance or nonce")
+
             sent = run_wallet(
-                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
+                wallet, "send", "--yes", "--key-file", str(keyfile), "--to", RECIPIENT,
                 "--amount", "1.00000000", "--fee", "0.00000003",
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
@@ -445,7 +478,7 @@ def main() -> int:
             # A wallet submits to C; D must learn the pending transaction via
             # its configured peer and serve it to a miner without contacting C.
             relayed = run_wallet(
-                wallet, "send", "--key-file", str(keyfile), "--to", RECIPIENT,
+                wallet, "send", "--yes", "--key-file", str(keyfile), "--to", RECIPIENT,
                 "--amount", "1.00000000", "--fee", "0.00000003",
                 "--node", f"{addr_c[0]}:{addr_c[1]}",
             )

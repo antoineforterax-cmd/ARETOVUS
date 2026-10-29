@@ -181,6 +181,19 @@ impl WalletKey {
         Ok(Self::from_seed(seed))
     }
 
+    /// Authenticate an encrypted backup and verify its expected account, without writing files.
+    pub fn verify_encrypted_backup(
+        path: &Path,
+        password: &str,
+        expected: AccountId,
+    ) -> Result<(), Box<dyn Error>> {
+        let restored = Self::load_encrypted_testnet_file(path, password)?;
+        if restored.account_id() != expected {
+            return Err("backup belongs to a different account".into());
+        }
+        Ok(())
+    }
+
     /// Verify an encrypted key, then create an independent encrypted copy.
     ///
     /// The destination uses a fresh salt and nonce and is never overwritten.
@@ -328,6 +341,9 @@ mod tests {
         let key = WalletKey::from_seed_bytes([44; 32]);
         key.save_encrypted_testnet_file(&source, "another long test password")
             .unwrap();
+        WalletKey::verify_encrypted_backup(&source, "another long test password", key.account_id()).unwrap();
+        assert!(WalletKey::verify_encrypted_backup(&source, "another long test password", AccountId([0; 32])).is_err());
+        assert!(WalletKey::verify_encrypted_backup(&source, "wrong password", key.account_id()).is_err());
         let account =
             WalletKey::copy_encrypted_testnet_file(&source, &backup, "another long test password")
                 .unwrap();
