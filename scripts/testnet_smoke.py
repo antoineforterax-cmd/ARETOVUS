@@ -249,11 +249,15 @@ def main() -> int:
             if before_review != after_review:
                 raise AssertionError("preview/rejected payments changed balance or nonce")
 
-            sent = run_wallet(
-                wallet, "send", "--yes", "--key-file", str(keyfile), "--to", RECIPIENT,
-                "--amount", "1.00000000", "--fee", "0.00000003",
-                "--node", f"{addr_b[0]}:{addr_b[1]}",
+            authorized = subprocess.run(
+                [str(wallet), "send", *payment_args,
+                 "--max-amount", "1.00000000", "--max-fee", "0.00000003"],
+                cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                capture_output=True, timeout=20,
             )
+            sent = authorized.stdout + authorized.stderr
+            if authorized.returncode:
+                raise AssertionError(f"explicitly confirmed payment failed: {sent}")
             tx_match = re.search(r"transaction_id=([0-9a-f]{64})", sent)
             if tx_match is None or "mempool=pending" not in sent:
                 raise AssertionError(f"wallet did not submit transaction to mempool:\n{sent}")

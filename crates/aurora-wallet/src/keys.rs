@@ -341,9 +341,18 @@ mod tests {
         let key = WalletKey::from_seed_bytes([44; 32]);
         key.save_encrypted_testnet_file(&source, "another long test password")
             .unwrap();
-        WalletKey::verify_encrypted_backup(&source, "another long test password", key.account_id()).unwrap();
-        assert!(WalletKey::verify_encrypted_backup(&source, "another long test password", AccountId([0; 32])).is_err());
-        assert!(WalletKey::verify_encrypted_backup(&source, "wrong password", key.account_id()).is_err());
+        WalletKey::verify_encrypted_backup(&source, "another long test password", key.account_id())
+            .unwrap();
+        assert!(WalletKey::verify_encrypted_backup(
+            &source,
+            "another long test password",
+            AccountId([0; 32])
+        )
+        .is_err());
+        assert!(
+            WalletKey::verify_encrypted_backup(&source, "wrong password", key.account_id())
+                .is_err()
+        );
         let account =
             WalletKey::copy_encrypted_testnet_file(&source, &backup, "another long test password")
                 .unwrap();

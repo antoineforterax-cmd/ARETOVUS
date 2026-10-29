@@ -137,12 +137,23 @@ fn run() -> Result<(), Box<dyn Error>> {
             let limits = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
-                } else { None },
+                } else {
+                    None
+                },
                 max_fee: if flag(&args, "--max-fee") {
                     Some(parse_amount(option(&args, "--max-fee")?)?)
-                } else { None },
+                } else {
+                    None
+                },
             };
-            let debit = check_payment(key.account_id(), recipient, amount, fee, account.balance, limits)?;
+            let debit = check_payment(
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                account.balance,
+                limits,
+            )?;
             if flag(&args, "--yes") && flag(&args, "--dry-run") {
                 return Err("--yes and --dry-run cannot be combined".into());
             }
@@ -151,7 +162,10 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("sender={}", account_id_hex(key.account_id()));
             println!("recipient={destination}");
             println!("amount={amount} fee={fee} total_debit={debit}");
-            println!("node={node} nonce={} balance_source=pending-adjusted", account.next_nonce);
+            println!(
+                "node={node} nonce={} balance_source=pending-adjusted",
+                account.next_nonce
+            );
             if flag(&args, "--dry-run") {
                 println!("preview_only: no transaction signed or submitted");
                 return Ok(());
