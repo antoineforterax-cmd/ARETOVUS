@@ -21,9 +21,10 @@ aurora-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.
 Remplacer l'adresse et le port par ceux du testnet utilisé. L'aperçu
 `--dry-run` consulte le compte mais ne signe et ne soumet aucune transaction.
 Les plafonds sont inclusifs, exprimés en AUR et vérifiés avec l'arithmétique
-entière du protocole. Ils s'appliquent à cet appel uniquement ; ils ne sont
-pas enregistrés comme politique permanente et ne sont pas imposés par le
-consensus. Le solde et le nonce tiennent compte des transactions en attente
+entière du protocole. Les options de ligne de commande s'appliquent à cet
+appel. Une [politique persistante](PERSISTENT_WALLET_LIMITS.md), chargée
+automatiquement pour ce fichier wallet, peut imposer des limites plus basses.
+Ces plafonds ne sont pas imposés par le consensus. Le solde et le nonce tiennent compte des transactions en attente
 sur le nœud interrogé. Une nouvelle lecture juste avant signature refuse
 l'envoi si le compte a changé pendant la relecture. Un changement ultérieur
 reste possible ; le nœud doit toujours valider la transaction.
@@ -50,17 +51,24 @@ utilisent déjà un sel et un nonce neufs et refusent d'écraser une destination
 Conserver la sauvegarde et le mot de passe séparément ; tester régulièrement
 la sauvegarde avec l'identité attendue conservée par un autre moyen.
 
+## Code de secours hors ligne
+
+Le [code de secours](OFFLINE_RECOVERY.md), créé avant la perte, permet désormais
+de restaurer le même compte sans le fichier wallet ni son ancien mot de passe.
+Il reste un secret de dépense à conserver séparément ; il ne révoque pas la clé.
+
 ## État du cahier des charges et limites
 
 - Réalisé : sauvegarde/restauration chiffrées, vérification de sauvegarde,
   récapitulatif avant signature, confirmation renforcée et plafonds par appel.
-- À concevoir : délais volontaires avec annulation et politique persistante.
+- Réalisé : plafonds persistants locaux, liés au compte et au chemin du wallet.
+- À concevoir : délais volontaires avec annulation et notifications locales.
 - À concevoir et valider au niveau protocole : récupération par gardiens,
   rotation des clés et identité stable, voir [le dossier de conception](DID_RECOVERY_DESIGN.md).
 
-Les comptes v3 sont dérivés de la clé publique. La perte de toutes les copies
-de la clé ou de leur mot de passe n'est pas récupérable avec ces seules
-protections. Une adresse hexadécimale valide ne prouve pas l'identité de son
+Les comptes v3 sont dérivés de la clé publique. La perte du wallet et de son mot de passe est récupérable si un code de secours
+a été conservé. Si toutes les copies de la clé et tous les moyens de secours
+sont perdus, ces protections ne peuvent pas récupérer le compte. Une adresse hexadécimale valide ne prouve pas l'identité de son
 propriétaire. Ces contrôles locaux ne remboursent pas un paiement confirmé et
 ne donnent aucun pouvoir de gel ou de récupération à un administrateur.
 Le testnet reste expérimental et requiert des audits indépendants avant un
