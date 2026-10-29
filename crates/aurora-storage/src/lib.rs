@@ -1084,7 +1084,10 @@ mod tests {
         // interrupted before a new manifest can be published.
         let staged_manifest = save_snapshot(&path, &chain).unwrap();
         let bytes = fs::read(&staged_manifest).unwrap();
-        let page_id = Hash256::from_bytes(bytes[81..113].try_into().unwrap());
+        // This test has one index page. Its hash is the last page ID before
+        // the manifest checksum; avoid a hard-coded manifest field offset.
+        let page_id_start = bytes.len().checked_sub(CHECKSUM_LEN + 32).unwrap();
+        let page_id = Hash256::from_bytes(bytes[page_id_start..page_id_start + 32].try_into().unwrap());
         let page_path = path
             .join(INDEX_PAGE_DIRECTORY)
             .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
