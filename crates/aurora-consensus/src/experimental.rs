@@ -52,6 +52,8 @@ pub struct Block {
 /// Erreur de validation sans état d'un bloc.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlockError {
+    /// Version d'en-tête non prise en charge.
+    UnsupportedHeaderVersion,
     /// Trop de transactions.
     TooManyTransactions,
     /// Une transaction ne vise pas le même réseau que le bloc.
@@ -69,6 +71,9 @@ pub enum BlockError {
 impl fmt::Display for BlockError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            BlockError::UnsupportedHeaderVersion => {
+                write!(f, "version d'en-tête non prise en charge")
+            }
             BlockError::TooManyTransactions => write!(f, "trop de transactions"),
             BlockError::NetworkMismatch => write!(f, "réseau de transaction différent du bloc"),
             BlockError::InvalidTransaction(err) => write!(f, "transaction invalide : {err}"),
@@ -125,6 +130,9 @@ impl Block {
     /// Vérifications sans état. Ne vérifie ni preuve de travail, ni lien avec la chaîne, ni
     /// signatures, ni existence des fonds.
     pub fn check_stateless(&self) -> Result<(), BlockError> {
+        if self.header.version != HEADER_VERSION {
+            return Err(BlockError::UnsupportedHeaderVersion);
+        }
         if self.transactions.len() > MAX_BLOCK_TXS {
             return Err(BlockError::TooManyTransactions);
         }
@@ -230,6 +238,16 @@ mod tests {
     }
 
     #[test]
+    fn unsupported_header_version_is_rejected_in_memory() {
+        let mut block = block_of(vec![]);
+        block.header.version = HEADER_VERSION + 1;
+        assert_eq!(
+            block.check_stateless(),
+            Err(BlockError::UnsupportedHeaderVersion)
+        );
+    }
+
+    #[test]
     fn valid_block_passes_and_roundtrips() {
         let block = block_of(vec![tx(1, NetworkId::Regtest), tx(2, NetworkId::Regtest)]);
         assert_eq!(block.check_stateless(), Ok(()));
@@ -308,6 +326,16 @@ mod tests {
         assert_ne!(other.hash().unwrap(), h);
 
         assert_eq!(base.hash().unwrap(), h);
+    }
+
+    #[test]
+    fn too_many_transactions_are_rejected_even_in_memory() {
+        let mut block = block_of(vec![]);
+        block.transactions = vec![tx(1, NetworkId::Regtest); MAX_BLOCK_TXS + 1];
+        assert_eq!(
+            block.check_stateless(),
+            Err(BlockError::TooManyTransactions)
+        );
     }
 
     #[test]
