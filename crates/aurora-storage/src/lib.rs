@@ -1193,8 +1193,7 @@ mod tests {
         // Simulate an incomplete manifest write after a valid earlier snapshot.
         let latest_bytes = fs::read(&latest_manifest).unwrap();
         fs::write(&latest_manifest, &latest_bytes[..12]).unwrap();
-        let restored =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.height(), 0);
         assert_eq!(restored.tip_hash(), previous_tip);
         assert_eq!(restored.known_block_count(), 1);
