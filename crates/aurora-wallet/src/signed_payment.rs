@@ -23,7 +23,8 @@ pub fn validate(transaction: &AccountTransaction) -> Result<(), Box<dyn Error>> 
         return Err("signed payment requires the v3 testnet profile".into());
     }
     transaction.check_stateless()?;
-    verify_account_transaction(transaction)?;
+    verify_account_transaction(transaction)
+        .map_err(|_| "signed payment signature verification failed")?;
     Ok(())
 }
 
