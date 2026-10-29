@@ -1,7 +1,18 @@
 # Comparaison préliminaire des modèles d'état — AURORA
 
-**Statut : document d'analyse, pas une décision de protocole.**  
-**TX-01 reste « À COMPARER ».** Aucun modèle n'est choisi ou implémenté ici. Le propriétaire du projet décidera après lecture et, si nécessaire, après un prototype comparatif.
+**Statut : comparaison historique de phase 0, conservée pour référence.**
+
+**État vérifié le 29 octobre 2026 :** le testnet de la branche
+`feature/emission-schedule-v0` utilise des comptes avec solde et nonce, des
+transactions v3 ML-DSA-65 et des transitions atomiques. La mention historique
+« TX-01 À COMPARER » ne décrit donc plus le code exécuté. Voir
+[CONSENSUS.md](CONSENSUS.md), [ARCHITECTURE.md](../ARCHITECTURE.md) et
+[le registre de comptes](../crates/aurora-core/src/state.rs).
+
+Cette date est celle du constat documentaire, pas une date inventée de décision
+du porteur. La comparaison ci-dessous reste utile pour une recherche future,
+notamment sur la confidentialité ; elle n'autorise aucune migration du modèle
+d'état ni modification du consensus actuel.
 
 ## 1. Ce qu'on compare
 
@@ -44,9 +55,9 @@ Aucun modèle ne garantit à lui seul la confidentialité, des frais faibles, un
 7. **Récupération après incident** : comment reconstruire ou vérifier l'état après redémarrage, corruption, synchronisation ou réorganisation ?
 8. **Tests adversariaux** : quelles propriétés et invariants sont vérifiés par des tests de cas limites, tests différentiels et fuzzing ?
 
-## 4. Prototype comparatif proposé (sans figer TX-01)
+## 4. Proposition historique de prototype comparatif
 
-Avant toute intégration au consensus, construire deux petites simulations séparées, avec des règles et des scénarios équivalents :
+La proposition initiale était de construire deux petites simulations séparées avant de retenir un modèle. Elle est conservée comme piste de recherche, sans constituer une tâche préalable au développement du testnet actuel :
 
 - **Simulation UTXO** : créer des fonds de départ fictifs, transférer une partie, rendre la monnaie, essayer une double dépense et réorganiser un petit historique.
 - **Simulation comptes** : créer les mêmes soldes fictifs, effectuer les transferts correspondants, tester les nonces invalides, les soldes insuffisants et une réorganisation.
@@ -64,4 +75,4 @@ Ce document ne choisit pas :
 - les frais, la confidentialité ou les contrats ;
 - les paramètres de consensus.
 
-**Prochaine étape quand le porteur sera prêt :** discuter les priorités fonctionnelles d'AURORA, puis choisir si l'on doit prototyper UTXO ou comptes. Jusque-là, le code transactionnel actuel reste explicitement expérimental et jetable.
+**Suite actuelle :** éprouver les invariants du modèle par comptes déjà implémenté. Toute alternative UTXO ou hybride nécessite une étude séparée, une décision explicite et un plan de compatibilité ; ce document historique ne remet pas ce choix en attente.
