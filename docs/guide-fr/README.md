@@ -24,4 +24,4 @@ Le logiciel peut tourner entièrement sur un PC : des processus distincts possè
 
 Rédaction vérifiée le 28 octobre 2026. Les commandes ont été rapprochées des interfaces du [nœud](../../crates/aurora-node/src/main.rs) et du [wallet](../../crates/aurora-wallet/src/main.rs). Les références techniques sont la [spécification](../PROTOCOL.md), les [décisions testnet](../TESTNET_DECISIONS.md) et le [rapport d’essais](../TESTNET_VALIDATION_REPORT.md). Les pages de ce guide résument ces sources; elles ne remplacent pas le code de consensus.
 
-Le code a été largement produit et révisé avec une IA. Les vérifications réalisées et leur portée sont décrites dans [PROVENANCE.md](../../PROVENANCE.md). Pour participer, lire [CONTRIBUTING.md](../../CONTRIBUTING.md); pour signaler une faille, suivre [SECURITY.md](../../SECURITY.md).
+Pour connaître l'origine des contributions et les limites des vérifications, consulter [PROVENANCE.md](../../PROVENANCE.md). Les règles de contribution figurent dans [CONTRIBUTING.md](../../CONTRIBUTING.md) et le signalement des failles dans [SECURITY.md](../../SECURITY.md).
