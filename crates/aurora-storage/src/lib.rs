@@ -890,6 +890,41 @@ mod tests {
     }
 
     #[test]
+    fn interrupted_v6_index_publication_recovers_then_retries() {
+        let path = dir();
+        let mut chain = chain();
+        let safe_tip = chain.tip_hash();
+        save_snapshot(&path, &chain).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let newer_tip = next.header.hash().unwrap();
+        chain.submit(next).unwrap();
+        let new_manifest = save_snapshot(&path, &chain).unwrap();
+        let manifest_bytes = fs::read(&new_manifest).unwrap();
+
+        // Reproduce a crash just before the atomic rename makes the new index
+        // visible: its temporary file contains an incomplete write.
+        fs::remove_file(&new_manifest).unwrap();
+        let interrupted = path.join(".aurora-interrupted-index.tmp");
+        fs::write(&interrupted, &manifest_bytes[..manifest_bytes.len() / 2]).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), safe_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        // The stranded temporary file must not prevent a clean retry.
+        save_snapshot(&path, &chain).unwrap();
+        let after_retry =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(after_retry.height(), 1);
+        assert_eq!(after_retry.tip_hash(), newer_tip);
+        assert_eq!(after_retry.known_block_count(), 2);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn interrupted_temporary_snapshot_does_not_replace_last_valid_state() {
         let path = dir();
         let original = chain();
