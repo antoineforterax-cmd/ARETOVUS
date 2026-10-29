@@ -1,0 +1,1424 @@
+{
+  "date": "2026-10-29",
+  "repository": "antoineforterax-cmd/AURORA",
+  "scope": "23 branches et 22 PR ouvertes avant création du chantier de consolidation",
+  "branches": [
+    {
+      "name": "docs/aurora-master-plan-2026-10",
+      "sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
+      "protected": false
+    },
+    {
+      "name": "docs/phase-0-protocol",
+      "sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+      "protected": false
+    },
+    {
+      "name": "docs/reconcile-state-model-status",
+      "sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
+      "protected": false
+    },
+    {
+      "name": "feat/offline-key-recovery",
+      "sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+      "protected": false
+    },
+    {
+      "name": "feat/offline-payment-signing",
+      "sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+      "protected": false
+    },
+    {
+      "name": "feat/persistent-wallet-limits",
+      "sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+      "protected": false
+    },
+    {
+      "name": "feat/reinsert-orphaned-transactions",
+      "sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+      "protected": false
+    },
+    {
+      "name": "feat/wallet-fund-protection",
+      "sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+      "protected": false
+    },
+    {
+      "name": "feature/emission-schedule-v0",
+      "sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "protected": false
+    },
+    {
+      "name": "fix/adversarial-node-dos",
+      "sha": "8227d97436497120c5fd590095a9364d162a038a",
+      "protected": false
+    },
+    {
+      "name": "fix/bounded-p2p-handshake-admission",
+      "sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+      "protected": false
+    },
+    {
+      "name": "fix/strict-account-hex-inputs",
+      "sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+      "protected": false
+    },
+    {
+      "name": "fix/wallet-essential-cleanups",
+      "sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+      "protected": false
+    },
+    {
+      "name": "fix/wallet-rpc-frame-deadlines",
+      "sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+      "protected": false
+    },
+    {
+      "name": "integration/two-pc-testnet",
+      "sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+      "protected": false
+    },
+    {
+      "name": "main",
+      "sha": "83d6a8a64580ef6360192edc989f0d4adc4c08a4",
+      "protected": false
+    },
+    {
+      "name": "perf/bounded-mempool-signature-cache",
+      "sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "protected": false
+    },
+    {
+      "name": "perf/mempool-validation-baseline",
+      "sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+      "protected": false
+    },
+    {
+      "name": "test/cached-admission-real-reorg",
+      "sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+      "protected": false
+    },
+    {
+      "name": "test/fuzz-cached-account-transitions",
+      "sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+      "protected": false
+    },
+    {
+      "name": "test/independent-retarget-vectors",
+      "sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
+      "protected": false
+    },
+    {
+      "name": "test/repeated-network-partitions",
+      "sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+      "protected": false
+    },
+    {
+      "name": "test/signed-v3-self-transfer",
+      "sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
+      "protected": false
+    }
+  ],
+  "prs": [
+    {
+      "number": 1,
+      "title": "feat: prototype experimental proof of work and local chain",
+      "base": "main",
+      "base_reported_sha": "d7154c68ee52f62b4793fb0b8e758e253b53c5d8",
+      "base_current_sha": "83d6a8a64580ef6360192edc989f0d4adc4c08a4",
+      "head": "docs/phase-0-protocol",
+      "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 23,
+      "behind": 1,
+      "merge_base": "d7154c68ee52f62b4793fb0b8e758e253b53c5d8",
+      "files": [
+        "crates/aurora-consensus/src/block_validation.rs",
+        "crates/aurora-consensus/src/experimental.rs",
+        "crates/aurora-consensus/src/lib.rs",
+        "crates/aurora-consensus/src/local_chain.rs",
+        "crates/aurora-consensus/src/proof_of_work.rs",
+        "crates/aurora-core/src/experimental.rs",
+        "crates/aurora-core/src/hash.rs",
+        "docs/DECISION_REGISTER.md",
+        "docs/PROTOCOL.md",
+        "docs/SECURITY_REVIEW_2026-10-25.md",
+        "docs/STATE_MODEL_COMPARISON.md"
+      ],
+      "runs": [
+        {
+          "id": 40211934797,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40211934797"
+        },
+        {
+          "id": 40207116452,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40207116452"
+        },
+        {
+          "id": 40207113270,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40207113270"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "[WIP] AURORA : testnet expérimentale, émission lissée et réseau P2P",
+      "base": "docs/phase-0-protocol",
+      "base_reported_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+      "base_current_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+      "head": "feature/emission-schedule-v0",
+      "head_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 479,
+      "behind": 0,
+      "merge_base": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
+      "files": [
+        ".gitattributes",
+        ".github/release-request.json",
+        ".github/workflows/ci.yml",
+        ".github/workflows/dependency-audit.yml",
+        ".github/workflows/fuzz.yml",
+        ".github/workflows/testnet-packages.yml",
+        ".github/workflows/testnet-release.yml",
+        ".github/workflows/testnet-soak.yml",
+        ".github/workflows/volume-probe.yml",
+        ".gitignore",
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "CONTRIBUTING.md",
+        "Cargo.lock",
+        "Cargo.toml",
+        "LICENSE",
+        "LICENSE-APACHE",
+        "LICENSE-MIT",
+        "PROVENANCE.md",
+        "README.md",
+        "SECURITY.md",
+        "crates/aurora-consensus/Cargo.toml",
+        "crates/aurora-consensus/src/account_block.rs",
+        "crates/aurora-consensus/src/account_fork_chain.rs",
+        "crates/aurora-consensus/src/difficulty.rs",
+        "crates/aurora-consensus/src/experimental.rs",
+        "crates/aurora-consensus/src/fork_chain.rs",
+        "crates/aurora-consensus/src/lib.rs",
+        "crates/aurora-consensus/src/light_header_chain.rs",
+        "crates/aurora-consensus/src/proof_of_work.rs",
+        "crates/aurora-consensus/src/reward.rs",
+        "crates/aurora-consensus/src/testnet.rs",
+        "crates/aurora-consensus/tests/vectors.rs",
+        "crates/aurora-core/Cargo.toml",
+        "crates/aurora-core/src/accounts.rs",
+        "crates/aurora-core/src/amount.rs",
+        "crates/aurora-core/src/hash.rs",
+        "crates/aurora-core/src/lib.rs",
+        "crates/aurora-core/src/merkle.rs",
+        "crates/aurora-core/src/signature.rs",
+        "crates/aurora-core/src/state.rs",
+        "crates/aurora-core/tests/fips204_vectors.rs",
+        "crates/aurora-core/tests/vectors.rs",
+        "crates/aurora-node/Cargo.toml",
+        "crates/aurora-node/src/lib.rs",
+        "crates/aurora-node/src/main.rs",
+        "crates/aurora-node/src/p2p.rs",
+        "crates/aurora-storage/Cargo.toml",
+        "crates/aurora-storage/src/lib.rs",
+        "crates/aurora-wallet/Cargo.toml",
+        "crates/aurora-wallet/src/builder.rs",
+        "crates/aurora-wallet/src/keys.rs",
+        "crates/aurora-wallet/src/lib.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/rpc.rs",
+        "crates/aurora-wallet/src/spv.rs",
+        "crates/aurora-wallet/src/uri.rs",
+        "deny.toml",
+        "docs/AI_COUNTER_REVIEW.md",
+        "docs/CONSENSUS.md",
+        "docs/DECISION_BASELINE.md",
+        "docs/DECISION_REGISTER.md",
+        "docs/DID_RECOVERY_DESIGN.md",
+        "docs/EMISSION_MODEL.md",
+        "docs/ENDURANCE_RUN.md",
+        "docs/ENDURANCE_WSL.md",
+        "docs/FINALIZATION_CHECKLIST.md",
+        "docs/FIPS204_VALIDATION.md",
+        "docs/FUZZING.md",
+        "docs/HEADER_PAGINATION_REVIEW.md",
+        "docs/HUMAN_REVIEW_CALL.md",
+        "docs/INDEPENDENT_REVIEW.md",
+        "docs/P2P_COUNTER_REVIEW_2026-10-27.md",
+        "docs/POST_QUANTUM.md",
+        "docs/PROTOCOL.md",
+        "docs/ROADMAP_EXECUTION.md",
+        "docs/SECURITY_REVIEW_2026-10-25.md",
+        "docs/STORAGE_V6_DESIGN.md",
+        "docs/TESTNET_DECISIONS.md",
+        "docs/TESTNET_GUIDE.md",
+        "docs/TESTNET_OPERATIONS.md",
+        "docs/TESTNET_VALIDATION_REPORT.md",
+        "docs/THREAT_MODEL.md",
+        "docs/TWO_PC_TEST.md",
+        "docs/guide-fr/01-comprendre.md",
+        "docs/guide-fr/02-economie.md",
+        "docs/guide-fr/03-installation.md",
+        "docs/guide-fr/04-reseau-et-minage.md",
+        "docs/guide-fr/05-portefeuille.md",
+        "docs/guide-fr/06-exploitation.md",
+        "docs/guide-fr/07-technologie-et-suite.md",
+        "docs/guide-fr/README.md",
+        "fuzz/Cargo.toml",
+        "fuzz/fuzz_targets/canonical_decode.rs",
+        "fuzz/fuzz_targets/merkle_proofs.rs",
+        "fuzz/fuzz_targets/network_payloads.rs",
+        "rust-toolchain.toml",
+        "scripts/emission_sim.py",
+        "scripts/package_testnet.py",
+        "scripts/reference_vectors.py",
+        "scripts/testnet_endurance.py",
+        "scripts/testnet_lock_smoke.py",
+        "scripts/testnet_smoke.py",
+        "scripts/testnet_soak.py",
+        "tests/vectors-fips204/NIST-NOTICE.txt",
+        "tests/vectors-fips204/README.md",
+        "tests/vectors-fips204/extract.py",
+        "tests/vectors-fips204/keygen.txt",
+        "tests/vectors-fips204/siggen.txt",
+        "tests/vectors-fips204/sigver.txt"
+      ],
+      "runs": [
+        {
+          "id": 40939804136,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939804136"
+        },
+        {
+          "id": 40939797106,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939797106"
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "title": "docs: consolider le cahier des charges et la feuille de route AURORA",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "docs/aurora-master-plan-2026-10",
+      "head_sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 17,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        "docs/planning/ARCHITECTURE_CIBLE.md",
+        "docs/planning/CAHIER_DES_CHARGES.md",
+        "docs/planning/DECISIONS.md",
+        "docs/planning/IMPLEMENTATION_POLICY.md",
+        "docs/planning/README.md",
+        "docs/planning/ROADMAP.md"
+      ],
+      "runs": [
+        {
+          "id": 40939684877,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939684877"
+        },
+        {
+          "id": 40939671161,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939671161"
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "title": "test: vérifier le rejet atomique des auto-transferts ML-DSA-65",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "test/signed-v3-self-transfer",
+      "head_sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        "Cargo.lock",
+        "crates/aurora-node/Cargo.toml",
+        "crates/aurora-node/src/p2p.rs"
+      ],
+      "runs": [
+        {
+          "id": 40789281024,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40789281024"
+        },
+        {
+          "id": 40789274223,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40789274223"
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "title": "test: simulateur indépendant du retarget et comparaison nœud/SPV",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "test/independent-retarget-vectors",
+      "head_sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        ".github/workflows/ci.yml",
+        "crates/aurora-consensus/src/difficulty.rs",
+        "crates/aurora-consensus/tests/retarget_vectors.rs",
+        "crates/aurora-node/src/p2p.rs",
+        "crates/aurora-wallet/src/spv.rs",
+        "docs/RETARGET_SIMULATION.md",
+        "scripts/retarget_sim.py",
+        "tests/vectors-retarget/admission.tsv",
+        "tests/vectors-retarget/boundaries.tsv",
+        "tests/vectors-retarget/chains.tsv"
+      ],
+      "runs": [
+        {
+          "id": 40790194961,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790194961"
+        },
+        {
+          "id": 40790189288,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790189288"
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "title": "docs: distinguer les propositions historiques du testnet actuel",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "docs/reconcile-state-model-status",
+      "head_sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 1,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        "docs/DECISION_BASELINE.md",
+        "docs/STATE_MODEL_COMPARISON.md"
+      ],
+      "runs": [
+        {
+          "id": 40790271759,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790271759"
+        },
+        {
+          "id": 40790266481,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790266481"
+        }
+      ]
+    },
+    {
+      "number": 16,
+      "title": "fix: isoler les handshakes P2P lents des huit workers",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "fix/bounded-p2p-handshake-admission",
+      "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        ".github/workflows/p2p-admission.yml",
+        "crates/aurora-node/src/p2p.rs",
+        "docs/P2P_ADMISSION.md",
+        "scripts/testnet_admission_probe.py"
+      ],
+      "runs": [
+        {
+          "id": 40855158390,
+          "name": "p2p-admission",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855158390"
+        },
+        {
+          "id": 40855158200,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855158200"
+        },
+        {
+          "id": 40855150345,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855150345"
+        },
+        {
+          "id": 40855150230,
+          "name": "p2p-admission",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855150230"
+        }
+      ]
+    },
+    {
+      "number": 17,
+      "title": "perf: mesurer la revalidation ML-DSA du mempool",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "perf/mempool-validation-baseline",
+      "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        ".github/workflows/mempool-benchmark.yml",
+        "crates/aurora-core/tests/mempool_benchmark.rs",
+        "docs/MEMPOOL_BENCHMARK.md"
+      ],
+      "runs": [
+        {
+          "id": 40856155126,
+          "name": "mempool-benchmark",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856155126"
+        },
+        {
+          "id": 40856155127,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856155127"
+        },
+        {
+          "id": 40856146659,
+          "name": "mempool-benchmark",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856146659"
+        },
+        {
+          "id": 40856146579,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856146579"
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "title": "perf: activer le cache borné des signatures du mempool",
+      "base": "perf/mempool-validation-baseline",
+      "base_reported_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+      "base_current_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
+      "head": "perf/bounded-mempool-signature-cache",
+      "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "6c4a5e35372ac43388ed5a113c73714715caf657",
+      "files": [
+        "crates/aurora-core/src/signature.rs",
+        "crates/aurora-core/src/state.rs",
+        "crates/aurora-core/tests/mempool_benchmark.rs",
+        "crates/aurora-node/src/p2p.rs",
+        "docs/MEMPOOL_SIGNATURE_CACHE.md"
+      ],
+      "runs": [
+        {
+          "id": 40857164286,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857164286"
+        },
+        {
+          "id": 40857164473,
+          "name": "mempool-benchmark",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857164473"
+        },
+        {
+          "id": 40857153753,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857153753"
+        },
+        {
+          "id": 40857153780,
+          "name": "mempool-benchmark",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857153780"
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "title": "test: compléter le fuzzing des comptes avec corpus et rejeu automatique",
+      "base": "perf/bounded-mempool-signature-cache",
+      "base_reported_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "base_current_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "head": "test/fuzz-cached-account-transitions",
+      "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "bc577cab501da266a0372a642269d27d24050d9e",
+      "files": [
+        ".github/workflows/state-fuzz.yml",
+        "docs/ACCOUNT_STATE_FUZZING.md",
+        "fuzz/Cargo.toml",
+        "fuzz/fuzz_targets/account_state.rs",
+        "fuzz/seeds/account_state/insufficient-funds",
+        "fuzz/seeds/account_state/invalid-signature",
+        "fuzz/seeds/account_state/nonce-replay",
+        "fuzz/seeds/account_state/rollback-cache-hit",
+        "fuzz/seeds/account_state/self-transfer",
+        "fuzz/seeds/account_state/valid-sequence",
+        "fuzz/seeds/account_state/wrong-network",
+        "fuzz/seeds/account_state/zero-amount"
+      ],
+      "runs": [
+        {
+          "id": 40858038542,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858038542"
+        },
+        {
+          "id": 40858038616,
+          "name": "state-fuzz",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858038616"
+        },
+        {
+          "id": 40858029423,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858029423"
+        },
+        {
+          "id": 40858029437,
+          "name": "state-fuzz",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858029437"
+        }
+      ]
+    },
+    {
+      "number": 20,
+      "title": "test: admission des paiements après réorganisations avec cache chaud",
+      "base": "perf/bounded-mempool-signature-cache",
+      "base_reported_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "base_current_sha": "bc577cab501da266a0372a642269d27d24050d9e",
+      "head": "test/cached-admission-real-reorg",
+      "head_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "bc577cab501da266a0372a642269d27d24050d9e",
+      "files": [
+        "crates/aurora-consensus/tests/cached_reorg.rs",
+        "docs/CACHED_REORG_VALIDATION.md"
+      ],
+      "runs": [
+        {
+          "id": 40859310606,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40859310606"
+        },
+        {
+          "id": 40859301119,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40859301119"
+        }
+      ]
+    },
+    {
+      "number": 21,
+      "title": "feat: réinsérer automatiquement les transactions annulées par une réorganisation",
+      "base": "test/cached-admission-real-reorg",
+      "base_reported_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+      "base_current_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+      "head": "feat/reinsert-orphaned-transactions",
+      "head_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
+      "files": [
+        "Cargo.lock",
+        "crates/aurora-node/Cargo.toml",
+        "crates/aurora-node/src/p2p.rs",
+        "docs/ORPHAN_TRANSACTION_REINSERTION.md"
+      ],
+      "runs": [
+        {
+          "id": 40860481639,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40860481639"
+        },
+        {
+          "id": 40860475405,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40860475405"
+        }
+      ]
+    },
+    {
+      "number": 22,
+      "title": "fix: sécuriser les adresses saisies dans le wallet et le mineur",
+      "base": "feat/reinsert-orphaned-transactions",
+      "base_reported_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+      "base_current_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+      "head": "fix/strict-account-hex-inputs",
+      "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
+      "files": [
+        "crates/aurora-core/src/accounts.rs",
+        "crates/aurora-node/src/main.rs",
+        "crates/aurora-wallet/src/builder.rs",
+        "docs/REVIEW_2026_10_29.md"
+      ],
+      "runs": [
+        {
+          "id": 40861675910,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861675910"
+        },
+        {
+          "id": 40861675687,
+          "name": "mempool-benchmark",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861675687"
+        },
+        {
+          "id": 40861668512,
+          "name": "mempool-benchmark",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861668512"
+        },
+        {
+          "id": 40861668335,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861668335"
+        }
+      ]
+    },
+    {
+      "number": 23,
+      "title": "fix: borner la durée totale des trames RPC du wallet",
+      "base": "fix/strict-account-hex-inputs",
+      "base_reported_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+      "base_current_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+      "head": "fix/wallet-rpc-frame-deadlines",
+      "head_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
+      "files": [
+        "crates/aurora-wallet/src/rpc.rs",
+        "docs/WALLET_RPC_DEADLINES.md"
+      ],
+      "runs": [
+        {
+          "id": 40908495775,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40908495775"
+        },
+        {
+          "id": 40908483659,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40908483659"
+        }
+      ]
+    },
+    {
+      "number": 24,
+      "title": "test: vérifier trois partitions réseau et reconnexions successives",
+      "base": "fix/wallet-rpc-frame-deadlines",
+      "base_reported_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+      "base_current_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+      "head": "test/repeated-network-partitions",
+      "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 1,
+      "behind": 0,
+      "merge_base": "b2286cfc3fbe042197c5200c01f103a926b35df2",
+      "files": [
+        ".github/workflows/network-partitions.yml",
+        "docs/FINALIZATION_CHECKLIST.md",
+        "docs/NETWORK_PARTITIONS.md",
+        "scripts/testnet_partitions.py"
+      ],
+      "runs": [
+        {
+          "id": 40909719657,
+          "name": "network-partitions",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909719657"
+        },
+        {
+          "id": 40909720225,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909720225"
+        },
+        {
+          "id": 40909707943,
+          "name": "network-partitions",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909707943"
+        },
+        {
+          "id": 40909707338,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909707338"
+        }
+      ]
+    },
+    {
+      "number": 25,
+      "title": "integration: version commune AURORA pour les essais sur deux PC",
+      "base": "feature/emission-schedule-v0",
+      "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
+      "head": "integration/two-pc-testnet",
+      "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "unstable",
+      "ahead": 34,
+      "behind": 16,
+      "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/mempool-benchmark.yml",
+        ".github/workflows/network-partitions.yml",
+        ".github/workflows/p2p-admission.yml",
+        ".github/workflows/state-fuzz.yml",
+        ".github/workflows/testnet-packages.yml",
+        "Cargo.lock",
+        "crates/aurora-consensus/src/difficulty.rs",
+        "crates/aurora-consensus/tests/cached_reorg.rs",
+        "crates/aurora-consensus/tests/retarget_vectors.rs",
+        "crates/aurora-core/src/accounts.rs",
+        "crates/aurora-core/src/signature.rs",
+        "crates/aurora-core/src/state.rs",
+        "crates/aurora-core/tests/mempool_benchmark.rs",
+        "crates/aurora-node/Cargo.toml",
+        "crates/aurora-node/src/main.rs",
+        "crates/aurora-node/src/p2p.rs",
+        "crates/aurora-wallet/src/builder.rs",
+        "crates/aurora-wallet/src/rpc.rs",
+        "crates/aurora-wallet/src/spv.rs",
+        "docs/ACCOUNT_STATE_FUZZING.md",
+        "docs/CACHED_REORG_VALIDATION.md",
+        "docs/DECISION_BASELINE.md",
+        "docs/FINALIZATION_CHECKLIST.md",
+        "docs/INTEGRATION_TWO_PC.md",
+        "docs/MEMPOOL_BENCHMARK.md",
+        "docs/MEMPOOL_SIGNATURE_CACHE.md",
+        "docs/NETWORK_PARTITIONS.md",
+        "docs/ORPHAN_TRANSACTION_REINSERTION.md",
+        "docs/P2P_ADMISSION.md",
+        "docs/RETARGET_SIMULATION.md",
+        "docs/REVIEW_2026_10_29.md",
+        "docs/STATE_MODEL_COMPARISON.md",
+        "docs/WALLET_RPC_DEADLINES.md",
+        "docs/planning/ARCHITECTURE_CIBLE.md",
+        "docs/planning/CAHIER_DES_CHARGES.md",
+        "docs/planning/DECISIONS.md",
+        "docs/planning/IMPLEMENTATION_POLICY.md",
+        "docs/planning/README.md",
+        "docs/planning/ROADMAP.md",
+        "fuzz/Cargo.toml",
+        "fuzz/fuzz_targets/account_state.rs",
+        "fuzz/seeds/account_state/insufficient-funds",
+        "fuzz/seeds/account_state/invalid-signature",
+        "fuzz/seeds/account_state/nonce-replay",
+        "fuzz/seeds/account_state/rollback-cache-hit",
+        "fuzz/seeds/account_state/self-transfer",
+        "fuzz/seeds/account_state/valid-sequence",
+        "fuzz/seeds/account_state/wrong-network",
+        "fuzz/seeds/account_state/zero-amount",
+        "scripts/package_testnet.py",
+        "scripts/retarget_sim.py",
+        "scripts/testnet_admission_probe.py",
+        "scripts/testnet_partitions.py",
+        "tests/vectors-retarget/admission.tsv",
+        "tests/vectors-retarget/boundaries.tsv",
+        "tests/vectors-retarget/chains.tsv"
+      ],
+      "runs": [
+        {
+          "id": 40911452930,
+          "name": "p2p-admission",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452930"
+        },
+        {
+          "id": 40911452612,
+          "name": "mempool-benchmark",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452612"
+        },
+        {
+          "id": 40911452793,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452793"
+        },
+        {
+          "id": 40911452452,
+          "name": "network-partitions",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452452"
+        },
+        {
+          "id": 40911452230,
+          "name": "state-fuzz",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452230"
+        },
+        {
+          "id": 40911442246,
+          "name": "p2p-admission",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442246"
+        },
+        {
+          "id": 40911442372,
+          "name": "mempool-benchmark",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442372"
+        },
+        {
+          "id": 40911442310,
+          "name": "testnet-packages",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "failure",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442310"
+        },
+        {
+          "id": 40911442174,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442174"
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "title": "wallet: protéger les paiements et vérifier les sauvegardes chiffrées",
+      "base": "integration/two-pc-testnet",
+      "base_reported_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+      "base_current_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+      "head": "feat/wallet-fund-protection",
+      "head_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 2,
+      "behind": 0,
+      "merge_base": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
+      "files": [
+        "crates/aurora-wallet/src/keys.rs",
+        "crates/aurora-wallet/src/lib.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/safety.rs",
+        "docs/WALLET_FUND_PROTECTION.md",
+        "scripts/testnet_endurance.py",
+        "scripts/testnet_smoke.py"
+      ],
+      "runs": [
+        {
+          "id": 40914077529,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40914077529"
+        },
+        {
+          "id": 40914072234,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40914072234"
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "title": "wallet: restaurer un compte après perte du wallet et de son mot de passe",
+      "base": "feat/wallet-fund-protection",
+      "base_reported_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+      "base_current_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+      "head": "feat/offline-key-recovery",
+      "head_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 4,
+      "behind": 0,
+      "merge_base": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
+      "files": [
+        "crates/aurora-wallet/src/keys.rs",
+        "crates/aurora-wallet/src/lib.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/recovery.rs",
+        "docs/OFFLINE_RECOVERY.md",
+        "docs/WALLET_FUND_PROTECTION.md",
+        "scripts/testnet_smoke.py"
+      ],
+      "runs": [
+        {
+          "id": 40916543169,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40916543169"
+        },
+        {
+          "id": 40916533019,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40916533019"
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "title": "wallet: appliquer automatiquement des plafonds persistants par paiement",
+      "base": "feat/offline-key-recovery",
+      "base_reported_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+      "base_current_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
+      "head": "feat/persistent-wallet-limits",
+      "head_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 3,
+      "behind": 0,
+      "merge_base": "07b7c37229843286f39d5ad787da782d54afb8c4",
+      "files": [
+        "crates/aurora-wallet/src/lib.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/policy.rs",
+        "crates/aurora-wallet/src/safety.rs",
+        "docs/PERSISTENT_WALLET_LIMITS.md",
+        "docs/WALLET_FUND_PROTECTION.md",
+        "scripts/testnet_smoke.py"
+      ],
+      "runs": [
+        {
+          "id": 40919309224,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40919309224"
+        },
+        {
+          "id": 40919298757,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40919298757"
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "title": "wallet: signer hors ligne et diffuser sans clé privée",
+      "base": "feat/persistent-wallet-limits",
+      "base_reported_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+      "base_current_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+      "head": "feat/offline-payment-signing",
+      "head_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 4,
+      "behind": 0,
+      "merge_base": "4b79b738dc942e9d6fda34c85f8a91463f951191",
+      "files": [
+        "crates/aurora-wallet/src/lib.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/signed_payment.rs",
+        "docs/OFFLINE_PAYMENTS.md",
+        "scripts/testnet_smoke.py"
+      ],
+      "runs": [
+        {
+          "id": 40921391697,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40921391697"
+        },
+        {
+          "id": 40921378692,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40921378692"
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "title": "wallet: terminer cinq corrections essentielles de validation et de secrets",
+      "base": "feat/offline-payment-signing",
+      "base_reported_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+      "base_current_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+      "head": "fix/wallet-essential-cleanups",
+      "head_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 8,
+      "behind": 0,
+      "merge_base": "90bfc744c7651ab9a3579e22a6715fb42836c016",
+      "files": [
+        "crates/aurora-wallet/src/keys.rs",
+        "crates/aurora-wallet/src/main.rs",
+        "crates/aurora-wallet/src/rpc.rs",
+        "crates/aurora-wallet/src/uri.rs",
+        "crates/aurora-wallet/tests/cli_validation.rs",
+        "docs/ESSENTIAL_WALLET_CLEANUPS.md",
+        "docs/FINALIZATION_CHECKLIST.md",
+        "docs/planning/ROADMAP.md"
+      ],
+      "runs": [
+        {
+          "id": 40924268768,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40924268768"
+        },
+        {
+          "id": 40924259960,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40924259960"
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "title": "node: corriger les trois chemins de déni de service relevés en revue",
+      "base": "fix/wallet-essential-cleanups",
+      "base_reported_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+      "base_current_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+      "head": "fix/adversarial-node-dos",
+      "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+      "draft": true,
+      "mergeable": true,
+      "mergeable_state": "clean",
+      "ahead": 4,
+      "behind": 0,
+      "merge_base": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
+      "files": [
+        ".github/workflows/network-partitions.yml",
+        ".github/workflows/p2p-admission.yml",
+        "crates/aurora-consensus/src/account_fork_chain.rs",
+        "crates/aurora-node/src/p2p.rs",
+        "docs/ADVERSARIAL_DOS_FIXES.md",
+        "scripts/testnet_admission_probe.py"
+      ],
+      "runs": [
+        {
+          "id": 40928369597,
+          "name": "ci",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369597"
+        },
+        {
+          "id": 40928369342,
+          "name": "p2p-admission",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369342"
+        },
+        {
+          "id": 40928369365,
+          "name": "network-partitions",
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369365"
+        },
+        {
+          "id": 40928361216,
+          "name": "ci",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928361216"
+        },
+        {
+          "id": 40928360977,
+          "name": "p2p-admission",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
+          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928360977"
+        }
+      ]
+    }
+  ]
+}
