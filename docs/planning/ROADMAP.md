@@ -22,7 +22,7 @@ Les études peuvent avancer en parallèle. En revanche, une fonction sensible n'
 6. Évaluer les limites de la trésorerie et de la récupération sans les activer.
 
 ## Ce qui n'est pas un succès de phase
-- CI verte seule ≠ audit.
+- Une CI réussie ne remplace pas un audit.
 - 100 003 blocs rejoués depuis stockage ≠ 100k blocs synchronisés sur un réseau réel.
 - 3 nœuds locaux quelques minutes ≠ réseau public stable.
 - Signature ML-DSA ≠ blockchain entièrement post-quantique.
