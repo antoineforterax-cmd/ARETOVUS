@@ -1214,6 +1214,35 @@ mod tests {
     }
 
     #[test]
+    fn truncated_latest_manifest_recovers_last_complete_snapshot() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        original.submit(next).unwrap();
+        let latest_manifest = save_snapshot(&path, &original).unwrap();
+        assert_ne!(latest_manifest, previous_manifest);
+
+        // Simulate an incomplete manifest write after a valid earlier snapshot.
+        let latest_bytes = fs::read(&latest_manifest).unwrap();
+        fs::write(&latest_manifest, &latest_bytes[..12]).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), previous_tip);
+        assert_eq!(restored.known_block_count(), 1);
+        assert_eq!(restored.state(), chain().state());
+
+        // If the only remaining older recovery point is damaged too, do not
+        // silently initialize an empty replacement chain or accept partial data.
+        let previous_bytes = fs::read(&previous_manifest).unwrap();
+        fs::write(&previous_manifest, &previous_bytes[..12]).unwrap();
+        assert!(load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).is_err());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn legacy_v4_snapshot_can_be_migrated_to_v6() {
         let path = dir();
         fs::create_dir_all(&path).unwrap();
