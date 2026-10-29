@@ -1035,7 +1035,9 @@ mod tests {
         let genesis = original.tip_hash();
         let branch_a = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
         let branch_b = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
+        let branch_a_hash = branch_a.header.hash().unwrap();
         original.submit(branch_a).unwrap();
+        let branch_b_hash = branch_b.header.hash().unwrap();
         original.submit(branch_b).unwrap();
         save_snapshot(&source, &original).unwrap();
 
@@ -1070,6 +1072,30 @@ mod tests {
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.state(), original.state());
+
+        // A restored copy must keep the losing fork usable for a later reorg.
+        // Extend the noncanonical branch until it has strictly more work.
+        let side_parent = if original.tip_hash() == branch_a_hash {
+            branch_b_hash
+        } else {
+            branch_a_hash
+        };
+        let side_successor =
+            AccountBlock::build(NetworkId::Regtest, side_parent, 4, 0, Vec::new()).unwrap();
+        let side_tip = side_successor.header.hash().unwrap();
+        let mut recovered = restored;
+        recovered.submit(side_successor).unwrap();
+        assert_eq!(recovered.height(), 2);
+        assert_eq!(recovered.tip_hash(), side_tip);
+        assert_eq!(recovered.known_block_count(), 4);
+
+        // Persist the reorg on the copied directory and verify a second recovery.
+        save_snapshot(&backup, &recovered).unwrap();
+        let second_restore =
+            load_latest_snapshot(&backup, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(second_restore.tip_hash(), side_tip);
+        assert_eq!(second_restore.known_block_count(), 4);
+        assert_eq!(second_restore.state(), recovered.state());
         fs::remove_dir_all(source).unwrap();
         fs::remove_dir_all(backup).unwrap();
     }
