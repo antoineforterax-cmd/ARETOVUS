@@ -120,13 +120,22 @@ fn run() -> Result<(), Box<dyn Error>> {
             let destination = Path::new(option(&args, "--out")?);
             let key = load_key(&args)?;
             key.save_recovery_file(destination)?;
-            println!("recovery_file={} account={}", destination.display(), account_id_hex(key.account_id()));
-            println!("SECRET: anyone with this recovery code can spend. Store it separately offline.");
+            println!(
+                "recovery_file={} account={}",
+                destination.display(),
+                account_id_hex(key.account_id())
+            );
+            println!(
+                "SECRET: anyone with this recovery code can spend. Store it separately offline."
+            );
             println!("Verify the recovery copy before relying on it. No secret is printed here.");
         }
         "recovery-verify" => {
             let key = load_recovery_key(&args)?;
-            println!("recovery_verified account={}", account_id_hex(key.account_id()));
+            println!(
+                "recovery_verified account={}",
+                account_id_hex(key.account_id())
+            );
         }
         "recovery-restore" => {
             let destination = Path::new(option(&args, "--out")?);
@@ -135,14 +144,21 @@ fn run() -> Result<(), Box<dyn Error>> {
                 key.save_plain_testnet_file(destination)?;
                 println!("WARNING: restored an unencrypted testnet key");
             } else {
-                let password = Zeroizing::new(rpassword::prompt_password("New wallet password (at least 12 characters): ")?);
-                let confirmation = Zeroizing::new(rpassword::prompt_password("Confirm new wallet password: ")?);
+                let password = Zeroizing::new(rpassword::prompt_password(
+                    "New wallet password (at least 12 characters): ",
+                )?);
+                let confirmation =
+                    Zeroizing::new(rpassword::prompt_password("Confirm new wallet password: ")?);
                 if *password != *confirmation {
                     return Err("passwords do not match".into());
                 }
                 key.save_encrypted_testnet_file(destination, &password)?;
             }
-            println!("recovered_key={} account={}", destination.display(), account_id_hex(key.account_id()));
+            println!(
+                "recovered_key={} account={}",
+                destination.display(),
+                account_id_hex(key.account_id())
+            );
             println!("The original signing key is restored, not revoked or rotated.");
         }
         "verify-backup" => {

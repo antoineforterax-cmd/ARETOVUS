@@ -222,6 +222,13 @@ def main() -> int:
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
+            refused_export = subprocess.run(
+                [str(wallet), "recovery-export", "--key-file", str(keyfile),
+                 "--out", str(recovery_file)],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused_export.returncode == 0 or recovery_file.exists():
+                raise AssertionError("recovery export did not require secret acknowledgement")
             exported = run_wallet(
                 wallet, "recovery-export", "--key-file", str(keyfile),
                 "--out", str(recovery_file), "--acknowledge-secret",
@@ -230,6 +237,15 @@ def main() -> int:
                 raise AssertionError("recovery secret leaked to command output")
             run_wallet(wallet, "recovery-verify", "--from", str(recovery_file),
                        "--expected-account", miner)
+            bad_restore = base / "wrong-account.aurkey"
+            refused_restore = subprocess.run(
+                [str(wallet), "recovery-restore", "--from", str(recovery_file),
+                 "--out", str(bad_restore), "--expected-account", RECIPIENT,
+                 "--plain-testnet"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if refused_restore.returncode == 0 or bad_restore.exists():
+                raise AssertionError("recovery wrote a wallet for the wrong expected account")
             keyfile.unlink()
             restored_key = run_wallet(
                 wallet, "recovery-restore", "--from", str(recovery_file),

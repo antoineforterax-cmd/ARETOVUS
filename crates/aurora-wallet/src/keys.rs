@@ -408,11 +408,12 @@ mod tests {
         }
     }
 
-
     #[test]
     fn recovery_survives_original_file_and_password_loss_and_signs() {
         let base = std::env::temp_dir().join(format!(
-            "aurora-recovery-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+            "aurora-recovery-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir(&base).unwrap();
         let original = base.join("original.aurkey");
@@ -420,37 +421,51 @@ mod tests {
         let replacement = base.join("replacement.aurkey");
         let key = WalletKey::from_seed_bytes([73; 32]);
         let expected = key.account_id();
-        key.save_encrypted_testnet_file(&original, "old password forgotten later").unwrap();
+        key.save_encrypted_testnet_file(&original, "old password forgotten later")
+            .unwrap();
         key.save_recovery_file(&secret).unwrap();
         assert!(key.save_recovery_file(&secret).is_err());
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(fs::metadata(&secret).unwrap().permissions().mode() & 0o777, 0o600);
+            assert_eq!(
+                fs::metadata(&secret).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
         }
         drop(key);
         fs::remove_file(&original).unwrap();
         assert!(!original.exists());
         assert!(WalletKey::load_recovery_file(&secret, AccountId([0; 32])).is_err());
         let recovered = WalletKey::load_recovery_file(&secret, expected).unwrap();
-        recovered.save_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
+        recovered
+            .save_encrypted_testnet_file(&replacement, "entirely new password")
+            .unwrap();
         drop(recovered);
-        let restored = WalletKey::load_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
+        let restored =
+            WalletKey::load_encrypted_testnet_file(&replacement, "entirely new password").unwrap();
         assert_eq!(restored.account_id(), expected);
         let tx = crate::build_signed_transaction(
-            &restored, AccountId([25; 32]),
+            &restored,
+            AccountId([25; 32]),
             aurora_core::amount::Amount::from_units(100).unwrap(),
-            aurora_core::amount::Amount::from_units(3).unwrap(), 7,
-        ).unwrap();
+            aurora_core::amount::Amount::from_units(3).unwrap(),
+            7,
+        )
+        .unwrap();
         aurora_core::signature::verify_account_transaction(&tx).unwrap();
-        assert!(restored.save_encrypted_testnet_file(&replacement, "entirely new password").is_err());
+        assert!(restored
+            .save_encrypted_testnet_file(&replacement, "entirely new password")
+            .is_err());
         fs::remove_dir_all(base).unwrap();
     }
 
     #[test]
     fn recovery_file_rejects_corruption_oversize_and_foreign_identity() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-recovery-bad-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)
+            "aurora-recovery-bad-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         let key = WalletKey::from_seed_bytes([74; 32]);
         key.save_recovery_file(&path).unwrap();

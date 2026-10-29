@@ -25,7 +25,10 @@ pub(crate) fn encode_seed(seed: &[u8; 32]) -> Zeroizing<String> {
 
 pub(crate) fn decode_seed(code: &str) -> Result<Zeroizing<[u8; 32]>, &'static str> {
     // Permit one normal text-file line ending; never normalize secret characters.
-    let code = code.strip_suffix("\r\n").or_else(|| code.strip_suffix('\n')).unwrap_or(code);
+    let code = code
+        .strip_suffix("\r\n")
+        .or_else(|| code.strip_suffix('\n'))
+        .unwrap_or(code);
     if code.len() != CODE_LEN || !code.starts_with(PREFIX) {
         return Err("invalid testnet recovery code format");
     }
