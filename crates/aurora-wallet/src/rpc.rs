@@ -1,9 +1,9 @@
 //! Bounded TCP wallet requests to an AURORA testnet node.
 use std::{
     error::Error,
-    io::{Read, Write},
+    io::{self, Read, Write},
     net::{SocketAddr, TcpStream},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use aurora_consensus::{experimental::BlockHeader, testnet::testnet_protocol_fingerprint};
@@ -200,26 +200,104 @@ pub(super) fn connect(node: SocketAddr) -> Result<TcpStream, Box<dyn Error>> {
     Ok(stream)
 }
 
+fn read_exact_before_deadline(
+    stream: &mut TcpStream,
+    bytes: &mut [u8],
+    started: Instant,
+    budget: Duration,
+) -> io::Result<()> {
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let remaining = budget.checked_sub(started.elapsed()).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::TimedOut, "frame read deadline exceeded")
+        })?;
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "frame read deadline exceeded",
+            ));
+        }
+        stream.set_read_timeout(Some(remaining))?;
+        match stream.read(&mut bytes[cursor..]) {
+            Ok(0) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "peer closed an incomplete frame",
+                ))
+            }
+            Ok(count) => cursor += count,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+fn write_all_before_deadline(
+    stream: &mut TcpStream,
+    bytes: &[u8],
+    started: Instant,
+    budget: Duration,
+) -> io::Result<()> {
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        let remaining = budget.checked_sub(started.elapsed()).ok_or_else(|| {
+            io::Error::new(io::ErrorKind::TimedOut, "frame write deadline exceeded")
+        })?;
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "frame write deadline exceeded",
+            ));
+        }
+        stream.set_write_timeout(Some(remaining))?;
+        match stream.write(&bytes[cursor..]) {
+            Ok(0) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::WriteZero,
+                    "peer stopped accepting frame bytes",
+                ))
+            }
+            Ok(count) => cursor += count,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
 fn write_frame(stream: &mut TcpStream, frame: &[u8]) -> Result<(), Box<dyn Error>> {
     if frame.is_empty() || frame.len() > MAX_FRAME {
         return Err("wallet RPC request exceeds frame limit".into());
     }
-    stream.write_all(&(frame.len() as u32).to_be_bytes())?;
-    stream.write_all(frame)?;
-    stream.flush()?;
-    Ok(())
+    let original = stream.write_timeout()?;
+    let budget = original.unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
+    let started = Instant::now();
+    let result = (|| -> io::Result<()> {
+        write_all_before_deadline(stream, &(frame.len() as u32).to_be_bytes(), started, budget)?;
+        write_all_before_deadline(stream, frame, started, budget)
+    })();
+    stream.set_write_timeout(original)?;
+    Ok(result?)
 }
 
 fn read_frame(stream: &mut TcpStream) -> Result<Vec<u8>, Box<dyn Error>> {
-    let mut length = [0; 4];
-    stream.read_exact(&mut length)?;
-    let length = u32::from_be_bytes(length) as usize;
-    if length == 0 || length > MAX_FRAME {
-        return Err("wallet RPC response exceeds frame limit".into());
-    }
-    let mut frame = vec![0; length];
-    stream.read_exact(&mut frame)?;
-    Ok(frame)
+    let original = stream.read_timeout()?;
+    let budget = original.unwrap_or(IO_TIMEOUT).min(IO_TIMEOUT);
+    let started = Instant::now();
+    let result: Result<Vec<u8>, Box<dyn Error>> = (|| {
+        let mut length = [0; 4];
+        read_exact_before_deadline(stream, &mut length, started, budget)?;
+        let length = u32::from_be_bytes(length) as usize;
+        if length == 0 || length > MAX_FRAME {
+            return Err("wallet RPC response exceeds frame limit".into());
+        }
+        let mut frame = vec![0; length];
+        read_exact_before_deadline(stream, &mut frame, started, budget)?;
+        Ok(frame)
+    })();
+    stream.set_read_timeout(original)?;
+    result
 }
 
 pub fn get_account(node: SocketAddr, id: AccountId) -> Result<RpcAccount, Box<dyn Error>> {
@@ -317,5 +395,116 @@ mod tests {
         });
         assert!(connect(address).is_err());
         server.join().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod deadline_tests {
+    use super::*;
+    use std::{net::TcpListener, thread};
+
+    fn pair() -> (TcpStream, TcpStream) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (server, _) = listener.accept().unwrap();
+        (client, server)
+    }
+
+    #[test]
+    fn trickled_prefix_and_payload_share_one_deadline() {
+        let (mut client, mut server) = pair();
+        client
+            .set_read_timeout(Some(Duration::from_millis(200)))
+            .unwrap();
+        let original = client.read_timeout().unwrap();
+        let writer = thread::spawn(move || {
+            server.write_all(&[0, 0]).unwrap();
+            thread::sleep(Duration::from_millis(100));
+            let _ = server.write_all(&[0, 8]);
+            for _ in 0..8 {
+                thread::sleep(Duration::from_millis(50));
+                if server.write_all(&[1]).is_err() {
+                    break;
+                }
+            }
+        });
+        let started = Instant::now();
+        let error = read_frame(&mut client).unwrap_err();
+        let error = error.downcast_ref::<io::Error>().unwrap();
+        assert!(matches!(
+            error.kind(),
+            io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+        ));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert_eq!(client.read_timeout().unwrap(), original);
+        drop(client);
+        writer.join().unwrap();
+    }
+
+    #[test]
+    fn truncated_or_oversized_frames_restore_read_timeout() {
+        for prefix in [
+            vec![0, 0],
+            0u32.to_be_bytes().to_vec(),
+            ((MAX_FRAME + 1) as u32).to_be_bytes().to_vec(),
+        ] {
+            let (mut client, mut server) = pair();
+            client
+                .set_read_timeout(Some(Duration::from_millis(300)))
+                .unwrap();
+            let original = client.read_timeout().unwrap();
+            server.write_all(&prefix).unwrap();
+            drop(server);
+            assert!(read_frame(&mut client).is_err());
+            assert_eq!(client.read_timeout().unwrap(), original);
+        }
+    }
+
+    #[test]
+    fn successful_frames_preserve_socket_timeouts() {
+        let (mut client, mut server) = pair();
+        client
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        server
+            .set_write_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let read_original = client.read_timeout().unwrap();
+        let write_original = server.write_timeout().unwrap();
+        for bytes in [vec![1], vec![2, 3, 4]] {
+            write_frame(&mut server, &bytes).unwrap();
+            assert_eq!(read_frame(&mut client).unwrap(), bytes);
+            assert_eq!(client.read_timeout().unwrap(), read_original);
+            assert_eq!(server.write_timeout().unwrap(), write_original);
+        }
+    }
+
+    #[test]
+    fn a_node_that_does_not_read_cannot_hold_a_wallet_write_indefinitely() {
+        let (mut client, _server) = pair();
+        client
+            .set_write_timeout(Some(Duration::from_millis(150)))
+            .unwrap();
+        let original = client.write_timeout().unwrap();
+        let payload = vec![0; MAX_FRAME];
+        let started = Instant::now();
+        let mut blocked = false;
+        for _ in 0..32 {
+            match write_frame(&mut client, &payload) {
+                Ok(()) => {}
+                Err(error) => {
+                    let error = error.downcast_ref::<io::Error>().unwrap();
+                    assert!(matches!(
+                        error.kind(),
+                        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+                    ));
+                    blocked = true;
+                    break;
+                }
+            }
+        }
+        assert!(blocked);
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert_eq!(client.write_timeout().unwrap(), original);
     }
 }
