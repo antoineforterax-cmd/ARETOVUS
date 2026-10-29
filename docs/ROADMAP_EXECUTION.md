@@ -1,5 +1,22 @@
 > Périmètre révisé le 27 octobre 2026 : explorateur, site, vente simulée, interfaces graphiques et mobile sont reportés aux repreneurs. Les anciennes étapes applicatives ci-dessous sont conservées comme historique, pas comme travaux en cours.
 
+## Situation au 29 octobre 2026
+
+Le travail actif est réparti entre la branche `feature/emission-schedule-v0` et plusieurs PR en brouillon. Le README de `main` explique désormais cette distinction. La release du 27 octobre reste un instantané expérimental, pas une version stable ni la somme des modifications récentes.
+
+**Fait et testé dans les branches concernées :** signatures ML-DSA-65 v3, consensus et économie de testnet, stockage v6, P2P TCP, wallet CLI chiffré, tests multi-nœuds ; stockage et rechargement de 100 003 blocs ; essais ciblés des auto-transferts (#13), du retarget (#14), de l'admission P2P (#16), du cache cryptographique (#17-#18), du fuzzing des comptes (#19), des réorganisations (#20-#21) et du décodage d'adresses (#22). Les preuves et limites figurent dans chaque PR.
+
+**À terminer avant un testnet durable :** intégrer les PR après revue, rejouer la CI sur l'ensemble, terminer les scénarios d'horloges divergentes (#3), de saturation après handshake et sous NAT (#4), et de synchronisation P2P à grande échelle (#5). Publier le bilan final de la campagne 72 h lancée le 28 octobre, puis éprouver plusieurs machines réelles, les partitions et les pannes de stockage. Aucun audit humain indépendant n'a été réalisé.
+
+**Études à poursuivre séparément :** confidentialité des transactions et des métadonnées, récupération volontaire des accès, protections anti-arnaque, gouvernance de trésorerie et compatibilité post-quantique globale. Ces objectifs ne sont pas des fonctions actives du testnet.
+
+**Applications reportées :** explorateur, site complet, wallet graphique et mobile. Ne pas les présenter comme disponibles.
+
+Les sections suivantes conservent leurs dates et résultats d'origine ; les mentions de stockage v5 ou d'absence de release décrivent des étapes antérieures et ne remplacent pas les preuves v6 et la publication du 27 octobre.
+
+---
+
+
 # AURORA — état vérifié et chemin vers une version finale
 
 **Branche de travail :** `feature/emission-schedule-v0`.  
