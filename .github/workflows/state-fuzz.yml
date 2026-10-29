@@ -1,0 +1,58 @@
+name: state-fuzz
+on:
+  push:
+    branches: [test/fuzz-cached-account-transitions]
+  pull_request:
+    paths:
+      - 'fuzz/fuzz_targets/account_state.rs'
+      - '.github/workflows/state-fuzz.yml'
+      - 'fuzz/seeds/account_state/**'
+      - 'crates/aurora-core/**'
+      - 'fuzz/Cargo.toml'
+permissions:
+  contents: read
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo +nightly install cargo-fuzz --version 0.13.2 --locked
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus/account_state
+          key: account-state-${{ runner.os }}-${{ hashFiles('fuzz/fuzz_targets/account_state.rs') }}-${{ github.run_id }}
+          restore-keys: |
+            account-state-${{ runner.os }}-${{ hashFiles('fuzz/fuzz_targets/account_state.rs') }}-
+      - name: Rejouer les cas de référence
+        shell: bash
+        run: |
+          mkdir -p target/state-fuzz fuzz/corpus/account_state
+          set -o pipefail
+          for seed in fuzz/seeds/account_state/*; do
+            cargo +nightly fuzz run account_state "$seed" 2>&1 | tee -a target/state-fuzz/seeds.txt
+          done
+          cp fuzz/seeds/account_state/* fuzz/corpus/account_state/
+      - name: Campagne différentielle des comptes
+        shell: bash
+        run: |
+          mkdir -p target/state-fuzz
+          set -o pipefail
+          cargo +nightly fuzz run account_state -- -max_total_time=300 -max_len=40 -print_final_stats=1 2>&1 | tee target/state-fuzz/results.txt
+      - name: Rejouer le corpus enrichi
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run account_state fuzz/corpus/account_state -- -runs=0 -max_len=40 -print_final_stats=1 2>&1 | tee target/state-fuzz/replay.txt
+          git rev-parse HEAD > target/state-fuzz/commit.txt
+          rustc +nightly -Vv > target/state-fuzz/toolchain.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: account-state-fuzz
+          path: |
+            target/state-fuzz/
+            fuzz/artifacts/account_state/
+            fuzz/corpus/account_state/
+          retention-days: 14

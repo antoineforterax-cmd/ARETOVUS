@@ -11,6 +11,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
+ed25519-dalek = "=2.2.0"
 aurora-consensus = { path = "../crates/aurora-consensus" }
 aurora-core = { path = "../crates/aurora-core" }
 aurora-node = { path = "../crates/aurora-node" }
@@ -33,6 +34,13 @@ bench = false
 [[bin]]
 name = "network_payloads"
 path = "fuzz_targets/network_payloads.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "account_state"
+path = "fuzz_targets/account_state.rs"
 test = false
 doc = false
 bench = false
