@@ -2416,22 +2416,36 @@ mod tests {
 
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let server_data = dir.join("server");
         let server = thread::spawn(move || {
-            let (stream, _) = listener.accept().unwrap();
-            handle_peer_shared(
-                stream,
-                &Mutex::new(remote),
-                &Mutex::new(Mempool::default()),
-                &server_data,
-                &[],
-            )
+            let shared = Mutex::new(remote);
+            let pool = Mutex::new(Mempool::default());
+            let mut sessions = 0usize;
+            while stop_rx.try_recv().is_err() {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        sessions += 1;
+                        handle_peer_shared(stream, &shared, &pool, &server_data, &[]).unwrap();
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("volume server accept failed: {error}"),
+                }
+            }
+            sessions
         });
 
         let receiver_dir = dir.join("receiver");
         let mut receiver = chain();
         let transfer_started = Instant::now();
-        let received = sync_from_peer(address, &mut receiver, &receiver_dir).unwrap();
+        // Force short sessions even at baseline volume, exercising cursor
+        // continuity across reconnects instead of only a single socket.
+        let received =
+            sync_from_peer_with_request_limit(address, &mut receiver, &receiver_dir, true, 8)
+                .unwrap();
         let transfer_elapsed = transfer_started.elapsed();
         assert_eq!(received, expected_count - 1);
         assert_eq!(receiver.known_block_count(), expected_count);
@@ -2441,7 +2455,9 @@ mod tests {
             .all_blocks_by_arrival()
             .iter()
             .any(|block| block.header.hash().unwrap() == side_hash));
-        assert!(server.join().unwrap().is_ok());
+        stop_tx.send(()).unwrap();
+        let sessions = server.join().unwrap();
+        assert!(sessions > 1, "volume test did not exercise TCP session rollover");
 
         drop(receiver);
         let restore_started = Instant::now();
@@ -2459,9 +2475,10 @@ mod tests {
             .iter()
             .any(|block| block.header.hash().unwrap() == side_hash));
         eprintln!(
-            "network volume probe: network=regtest blocks={} height={} build_seconds={:.2} tcp_sync_and_page_persist_seconds={:.2} restore_seconds={:.2} total_seconds={:.2}",
+            "network volume probe: network=regtest blocks={} height={} tcp_sessions={} build_seconds={:.2} tcp_sync_and_page_persist_seconds={:.2} restore_seconds={:.2} total_seconds={:.2}",
             expected_count,
             count,
+            sessions,
             build_elapsed.as_secs_f64(),
             transfer_elapsed.as_secs_f64(),
             restore_elapsed.as_secs_f64(),
