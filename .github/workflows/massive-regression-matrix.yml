@@ -89,7 +89,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Seventy-two local restart/sync rounds
-        run: python3 scripts/testnet_soak.py --rounds 72 --interval-seconds 2
+        run: |
+          set -o pipefail
+          python3 scripts/testnet_soak.py --rounds 72 --interval-seconds 2 2>&1 | tee massive-soak-summary.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: massive-soak-summary
+          path: massive-soak-summary.log
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
