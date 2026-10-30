@@ -59,7 +59,7 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                     for index in range(count):
                         sock = clients.enter_context(socket.socket())
                         sock.settimeout(5)
-                        if kind == "saturated_after_hello":
+                        if kind.startswith("saturated_"):
                             # Eight loopback IPs, four sockets per IP; exhaust
                             # the global limit without violating per-IP caps.
                             source = f"127.0.0.{index // 4 + 2}"
