@@ -163,34 +163,29 @@ mod tests {
         let nonce = 42;
         let phrase = payment_intent_confirmation_phrase(&destination, amount, fee, nonce);
         assert!(phrase.starts_with("SEND AURORA-TESTNET "));
-        assert!(read_payment_intent_confirmation(
-            &mut format!("{phrase}\\n").replace("\\n", "\n").as_bytes(),
-            &destination,
-            amount,
-            fee,
-            nonce
-        )
-        .unwrap());
-        assert!(read_payment_intent_confirmation(
-            &mut format!("{phrase}\\r\\n").replace("\\r", "\r").replace("\\n", "\n").as_bytes(),
-            &destination,
-            amount,
-            fee,
-            nonce
-        )
-        .unwrap());
-        for candidate in [
+        for valid in [format!("{phrase}\n"), format!("{phrase}\r\n")] {
+            assert!(read_payment_intent_confirmation(
+                &mut valid.as_bytes(),
+                &destination,
+                amount,
+                fee,
+                nonce
+            )
+            .unwrap());
+        }
+        let alternatives = [
             phrase.clone(),
             format!("{}\n", phrase.replace("AURORA-TESTNET", "AURORA-MAINNET")),
-            format!("{}\n", phrase.replace(&destination, &"ac".repeat(32))),
-            format!("{}\n", phrase.replace("10 0.01 42", "11 0.01 42")),
-            format!("{}\n", phrase.replace("10 0.01 42", "10 0.02 42")),
-            format!("{}\n", phrase.replace("10 0.01 42", "10 0.01 43")),
+            format!("{}\n", payment_intent_confirmation_phrase(&"ac".repeat(32), amount, fee, nonce)),
+            format!("{}\n", payment_intent_confirmation_phrase(&destination, units(1_100_000_000), fee, nonce)),
+            format!("{}\n", payment_intent_confirmation_phrase(&destination, amount, units(2_000_000), nonce)),
+            format!("{}\n", payment_intent_confirmation_phrase(&destination, amount, fee, nonce + 1)),
             format!("{phrase} trailing\n"),
             format!(" {phrase}\n"),
             format!("{phrase}\nextra"),
             "x".repeat(1024),
-        ] {
+        ];
+        for candidate in alternatives {
             assert!(
                 !read_payment_intent_confirmation(
                     &mut candidate.as_bytes(),
