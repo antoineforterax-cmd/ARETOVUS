@@ -67,6 +67,45 @@ def await_pending(wallet: Path, address: str, txid: str, timeout: float = 55) ->
     )
 
 
+
+def expect_rejected_payment(
+    wallet: Path, keyfile: Path, recipient: str, amount: str,
+    node_address: str, expected_error: str,
+) -> None:
+    """A malformed or unaffordable payment must fail before signing/broadcast."""
+    attempt = subprocess.run(
+        [
+            str(wallet), "send", "--key-file", str(keyfile),
+            "--to", recipient, "--amount", amount, "--fee", "0.01",
+            "--node", node_address, "--dry-run",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if attempt.returncode == 0 or expected_error not in attempt.stdout:
+        raise AssertionError(
+            "Wallet rejection missing or incorrect: "
+            f"expected={expected_error!r} exit={attempt.returncode} "
+            f"output={attempt.stdout[-800:]}"
+        )
+    if re.search(r"(?m)^transaction_id=", attempt.stdout):
+        raise AssertionError("A rejected wallet payment returned a transaction ID")
+
+
+def account_state(wallet: Path, keyfile: Path, node_address: str) -> str:
+    output = run(wallet, "balance", "--key-file", keyfile, "--node", node_address)
+    match = re.search(
+        r"(?m)^address=[0-9a-fA-F]{64} pending_adjusted_balance=[0-9.]+ next_nonce=\\d+$",
+        output,
+    )
+    if not match:
+        raise AssertionError(f"Unexpected wallet state: {output[-800:]}")
+    return match.group(0)
+
+
 def choose_port() -> int:
     # Reserve only briefly. All sockets remain bound to loopback.
     with socket.socket() as sock:
@@ -285,6 +324,31 @@ def main() -> None:
                 raise AssertionError(
                     f"Reverse payment debited Bob incorrectly: {final_balance[-800:]}"
                 )
+
+            # Repeat the four rejected wallet cases from the physical
+            # two-PC campaign against the actual packaged Windows wallet.
+            # Nothing should change in either node or Bob's account.
+            wallet_before = account_state(wallet, bob_key, b_address)
+            chain_a_before = state(node, a_data)[:3]
+            chain_b_before = state(node, b_data)[:3]
+            for recipient, amount, error in (
+                (miner, "1000", "insufficient pending-adjusted balance"),
+                ("ADRESSE_INVALIDE", "0.10",
+                 "account id must contain exactly 64 ASCII hexadecimal digits"),
+                (bob, "0.10", "sender and recipient must differ"),
+                (miner, "0", "payment amount must be positive"),
+            ):
+                expect_rejected_payment(
+                    wallet, bob_key, recipient, amount, b_address, error
+                )
+            wallet_after = account_state(wallet, bob_key, b_address)
+            if wallet_after != wallet_before:
+                raise AssertionError(
+                    f"Rejected payment mutated wallet state: {wallet_before} -> {wallet_after}"
+                )
+            if (state(node, a_data)[:3] != chain_a_before
+                    or state(node, b_data)[:3] != chain_b_before):
+                raise AssertionError("Rejected payment changed persisted chain state")
             stop(b)
             b = None
             stop(a)
@@ -303,6 +367,7 @@ def main() -> None:
                 f"known_blocks={persisted_a[2]} "
                 f"wallet_payment_spv=success first_recipient_balance=1.25000000 "
                 f"bidirectional_mempool_relay=success final_recipient_balance=1.19000000 "
+                f"wallet_rejection_no_mutation=success "
                 f"initial_sync_seconds={initial:.3f} resumed_sync_seconds={resumed:.3f}"
             )
         finally:
