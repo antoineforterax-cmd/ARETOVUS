@@ -56,6 +56,17 @@ Conserver une sauvegarde réellement hors machine et suivre la procédure ci-des
 
 Le code synchronise chaque nouveau fichier et, sur Unix, son répertoire après renommage. Cela réduit le risque de perte après arrêt brutal; aucun essai de panne électrique réelle ou de disque effectivement plein n’a encore été réalisé.
 
+Si un ancien manifeste d'index est illisible ou a un checksum invalide,
+le nettoyage automatique des anciens index est suspendu afin de ne pas
+supprimer un point de reprise intact à cause des seules dates de fichiers.
+**Cela peut faire croître le nombre de manifestes et les données sur disque**
+tant que la corruption persiste. Mettre le nœud hors service, préserver
+une copie complète et les journaux, puis diagnostiquer et restaurer sur
+une copie vérifiée ; ne pas effacer les manifestes endommagés à l'aveugle.
+Ce garde-fou vérifie les octets des manifestes, mais ne garantit pas
+l'intégrité de leurs pages et blocs référencés : utiliser `testnet verify`
+pour vérifier la chaîne récupérée.
+
 ## Mettre à jour et revenir en arrière
 
 - Épingler le commit ou une future version publiée; sauvegarder et vérifier les données avant toute mise à jour. Lancer d’abord le nouveau binaire sur **une copie** du dossier et comparer les paramètres, hauteur et sommet.
