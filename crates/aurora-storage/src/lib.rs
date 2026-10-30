@@ -94,6 +94,8 @@ pub fn save_snapshot(
     fs::create_dir_all(&block_dir)?;
     let page_dir = dir.join(INDEX_PAGE_DIRECTORY);
     fs::create_dir_all(&page_dir)?;
+    #[cfg(test)]
+    let profile_started = std::time::Instant::now();
     let blocks = chain.all_blocks_by_arrival();
     if blocks.is_empty() {
         return Err(StorageError::InvalidFormat("invalid block count"));
@@ -114,6 +116,8 @@ pub fn save_snapshot(
         }
         block_ids.push(block_id);
     }
+    #[cfg(test)]
+    let profile_blocks_done = profile_started.elapsed();
 
     let page_count = block_ids.len().div_ceil(INDEX_PAGE_BLOCKS);
     let mut body = Vec::with_capacity(81 + page_count * 32 + CHECKSUM_LEN);
@@ -162,6 +166,8 @@ pub fn save_snapshot(
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
         body.extend_from_slice(page_id.as_bytes());
     }
+    #[cfg(test)]
+    let profile_pages_done = profile_started.elapsed();
     // An earlier save may have renamed an immutable object but failed to sync
     // its parent directory. Re-sync both object directories before publishing
     // a manifest, including when all referenced objects already existed.
@@ -178,9 +184,25 @@ pub fn save_snapshot(
         INDEX_EXTENSION
     ));
     write_manifest_with_directory_sync(&destination, &body, sync_directory)?;
+    #[cfg(test)]
+    let profile_manifest_done = profile_started.elapsed();
     prune_old_indexes(dir, &destination);
     if let Err(error) = prune_unreferenced_index_pages(dir) {
         eprintln!("cannot prune old AURORA index pages: {error}");
+    }
+    #[cfg(test)]
+    if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
+        let total = profile_started.elapsed();
+        eprintln!(
+            "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3}",
+            block_ids.len(),
+            page_count,
+            profile_blocks_done.as_secs_f64(),
+            (profile_pages_done - profile_blocks_done).as_secs_f64(),
+            (profile_manifest_done - profile_pages_done).as_secs_f64(),
+            (total - profile_manifest_done).as_secs_f64(),
+            total.as_secs_f64()
+        );
     }
     Ok(destination)
 }
@@ -2153,6 +2175,52 @@ mod tests {
             load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
             Err(StorageError::InvalidFormat(_))
         ));
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    /// Profile the existing crash-safe snapshot path at P2P-like page cadence.
+    /// Test-only timing; the production storage implementation is unchanged.
+    #[test]
+    #[ignore = "run through the opt-in storage-phase-profile workflow"]
+    fn repeated_snapshot_phase_profile_with_restart() {
+        let count = std::env::var("AURORA_STORAGE_PROFILE_BLOCKS")
+            .ok()
+            .map(|value| value.parse::<u64>().expect("block count must be u64"))
+            .unwrap_or(2_048);
+        assert!((256..=16_384).contains(&count));
+        let path = dir();
+        let mut original = chain();
+        let started = std::time::Instant::now();
+        let mut saves = 0usize;
+        for height in 1..=count {
+            let block =
+                AccountBlock::build(NetworkId::Regtest, original.tip_hash(), height + 1, 0, vec![])
+                    .unwrap();
+            original.submit(block).unwrap();
+            if height % 64 == 0 || height == count {
+                save_snapshot(&path, &original).unwrap();
+                saves += 1;
+            }
+        }
+        let save_and_build = started.elapsed();
+        assert_eq!(original.height(), count);
+        let expected_tip = original.tip_hash();
+        drop(original);
+
+        let restore_started = std::time::Instant::now();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restore_elapsed = restore_started.elapsed();
+        assert_eq!(restored.height(), count);
+        assert_eq!(restored.known_block_count(), count as usize + 1);
+        assert_eq!(restored.tip_hash(), expected_tip);
+        eprintln!(
+            "storage volume probe: height={} known_blocks={} snapshot_calls={} build_and_save_seconds={:.2} restore_seconds={:.2}",
+            count,
+            restored.known_block_count(),
+            saves,
+            save_and_build.as_secs_f64(),
+            restore_elapsed.as_secs_f64()
+        );
         fs::remove_dir_all(path).unwrap();
     }
 
