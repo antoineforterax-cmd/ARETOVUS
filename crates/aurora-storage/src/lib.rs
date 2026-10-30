@@ -1358,7 +1358,7 @@ mod tests {
         let first_manifest = save_snapshot(&path, &chain).unwrap();
         let mut shared_recent_block = None;
 
-        // The same block belongs to three newer recovery generations.
+        // One damaged block is shared by every newer recovery generation.
         for timestamp in 2..=5 {
             let block = AccountBlock::build(
                 NetworkId::Regtest,
@@ -1368,7 +1368,7 @@ mod tests {
                 Vec::new(),
             )
             .unwrap();
-            if timestamp == 3 {
+            if timestamp == 2 {
                 shared_recent_block = Some(block.header.hash().unwrap());
             }
             chain.submit(block).unwrap();
