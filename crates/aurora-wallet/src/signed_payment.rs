@@ -131,6 +131,24 @@ mod tests {
         fs::remove_file(path).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn signed_payment_reader_rejects_symlinked_authorizations() {
+        use std::os::unix::fs::symlink;
+        let payment_path = path();
+        let link_path = path();
+        let tx = payment();
+        save(&payment_path, &tx).unwrap();
+        symlink(&payment_path, &link_path).unwrap();
+        assert!(load(&link_path).is_err());
+        // Reject a nonregular path too; never attempt to read it as a payment.
+        assert!(load(std::env::temp_dir().as_path()).is_err());
+        // The original, independently verified bytes remain readable.
+        assert_eq!(load(&payment_path).unwrap(), tx);
+        fs::remove_file(link_path).unwrap();
+        fs::remove_file(payment_path).unwrap();
+    }
+
     #[test]
     fn invalid_network_version_or_signed_fields_are_rejected() {
         let path = path();
