@@ -3112,10 +3112,8 @@ mod tests {
         // One real TCP page contains an admissible block followed by a
         // consensus-valid future block. An injected local clock is the only
         // simulated component; no OS clock or consensus rule is modified.
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-clock-catchup-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-clock-catchup-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3123,14 +3121,8 @@ mod tests {
         let ordinary =
             AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
         remote.submit(ordinary).unwrap();
-        let future = AccountBlock::build(
-            NetworkId::Regtest,
-            remote.tip_hash(),
-            8_201,
-            0,
-            vec![],
-        )
-        .unwrap();
+        let future =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 8_201, 0, vec![]).unwrap();
         remote.submit(future).unwrap();
         let expected_tip = remote.tip_hash();
         let expected_work = remote.chain_work();
