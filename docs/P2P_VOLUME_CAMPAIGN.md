@@ -30,6 +30,7 @@ public (PoW, plusieurs machines, latence WAN et profils de signature différents
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | Baseline après #64 | `0e0bb6798d45f939b9d111c77c56105a89c6c6ff` | 2 050 | 5 | 3,70 s | 0,40 s | [Actions 41059067553](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41059067553) |
 | Palier 8 192, branche de validation | `3b85bdc47c840adf53a7619890de64127a091a0e` | 8 194 | 19 | 37,27 s | 1,79 s | [Actions 41060240777](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41060240777) |
+| Palier 16 384, branche de validation | `e966fc1dc8d2d75fc4018ed2719bac217ba379e1` | 16 386 | 37 | 79,23 s | 4,48 s | [Actions 41061566814](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41061566814) |
 
 Avec ~4 fois plus de blocs, la synchronisation + persistance passe de
 3,70 s à 37,27 s (~10,1 fois). Cette mesure suggère un coût non linéaire :
@@ -44,13 +45,23 @@ Les mesures d'autres exécutions du même code varient avec les runners et la
 charge système : les valeurs ci-dessus ne constituent ni un SLA, ni une
 garantie d'évolution linéaire.
 
+À 16 384 blocs : génération 1,31 s, **79,23 s** synchronisation
+et persistance par pages, 4,48 s restauration, **37 sessions TCP**,
+85,37 s scénario complet. La commande Cargo a duré 1 min 38,13 s avec
+RSS maximal annoncé **370 188 Ko** (compilation incluse).
+Le palier 16 384 est environ deux fois plus grand que le palier 8 192,
+et son temps TCP + persistance est ~2,13 fois supérieur sur ces runners.
+Ces deux mesures ponctuelles ne prouvent pas une loi de complexité,
+ni une durée probable à 100 001 blocs.
+
+
 ## Paliers opt-in
 
 | Palier | Déclenchement | Critère de validation |
 | --- | --- | --- |
 | 2 048 blocs de hauteur (2 050 connus) | PR et déclenchement manuel par défaut | Un test exact, convergence, branche latérale, restauration, plusieurs sessions |
 | 8 192 blocs de hauteur (8 194 connus) | Push de `volume/p2p-scale-8192` | Même invariant ; conserver temps, RSS et verdict GitHub au SHA |
-| 16 384 blocs de hauteur (16 386 connus) | Push de `volume/p2p-scale-16384` | Ne lancer qu'après examen du palier 8 192 et de la consommation disque |
+| 16 384 blocs de hauteur (16 386 connus) | Push de `volume/p2p-scale-16384` | Exécution validée sur `e966fc1dc...`, vérifier CI du commit final de la PR |
 | 100 001 blocs de hauteur (100 003 connus) | `workflow_dispatch` explicite avec `blocks=100001` | Ne déclarer réussi qu'après exécution complète ; ne pas extrapoler |
 
 Les branches à paliers permettent une campagne sur demande sans ralentir
