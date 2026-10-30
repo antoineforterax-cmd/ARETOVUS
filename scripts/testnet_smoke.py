@@ -137,14 +137,14 @@ def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
     """Verify an offline copy, then prove that missing v6 pages are detectable."""
     # The miner has exited; never copy a live node's data files.
     source = run_node(binary, "testnet", "verify", "--data-dir", str(data_dir))
-    source_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", source)
+    source_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", source)
     if source_state is None or int(source_state.group(1)) < 2:
         raise AssertionError(f"source chain is not verifiable: {source}")
 
     backup = data_dir.with_name(f"{data_dir.name}-offline-copy")
     shutil.copytree(data_dir, backup)
     copied = run_node(binary, "testnet", "verify", "--data-dir", str(backup))
-    copied_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", copied)
+    copied_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", copied)
     if copied_state is None or copied_state.groups() != source_state.groups():
         raise AssertionError(
             f"offline copy differs from stopped source: {source} / {copied}"
@@ -160,7 +160,7 @@ def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
         incomplete = run_node(binary, "testnet", "verify", "--data-dir", str(backup))
     except RuntimeError:
         return  # Expected: the incomplete copy is rejected.
-    incomplete_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", incomplete)
+    incomplete_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", incomplete)
     if incomplete_state is not None and incomplete_state.groups() == source_state.groups():
         raise AssertionError(
             "incomplete backup was incorrectly accepted as the original chain"
