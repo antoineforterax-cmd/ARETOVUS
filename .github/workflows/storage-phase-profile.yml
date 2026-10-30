@@ -38,7 +38,7 @@ jobs:
           fi
           printf 'Selected storage profile: %s blocks after genesis\n' "$AURORA_STORAGE_PROFILE_BLOCKS"
           set -o pipefail
-          /usr/bin/time -v cargo test --locked -p aurora-storage --lib repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-results.log
+          /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-results.log
           grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' storage-profile-results.log
           grep -q 'storage phases:' storage-profile-results.log
           grep -q 'storage volume probe:' storage-profile-results.log
