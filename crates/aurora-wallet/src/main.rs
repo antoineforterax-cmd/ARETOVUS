@@ -365,7 +365,10 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("The signed file authorizes spending. Anyone holding it can broadcast; deleting it cannot revoke a copy.");
             if !flag(&args, "--yes") {
                 let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
-                    &destination, amount, fee, nonce,
+                    &destination,
+                    amount,
+                    fee,
+                    nonce,
                 );
                 print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
@@ -384,7 +387,12 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce)?;
             aurora_wallet::safety::verify_signed_payment_intent(
-                &transaction, key.account_id(), recipient, amount, fee, nonce,
+                &transaction,
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                nonce,
             )?;
             aurora_wallet::signed_payment::save(destination_file, &transaction)?;
             println!(
