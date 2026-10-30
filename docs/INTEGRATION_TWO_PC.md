@@ -1,31 +1,37 @@
-# Version commune pour les essais sur deux ordinateurs
+# Intégration AURORA — état et provenance pour un essai sur deux ordinateurs
 
-Branche : integration/two-pc-testnet. Cette branche regroupe les PR #12 à #24 :
-cahier des charges, clarification historique, auto-transferts, retarget,
-admission P2P, cache de signatures, fuzzing des comptes, réorganisations,
-réinsertion des paiements, saisie hexadécimale, délais RPC et partitions répétées.
+Cette page remplace les notes historiques de la branche `integration/two-pc-testnet`.
+**Au 30 octobre 2026**, `main` inclut les PR de consolidation jusqu'à la #76,
+notamment le stockage v6, le P2P v4 et le test d'horloge simulée sur TCP.
+Cette mention décrit la source du développement, **pas une validation physique**.
+Une version exploitable pour l'essai doit être choisie par son **SHA complet**,
+une **CI sur ce SHA réussie** et une **archive créée sur ce SHA**.
 
-Les sources exactes sont conservées comme parents de ce commit d'intégration.
-Le fichier P2P combine explicitement le dispatcher de handshake de #16 avec le
-cache et la publication atomique chaîne/mempool de #21. Les tests de #13 utilisent
-désormais la reconstruction de mempool actuelle ; leurs assertions sont conservées.
+## Choisir les archives
 
-## Vérification commune
+Utiliser le [workflow testnet-packages](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml)
+sur `main`, après succès des jobs Windows, Linux et macOS. Télécharger l'artefact
+Windows **de ce même run**, extraire l'archive ZIP contenue dans l'artefact
+si nécessaire, puis conserver `EXPERIMENTAL_TESTNET.txt` et `SHA256SUMS.txt`.
 
-La CI Rust et le smoke multi-nœuds doivent passer sur le commit intégré.
-Les workflows retarget, admission, benchmark, fuzz des comptes et partitions sont
-également exécutés sur la PR. Le workflow testnet-packages produit des archives
-Windows, Linux et macOS, avec les sommes de contrôle existantes.
+Comparer sur les deux machines le contenu de `Source commit:` ainsi que
+les SHA-256 de `bin/aurora-node.exe` et `bin/aurora-wallet.exe`. Le script
+`scripts/two_pc_preflight.ps1` vérifie les checksums internes et le démarrage
+des exécutables ; il ne modifie ni les droits de pare-feu ni la configuration LAN.
+Les archives CI sont non signées, expirent après 14 jours et restent
+**expérimentales**. La release `testnet-v0.0.1-experimental.1` du 27 octobre
+est basée sur un ancien commit et ne doit pas être mélangée avec `main`.
 
-Pour les deux PC, utiliser le même artefact Windows du workflow testnet-packages
-de cette branche et du même commit, avec des dossiers de données neufs.
-Conserver le numéro de workflow et le SHA source. Ne pas mélanger une archive
-de l'ancienne release avec celle de l'intégration.
+## Ordre d'exécution
 
-Le protocole de manipulation est dans [TWO_PC_TEST.md](TWO_PC_TEST.md).
-Comparer hauteur, hash du sommet et travail cumulé, puis noter le temps de
-rattrapage après arrêt/reconnexion du pair.
+Suivre [TWO_PC_TEST.md](TWO_PC_TEST.md) :
+préparation de deux dossiers et deux clés indépendantes, connectivité
+TCP privée, démarrage des serveurs, mineur dans un troisième dossier,
+paiement d'essai confirmé, arrêt/reprise, convergence
+`height/tip/work`, sauvegarde vérifiée et journal des incidents.
+**Ne pas utiliser de véritables fonds ni de clés réelles.**
 
-Cette branche sert à tester l'ensemble. Les PR sources et les branches main et
-feature/emission-schedule-v0 ne sont pas fusionnées par cette opération.
-Les essais sur deux machines physiques restent à effectuer par leurs opérateurs.
+Aucun workflow GitHub exécuté sur un runner unique ne peut prouver
+que deux machines physiques ont convergé. Les campagnes 72 h,
+100k blocs sur TCP inter-hôtes, horloges réellement décalées,
+disque plein et audit indépendant restent des jalons distincts.
