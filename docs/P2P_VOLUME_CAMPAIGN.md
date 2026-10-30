@@ -29,6 +29,16 @@ public (PoW, plusieurs machines, latence WAN et profils de signature différents
 | Campagne | SHA | Blocs connus | Sessions TCP | Synchronisation + persistance | Restauration | Preuve |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | Baseline après #64 | `0e0bb6798d45f939b9d111c77c56105a89c6c6ff` | 2 050 | 5 | 3,70 s | 0,40 s | [Actions 41059067553](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41059067553) |
+| Palier 8 192, branche de validation | `3b85bdc47c840adf53a7619890de64127a091a0e` | 8 194 | 19 | 37,27 s | 1,79 s | [Actions 41060240777](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41060240777) |
+
+Avec ~4 fois plus de blocs, la synchronisation + persistance passe de
+3,70 s à 37,27 s (~10,1 fois). Cette mesure suggère un coût non linéaire :
+le chemin P2P clone et persiste la chaîne lors de l'acceptation de chaque
+page. Ce n'est **pas** une preuve isolée de la cause : mesurer séparément
+validation, copies en mémoire et `save_snapshot` avant d'optimiser.
+Le RSS de la commande Cargo à 8 192 blocs : **371 368 Ko** ; il inclut la
+compilation, pas uniquement le nœud.
+
 
 Les mesures d'autres exécutions du même code varient avec les runners et la
 charge système : les valeurs ci-dessus ne constituent ni un SLA, ni une
