@@ -295,7 +295,7 @@ impl Drop for WalletKey {
 /// Reject symlinks, directories and device files before reading secret key material.
 /// On Unix, compare the opened file identity to the lstat result to reject a
 /// final-component replacement between those operations.
-fn open_regular_wallet_file(path: &Path) -> io::Result<File> {
+pub(crate) fn open_regular_wallet_file(path: &Path) -> io::Result<File> {
     let expected = std::fs::symlink_metadata(path)?;
     if !expected.file_type().is_file() {
         return Err(io::Error::new(
