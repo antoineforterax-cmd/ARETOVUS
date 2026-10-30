@@ -1136,7 +1136,8 @@ mod tests {
                 .file_name()
                 .to_string_lossy()
                 .ends_with(".tmp")));
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.tip_hash(), old_tip);
         assert_eq!(recovered.height(), 0);
         original.submit(next).unwrap();
