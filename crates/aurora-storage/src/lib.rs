@@ -103,10 +103,10 @@ pub fn save_snapshot(
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        // A single metadata lookup replaces exists() + is_file() on every
-        // previously persisted block. Do not treat I/O errors as missing objects.
-        match fs::metadata(&block_path) {
-            Ok(metadata) if metadata.is_file() => {}
+        // Do not follow symlinks at content-addressed paths: an immutable
+        // block must be a regular file owned by the storage directory.
+        match fs::symlink_metadata(&block_path) {
+            Ok(metadata) if metadata.file_type().is_file() => {}
             Ok(_) => {
                 return Err(StorageError::InvalidFormat("block object is not a file"));
             }
@@ -970,6 +970,51 @@ mod tests {
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn snapshot_ignores_unrelated_orphaned_files() {
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        // Unrelated artifacts cannot satisfy a block ID or block a save.
+        let block_dir = path.join(BLOCK_DIRECTORY);
+        fs::write(block_dir.join("unrelated.aurblk"), b"not a block").unwrap();
+        fs::create_dir(block_dir.join("junk.aurblk")).unwrap();
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn snapshot_does_not_trust_symlinked_block_object() {
+        use std::os::unix::fs::symlink;
+
+        let path = dir();
+        let original = chain();
+        save_snapshot(&path, &original).unwrap();
+        let block_id = original.blocks_with_ids_by_arrival().next().unwrap().0;
+        let object = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        let external = path.join("external-block");
+        fs::rename(&object, &external).unwrap();
+        symlink(&external, &object).unwrap();
+
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+
+        fs::remove_file(&object).unwrap();
+        fs::rename(&external, &object).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.known_block_count(), original.known_block_count());
         fs::remove_dir_all(path).unwrap();
     }
 
