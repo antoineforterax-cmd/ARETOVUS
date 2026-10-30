@@ -36,7 +36,7 @@ def main() -> int:
         files.append((ROOT / "docs" / name, f"docs/{name}"))
     for name in ("LICENSE", "LICENSE-MIT", "LICENSE-APACHE", "PROVENANCE.md", "SECURITY.md"):
         files.append((ROOT / name, name))
-    for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py"):
+    for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py", "two_pc_preflight.ps1"):
         files.append((ROOT / "scripts" / name, f"scripts/{name}"))
     files.append((ROOT / "docs" / "ENDURANCE_RUN.md", "docs/ENDURANCE_RUN.md"))
     for source, _ in files:
