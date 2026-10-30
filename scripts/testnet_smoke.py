@@ -98,6 +98,21 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
             f"(observed height {saved_height}): {verified}"
         )
     recovered_height = int(recovered.group(1))
+    # The snapshot filename commits to both height and tip hash.  When
+    # recovery lands exactly on our observed height, verify the tip too.
+    if recovered_height == saved_height:
+        tips = {
+            match.group(1)
+            for snapshot in data_dir.glob(f"snapshot-{saved_height:020d}-*.auridx")
+            if (match := re.match(
+                rf"snapshot-{saved_height:020d}-([0-9a-f]{{64}})-", snapshot.name
+            ))
+        }
+        if tips and recovered.group(2) not in tips:
+            raise AssertionError(
+                f"recovery tip {recovered.group(2)} differs from observed "
+                f"snapshot tips at height {saved_height}: {sorted(tips)}"
+            )
     resumed = run_node(
         binary, "testnet", "mine", "--data-dir", str(data_dir),
         "--miner", miner, "--count", "1",
