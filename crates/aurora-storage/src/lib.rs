@@ -1031,6 +1031,55 @@ mod tests {
     }
 
     #[test]
+    fn pruning_after_corrupt_manifests_must_preserve_last_valid_recovery_point() {
+        let path = dir();
+        let mut chain = chain();
+        let genesis = save_snapshot(&path, &chain).unwrap();
+        let mut manifests = Vec::new();
+        let mut safe_tip = chain.tip_hash();
+        for timestamp in 2..=4 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            chain.submit(block).unwrap();
+            if timestamp == 2 {
+                safe_tip = chain.tip_hash();
+            }
+            manifests.push(save_snapshot(&path, &chain).unwrap());
+        }
+        assert!(!genesis.exists());
+        // The newest two generations are corrupt, leaving one valid fallback.
+        fs::write(&manifests[1], b"broken index").unwrap();
+        fs::write(&manifests[2], b"broken index").unwrap();
+        let mut recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 1);
+        assert_eq!(recovered.tip_hash(), safe_tip);
+
+        // Commit a different branch from the recovered tip. Age-based
+        // pruning must not delete the only intact previous generation.
+        let next =
+            AccountBlock::build(NetworkId::Regtest, safe_tip, 50, 0, Vec::new()).unwrap();
+        recovered.submit(next).unwrap();
+        let new_manifest = save_snapshot(&path, &recovered).unwrap();
+        assert!(manifests[0].exists(), "last valid recovery index was pruned");
+
+        // A subsequent failure of the fresh generation must still permit
+        // recovering the original safe tip without manufacturing a genesis.
+        fs::write(new_manifest, b"broken index").unwrap();
+        let fallback =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(fallback.height(), 1);
+        assert_eq!(fallback.tip_hash(), safe_tip);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn two_corrupted_newest_manifests_recover_third_generation_and_retry() {
         let path = dir();
         let mut chain = chain();
