@@ -2179,7 +2179,9 @@ mod tests {
             load_latest_snapshot(&snapshot, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(reloaded.tip_hash(), expected_reorg_tip);
         assert_eq!(reloaded.known_block_count(), 4);
-        eprintln!("cross-runner consumer: snapshot restored, side branch reorg and resave verified");
+        eprintln!(
+            "cross-runner consumer: snapshot restored, side branch reorg and resave verified"
+        );
     }
 
     #[test]
