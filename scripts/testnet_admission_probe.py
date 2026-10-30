@@ -83,8 +83,9 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                                 receive(sock, size)
                         if kind == "partial_multi_ip":
                             sock.sendall(struct.pack(">I", 73) + bytes([1]))
-                    # Let the baseline workers accept the eight test connections.
-                    time.sleep(0.15)
+                    # Give all sessions time to be admitted. The full-capacity
+                    # scenario tests reclamation only after the idle grace period.
+                    time.sleep(2.1 if kind == "saturated_after_hello" else 0.15)
                     latency = wallet_probe(port)
                     if maximum is not None and latency >= maximum:
                         raise AssertionError(f"{kind}: wallet wait {latency:.3f}s >= {maximum}s")
