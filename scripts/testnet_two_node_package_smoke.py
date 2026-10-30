@@ -47,6 +47,26 @@ def wallet_account(wallet: Path, keyfile: Path) -> str:
     return matches[0].lower()
 
 
+def await_pending(wallet: Path, address: str, txid: str, timeout: float = 55) -> None:
+    """Require a peer to see a pending transaction before any mining."""
+    started = time.monotonic()
+    observed = "not yet available"
+    while time.monotonic() - started < timeout:
+        observed = run(
+            wallet, "status", "--node", address, "--txid", txid
+        ).strip()
+        if observed == "Pending":
+            return
+        if observed != "Unknown":
+            raise AssertionError(
+                f"Unexpected transaction status before mining: {observed[-300:]}"
+            )
+        time.sleep(0.5)
+    raise TimeoutError(
+        f"Mempool relay to {address} failed for {txid}: {observed}"
+    )
+
+
 def choose_port() -> int:
     # Reserve only briefly. All sockets remain bound to loopback.
     with socket.socket() as sock:
@@ -160,7 +180,8 @@ def main() -> None:
             miner = wallet_account(wallet, alice_key)
             bob = wallet_account(wallet, bob_key)
 
-            a = start_server(node, a_data, a_port, root / "server-a.log")
+            # Both servers must pull their peer mempool, in both directions.
+            a = start_server(node, a_data, a_port, root / "server-a.log", b_port)
             run(
                 node, "testnet", "mine", "--data-dir", miner_data,
                 "--miner", miner, "--count", "1", "--peer", f"127.0.0.1:{a_port}"
@@ -196,6 +217,8 @@ def main() -> None:
             if len(ids) != 1:
                 raise AssertionError(f"Wallet did not return transaction ID: {sent[-800:]}")
             txid = ids[0]
+            # B must learn the pending A->B payment without mining a block.
+            await_pending(wallet, b_address, txid)
             run(
                 node, "testnet", "mine", "--data-dir", miner_data,
                 "--miner", miner, "--count", "1", "--peer", a_address,
@@ -218,6 +241,50 @@ def main() -> None:
             )
             if "pending_adjusted_balance=1.25000000" not in balance:
                 raise AssertionError(f"Recipient balance wrong after sync: {balance[-800:]}")
+
+            # Exercise the reverse B->A direction. A used to run without a
+            # configured peer, so this catches one-way mempool regressions.
+            returned = run(
+                wallet, "send", "--key-file", bob_key,
+                "--to", miner, "--amount", "0.05", "--fee", "0.01",
+                "--node", b_address, "--yes",
+            )
+            returned_ids = re.findall(
+                r"(?m)^transaction_id=([0-9a-fA-F]{64})$", returned
+            )
+            if len(returned_ids) != 1:
+                raise AssertionError(
+                    f"Reverse payment has no transaction ID: {returned[-800:]}"
+                )
+            reverse_txid = returned_ids[0]
+            # The opposite node must see Pending before either peer mines.
+            await_pending(wallet, a_address, reverse_txid)
+            run(
+                node, "testnet", "mine", "--data-dir", miner_data,
+                "--miner", miner, "--count", "1",
+                "--peer", b_address, "--peer", a_address,
+            )
+            source4 = state(node, a_data)
+            if source4[0] != 4:
+                raise AssertionError(f"Reverse payment was not mined: {source4[3]}")
+            await_tip(node, b_data, source4)
+            for address in (a_address, b_address):
+                verified = run(
+                    wallet, "verify", "--node", address,
+                    "--txid", reverse_txid, "--confirmations", "1",
+                )
+                if "SPV verified:" not in verified:
+                    raise AssertionError(
+                        f"Reverse payment SPV missing on {address}: {verified[-800:]}"
+                    )
+            final_balance = run(
+                wallet, "balance", "--key-file", bob_key, "--node", b_address,
+            )
+            if ("pending_adjusted_balance=1.19000000" not in final_balance
+                    or "next_nonce=1" not in final_balance):
+                raise AssertionError(
+                    f"Reverse payment debited Bob incorrectly: {final_balance[-800:]}"
+                )
             stop(b)
             b = None
             stop(a)
@@ -228,13 +295,14 @@ def main() -> None:
                 raise AssertionError(
                     f"Persistent chain divergence: {persisted_a[3]} vs {persisted_b[3]}"
                 )
-            if persisted_a[0] != 3:
+            if persisted_a[0] != 4:
                 raise AssertionError(f"Unexpected final height: {persisted_a[3]}")
             print(
                 "packaged_windows_two_node_smoke=success "
                 f"height={persisted_a[0]} tip={persisted_a[1]} "
                 f"known_blocks={persisted_a[2]} "
-                f"wallet_payment_spv=success recipient_balance=1.25000000 "
+                f"wallet_payment_spv=success first_recipient_balance=1.25000000 "
+                f"bidirectional_mempool_relay=success final_recipient_balance=1.19000000 "
                 f"initial_sync_seconds={initial:.3f} resumed_sync_seconds={resumed:.3f}"
             )
         finally:
