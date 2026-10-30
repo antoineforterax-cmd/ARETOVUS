@@ -36,9 +36,13 @@ jobs:
           set -euo pipefail
           if [ -n "$REQUESTED_BLOCKS" ]; then
             case "$REQUESTED_BLOCKS" in
-              2048|8192) block_counts="$REQUESTED_BLOCKS" ;;
-              *) echo "Allowed manual block counts: 2048 or 8192" >&2; exit 2 ;;
+              *[!0-9]*|'') echo "Block count must be a decimal integer" >&2; exit 2 ;;
             esac
+            if [ "$REQUESTED_BLOCKS" -lt 256 ] || [ "$REQUESTED_BLOCKS" -gt 16384 ]; then
+              echo "Allowed manual block counts: 256..16384" >&2
+              exit 2
+            fi
+            block_counts="$REQUESTED_BLOCKS"
           else
             block_counts="2048 8192"
           fi
@@ -50,7 +54,7 @@ jobs:
             /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -q 'storage phases:' "$log"
-            expected_saves=$((blocks / 64))
+            expected_saves=$(((blocks + 63) / 64))
             grep -q "storage volume probe: height=${blocks} known_blocks=$((blocks + 1)) snapshot_calls=${expected_saves} " "$log"
           done
           {
