@@ -96,13 +96,12 @@ pub fn save_snapshot(
     fs::create_dir_all(&page_dir)?;
     #[cfg(test)]
     let profile_started = std::time::Instant::now();
-    let blocks = chain.all_blocks_by_arrival();
-    if blocks.is_empty() {
+    let blocks = chain.blocks_with_ids_by_arrival();
+    if blocks.len() == 0 {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
-    for block in blocks {
-        let block_id = block.header.hash()?;
+    for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
         // A single metadata lookup replaces exists() + is_file() on every
         // previously persisted block. Do not treat I/O errors as missing objects.
@@ -117,7 +116,7 @@ pub fn save_snapshot(
             }
             Err(error) => return Err(error.into()),
         }
-        block_ids.push(block_id);
+        block_ids.push(*block_id);
     }
     #[cfg(test)]
     let profile_blocks_done = profile_started.elapsed();
@@ -943,6 +942,35 @@ mod tests {
         assert_eq!(restored.height(), original.height());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn stored_arrival_hashes_match_block_headers_across_side_branches() {
+        let mut original = chain();
+        let genesis_hash = original.tip_hash();
+        let main_block =
+            AccountBlock::build(NetworkId::Regtest, genesis_hash, 2, 0, vec![]).unwrap();
+        original.submit(main_block).unwrap();
+        let side_block =
+            AccountBlock::build(NetworkId::Regtest, genesis_hash, 3, 0, vec![]).unwrap();
+        original.submit(side_block).unwrap();
+
+        let expected = original.all_blocks_by_arrival();
+        let observed = original.blocks_with_ids_by_arrival().collect::<Vec<_>>();
+        assert_eq!(observed.len(), expected.len());
+        assert_eq!(observed.len(), original.known_block_count());
+        for ((id, block), expected_block) in observed.into_iter().zip(expected) {
+            assert_eq!(*id, block.header.hash().unwrap());
+            assert_eq!(*id, expected_block.header.hash().unwrap());
+        }
+
+        let path = dir();
+        save_snapshot(&path, &original).unwrap();
+        let restored =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
         fs::remove_dir_all(path).unwrap();
     }
 
