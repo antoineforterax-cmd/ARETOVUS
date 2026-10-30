@@ -123,7 +123,11 @@ pub fn save_snapshot(
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        if missing.contains(block_path.file_name().expect("block object path has filename")) {
+        if missing.contains(
+            block_path
+                .file_name()
+                .expect("block object path has filename"),
+        ) {
             let encoded = block.to_canonical_bytes()?;
             write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
         }
