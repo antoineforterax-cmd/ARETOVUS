@@ -1060,7 +1060,10 @@ mod tests {
             fs::read_dir(&path)
                 .unwrap()
                 .filter_map(Result::ok)
-                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+                .filter(|entry| entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION))
                 .count(),
             3
         );
