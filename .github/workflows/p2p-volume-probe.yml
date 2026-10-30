@@ -1,0 +1,42 @@
+name: p2p-volume-probe
+
+on:
+  push:
+    branches: [volume/p2p-tcp-regtest-baseline]
+    paths:
+      - "crates/aurora-node/**"
+      - ".github/workflows/p2p-volume-probe.yml"
+  pull_request:
+    paths:
+      - "crates/aurora-node/**"
+      - ".github/workflows/p2p-volume-probe.yml"
+  workflow_dispatch:
+    inputs:
+      blocks:
+        description: "Regtest blocks to transfer (256..100001). Large runs can exceed CI limits."
+        required: false
+        default: "2048"
+
+permissions:
+  contents: read
+
+jobs:
+  p2p-volume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Mesurer le transfert TCP, la persistance par page et la reprise
+        env:
+          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || '2048' }}
+        run: |
+          /usr/bin/time -v cargo test --locked -p aurora-node --bin aurora-node network_volume_tcp_sync_with_side_branch_and_disk_replay -- --ignored --nocapture 2>&1 | tee p2p-volume-results.log
+          test ${PIPESTATUS[0]} -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2p-volume-evidence
+          path: p2p-volume-results.log
+          retention-days: 14
