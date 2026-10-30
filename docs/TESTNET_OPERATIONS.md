@@ -38,9 +38,11 @@ cargo run --locked -p aurora-node -- testnet verify --data-dir .\backup-aurora-s
 Le smoke test `scripts/testnet_smoke.py` vérifie une copie complète d'un
 dossier de nœud **arrêté** vers un autre dossier temporaire. Il appelle
 `testnet verify` sur la source et sur la copie, puis compare la hauteur et
-le hash du sommet. Il retire ensuite les pages v6 de la copie de test pour
-s'assurer qu'une sauvegarde incomplète n'est pas acceptée silencieusement
-comme équivalente à la source.
+le hash du sommet. Il retire ensuite les pages v6 d'une copie de test,
+puis corrompt un bloc immuable dans une seconde copie indépendante. Chaque
+copie dégradée doit être rejetée ou retrouver un état différent de la source :
+une sauvegarde incomplète ne doit pas être présentée silencieusement comme
+équivalente à l'original.
 
 Ce scénario n'utilise **qu'un seul hôte**. Il ne prouve ni la restauration
 hors machine, ni la résistance à une panne électrique ou à un disque plein.

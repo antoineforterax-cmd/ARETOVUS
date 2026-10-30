@@ -134,12 +134,23 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
 
 
 def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
-    """Verify an offline copy, then prove that missing v6 pages are detectable."""
+    """Verify an offline copy; detect missing index pages and corrupted blocks."""
     # The miner has exited; never copy a live node's data files.
     source = run_node(binary, "testnet", "verify", "--data-dir", str(data_dir))
     source_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", source)
     if source_state is None or int(source_state.group(1)) < 2:
         raise AssertionError(f"source chain is not verifiable: {source}")
+
+    def assert_not_equivalent(copy: Path, reason: str) -> None:
+        try:
+            incomplete = run_node(binary, "testnet", "verify", "--data-dir", str(copy))
+        except RuntimeError:
+            return  # A rejected copy cannot masquerade as the source.
+        incomplete_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", incomplete)
+        if incomplete_state is not None and incomplete_state.groups() == source_state.groups():
+            raise AssertionError(
+                f"{reason} backup was incorrectly accepted as the original chain"
+            )
 
     backup = data_dir.with_name(f"{data_dir.name}-offline-copy")
     shutil.copytree(data_dir, backup)
@@ -150,21 +161,28 @@ def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
             f"offline copy differs from stopped source: {source} / {copied}"
         )
 
-    # An index manifest alone is not a backup: it needs its v6 index pages.
+    # A v6 index manifest without its pages is an incomplete backup.
     pages = list((backup / "index-pages-v6").glob("*.aurpage"))
     if not pages:
         raise AssertionError("offline test snapshot unexpectedly has no v6 index pages")
     for page in pages:
         page.unlink()
-    try:
-        incomplete = run_node(binary, "testnet", "verify", "--data-dir", str(backup))
-    except RuntimeError:
-        return  # Expected: the incomplete copy is rejected.
-    incomplete_state = re.search(r"height=(\d+) tip=([0-9a-f]{64})", incomplete)
-    if incomplete_state is not None and incomplete_state.groups() == source_state.groups():
-        raise AssertionError(
-            "incomplete backup was incorrectly accepted as the original chain"
-        )
+    assert_not_equivalent(backup, "missing-index-pages")
+
+    # A second, independent copy with a damaged immutable block must also
+    # fail verification or fall back to a different, older valid state.
+    damaged = data_dir.with_name(f"{data_dir.name}-corrupt-block-copy")
+    shutil.copytree(data_dir, damaged)
+    blocks = sorted((damaged / "blocks-v5").glob("*.aurblk"))
+    if not blocks:
+        raise AssertionError("offline test snapshot unexpectedly has no v5 blocks")
+    first_block = blocks[0]
+    raw = bytearray(first_block.read_bytes())
+    if not raw:
+        raise AssertionError("offline test block is unexpectedly empty")
+    raw[-1] ^= 1
+    first_block.write_bytes(raw)
+    assert_not_equivalent(damaged, "corrupt-block")
 
 
 def write_limit_recovery_test(binary: Path, data_dir: Path, miner: str) -> int | None:
