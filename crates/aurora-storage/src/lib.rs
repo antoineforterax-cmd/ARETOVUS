@@ -220,6 +220,26 @@ fn write_immutable_with_operations(
     sync_file: impl FnOnce(&File) -> io::Result<()>,
     rename_file: impl FnOnce(&Path, &Path) -> io::Result<()>,
 ) -> Result<(), StorageError> {
+    write_immutable_with_directory_sync(
+        path,
+        bytes,
+        limit,
+        write_file,
+        sync_file,
+        rename_file,
+        sync_directory,
+    )
+}
+
+fn write_immutable_with_directory_sync(
+    path: &Path,
+    bytes: &[u8],
+    limit: usize,
+    write_file: impl FnOnce(&mut File, &[u8]) -> io::Result<()>,
+    sync_file: impl FnOnce(&File) -> io::Result<()>,
+    rename_file: impl FnOnce(&Path, &Path) -> io::Result<()>,
+    sync_parent: impl FnOnce(&Path) -> io::Result<()>,
+) -> Result<(), StorageError> {
     if bytes.len() > limit {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
@@ -243,7 +263,7 @@ fn write_immutable_with_operations(
         write_file(&mut file, bytes)?;
         sync_file(&file)?;
         rename_file(&temporary, path)?;
-        sync_directory(path.parent().expect("file has a parent"))?;
+        sync_parent(path.parent().expect("file has a parent"))?;
         Ok::<_, io::Error>(())
     })();
     if result.is_err() {
@@ -1105,6 +1125,48 @@ mod tests {
                 .count(),
             1
         );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn directory_sync_failure_after_rename_does_not_publish_a_new_manifest() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_hash = next.header.hash().unwrap();
+        let encoded = next.to_canonical_bytes().unwrap();
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_hash}.{BLOCK_EXTENSION}"));
+        let mut reached_parent_sync = false;
+        let result = write_immutable_with_directory_sync(
+            &block_path,
+            &encoded,
+            MAX_ACCOUNT_BLOCK_BYTES,
+            |file, data| file.write_all(data),
+            File::sync_all,
+            |from, to| fs::rename(from, to),
+            |_| {
+                reached_parent_sync = true;
+                Err(io::Error::other("injected directory sync failure"))
+            },
+        );
+        assert!(reached_parent_sync);
+        assert!(matches!(result, Err(StorageError::Io(_))));
+        // Rename succeeded; the object is visible but its crash durability is unknown.
+        assert_eq!(fs::read(&block_path).unwrap(), encoded);
+        assert!(previous_manifest.exists());
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        original.submit(next).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let retried = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retried.height(), 1);
+        assert_eq!(retried.tip_hash(), next_hash);
         fs::remove_dir_all(path).unwrap();
     }
 
