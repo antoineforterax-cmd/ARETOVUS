@@ -207,6 +207,19 @@ fn write_immutable_with_io(
     write_file: impl FnOnce(&mut File, &[u8]) -> io::Result<()>,
     sync_file: impl FnOnce(&File) -> io::Result<()>,
 ) -> Result<(), StorageError> {
+    write_immutable_with_operations(path, bytes, limit, write_file, sync_file, |from, to| {
+        fs::rename(from, to)
+    })
+}
+
+fn write_immutable_with_operations(
+    path: &Path,
+    bytes: &[u8],
+    limit: usize,
+    write_file: impl FnOnce(&mut File, &[u8]) -> io::Result<()>,
+    sync_file: impl FnOnce(&File) -> io::Result<()>,
+    rename_file: impl FnOnce(&Path, &Path) -> io::Result<()>,
+) -> Result<(), StorageError> {
     if bytes.len() > limit {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
@@ -229,7 +242,7 @@ fn write_immutable_with_io(
     let result = (|| {
         write_file(&mut file, bytes)?;
         sync_file(&file)?;
-        fs::rename(&temporary, path)?;
+        rename_file(&temporary, path)?;
         sync_directory(path.parent().expect("file has a parent"))?;
         Ok::<_, io::Error>(())
     })();
@@ -1092,6 +1105,48 @@ mod tests {
                 .count(),
             1
         );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn injected_atomic_rename_failure_keeps_previous_snapshot_and_cleans_temp() {
+        let path = dir();
+        let mut original = chain();
+        let old_tip = original.tip_hash();
+        let old_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, old_tip, 2, 0, Vec::new()).unwrap();
+        let next_hash = next.header.hash().unwrap();
+        let encoded = next.to_canonical_bytes().unwrap();
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_hash}.{BLOCK_EXTENSION}"));
+        let failure = write_immutable_with_operations(
+            &block_path,
+            &encoded,
+            MAX_ACCOUNT_BLOCK_BYTES,
+            |file, data| file.write_all(data),
+            File::sync_all,
+            |_, _| Err(io::Error::other("injected rename failure")),
+        );
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        assert!(!block_path.exists());
+        assert!(old_manifest.exists());
+        assert!(!fs::read_dir(path.join(BLOCK_DIRECTORY))
+            .unwrap()
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")));
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.tip_hash(), old_tip);
+        assert_eq!(recovered.height(), 0);
+        original.submit(next).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let retry = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retry.tip_hash(), next_hash);
+        assert_eq!(retry.height(), 1);
         fs::remove_dir_all(path).unwrap();
     }
 
