@@ -310,10 +310,10 @@ fn sync_directory(_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Before deleting any old index, check that all old manifest headers and
-/// checksums are intact. A damaged recent index must not displace the last
-/// readable older recovery point solely because its mtime is newer.
-fn index_manifest_checksum_valid(path: &Path) -> bool {
+/// Before discarding an old recovery index, validate both its manifest
+/// and its immutable v6 index pages. A checksummed manifest whose pages
+/// disappeared is not itself a usable recovery point.
+fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
     let Ok(bytes) = read_bounded(path) else {
         return false;
     };
@@ -321,11 +321,59 @@ fn index_manifest_checksum_valid(path: &Path) -> bool {
         return false;
     };
     let (body, checksum) = bytes.split_at(body_len);
-    body.len() >= 12 && body.starts_with(INDEX_MAGIC) && sha256_plain(body).as_bytes() == checksum
+    if body.len() < 12
+        || !body.starts_with(INDEX_MAGIC)
+        || sha256_plain(body).as_bytes() != checksum
+    {
+        return false;
+    }
+    let version = u32::from_be_bytes(body[8..12].try_into().expect("fixed slice"));
+    if version == LEGACY_INDEX_VERSION {
+        if body.len() < 73 {
+            return false;
+        }
+        let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
+        return count > 0
+            && count <= MAX_LEGACY_BLOCKS
+            && body.len() == 73 + count * 32;
+    }
+    if version != INDEX_VERSION || body.len() < 81 + 32 {
+        return false;
+    }
+    let count = u64::from_be_bytes(body[69..77].try_into().expect("fixed slice"));
+    let page_count = u32::from_be_bytes(body[77..81].try_into().expect("fixed slice")) as usize;
+    let Some(expected_length) = page_count
+        .checked_mul(32)
+        .and_then(|length| length.checked_add(81))
+    else {
+        return false;
+    };
+    if count == 0
+        || page_count as u64 != count.div_ceil(INDEX_PAGE_BLOCKS as u64)
+        || body.len() != expected_length
+    {
+        return false;
+    }
+    for (page_number, digest) in body[81..].as_chunks::<32>().0.iter().enumerate() {
+        let page_id = Hash256::from_bytes(*digest);
+        let page_path = dir
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let Ok(page) = read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) else {
+            return false;
+        };
+        let Some(start) = page_number.checked_mul(INDEX_PAGE_BLOCKS) else {
+            return false;
+        };
+        if sha256_plain(&page) != page_id || decode_index_page(&page, start).is_err() {
+            return false;
+        }
+    }
+    true
 }
 
 /// Keep the latest index and two recovery points in the healthy case.
-/// If any retained index is unreadable or fails its checksum, postpone all
+/// If any retained index or referenced page is invalid, postpone all
 /// pruning so a valid older generation cannot be removed by mtime alone.
 fn prune_old_indexes(dir: &Path, current: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
@@ -340,9 +388,9 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
         .collect::<Vec<_>>();
     if older
         .iter()
-        .any(|path| !index_manifest_checksum_valid(path))
+        .any(|path| !index_manifest_and_pages_valid(dir, path))
     {
-        eprintln!("postponing AURORA index pruning: an older manifest is unreadable or damaged");
+        eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
         return;
     }
     older.sort_by(|a, b| {
