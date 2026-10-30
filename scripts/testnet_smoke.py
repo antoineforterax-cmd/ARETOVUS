@@ -88,12 +88,37 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
             process.kill()
             process.wait(timeout=5)
 
+    # Verify the recovered on-disk chain *before* mining another block:
+    # a successful subsequent mine alone would not prove prior state replay.
+    verified = run_node(binary, "testnet", "verify", "--data-dir", str(data_dir))
+    recovered = re.search(r"height=(\d+) tip=([0-9a-f]{64})", verified)
+    if recovered is None or int(recovered.group(1)) < saved_height:
+        raise AssertionError(
+            f"forced-stop recovery lost a visible completed snapshot "
+            f"(observed height {saved_height}): {verified}"
+        )
+    recovered_height = int(recovered.group(1))
+    # The snapshot filename commits to both height and tip hash.  When
+    # recovery lands exactly on our observed height, verify the tip too.
+    if recovered_height == saved_height:
+        tips = {
+            match.group(1)
+            for snapshot in data_dir.glob(f"snapshot-{saved_height:020d}-*.auridx")
+            if (match := re.match(
+                rf"snapshot-{saved_height:020d}-([0-9a-f]{{64}})-", snapshot.name
+            ))
+        }
+        if tips and recovered.group(2) not in tips:
+            raise AssertionError(
+                f"recovery tip {recovered.group(2)} differs from observed "
+                f"snapshot tips at height {saved_height}: {sorted(tips)}"
+            )
     resumed = run_node(
         binary, "testnet", "mine", "--data-dir", str(data_dir),
         "--miner", miner, "--count", "1",
     )
     heights = [int(value) for value in re.findall(r"height=(\d+)\b", resumed)]
-    if not heights or max(heights) <= saved_height:
+    if not heights or max(heights) <= recovered_height:
         raise AssertionError(
             f"node did not resume above the last committed snapshot (height {saved_height}):\n{resumed}"
         )
