@@ -56,16 +56,18 @@ Conserver une sauvegarde réellement hors machine et suivre la procédure ci-des
 
 Le code synchronise chaque nouveau fichier et, sur Unix, son répertoire après renommage. Cela réduit le risque de perte après arrêt brutal; aucun essai de panne électrique réelle ou de disque effectivement plein n’a encore été réalisé.
 
-Si un ancien manifeste d'index est illisible ou a un checksum invalide,
-le nettoyage automatique des anciens index est suspendu afin de ne pas
-supprimer un point de reprise intact à cause des seules dates de fichiers.
+Si un ancien manifeste d'index est illisible, a un checksum invalide,
+ou référence une page v6 manquante ou corrompue, le nettoyage automatique
+des anciens index est suspendu afin de ne pas supprimer un point de
+reprise intact à cause des seules dates de fichiers.
 **Cela peut faire croître le nombre de manifestes et les données sur disque**
 tant que la corruption persiste. Mettre le nœud hors service, préserver
 une copie complète et les journaux, puis diagnostiquer et restaurer sur
 une copie vérifiée ; ne pas effacer les manifestes endommagés à l'aveugle.
-Ce garde-fou vérifie les octets des manifestes, mais ne garantit pas
-l'intégrité de leurs pages et blocs référencés : utiliser `testnet verify`
-pour vérifier la chaîne récupérée.
+Ce garde-fou vérifie les manifestes et leurs pages d'index v6, mais ne
+garantit pas l'intégrité des blocs référencés : utiliser `testnet verify`
+pour vérifier la chaîne récupérée. La relecture et le hachage des pages
+ajoutent du travail disque lors des sauvegardes.
 
 ## Mettre à jour et revenir en arrière
 
