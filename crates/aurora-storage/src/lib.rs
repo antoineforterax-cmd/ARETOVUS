@@ -191,6 +191,16 @@ fn write_immutable_with_sync(
     limit: usize,
     sync_file: impl FnOnce(&File) -> io::Result<()>,
 ) -> Result<(), StorageError> {
+    write_immutable_with_io(path, bytes, limit, |file, data| file.write_all(data), sync_file)
+}
+
+fn write_immutable_with_io(
+    path: &Path,
+    bytes: &[u8],
+    limit: usize,
+    write_file: impl FnOnce(&mut File, &[u8]) -> io::Result<()>,
+    sync_file: impl FnOnce(&File) -> io::Result<()>,
+) -> Result<(), StorageError> {
     if bytes.len() > limit {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
@@ -211,7 +221,7 @@ fn write_immutable_with_sync(
         .create_new(true)
         .open(&temporary)?;
     let result = (|| {
-        file.write_all(bytes)?;
+        write_file(&mut file, bytes)?;
         sync_file(&file)?;
         fs::rename(&temporary, path)?;
         sync_directory(path.parent().expect("file has a parent"))?;
@@ -1076,6 +1086,54 @@ mod tests {
                 .count(),
             1
         );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn injected_partial_write_enospc_preserves_snapshot_without_publishing_block() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_hash = next.header.hash().unwrap();
+        let encoded = next.to_canonical_bytes().unwrap();
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_hash}.{BLOCK_EXTENSION}"));
+
+        let mut partial_bytes = 0;
+        let failure = write_immutable_with_io(
+            &block_path,
+            &encoded,
+            MAX_ACCOUNT_BLOCK_BYTES,
+            |file, data| {
+                partial_bytes = data.len() / 2;
+                file.write_all(&data[..partial_bytes])?;
+                Err(io::Error::from_raw_os_error(28))
+            },
+            File::sync_all,
+        );
+        assert!(partial_bytes > 0);
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        assert!(!block_path.exists());
+        assert!(previous_manifest.exists());
+        assert!(!fs::read_dir(path.join(BLOCK_DIRECTORY))
+            .unwrap()
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")));
+
+        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        original.submit(next).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 1);
+        assert_eq!(restored.tip_hash(), next_hash);
         fs::remove_dir_all(path).unwrap();
     }
 
