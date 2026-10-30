@@ -54,7 +54,8 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                     time.sleep(0.01)
                 idle = wallet_probe(port)
                 with ExitStack() as clients:
-                    count = 32 if kind == "saturated_after_hello" else 8
+                    trickle_clients = []
+                    count = 32 if kind.startswith("saturated_") else 8
                     for index in range(count):
                         sock = clients.enter_context(socket.socket())
                         sock.settimeout(5)
@@ -73,7 +74,7 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                             size = struct.unpack(">I", receive(sock, 4))[0]
                             if size != 74 or receive(sock, size)[:2] != bytes([0x85, 2]):
                                 raise AssertionError("post-handshake session was not established")
-                            if kind in ("partial_after_hello", "saturated_after_hello"):
+                            if kind in ("partial_after_hello", "saturated_after_hello", "saturated_trickle_after_hello"):
                                 # Complete hello, then deliberately stall midway
                                 # through a valid bounded request frame.
                                 sock.sendall(struct.pack(">I", 4 * 1024 * 1024) + bytes([4]))
@@ -83,9 +84,21 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                                 receive(sock, size)
                         if kind == "partial_multi_ip":
                             sock.sendall(struct.pack(">I", 73) + bytes([1]))
+                        if kind == "saturated_trickle_after_hello":
+                            trickle_clients.append(sock)
                     # Give all sessions time to be admitted. The full-capacity
                     # scenario tests reclamation only after the idle grace period.
-                    time.sleep(2.1 if kind == "saturated_after_hello" else 0.15)
+                    if kind == "saturated_trickle_after_hello":
+                        # Keep every incomplete request "recently active" with
+                        # single-byte writes. Before the fairness fix, these 32
+                        # sessions monopolize admission until the 10 s deadline.
+                        deadline = time.monotonic() + 2.3
+                        while time.monotonic() < deadline:
+                            for sock in trickle_clients:
+                                sock.sendall(b"\\0")
+                            time.sleep(0.15)
+                    else:
+                        time.sleep(2.1 if kind == "saturated_after_hello" else 0.15)
                     latency = wallet_probe(port)
                     if maximum is not None and latency >= maximum:
                         raise AssertionError(f"{kind}: wallet wait {latency:.3f}s >= {maximum}s")
@@ -125,7 +138,8 @@ def main() -> None:
     try:
         cases = ["same_ip", "silent_multi_ip", "partial_multi_ip"]
         if args.post_handshake:
-            cases += ["idle_after_hello", "partial_after_hello", "saturated_after_hello"]
+            cases += ["idle_after_hello", "partial_after_hello",
+                      "saturated_after_hello", "saturated_trickle_after_hello"]
         for kind in cases:
             result = run_case(binary, kind, args.max_wallet_seconds)
             results.append(result)
