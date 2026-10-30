@@ -74,7 +74,7 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                             size = struct.unpack(">I", receive(sock, 4))[0]
                             if size != 74 or receive(sock, size)[:2] != bytes([0x85, 2]):
                                 raise AssertionError("post-handshake session was not established")
-                            if kind in ("partial_after_hello", "saturated_after_hello", "saturated_trickle_after_hello"):
+                            if kind in ("partial_after_hello", "saturated_after_hello") or kind.startswith("saturated_trickle_"):
                                 # Complete hello, then deliberately stall midway
                                 # through a valid bounded request frame.
                                 sock.sendall(struct.pack(">I", 4 * 1024 * 1024) + bytes([4]))
@@ -84,18 +84,20 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                                 receive(sock, size)
                         if kind == "partial_multi_ip":
                             sock.sendall(struct.pack(">I", 73) + bytes([1]))
-                        if kind == "saturated_trickle_after_hello":
+                        if kind.startswith("saturated_trickle_"):
                             trickle_clients.append(sock)
                     # Give all sessions time to be admitted. The full-capacity
                     # scenario tests reclamation only after the idle grace period.
-                    if kind == "saturated_trickle_after_hello":
-                        # Keep every incomplete request "recently active" with
-                        # single-byte writes. Before the fairness fix, these 32
-                        # sessions monopolize admission until the 10 s deadline.
+                    if kind.startswith("saturated_trickle_"):
+                        # Two bounded trickle rates: one byte per pulse, or
+                        # 12 bytes every 150 ms. The second crosses the old
+                        # 128-byte rule without coming close to completing a
+                        # declared 4 MiB frame within the I/O deadline.
+                        chunk = b"\x00" * (12 if kind == "saturated_trickle_medium_after_hello" else 1)
                         deadline = time.monotonic() + 2.3
                         while time.monotonic() < deadline:
                             for sock in trickle_clients:
-                                sock.sendall(b"\x00")
+                                sock.sendall(chunk)
                             time.sleep(0.15)
                     else:
                         time.sleep(2.1 if kind == "saturated_after_hello" else 0.15)
@@ -139,7 +141,8 @@ def main() -> None:
         cases = ["same_ip", "silent_multi_ip", "partial_multi_ip"]
         if args.post_handshake:
             cases += ["idle_after_hello", "partial_after_hello",
-                      "saturated_after_hello", "saturated_trickle_after_hello"]
+                      "saturated_after_hello", "saturated_trickle_after_hello",
+                      "saturated_trickle_medium_after_hello"]
         for kind in cases:
             result = run_case(binary, kind, args.max_wallet_seconds)
             results.append(result)
