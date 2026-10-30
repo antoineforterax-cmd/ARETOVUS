@@ -2374,6 +2374,122 @@ mod tests {
         fs::remove_dir_all(dir).unwrap();
     }
 
+    /// Opt-in full TCP transfer with page-level persistence and independent
+    /// disk replay. 2048 Regtest blocks is the CI baseline; use
+    /// AURORA_P2P_VOLUME_BLOCKS=100001 for the large campaign.
+    #[test]
+    #[ignore = "network volume probe is intentionally opt-in"]
+    fn network_volume_tcp_sync_with_side_branch_and_disk_replay() {
+        let count = std::env::var("AURORA_P2P_VOLUME_BLOCKS")
+            .ok()
+            .map(|value| value.parse::<u64>().expect("block count must be u64"))
+            .unwrap_or(2_048);
+        assert!((256..=100_001).contains(&count));
+        let started = Instant::now();
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-volume-{}-{count}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let mut remote = chain();
+        for height in 1..=count {
+            let block =
+                AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), height + 1, 0, vec![])
+                    .unwrap();
+            remote.submit(block).unwrap();
+        }
+        let side_parent = remote
+            .block_page(usize::try_from(count / 2).unwrap(), 1)
+            .first()
+            .unwrap()
+            .header
+            .hash()
+            .unwrap();
+        let side =
+            AccountBlock::build(NetworkId::Regtest, side_parent, count + 10, 0, vec![]).unwrap();
+        let side_hash = side.header.hash().unwrap();
+        remote.submit(side).unwrap();
+        let expected_tip = remote.tip_hash();
+        let expected_count = remote.known_block_count();
+        assert_eq!(expected_count, count as usize + 2);
+        let build_elapsed = started.elapsed();
+
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let (stop_tx, stop_rx) = mpsc::channel::<()>();
+        let server_data = dir.join("server");
+        let server = thread::spawn(move || {
+            let shared = Mutex::new(remote);
+            let pool = Mutex::new(Mempool::default());
+            let mut sessions = 0usize;
+            while stop_rx.try_recv().is_err() {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        sessions += 1;
+                        handle_peer_shared(stream, &shared, &pool, &server_data, &[]).unwrap();
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("volume server accept failed: {error}"),
+                }
+            }
+            sessions
+        });
+
+        let receiver_dir = dir.join("receiver");
+        let mut receiver = chain();
+        let transfer_started = Instant::now();
+        // Force short sessions even at baseline volume, exercising cursor
+        // continuity across reconnects instead of only a single socket.
+        let received =
+            sync_from_peer_with_request_limit(address, &mut receiver, &receiver_dir, true, 8)
+                .unwrap();
+        let transfer_elapsed = transfer_started.elapsed();
+        assert_eq!(received, expected_count - 1);
+        assert_eq!(receiver.known_block_count(), expected_count);
+        assert_eq!(receiver.height(), count);
+        assert_eq!(receiver.tip_hash(), expected_tip);
+        assert!(receiver
+            .all_blocks_by_arrival()
+            .iter()
+            .any(|block| block.header.hash().unwrap() == side_hash));
+        stop_tx.send(()).unwrap();
+        let sessions = server.join().unwrap();
+        assert!(
+            sessions > 1,
+            "volume test did not exercise TCP session rollover"
+        );
+
+        drop(receiver);
+        let restore_started = Instant::now();
+        let restored = aurora_storage::load_latest_snapshot(
+            &receiver_dir,
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
+        let restore_elapsed = restore_started.elapsed();
+        assert_eq!(restored.known_block_count(), expected_count);
+        assert_eq!(restored.height(), count);
+        assert_eq!(restored.tip_hash(), expected_tip);
+        assert!(restored
+            .all_blocks_by_arrival()
+            .iter()
+            .any(|block| block.header.hash().unwrap() == side_hash));
+        eprintln!(
+            "network volume probe: network=regtest blocks={} height={} tcp_sessions={} build_seconds={:.2} tcp_sync_and_page_persist_seconds={:.2} restore_seconds={:.2} total_seconds={:.2}",
+            expected_count,
+            count,
+            sessions,
+            build_elapsed.as_secs_f64(),
+            transfer_elapsed.as_secs_f64(),
+            restore_elapsed.as_secs_f64(),
+            started.elapsed().as_secs_f64()
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn peer_sync_transfers_and_persists_validated_blocks() {
         let dir = std::env::temp_dir().join(format!("aurora-p2p-{}", std::process::id()));
