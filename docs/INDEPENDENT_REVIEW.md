@@ -1,6 +1,6 @@
 # Dossier de revue indépendante — AURORA
 
-**Statut :** dossier préparatoire ; aucune revue extérieure qualifiée, approfondie et documentée n’est confirmée. Le responsable a déjà relu et corrigé du code, notamment en Python, et réalisé des essais : cela relève des vérifications internes, distinctes de la revue demandée ici. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
+**Statut :** dossier préparatoire ; aucune revue extérieure qualifiée, approfondie et documentée n’est confirmée. Le responsable a déjà relu et corrigé du code, notamment en Python et rust, et réalisé des essais : cela relève des vérifications internes, distinctes de la revue demandée ici. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
 **Branche concernée :** `feature/emission-schedule-v0`.  
 **Base proposée pour la revue du consensus :** `7d0f1ee598235b7194f92081424c008c4c628ceb`; les changements documentaires et de lanceurs suivants doivent être examinés séparément et identifiés dans le rapport.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
