@@ -207,7 +207,9 @@ fn write_immutable_with_io(
     write_file: impl FnOnce(&mut File, &[u8]) -> io::Result<()>,
     sync_file: impl FnOnce(&File) -> io::Result<()>,
 ) -> Result<(), StorageError> {
-    write_immutable_with_operations(path, bytes, limit, write_file, sync_file, fs::rename)
+    write_immutable_with_operations(path, bytes, limit, write_file, sync_file, |from, to| {
+        fs::rename(from, to)
+    })
 }
 
 fn write_immutable_with_operations(
