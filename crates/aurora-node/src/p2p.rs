@@ -2003,14 +2003,20 @@ mod tests {
             assert_eq!(announced, total as u64);
             assert_eq!(decoded.len(), expected.len());
             for (before, after) in expected.iter().zip(decoded.iter()) {
-                assert_eq!(before.to_canonical_bytes().unwrap(), after.to_canonical_bytes().unwrap());
+                assert_eq!(
+                    before.to_canonical_bytes().unwrap(),
+                    after.to_canonical_bytes().unwrap()
+                );
             }
         }
         assert!(matches!(
             build_blocks_page(&chain, (total + 1) as u64),
             Err(P2pError::Protocol("block cursor out of range"))
         ));
-        assert_eq!(chain.arrival_block_page_iter(usize::MAX, PAGE_BLOCKS).len(), 0);
+        assert_eq!(
+            chain.arrival_block_page_iter(usize::MAX, PAGE_BLOCKS).len(),
+            0
+        );
         assert_eq!(chain.arrival_block_page_iter(0, 0).len(), 0);
     }
 
