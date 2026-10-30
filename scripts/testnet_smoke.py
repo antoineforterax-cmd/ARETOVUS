@@ -355,6 +355,10 @@ def main() -> int:
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
+            pending_nonce_match = re.search(r"next_nonce=(\d+)", before_review)
+            if pending_nonce_match is None:
+                raise AssertionError("wallet balance does not include next nonce")
+            review_nonce = pending_nonce_match.group(1)
             run_wallet(
                 wallet, "limits-create", "--key-file", str(keyfile),
                 "--max-amount", "1.00000000", "--max-fee", "0.00000003",
@@ -419,7 +423,10 @@ def main() -> int:
                 policy_file.write_text(original_policy.replace(
                     "max_amount=1.00000000", "max_amount=0.50000000"
                 ))
-                output, errors = reviewing.communicate(input=f"SEND {RECIPIENT}\n", timeout=20)
+                output, errors = reviewing.communicate(
+                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {review_nonce}\n",
+                    timeout=20,
+                )
                 if reviewing.returncode == 0 or "wallet limits changed during review" not in errors:
                     raise AssertionError(f"changed policy was not detected: {output}{errors}")
             finally:
@@ -473,7 +480,8 @@ def main() -> int:
                 raise AssertionError("offline preview wrote a signed file")
             authorized = subprocess.run(
                 [str(wallet), "sign-offline", *signing_args],
-                cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                cwd=ROOT, text=True,
+                input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                 capture_output=True, timeout=20,
             )
             prepared = authorized.stdout + authorized.stderr
@@ -527,7 +535,8 @@ def main() -> int:
                 broadcast = subprocess.run(
                     [str(wallet), "broadcast", "--from", str(signed_file),
                      "--node", f"{addr_b[0]}:{addr_b[1]}"],
-                    cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                    cwd=ROOT, text=True,
+                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                     capture_output=True, timeout=20,
                 )
                 sent = broadcast.stdout + broadcast.stderr
