@@ -2,7 +2,9 @@ name: p2p-volume-probe
 
 on:
   push:
-    branches: [volume/p2p-tcp-regtest-baseline]
+    # Scale probes run only on dedicated volume branches. PRs keep the
+    # original 2048-block baseline; no heavyweight test on main.
+    branches: [volume/p2p-tcp-regtest-baseline, "volume/p2p-scale-*"]
     paths:
       - "crates/aurora-node/**"
       - ".github/workflows/p2p-volume-probe.yml"
@@ -30,7 +32,7 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Mesurer le transfert TCP, la persistance par page et la reprise
         env:
-          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || '2048' }}
+          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || (github.ref == 'refs/heads/volume/p2p-scale-8192' && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || '2048' }}
         run: |
           /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee p2p-volume-results.log
           test ${PIPESTATUS[0]} -eq 0
