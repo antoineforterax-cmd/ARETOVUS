@@ -321,9 +321,7 @@ fn index_manifest_checksum_valid(path: &Path) -> bool {
         return false;
     };
     let (body, checksum) = bytes.split_at(body_len);
-    body.len() >= 12
-        && body.starts_with(INDEX_MAGIC)
-        && sha256_plain(body).as_bytes() == checksum
+    body.len() >= 12 && body.starts_with(INDEX_MAGIC) && sha256_plain(body).as_bytes() == checksum
 }
 
 /// Keep the latest index and two recovery points in the healthy case.
@@ -340,7 +338,10 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             path != current && path.extension().is_some_and(|ext| ext == INDEX_EXTENSION)
         })
         .collect::<Vec<_>>();
-    if older.iter().any(|path| !index_manifest_checksum_valid(path)) {
+    if older
+        .iter()
+        .any(|path| !index_manifest_checksum_valid(path))
+    {
         eprintln!("postponing AURORA index pruning: an older manifest is unreadable or damaged");
         return;
     }
