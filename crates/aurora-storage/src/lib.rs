@@ -162,6 +162,12 @@ pub fn save_snapshot(
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
         body.extend_from_slice(page_id.as_bytes());
     }
+    // An earlier save may have renamed an immutable object but failed to sync
+    // its parent directory. Re-sync both object directories before publishing
+    // a manifest, including when all referenced objects already existed.
+    sync_directory(&block_dir)?;
+    sync_directory(&page_dir)?;
+
     let checksum = sha256_plain(&body);
     body.extend_from_slice(checksum.as_bytes());
     let destination = dir.join(format!(
