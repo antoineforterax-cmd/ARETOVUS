@@ -5,7 +5,7 @@
 **Base proposée pour la revue du consensus :** `7d0f1ee598235b7194f92081424c008c4c628ceb`; les changements documentaires et de lanceurs suivants doivent être examinés séparément et identifiés dans le rapport.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 
-Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Elle reste une aide interne; elle ne remplit pas le critère de revue humaine indépendante.
+Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Elle reste une aide interne; elle ne remplit pas le critère de revue humaine externe indépendante.
 
 ## Portée demandée
 
