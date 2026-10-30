@@ -133,6 +133,40 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
     return max(heights)
 
 
+def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
+    """Verify an offline copy, then prove that missing v6 pages are detectable."""
+    # The miner has exited; never copy a live node's data files.
+    source = run_node(binary, "testnet", "verify", "--data-dir", str(data_dir))
+    source_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", source)
+    if source_state is None or int(source_state.group(1)) < 2:
+        raise AssertionError(f"source chain is not verifiable: {source}")
+
+    backup = data_dir.with_name(f"{data_dir.name}-offline-copy")
+    shutil.copytree(data_dir, backup)
+    copied = run_node(binary, "testnet", "verify", "--data-dir", str(backup))
+    copied_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", copied)
+    if copied_state is None or copied_state.groups() != source_state.groups():
+        raise AssertionError(
+            f"offline copy differs from stopped source: {source} / {copied}"
+        )
+
+    # An index manifest alone is not a backup: it needs its v6 index pages.
+    pages = list((backup / "index-pages-v6").glob("*.aurpage"))
+    if not pages:
+        raise AssertionError("offline test snapshot unexpectedly has no v6 index pages")
+    for page in pages:
+        page.unlink()
+    try:
+        incomplete = run_node(binary, "testnet", "verify", "--data-dir", str(backup))
+    except RuntimeError:
+        return  # Expected: the incomplete copy is rejected.
+    incomplete_state = re.search(r"height=(\\d+) tip=([0-9a-f]{64})", incomplete)
+    if incomplete_state is not None and incomplete_state.groups() == source_state.groups():
+        raise AssertionError(
+            "incomplete backup was incorrectly accepted as the original chain"
+        )
+
+
 def write_limit_recovery_test(binary: Path, data_dir: Path, miner: str) -> int | None:
     if os.name == "nt":
         return None
@@ -750,12 +784,13 @@ def main() -> int:
                 raise AssertionError("gossip receiver did not confirm relayed transaction")
 
             crash_height = crash_recovery_test(binary, base / "crash-node", miner)
+            offline_backup_validation_test(binary, base / "crash-node")
             size_limit_height = write_limit_recovery_test(
                 binary, base / "write-limit-node", miner
             )
             print(
                 "offline signing and keyless broadcast, persistent wallet limits, lost-key recovery, wallet, SPV, 20-block soak, heavier-branch reorganization, live peer catch-up, mempool relay, forced-stop "
-                "and write-limit recovery passed: "
+                "offline backup verification and write-limit recovery passed: "
                 f"reorg_height=21 tip={competing_tip.group(1)} "
                 f"crash_recovery_height={crash_height} write_limit_height={size_limit_height}"
             )
