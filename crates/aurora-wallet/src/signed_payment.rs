@@ -49,10 +49,24 @@ pub fn save(path: &Path, transaction: &AccountTransaction) -> Result<(), Box<dyn
 }
 
 pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
-    if !fs::metadata(path)?.is_file() {
-        return Err("signed payment must be a regular file".into());
+    // A signed payment carries authorization to spend. Do not silently follow
+    // a last-component symlink to a different payment selected by an attacker.
+    let expected = fs::symlink_metadata(path)?;
+    if !expected.file_type().is_file() {
+        return Err("signed payment must be a regular file, not a symlink".into());
     }
     let file = File::open(path)?;
+    let opened = file.metadata()?;
+    if !opened.file_type().is_file() {
+        return Err("signed payment is not a regular file".into());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if opened.dev() != expected.dev() || opened.ino() != expected.ino() {
+            return Err("signed payment path changed during open".into());
+        }
+    }
     let mut bytes = Vec::new();
     file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_FILE_BYTES {
