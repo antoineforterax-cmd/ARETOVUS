@@ -421,7 +421,6 @@ fn oldest_reclaimable_session(active: &[ActivePeer], now: Instant) -> Option<usi
         .map(|(index, _)| index)
 }
 
-
 /// Only this bounded, nonblocking dispatcher owns production sockets.
 /// Workers execute one complete request against an in-memory transport.
 fn dispatch_handshakes(
@@ -3467,25 +3466,43 @@ mod handshake_admission_tests {
             bytes: 0,
         };
 
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), Some(0));
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            Some(0)
+        );
         peer.last_progress = now - Duration::from_millis(100);
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.last_progress = now - IDLE_RECLAIM_MIN_AGE - Duration::from_millis(1);
 
         peer.in_flight = true;
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.in_flight = false;
 
         peer.request = Some(vec![GET_PEERS]);
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.request = None;
 
         peer.output = vec![1];
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.output.clear();
 
         peer.hello_done = false;
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
     }
 
     #[test]
