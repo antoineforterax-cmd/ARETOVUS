@@ -1351,6 +1351,51 @@ mod tests {
     }
 
     #[test]
+    fn damaged_shared_recent_block_keeps_an_older_recovery_anchor() {
+        let path = dir();
+        let mut chain = chain();
+        let safe_tip = chain.tip_hash();
+        let first_manifest = save_snapshot(&path, &chain).unwrap();
+        let mut shared_recent_block = None;
+
+        // The same block belongs to three newer recovery generations.
+        for timestamp in 2..=5 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            if timestamp == 3 {
+                shared_recent_block = Some(block.header.hash().unwrap());
+            }
+            chain.submit(block).unwrap();
+            save_snapshot(&path, &chain).unwrap();
+        }
+        let manifests = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+            .count();
+        assert_eq!(manifests, 4, "retain the oldest anchor plus three recent generations");
+        assert!(first_manifest.exists(), "oldest recovery anchor was pruned");
+
+        let block_id = shared_recent_block.unwrap();
+        fs::write(
+            path.join(BLOCK_DIRECTORY)
+                .join(format!("{block_id}.{BLOCK_EXTENSION}")),
+            b"corrupted shared block",
+        )
+        .unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), safe_tip);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn corrupted_new_block_falls_back_to_previous_index() {
         let path = dir();
         let mut chain = chain();
