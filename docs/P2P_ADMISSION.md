@@ -58,11 +58,43 @@ du contrôle de fingerprint. Les tests existants de wallet, sync et endurance
 sont toujours requis. Les résultats avant/après sont conservés en artefacts CI
 et les liens d'exécution dans la PR.
 
+## Protection supplémentaire contre la saturation après HELLO
+
+Même lorsqu'aucun worker n'attend une préface, les 32 **sessions actives**
+peuvent être occupées par des pairs ayant terminé HELLO puis cessé d'envoyer
+leurs requêtes. Le cas reproductible utilise huit IP de loopback (quatre
+sessions par IP), puis demande un HELLO wallet depuis une neuvième IP.
+
+Quand les 32 places sont occupées, le dispatcher peut désormais libérer
+**la session inactive la plus ancienne**, sous les conditions cumulatives :
+handshake validé, plus de deux secondes sans progression réelle de lecture
+ou d'écriture, aucun travail en vol, aucune requête prête et aucune réponse
+à envoyer. Un nouveau client ne devient pas « prioritaire » sur la base
+d'une identité réseau invérifiable ; cette protection assure seulement une
+possibilité de reprise de capacité sous une saturation par sessions inactives.
+Elle peut expulser un wallet légitime resté inactif lors d'une saturation.
+
+Le chronomètre de progression ne rallonge pas le délai **absolu** de lecture
+(10 secondes) ni le délai total de session (15 minutes). Les plafonds de
+32 sessions et quatre connexions par IP restent inchangés.
+
+Le scénario supplémentaire `saturated_after_hello` dans
+`scripts/testnet_admission_probe.py` est exécuté par le workflow
+`p2p-admission` ; il vérifie le wallet supplémentaire, une synchronisation,
+et la récupération après fermeture des 32 clients. Le premier commit de test
+a reproduit le défaut sur le runner CI
+([run 41113506674](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41113506674)),
+avec une fermeture de la connexion wallet ; il faut vérifier les commits
+de correction et leurs propres CI avant de déclarer ce scénario résolu.
+
 ## Limites
 
-Ce correctif isole les préfaces lentes ; il ne clôt pas entièrement #4/#8.
-Un adversaire qui termine son handshake peut encore occuper les huit sessions,
-et une attaque assez large peut saturer les 32 préfaces ou le backlog système.
+La protection des préfaces lentes et la récupération des sessions inactives
+ne clôturent pas entièrement #4/#8.
+Des sessions actives et occupées par des requêtes valides peuvent toujours
+saturer les huit workers ; une attaque distribuée peut saturer le quota de 32
+sessions, les préfaces ou le backlog. La préemption n'authentifie pas un pair
+et peut échouer sous renouvellement adversarial soutenu.
 Le plafond par IP peut pénaliser plusieurs utilisateurs derrière un NAT ; aucune
 authentification ne permet ici de réserver une capacité à un pair de confiance.
 Le sondage toutes les 5 ms a un coût CPU et une latence à mesurer hors CI.
