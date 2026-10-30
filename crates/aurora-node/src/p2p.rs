@@ -281,7 +281,8 @@ impl PendingHandshake {
 
 const MAX_ACTIVE_SESSIONS: usize = 32;
 // After the active limit is reached, reclaim only idle post-handshake
-// sessions whose current I/O phase has made no progress for at least 2 s.
+// sessions with no socket I/O progress for at least 2 s. The independent
+// absolute I/O deadline must not be reset on partial reads.
 // This is an admission fairness safeguard, not an authentication mechanism.
 const IDLE_RECLAIM_MIN_AGE: Duration = Duration::from_secs(2);
 const IO_QUANTUM: usize = 64 * 1024;
@@ -304,6 +305,7 @@ struct ActivePeer {
     written: usize,
     started: Instant,
     phase_started: Instant,
+    last_progress: Instant,
     requests: usize,
     bytes: usize,
 }
@@ -334,6 +336,7 @@ impl ActivePeer {
                 self.output = Vec::new();
                 self.written = 0;
                 self.phase_started = Instant::now();
+                self.last_progress = self.phase_started;
             }
             return Ok(());
         }
@@ -366,6 +369,7 @@ impl ActivePeer {
                     Ok(0) => return Err(P2pError::Protocol("peer closed")),
                     Ok(read) => {
                         self.input.truncate(old + read);
+                        self.last_progress = Instant::now();
                         budget -= read;
                     }
                     Err(error)
@@ -426,6 +430,7 @@ fn dispatch_handshakes(
                         peer.in_flight = false;
                         peer.hello_done = true;
                         peer.phase_started = Instant::now();
+                        peer.last_progress = peer.phase_started;
                     }
                     Err(_) => {
                         active.swap_remove(index);
@@ -468,9 +473,9 @@ fn dispatch_handshakes(
                                     && !current.in_flight
                                     && current.request.is_none()
                                     && current.output.is_empty()
-                                    && current.phase_started.elapsed() >= IDLE_RECLAIM_MIN_AGE
+                                    && current.last_progress.elapsed() >= IDLE_RECLAIM_MIN_AGE
                             })
-                            .min_by_key(|(_, current)| current.phase_started)
+                            .min_by_key(|(_, current)| current.last_progress)
                             .map(|(index, _)| index);
                         if let Some(victim) = victim {
                             active.swap_remove(victim);
@@ -495,6 +500,7 @@ fn dispatch_handshakes(
                         written: 0,
                         started: peer.accepted,
                         phase_started: peer.accepted,
+                        last_progress: peer.accepted,
                         requests: 0,
                     });
                 }
