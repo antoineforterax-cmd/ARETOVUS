@@ -1181,8 +1181,7 @@ mod tests {
 
         // A retry must accept the already-visible, content-addressed manifest.
         save_snapshot(&path, &original).unwrap();
-        let retried =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let retried = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(retried.height(), 1);
         assert_eq!(retried.tip_hash(), next_tip);
         fs::remove_dir_all(path).unwrap();
