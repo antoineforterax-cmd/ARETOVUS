@@ -1970,9 +1970,116 @@ pub fn sync_from_peer_with_retry(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_consensus::{difficulty::DifficultyParams, reward::RewardParams};
+    use aurora_consensus::{
+        difficulty::DifficultyParams,
+        proof_of_work::mine_nonce,
+        reward::RewardParams,
+        testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS},
+    };
     use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
     use std::{fs, net::Ipv4Addr, sync::mpsc, thread};
+
+    #[test]
+    fn divergent_local_clocks_delay_a_retarget_reorg_without_changing_consensus() {
+        // A node two seconds behind must not admit the future branch early.
+        // After its clock catches up, both nodes must select identical work,
+        // preserve the competing branch and replay the same persisted tip.
+        const SLOW_NOW: u64 = 1_000;
+        const CAUGHT_UP: u64 = SLOW_NOW + 2;
+        let fresh = || {
+            AccountForkChain::new_with_params(
+                testnet_genesis_block(),
+                TESTNET_INITIAL_BITS,
+                TESTNET_DIFFICULTY,
+                AccountLedger::new(NetworkId::Testnet),
+            )
+            .unwrap()
+        };
+        let mined = |parent: Hash256, timestamp: u64, bits: u16| {
+            let mut block =
+                AccountBlock::build(NetworkId::Testnet, parent, timestamp, 0, vec![]).unwrap();
+            block.header.nonce = mine_nonce(&block.header, bits, 0, 10_000_000).unwrap();
+            block
+        };
+        let mut slow = fresh();
+        let mut fast = fresh();
+        for height in 1..10 {
+            let timestamp = 1 + height * 60;
+            let bits = slow.next_difficulty_bits(timestamp).unwrap();
+            let block = mined(slow.tip_hash(), timestamp, bits);
+            assert!(check_block_timestamp_at(timestamp, SLOW_NOW).is_ok());
+            slow.submit(block.clone()).unwrap();
+            fast.submit(block).unwrap();
+        }
+        assert_eq!(slow.height(), 9);
+        let common = slow.tip_hash();
+        let near_time = SLOW_NOW + MAX_FUTURE_BLOCK_SECS - 1;
+        let far_time = SLOW_NOW + MAX_FUTURE_BLOCK_SECS + 1;
+        let near_bits = slow.next_difficulty_bits(near_time).unwrap();
+        let far_bits = slow.next_difficulty_bits(far_time).unwrap();
+        assert_eq!(near_bits, far_bits);
+        assert_eq!(far_bits, 6); // Two-bit retarget bound from 8 bits.
+        let near = mined(common, near_time, near_bits);
+        let far = mined(common, far_time, far_bits);
+        let far_hash = far.header.hash().unwrap();
+        assert!(check_block_timestamp_at(near_time, SLOW_NOW).is_ok());
+        assert!(check_block_timestamp_at(far_time, SLOW_NOW).is_err());
+        assert!(check_block_timestamp_at(far_time, SLOW_NOW + 1).is_ok());
+        slow.submit(near.clone()).unwrap();
+        fast.submit(near).unwrap();
+        let before = (slow.tip_hash(), slow.chain_work(), slow.known_block_count());
+
+        // Local policy rejects before consensus state mutation; full consensus
+        // remains clock-independent and will accept the exact same bytes later.
+        assert!(check_block_timestamp_at(far.header.timestamp, SLOW_NOW).is_err());
+        assert_eq!(
+            (slow.tip_hash(), slow.chain_work(), slow.known_block_count()),
+            before
+        );
+
+        fast.submit(far.clone()).unwrap();
+        let child_time = far_time + 1;
+        let child = mined(far_hash, child_time, far_bits);
+        fast.submit(child.clone()).unwrap();
+        assert_eq!(fast.height(), 11);
+        assert!(check_block_timestamp_at(child_time, SLOW_NOW + 1).is_err());
+        assert!(check_block_timestamp_at(child_time, CAUGHT_UP).is_ok());
+
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-p2p-clock-skew-retarget-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        save_snapshot(&dir, &slow).unwrap();
+        let original = aurora_storage::load_latest_snapshot(
+            &dir,
+            AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+        assert_eq!(original.tip_hash(), before.0);
+        assert_eq!(original.chain_work(), before.1);
+
+        // The slow node recovers the previously unadmitted fork when its
+        // clock advances; the child then triggers a higher-work reorg.
+        assert!(check_block_timestamp_at(far_time, CAUGHT_UP).is_ok());
+        slow.submit(far).unwrap();
+        assert!(check_block_timestamp_at(child_time, CAUGHT_UP).is_ok());
+        slow.submit(child).unwrap();
+        assert_eq!(slow.height(), 11);
+        assert_eq!(slow.tip_hash(), fast.tip_hash());
+        assert_eq!(slow.chain_work(), fast.chain_work());
+        assert_eq!(slow.known_block_count(), fast.known_block_count());
+        save_snapshot(&dir, &slow).unwrap();
+        let restored = aurora_storage::load_latest_snapshot(
+            &dir,
+            AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+        assert_eq!(restored.tip_hash(), fast.tip_hash());
+        assert_eq!(restored.chain_work(), fast.chain_work());
+        assert_eq!(restored.known_block_count(), fast.known_block_count());
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn future_block_admission_has_exact_boundary_and_handles_overflow() {
