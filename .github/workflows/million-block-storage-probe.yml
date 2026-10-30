@@ -1,6 +1,11 @@
 name: million-block-storage-probe
 
 on:
+  # Opt-in launch for this dedicated test branch. Restrict to changes of
+  # this workflow file to avoid restarting a costly million-block run.
+  push:
+    branches: [test/storage-million-block-opt-in-20261031]
+    paths: [".github/workflows/million-block-storage-probe.yml"]
   workflow_dispatch:
 
 permissions:
