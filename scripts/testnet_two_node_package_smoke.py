@@ -98,7 +98,7 @@ def expect_rejected_payment(
 def account_state(wallet: Path, keyfile: Path, node_address: str) -> str:
     output = run(wallet, "balance", "--key-file", keyfile, "--node", node_address)
     match = re.search(
-        r"(?m)^address=[0-9a-fA-F]{64} pending_adjusted_balance=[0-9.]+ next_nonce=\\d+$",
+        r"(?m)^address=[0-9a-fA-F]{64} pending_adjusted_balance=[0-9.]+ next_nonce=\d+$",
         output,
     )
     if not match:
