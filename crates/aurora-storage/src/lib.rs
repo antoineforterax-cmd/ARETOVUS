@@ -1156,7 +1156,7 @@ mod tests {
             MAX_SNAPSHOT_BYTES,
             |file, data| file.write_all(data),
             File::sync_all,
-            fs::rename,
+            |from, to| fs::rename(from, to),
             |_| {
                 reached_parent_sync = true;
                 Err(io::Error::other("injected manifest parent fsync failure"))
