@@ -1054,6 +1054,62 @@ mod tests {
     }
 
     #[test]
+    fn pruning_with_missing_newer_index_pages_preserves_last_valid_manifest() {
+        let path = dir();
+        let mut chain = chain();
+        let genesis_manifest = save_snapshot(&path, &chain).unwrap();
+        let mut manifests = Vec::new();
+        let mut safe_tip = chain.tip_hash();
+
+        // The three retained indexes represent heights 1, 2 and 3.
+        for timestamp in 2..=4 {
+            let next = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            chain.submit(next).unwrap();
+            if timestamp == 2 {
+                safe_tip = chain.tip_hash();
+            }
+            manifests.push(save_snapshot(&path, &chain).unwrap());
+        }
+        assert!(!genesis_manifest.exists());
+
+        // The two newest manifests are checksummed and complete, but each
+        // references a missing immutable index page.
+        for manifest in &manifests[1..] {
+            let bytes = fs::read(manifest).unwrap();
+            let page_id = Hash256::from_bytes(bytes[81..113].try_into().unwrap());
+            let page = path
+                .join(INDEX_PAGE_DIRECTORY)
+                .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+            fs::remove_file(page).unwrap();
+        }
+        let mut recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 1);
+        assert_eq!(recovered.tip_hash(), safe_tip);
+
+        // A new branch from this recovered tip must not displace its only
+        // intact recovery index while the newer indexes cannot be loaded.
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 50, 0, Vec::new()).unwrap();
+        recovered.submit(next).unwrap();
+        let fresh = save_snapshot(&path, &recovered).unwrap();
+        assert!(manifests[0].exists(), "last valid recovery index was pruned");
+
+        fs::write(&fresh, b"corrupt fresh manifest").unwrap();
+        let fallback =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(fallback.height(), 1);
+        assert_eq!(fallback.tip_hash(), safe_tip);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn pruning_after_corrupt_manifests_must_preserve_last_valid_recovery_point() {
         let path = dir();
         let mut chain = chain();
