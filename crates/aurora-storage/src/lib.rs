@@ -1031,6 +1031,65 @@ mod tests {
     }
 
     #[test]
+    fn two_corrupted_newest_manifests_recover_third_generation_and_retry() {
+        let path = dir();
+        let mut chain = chain();
+        let genesis_manifest = save_snapshot(&path, &chain).unwrap();
+        let mut manifests = Vec::new();
+        let mut expected_tip = chain.tip_hash();
+
+        // Four successive commits leave precisely three recovery generations.
+        for timestamp in 2..=4 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            chain.submit(block).unwrap();
+            if timestamp == 2 {
+                expected_tip = chain.tip_hash();
+            }
+            manifests.push(save_snapshot(&path, &chain).unwrap());
+        }
+        assert!(!genesis_manifest.exists());
+        assert!(manifests.iter().all(|manifest| manifest.exists()));
+        assert_eq!(
+            fs::read_dir(&path)
+                .unwrap()
+                .filter_map(Result::ok)
+                .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+                .count(),
+            3
+        );
+
+        // Model two distinct damaged recovery points: one truncated manifest
+        // and one with an invalid checksum, leaving only the oldest intact.
+        let truncated = fs::read(&manifests[1]).unwrap();
+        fs::write(&manifests[1], &truncated[..12]).unwrap();
+        let mut corrupted = fs::read(&manifests[2]).unwrap();
+        corrupted[12] ^= 1;
+        fs::write(&manifests[2], corrupted).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 1);
+        assert_eq!(recovered.tip_hash(), expected_tip);
+        assert_eq!(recovered.known_block_count(), 2);
+
+        // Saving the recovered generation must not discard its only good
+        // manifest merely because the two newer generations are unreadable.
+        save_snapshot(&path, &recovered).unwrap();
+        let retry = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retry.height(), 1);
+        assert_eq!(retry.tip_hash(), expected_tip);
+        assert!(manifests[0].exists());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn v6_indexes_share_immutable_blocks_and_keep_recovery_points() {
         let path = dir();
         let mut chain = chain();
