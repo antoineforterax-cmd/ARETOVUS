@@ -2,13 +2,22 @@ name: testnet-packages
 
 on:
   push:
-    branches: [feature/emission-schedule-v0, integration/two-pc-testnet]
+    branches: [main, feature/emission-schedule-v0, integration/two-pc-testnet]
     paths:
       - "Cargo.toml"
       - "Cargo.lock"
       - "crates/**"
       - "scripts/package_testnet.py"
       - "scripts/testnet_lock_smoke.py"
+      - "scripts/two_pc_preflight.ps1"
+      - "docs/TWO_PC_TEST.md"
+      - ".github/workflows/testnet-packages.yml"
+  pull_request:
+    paths:
+      - "scripts/package_testnet.py"
+      - "scripts/testnet_lock_smoke.py"
+      - "scripts/two_pc_preflight.ps1"
+      - "docs/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
   workflow_dispatch:
 
@@ -41,6 +50,15 @@ jobs:
         run: python scripts/testnet_lock_smoke.py
       - name: Créer l’archive et vérifier ses sommes de contrôle
         run: python scripts/package_testnet.py
+      - name: Vérifier l'archive Windows avant usage sur deux PC
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem -Path dist -Filter 'aurora-testnet-windows-*.zip' | Select-Object -First 1
+          if (-not $archive) { throw 'Missing Windows archive' }
+          $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
+          Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
+          .\\scripts\\two_pc_preflight.ps1 -PackageRoot $target -ExpectedRevision $env:GITHUB_SHA.Substring(0, 12) -Offline
       - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4
         with:
