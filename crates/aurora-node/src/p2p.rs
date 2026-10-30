@@ -404,6 +404,24 @@ impl ActivePeer {
 }
 type PeerResponse = (u64, Result<Vec<u8>, P2pError>);
 
+/// Select only an idle session when the global active-session limit is full.
+/// An in-flight task or a queued/writing response must never be preempted.
+fn oldest_reclaimable_session(active: &[ActivePeer], now: Instant) -> Option<usize> {
+    active
+        .iter()
+        .enumerate()
+        .filter(|(_, current)| {
+            current.hello_done
+                && !current.in_flight
+                && current.request.is_none()
+                && current.output.is_empty()
+                && now.saturating_duration_since(current.last_progress) >= IDLE_RECLAIM_MIN_AGE
+        })
+        .min_by_key(|(_, current)| current.last_progress)
+        .map(|(index, _)| index)
+}
+
+
 /// Only this bounded, nonblocking dispatcher owns production sockets.
 /// Workers execute one complete request against an in-memory transport.
 fn dispatch_handshakes(
@@ -465,18 +483,7 @@ fn dispatch_handshakes(
                         // every new connection. Reclaim the oldest inactive
                         // session only; do not interrupt an in-flight request,
                         // pending request, or response being written.
-                        let victim = active
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, current)| {
-                                current.hello_done
-                                    && !current.in_flight
-                                    && current.request.is_none()
-                                    && current.output.is_empty()
-                                    && current.last_progress.elapsed() >= IDLE_RECLAIM_MIN_AGE
-                            })
-                            .min_by_key(|(_, current)| current.last_progress)
-                            .map(|(index, _)| index);
+                        let victim = oldest_reclaimable_session(&active, Instant::now());
                         if let Some(victim) = victim {
                             active.swap_remove(victim);
                         } else {
@@ -3436,6 +3443,49 @@ mod handshake_admission_tests {
             );
             thread::sleep(Duration::from_millis(1));
         }
+    }
+
+    #[test]
+    fn idle_reclamation_never_interrupts_busy_or_recent_sessions() {
+        let (pending, _client, _counts) = pending();
+        let now = Instant::now();
+        let mut peer = ActivePeer {
+            id: 1,
+            stream: pending.stream,
+            _lease: pending.lease,
+            hello: vec![WALLET_HELLO],
+            hello_done: true,
+            in_flight: false,
+            input: Vec::new(),
+            request: None,
+            output: Vec::new(),
+            written: 0,
+            started: now,
+            phase_started: now,
+            last_progress: now - IDLE_RECLAIM_MIN_AGE - Duration::from_millis(1),
+            requests: 0,
+            bytes: 0,
+        };
+
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), Some(0));
+        peer.last_progress = now - Duration::from_millis(100);
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        peer.last_progress = now - IDLE_RECLAIM_MIN_AGE - Duration::from_millis(1);
+
+        peer.in_flight = true;
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        peer.in_flight = false;
+
+        peer.request = Some(vec![GET_PEERS]);
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        peer.request = None;
+
+        peer.output = vec![1];
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        peer.output.clear();
+
+        peer.hello_done = false;
+        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
     }
 
     #[test]
