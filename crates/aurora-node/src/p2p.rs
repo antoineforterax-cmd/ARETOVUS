@@ -417,14 +417,12 @@ fn oldest_reclaimable_session(active: &[ActivePeer], now: Instant) -> Option<usi
         .iter()
         .enumerate()
         .filter(|(_, current)| {
-            let idle = now.saturating_duration_since(current.last_progress)
-                >= IDLE_RECLAIM_MIN_AGE;
+            let idle = now.saturating_duration_since(current.last_progress) >= IDLE_RECLAIM_MIN_AGE;
             // Fresh one-byte writes must not reset the admission grace period.
             // Keep sessions that are transferring a substantial frame intact.
             let slow = !current.input.is_empty()
                 && current.input.len() < MIN_SLOW_REQUEST_BYTES
-                && now.saturating_duration_since(current.phase_started)
-                    >= IDLE_RECLAIM_MIN_AGE;
+                && now.saturating_duration_since(current.phase_started) >= IDLE_RECLAIM_MIN_AGE;
             current.hello_done
                 && !current.in_flight
                 && current.request.is_none()
@@ -3747,18 +3745,33 @@ mod handshake_admission_tests {
             bytes: 0,
         };
         // A fresh one-byte trickle used to make this peer unreclaimable.
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), Some(0));
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            Some(0)
+        );
         peer.phase_started = now;
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.phase_started = old;
         peer.input.resize(MIN_SLOW_REQUEST_BYTES, 0);
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.input.truncate(5);
         peer.in_flight = true;
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
         peer.in_flight = false;
         peer.output.push(0);
-        assert_eq!(oldest_reclaimable_session(std::slice::from_ref(&peer), now), None);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
     }
 
     #[test]
