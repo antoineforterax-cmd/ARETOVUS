@@ -1868,6 +1868,67 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    /// Real filesystem ENOSPC on a small, isolated Linux tmpfs. A separate
+    /// workflow mounts the private volume; never point this at a normal disk.
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "requires an isolated 32 MiB tmpfs and explicit opt-in"]
+    fn genuine_enospc_tmpfs_preserves_recovery_and_retry() {
+        assert_eq!(
+            std::env::var("AURORA_ENOSPC_PROBE").as_deref(),
+            Ok("1"),
+            "run only in the dedicated tmpfs workflow"
+        );
+        let root = PathBuf::from(
+            std::env::var_os("AURORA_ENOSPC_TEST_ROOT")
+                .expect("set AURORA_ENOSPC_TEST_ROOT to a private tmpfs mount"),
+        );
+        let path = root.join("storage-under-test");
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_tip = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+
+        // Filling an actual 32 MiB tmpfs triggers kernel ENOSPC rather than
+        // an injected error. Cap allocations to protect against misconfiguration.
+        let filler_path = root.join("enospc-filler");
+        let mut filler = File::create(&filler_path).unwrap();
+        let chunk = [0u8; 8192];
+        let mut filled = 0usize;
+        let enospc = loop {
+            assert!(
+                filled < 64 * 1024 * 1024,
+                "refusing to fill a filesystem larger than the dedicated tmpfs"
+            );
+            match filler.write_all(&chunk) {
+                Ok(()) => filled += chunk.len(),
+                Err(error) => break error,
+            }
+        };
+        assert_eq!(enospc.raw_os_error(), Some(28), "expected kernel ENOSPC");
+        drop(filler);
+        let failure = save_snapshot(&path, &original);
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        assert!(previous_manifest.exists());
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        fs::remove_file(filler_path).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 1);
+        assert_eq!(restored.tip_hash(), next_tip);
+        assert_eq!(restored.known_block_count(), 2);
+        fs::remove_dir_all(path).unwrap();
+        eprintln!("real ENOSPC tmpfs: recovered prior tip and retried successfully");
+    }
+
     #[test]
     fn injected_file_sync_failure_preserves_previous_manifest_and_allows_retry() {
         let path = dir();
