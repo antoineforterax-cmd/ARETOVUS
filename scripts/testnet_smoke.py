@@ -65,16 +65,31 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
     )
     deadline = time.monotonic() + 30
     saved_height = -1
+    saved_tip = None
     try:
         while time.monotonic() < deadline:
-            snapshots = list(data_dir.glob("snapshot-*.auridx"))
-            heights = [
-                int(match.group(1))
-                for snapshot in snapshots
-                if (match := re.match(r"snapshot-(\d{20})-", snapshot.name))
+            # Capture the immutable manifest identity *before* killing the
+            # miner. Looking at file names after the kill can miss the very
+            # snapshot we intended to protect from accidental loss.
+            snapshots = [
+                (int(match.group(1)), match.group(2))
+                for snapshot in data_dir.glob("snapshot-*.auridx")
+                if (match := re.fullmatch(
+                    r"snapshot-(\d{20})-([0-9a-f]{64})-[0-9a-f]{64}\.auridx",
+                    snapshot.name,
+                ))
             ]
-            if heights and max(heights) >= 2:
-                saved_height = max(heights)
+            if snapshots and max(height for height, _ in snapshots) >= 2:
+                saved_height = max(height for height, _ in snapshots)
+                saved_tips = {
+                    tip for height, tip in snapshots if height == saved_height
+                }
+                if len(saved_tips) != 1:
+                    raise AssertionError(
+                        f"ambiguous snapshot tip at height {saved_height}: "
+                        f"{sorted(saved_tips)}"
+                    )
+                saved_tip = next(iter(saved_tips))
                 process.kill()
                 process.wait(timeout=5)
                 break
@@ -98,21 +113,14 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
             f"(observed height {saved_height}): {verified}"
         )
     recovered_height = int(recovered.group(1))
-    # The snapshot filename commits to both height and tip hash.  When
-    # recovery lands exactly on our observed height, verify the tip too.
-    if recovered_height == saved_height:
-        tips = {
-            match.group(1)
-            for snapshot in data_dir.glob(f"snapshot-{saved_height:020d}-*.auridx")
-            if (match := re.match(
-                rf"snapshot-{saved_height:020d}-([0-9a-f]{{64}})-", snapshot.name
-            ))
-        }
-        if tips and recovered.group(2) not in tips:
-            raise AssertionError(
-                f"recovery tip {recovered.group(2)} differs from observed "
-                f"snapshot tips at height {saved_height}: {sorted(tips)}"
-            )
+    # Compare against the identity captured *before* the forced stop. The
+    # previous check rescanned files after the kill and could silently skip
+    # the tip assertion if that manifest was no longer present.
+    if recovered_height == saved_height and recovered.group(2) != saved_tip:
+        raise AssertionError(
+            f"recovery tip {recovered.group(2)} differs from pre-crash "
+            f"snapshot tip {saved_tip} at height {saved_height}"
+        )
     resumed = run_node(
         binary, "testnet", "mine", "--data-dir", str(data_dir),
         "--miner", miner, "--count", "1",
