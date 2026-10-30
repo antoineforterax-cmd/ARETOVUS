@@ -370,9 +370,11 @@ fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
     true
 }
 
-/// Keep the latest index and two recovery points in the healthy case.
-/// If any retained index or referenced page is invalid, postpone all
-/// pruning so a valid older generation cannot be removed by mtime alone.
+/// Keep three recent manifests plus the oldest recovery anchor.
+/// Shared block corruption can make all recent manifests unloadable without
+/// affecting their checksums. Keeping the oldest anchor costs at most one
+/// additional index and its referenced pages, not an O(blocks) audit per save.
+/// If a retained manifest or index page is damaged, defer all pruning.
 fn prune_old_indexes(dir: &Path, current: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -391,12 +393,18 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
         eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
         return;
     }
+    // The filename starts with a zero-padded height; select the lowest
+    // retained generation independently of file modification timestamps.
+    let oldest = older.iter().min().cloned();
     older.sort_by(|a, b| {
         let a_time = fs::metadata(a).and_then(|meta| meta.modified()).ok();
         let b_time = fs::metadata(b).and_then(|meta| meta.modified()).ok();
         b_time.cmp(&a_time).then_with(|| b.cmp(a))
     });
     for path in older.into_iter().skip(2) {
+        if oldest.as_ref() == Some(&path) {
+            continue;
+        }
         if let Err(error) = fs::remove_file(&path) {
             eprintln!("cannot prune old AURORA index {}: {error}", path.display());
         }
@@ -1123,7 +1131,7 @@ mod tests {
             }
             manifests.push(save_snapshot(&path, &chain).unwrap());
         }
-        assert!(!genesis_manifest.exists());
+        assert!(genesis_manifest.exists());
 
         // The two newest manifests remain checksummed and intact. One
         // references a corrupt immutable page, the other a missing page.
@@ -1185,7 +1193,7 @@ mod tests {
             }
             manifests.push(save_snapshot(&path, &chain).unwrap());
         }
-        assert!(!genesis.exists());
+        assert!(genesis.exists());
         // The newest two generations are corrupt, leaving one valid fallback.
         fs::write(&manifests[1], b"broken index").unwrap();
         let mut damaged = fs::read(&manifests[2]).unwrap();
@@ -1239,7 +1247,7 @@ mod tests {
             }
             manifests.push(save_snapshot(&path, &chain).unwrap());
         }
-        assert!(!genesis_manifest.exists());
+        assert!(genesis_manifest.exists());
         assert!(manifests.iter().all(|manifest| manifest.exists()));
         assert_eq!(
             fs::read_dir(&path)
@@ -1250,7 +1258,7 @@ mod tests {
                     .extension()
                     .is_some_and(|ext| ext == INDEX_EXTENSION))
                 .count(),
-            3
+            4
         );
 
         // Model two distinct damaged recovery points: one truncated manifest
@@ -1305,7 +1313,7 @@ mod tests {
             })
             .count();
         let blocks = fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count();
-        assert_eq!(indexes, 3);
+        assert_eq!(indexes, 4);
         assert_eq!(blocks, chain.known_block_count());
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), chain.tip_hash());
@@ -1343,10 +1351,63 @@ mod tests {
         let pages = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY))
             .unwrap()
             .count();
-        assert_eq!(manifests, 3);
-        assert_eq!(pages, 3);
+        assert_eq!(manifests, 4);
+        assert_eq!(pages, 4);
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), chain.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn damaged_shared_recent_block_keeps_an_older_recovery_anchor() {
+        let path = dir();
+        let mut chain = chain();
+        let safe_tip = chain.tip_hash();
+        let first_manifest = save_snapshot(&path, &chain).unwrap();
+        let mut shared_recent_block = None;
+
+        // One damaged block is shared by every newer recovery generation.
+        for timestamp in 2..=5 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                chain.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            if timestamp == 2 {
+                shared_recent_block = Some(block.header.hash().unwrap());
+            }
+            chain.submit(block).unwrap();
+            save_snapshot(&path, &chain).unwrap();
+        }
+        let manifests = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION)
+            })
+            .count();
+        assert_eq!(
+            manifests, 4,
+            "retain the oldest anchor plus three recent generations"
+        );
+        assert!(first_manifest.exists(), "oldest recovery anchor was pruned");
+
+        let block_id = shared_recent_block.unwrap();
+        fs::write(
+            path.join(BLOCK_DIRECTORY)
+                .join(format!("{block_id}.{BLOCK_EXTENSION}")),
+            b"corrupted shared block",
+        )
+        .unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), safe_tip);
         fs::remove_dir_all(path).unwrap();
     }
 
