@@ -1135,6 +1135,48 @@ mod tests {
     }
 
     #[test]
+    fn manifest_file_sync_failure_preserves_last_valid_generation() {
+        let path = dir();
+        let mut original = chain();
+        let old_tip = original.tip_hash();
+        let old_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, old_tip, 2, 0, Vec::new()).unwrap();
+        let new_tip = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+
+        // Materialize this exact manifest once, then simulate the failure
+        // while writing it a second time, before the atomic rename.
+        let new_manifest = save_snapshot(&path, &original).unwrap();
+        let bytes = fs::read(&new_manifest).unwrap();
+        fs::remove_file(&new_manifest).unwrap();
+        let failure = write_immutable_with_sync(
+            &new_manifest,
+            &bytes,
+            MAX_SNAPSHOT_BYTES,
+            |_| Err(io::Error::other("injected manifest fsync failure")),
+        );
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        assert!(!new_manifest.exists());
+        assert!(old_manifest.exists());
+        assert!(!fs::read_dir(&path).unwrap().any(|entry| entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".tmp")));
+        let restored =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), old_tip);
+
+        save_snapshot(&path, &original).unwrap();
+        let retried =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retried.height(), 1);
+        assert_eq!(retried.tip_hash(), new_tip);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn manifest_rename_failure_preserves_last_valid_generation() {
         let path = dir();
         let mut original = chain();
