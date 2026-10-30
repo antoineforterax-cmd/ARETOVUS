@@ -2184,10 +2184,32 @@ mod tests {
         assert_eq!(original.known_block_count(), 100_003);
         let build_elapsed = started.elapsed();
 
-        save_snapshot(&path, &original).unwrap();
+        let first_manifest = save_snapshot(&path, &original).unwrap();
         let save_elapsed = started.elapsed() - build_elapsed;
+
+        // Probe the warm path independently: all 100,003 immutable blocks
+        // and index pages already exist. An idempotent retry must reuse the
+        // same content-addressed manifest, not publish another generation.
+        let repeat_started = std::time::Instant::now();
+        let repeated_manifest = save_snapshot(&path, &original).unwrap();
+        let repeat_save_elapsed = repeat_started.elapsed();
+        assert_eq!(repeated_manifest, first_manifest);
+        let manifest_count = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION)
+            })
+            .count();
+        assert_eq!(manifest_count, 1);
+
         drop(original);
+        let restore_started = std::time::Instant::now();
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restore_elapsed = restore_started.elapsed();
         assert_eq!(restored.height(), 100_001);
         assert_eq!(restored.known_block_count(), 100_003);
         assert!(restored
@@ -2195,10 +2217,12 @@ mod tests {
             .iter()
             .any(|block| block.header.hash().unwrap() == side_hash));
         eprintln!(
-            "volume probe: blocks={} build_seconds={:.1} save_seconds={:.1} total_seconds={:.1}",
+            "volume probe: blocks={} build_seconds={:.1} save_seconds={:.1} repeat_save_seconds={:.1} restore_seconds={:.1} total_seconds={:.1}",
             restored.known_block_count(),
             build_elapsed.as_secs_f64(),
             save_elapsed.as_secs_f64(),
+            repeat_save_elapsed.as_secs_f64(),
+            restore_elapsed.as_secs_f64(),
             started.elapsed().as_secs_f64()
         );
         fs::remove_dir_all(path).unwrap();

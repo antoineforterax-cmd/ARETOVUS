@@ -2,7 +2,9 @@ name: volume-probe
 
 on:
   push:
-    branches: [feature/emission-schedule-v0]
+    # Explicit opt-in volume branches, without making every main PR run the
+    # 100k+ block workload. The workflow remains manually dispatchable.
+    branches: [feature/emission-schedule-v0, "volume/**"]
     paths:
       - "crates/aurora-storage/**"
       - "crates/aurora-consensus/**"
