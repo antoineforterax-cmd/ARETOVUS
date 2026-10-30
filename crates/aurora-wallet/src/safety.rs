@@ -65,6 +65,17 @@ pub fn read_confirmation(reader: &mut impl BufRead, destination: &str) -> io::Re
     Ok(line.trim_end_matches(['\r', '\n']) == format!("SEND {destination}"))
 }
 
+/// Complete, deterministic authorization text. Always present the exact
+/// phrase to the signer and compare against independently entered input.
+pub fn payment_intent_confirmation_phrase(
+    destination: &str,
+    amount: Amount,
+    fee: Amount,
+    nonce: u64,
+) -> String {
+    format!("SEND AURORA-TESTNET {destination} {amount} {fee} {nonce}")
+}
+
 /// Require a human to independently repeat the transaction's network,
 /// complete recipient, amount, fee and nonce before any signing or broadcast.
 ///
@@ -77,7 +88,7 @@ pub fn read_payment_intent_confirmation(
     fee: Amount,
     nonce: u64,
 ) -> io::Result<bool> {
-    let expected = format!("SEND AURORA-TESTNET {destination} {amount} {fee} {nonce}");
+    let expected = payment_intent_confirmation_phrase(destination, amount, fee, nonce);
     // More than enough for 64 hex digits and the maximum u64-formatted amounts.
     // EOF, overlong lines and anything but one complete answer fail closed.
     let mut line = String::new();
@@ -142,6 +153,56 @@ mod tests {
             PaymentLimits::default()
         )
         .is_err());
+    }
+
+    #[test]
+    fn approval_binds_all_spend_fields_and_rejects_mutations() {
+        let destination = "ab".repeat(32);
+        let amount = units(1_000_000_000);
+        let fee = units(1_000_000);
+        let nonce = 42;
+        let phrase = payment_intent_confirmation_phrase(&destination, amount, fee, nonce);
+        assert!(phrase.starts_with("SEND AURORA-TESTNET "));
+        assert!(read_payment_intent_confirmation(
+            &mut format!("{phrase}\\n").replace("\\n", "\n").as_bytes(),
+            &destination,
+            amount,
+            fee,
+            nonce
+        )
+        .unwrap());
+        assert!(read_payment_intent_confirmation(
+            &mut format!("{phrase}\\r\\n").replace("\\r", "\r").replace("\\n", "\n").as_bytes(),
+            &destination,
+            amount,
+            fee,
+            nonce
+        )
+        .unwrap());
+        for candidate in [
+            phrase.clone(),
+            format!("{}\n", phrase.replace("AURORA-TESTNET", "AURORA-MAINNET")),
+            format!("{}\n", phrase.replace(&destination, &"ac".repeat(32))),
+            format!("{}\n", phrase.replace("10 0.01 42", "11 0.01 42")),
+            format!("{}\n", phrase.replace("10 0.01 42", "10 0.02 42")),
+            format!("{}\n", phrase.replace("10 0.01 42", "10 0.01 43")),
+            format!("{phrase} trailing\n"),
+            format!(" {phrase}\n"),
+            format!("{phrase}\nextra"),
+            "x".repeat(1024),
+        ] {
+            assert!(
+                !read_payment_intent_confirmation(
+                    &mut candidate.as_bytes(),
+                    &destination,
+                    amount,
+                    fee,
+                    nonce
+                )
+                .unwrap(),
+                "unexpectedly accepted {candidate:?}"
+            );
+        }
     }
 
     #[test]
