@@ -967,8 +967,7 @@ mod tests {
 
         let path = dir();
         save_snapshot(&path, &original).unwrap();
-        let restored =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         fs::remove_dir_all(path).unwrap();
