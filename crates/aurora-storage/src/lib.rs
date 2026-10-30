@@ -120,7 +120,11 @@ pub fn save_snapshot(
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        match existing.get(block_path.file_name().expect("block object path has filename")) {
+        match existing.get(
+            block_path
+                .file_name()
+                .expect("block object path has filename"),
+        ) {
             Some(true) => {}
             Some(false) => {
                 return Err(StorageError::InvalidFormat("block object is not a file"));
