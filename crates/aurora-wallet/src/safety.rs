@@ -65,6 +65,30 @@ pub fn read_confirmation(reader: &mut impl BufRead, destination: &str) -> io::Re
     Ok(line.trim_end_matches(['\r', '\n']) == format!("SEND {destination}"))
 }
 
+/// Require a human to independently repeat the transaction's network,
+/// complete recipient, amount, fee and nonce before any signing or broadcast.
+///
+/// A correct confirmation does not prove the terminal or wallet binary is honest.
+/// It does protect against accidental approval of a different displayed intent.
+pub fn read_payment_intent_confirmation(
+    reader: &mut impl BufRead,
+    destination: &str,
+    amount: Amount,
+    fee: Amount,
+    nonce: u64,
+) -> io::Result<bool> {
+    let expected = format!("SEND AURORA-TESTNET {destination} {amount} {fee} {nonce}");
+    // More than enough for 64 hex digits and the maximum u64-formatted amounts.
+    // EOF, overlong lines and anything but one complete answer fail closed.
+    let mut line = String::new();
+    reader.take(192).read_line(&mut line)?;
+    let Some(answer) = line.strip_suffix('\n') else {
+        return Ok(false);
+    };
+    let answer = answer.strip_suffix('\r').unwrap_or(answer);
+    Ok(answer == expected)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
