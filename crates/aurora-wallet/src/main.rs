@@ -322,7 +322,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let key_path = Path::new(option(&args, "--key-file")?);
             let stored = aurora_wallet::policy::load(key_path, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, read_confirmation, PaymentLimits};
+            use aurora_wallet::safety::{check_payment, PaymentLimits};
             let requested = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -364,9 +364,18 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             println!("The signed file authorizes spending. Anyone holding it can broadcast; deleting it cannot revoke a copy.");
             if !flag(&args, "--yes") {
-                print!("Type SEND {destination} to authorize: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination, amount, fee, nonce,
+                );
+                print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !read_confirmation(&mut io::stdin().lock(), &destination)? {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    amount,
+                    fee,
+                    nonce,
+                )? {
                     return Err("offline payment cancelled before signing".into());
                 }
             }
@@ -398,10 +407,21 @@ fn run() -> Result<(), Box<dyn Error>> {
                 transaction.amount, transaction.fee, transaction.nonce
             );
             if !flag(&args, "--yes") {
-                print!("Type SEND {destination} to broadcast: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination,
+                    transaction.amount,
+                    transaction.fee,
+                    transaction.nonce,
+                );
+                print!("Type {phrase} to broadcast: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_confirmation(&mut io::stdin().lock(), &destination)?
-                {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    transaction.amount,
+                    transaction.fee,
+                    transaction.nonce,
+                )? {
                     return Err("broadcast cancelled; the signed file remains spendable".into());
                 }
             }
@@ -436,7 +456,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let key_path = Path::new(option(&args, "--key-file")?);
             let stored_limits = aurora_wallet::policy::load(key_path, key.account_id())?;
             let account = rpc::get_account(node, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, read_confirmation, PaymentLimits};
+            use aurora_wallet::safety::{check_payment, PaymentLimits};
             let limits = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -482,9 +502,21 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             if !flag(&args, "--yes") {
                 println!("A confirmed payment is irreversible. Check the full recipient address.");
-                print!("Type SEND {destination} to authorize: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination,
+                    amount,
+                    fee,
+                    account.next_nonce,
+                );
+                print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !read_confirmation(&mut io::stdin().lock(), &destination)? {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    amount,
+                    fee,
+                    account.next_nonce,
+                )? {
                     return Err("payment cancelled before signing".into());
                 }
             }
