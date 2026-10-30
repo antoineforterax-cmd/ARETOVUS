@@ -1,0 +1,68 @@
+name: cross-runner-v6-backup
+
+on:
+  pull_request:
+    paths:
+      - "crates/aurora-storage/**"
+      - ".github/workflows/cross-runner-v6-backup.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build test executable
+        run: cargo test --locked -p aurora-storage --lib --no-run
+      - name: Produce portable backup and expected hashes
+        env:
+          AURORA_CROSS_RUNNER_EXPORT_DIR: ${{ runner.temp }}/aurora-transfer
+        run: |
+          set -euo pipefail
+          mkdir -p "$AURORA_CROSS_RUNNER_EXPORT_DIR"
+          cargo test --locked -p aurora-storage --lib tests::cross_runner_v6_backup_producer -- --exact --ignored --nocapture 2>&1 | tee cross-runner-export.log
+          grep -Fq 'test result: ok. 1 passed; 0 failed;' cross-runner-export.log
+          test -f "$AURORA_CROSS_RUNNER_EXPORT_DIR/expected.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-v6-backup
+          path: ${{ runner.temp }}/aurora-transfer/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-runner-export-log
+          path: cross-runner-export.log
+          retention-days: 14
+
+  import-and-reorganize:
+    needs: export-backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: portable-v6-backup
+          path: ${{ runner.temp }}/aurora-import
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Verify imported backup and reorganization
+        env:
+          AURORA_CROSS_RUNNER_IMPORT_DIR: ${{ runner.temp }}/aurora-import
+        run: |
+          set -euo pipefail
+          cargo test --locked -p aurora-storage --lib tests::cross_runner_v6_backup_consumer -- --exact --ignored --nocapture 2>&1 | tee cross-runner-import.log
+          grep -Fq 'test result: ok. 1 passed; 0 failed;' cross-runner-import.log
+          grep -Fq 'cross-runner consumer: snapshot restored, side branch reorg and resave verified' cross-runner-import.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-runner-import-log
+          path: cross-runner-import.log
+          retention-days: 14
