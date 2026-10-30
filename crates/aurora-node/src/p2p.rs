@@ -2399,7 +2399,7 @@ mod tests {
             remote.submit(block).unwrap();
         }
         let side_parent = remote
-            .block_page(count / 2, 1)
+            .block_page(usize::try_from(count / 2).unwrap(), 1)
             .first()
             .unwrap()
             .header
