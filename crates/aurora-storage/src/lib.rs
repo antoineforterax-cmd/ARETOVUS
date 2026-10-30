@@ -2406,6 +2406,53 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    /// Opt-in million-block persistence and restart probe. This is intentionally
+    /// not part of routine CI: it can require substantial RAM, disk and time.
+    #[test]
+    #[ignore = "explicit opt-in: AURORA_MILLION_BLOCK_PROBE=1"]
+    fn million_block_persistence_and_restart_probe() {
+        assert_eq!(
+            std::env::var("AURORA_MILLION_BLOCK_PROBE").as_deref(),
+            Ok("1"),
+            "set AURORA_MILLION_BLOCK_PROBE=1 to run the expensive probe"
+        );
+        let started = std::time::Instant::now();
+        let path = dir();
+        let mut original = chain();
+        for height in 1..=1_000_000u64 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                height + 1,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            original.submit(block).unwrap();
+        }
+        let tip = original.tip_hash();
+        assert_eq!(original.height(), 1_000_000);
+        assert_eq!(original.known_block_count(), 1_000_001);
+        let build_seconds = started.elapsed().as_secs_f64();
+        save_snapshot(&path, &original).unwrap();
+        let save_seconds = started.elapsed().as_secs_f64() - build_seconds;
+        drop(original);
+        let restore_start = std::time::Instant::now();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 1_000_000);
+        assert_eq!(restored.known_block_count(), 1_000_001);
+        assert_eq!(restored.tip_hash(), tip);
+        eprintln!(
+            "million-block probe: blocks={} build_seconds={:.1} save_seconds={:.1} restore_seconds={:.1}",
+            restored.known_block_count(),
+            build_seconds,
+            save_seconds,
+            restore_start.elapsed().as_secs_f64()
+        );
+        drop(restored);
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();
