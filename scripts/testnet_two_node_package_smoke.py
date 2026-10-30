@@ -37,6 +37,16 @@ def run(*args: object, timeout: float = 90) -> str:
     return completed.stdout
 
 
+def wallet_account(wallet: Path, keyfile: Path) -> str:
+    # The wallet prints a warning on stderr for ephemeral plain-testnet
+    # keys; parse only the 64-hex account line from the combined output.
+    output = run(wallet, "address", "--key-file", keyfile)
+    matches = re.findall(r"(?m)^([0-9a-fA-F]{64})\\s*$", output)
+    if len(matches) != 1:
+        raise AssertionError(f"Unexpected testnet wallet address output: {output[-300:]}")
+    return matches[0].lower()
+
+
 def choose_port() -> int:
     # Reserve only briefly. All sockets remain bound to loopback.
     with socket.socket() as sock:
@@ -128,6 +138,9 @@ def main() -> None:
     node = package / "bin" / "aurora-node.exe"
     if not node.is_file():
         raise FileNotFoundError(node)
+    wallet = package / "bin" / "aurora-wallet.exe"
+    if not wallet.is_file():
+        raise FileNotFoundError(wallet)
     with tempfile.TemporaryDirectory(prefix="aurora-packaged-two-nodes-") as temp:
         root = Path(temp)
         a_data, b_data, miner_data = (
@@ -138,8 +151,16 @@ def main() -> None:
             b_port = choose_port()
         a = b = None
         try:
+            # These disposable, unencrypted keys exist only within the
+            # temporary CI directory. Never use this option with real funds.
+            alice_key = root / "alice.aurkey"
+            bob_key = root / "bob.aurkey"
+            run(wallet, "keygen", "--out", alice_key, "--plain-testnet")
+            run(wallet, "keygen", "--out", bob_key, "--plain-testnet")
+            miner = wallet_account(wallet, alice_key)
+            bob = wallet_account(wallet, bob_key)
+
             a = start_server(node, a_data, a_port, root / "server-a.log")
-            miner = "41" * 32  # Invalid spending identity is fine for testnet mining.
             run(
                 node, "testnet", "mine", "--data-dir", miner_data,
                 "--miner", miner, "--count", "1", "--peer", f"127.0.0.1:{a_port}"
@@ -161,6 +182,42 @@ def main() -> None:
                 raise AssertionError(f"Second block did not propagate: {source2[3]}")
             b = start_server(node, b_data, b_port, root / "server-b-restart.log", a_port)
             resumed = await_tip(node, b_data, source2)
+            # Exercise the *packaged* ML-DSA wallet, not just node block
+            # propagation: sign locally, submit via A, mine and verify SPV
+            # inclusion independently through A and B.
+            a_address = f"127.0.0.1:{a_port}"
+            b_address = f"127.0.0.1:{b_port}"
+            sent = run(
+                wallet, "send", "--key-file", alice_key,
+                "--to", bob, "--amount", "1.25", "--fee", "0.01",
+                "--node", a_address, "--yes",
+            )
+            ids = re.findall(r"(?m)^transaction_id=([0-9a-fA-F]{64})\\s*$", sent)
+            if len(ids) != 1:
+                raise AssertionError(f"Wallet did not return transaction ID: {sent[-800:]}")
+            txid = ids[0]
+            run(
+                node, "testnet", "mine", "--data-dir", miner_data,
+                "--miner", miner, "--count", "1", "--peer", a_address,
+            )
+            source3 = state(node, a_data)
+            if source3[0] != 3:
+                raise AssertionError(f"Wallet payment was not mined: {source3[3]}")
+            await_tip(node, b_data, source3)
+            for address in (a_address, b_address):
+                verification = run(
+                    wallet, "verify", "--node", address,
+                    "--txid", txid, "--confirmations", "1",
+                )
+                if "SPV verified:" not in verification:
+                    raise AssertionError(
+                        f"SPV proof missing on {address}: {verification[-800:]}"
+                    )
+            balance = run(
+                wallet, "balance", "--key-file", bob_key, "--node", b_address,
+            )
+            if "pending_adjusted_balance=1.25000000" not in balance:
+                raise AssertionError(f"Recipient balance wrong after sync: {balance[-800:]}")
             stop(b)
             b = None
             stop(a)
@@ -171,12 +228,13 @@ def main() -> None:
                 raise AssertionError(
                     f"Persistent chain divergence: {persisted_a[3]} vs {persisted_b[3]}"
                 )
-            if persisted_a[0] != 2:
+            if persisted_a[0] != 3:
                 raise AssertionError(f"Unexpected final height: {persisted_a[3]}")
             print(
                 "packaged_windows_two_node_smoke=success "
                 f"height={persisted_a[0]} tip={persisted_a[1]} "
                 f"known_blocks={persisted_a[2]} "
+                f"wallet_payment_spv=success recipient_balance=1.25000000 "
                 f"initial_sync_seconds={initial:.3f} resumed_sync_seconds={resumed:.3f}"
             )
         finally:
