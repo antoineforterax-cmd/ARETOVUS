@@ -2,7 +2,7 @@ name: storage-phase-profile
 
 on:
   push:
-    branches: [test/storage-phase-profile-8192]
+    branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci]
     paths:
       - "crates/aurora-storage/**"
       - ".github/workflows/storage-phase-profile.yml"
@@ -28,23 +28,55 @@ jobs:
       - uses: actions/checkout@v4
       - name: Installer Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
-      - name: Mesurer le stockage durable à chaque page de 64 blocs
+      - name: Précompiler les tests hors des mesures CPU et mémoire
+        run: cargo test --locked -p aurora-storage --lib --no-run
+      - name: Profiler 2048 puis 8192 blocs sur le même runner
         env:
           AURORA_STORAGE_PROFILE: "1"
-          AURORA_STORAGE_PROFILE_BLOCKS: ${{ inputs.blocks || (github.ref == 'refs/heads/test/storage-phase-profile-8192' && '8192') || '2048' }}
+          REQUESTED_BLOCKS: ${{ inputs.blocks || '' }}
         run: |
-          if [ "$GITHUB_REF" = "refs/heads/test/storage-phase-profile-8192" ]; then
-            test "$AURORA_STORAGE_PROFILE_BLOCKS" = 8192
+          set -euo pipefail
+          if [ -n "$REQUESTED_BLOCKS" ]; then
+            case "$REQUESTED_BLOCKS" in
+              *[!0-9]*|'') echo "Block count must be a decimal integer" >&2; exit 2 ;;
+            esac
+            if [ "$REQUESTED_BLOCKS" -lt 256 ] || [ "$REQUESTED_BLOCKS" -gt 16384 ]; then
+              echo "Allowed manual block counts: 256..16384" >&2
+              exit 2
+            fi
+            block_counts="$REQUESTED_BLOCKS"
+          else
+            block_counts="2048 8192"
           fi
-          printf 'Selected storage profile: %s blocks after genesis\n' "$AURORA_STORAGE_PROFILE_BLOCKS"
-          set -o pipefail
-          /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-results.log
-          grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' storage-profile-results.log
-          grep -q 'storage phases:' storage-profile-results.log
-          grep -q 'storage volume probe:' storage-profile-results.log
+          echo "Storage profile volumes: $block_counts"
+          for blocks in $block_counts; do
+            export AURORA_STORAGE_PROFILE_BLOCKS="$blocks"
+            log="storage-profile-${blocks}.log"
+            echo "=== Starting $blocks-block storage profile ==="
+            /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
+            grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
+            grep -q 'storage phases:' "$log"
+            expected_saves=$(((blocks + 63) / 64))
+            grep -q "storage volume probe: height=${blocks} known_blocks=$((blocks + 1)) snapshot_calls=${expected_saves} " "$log"
+          done
+          {
+            echo '## Storage phase measurements (single runner, same commit)'
+            echo
+            for blocks in $block_counts; do
+              echo "### ${blocks} blocks"
+              echo 'Completed, restored and checked height, tip and block count.'
+              grep 'storage phases:' "storage-profile-${blocks}.log" | tail -1
+              grep 'storage volume probe:' "storage-profile-${blocks}.log" | tail -1
+              grep 'Maximum resident set size' "storage-profile-${blocks}.log" | tail -1
+              echo
+            done
+            echo 'Synthetic Regtest snapshots only; not network sync or a disk-failure test.'
+          } | tee storage-profile-summary.md
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: storage-phase-evidence
-          path: storage-profile-results.log
+          path: |
+            storage-profile-*.log
+            storage-profile-summary.md
           retention-days: 14
