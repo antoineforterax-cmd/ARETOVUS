@@ -10,6 +10,7 @@ on:
       - "scripts/package_testnet.py"
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
+      - "scripts/testnet_two_node_package_smoke.py"
       - "docs/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "scripts/package_testnet.py"
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
+      - "scripts/testnet_two_node_package_smoke.py"
       - "docs/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
   workflow_dispatch:
@@ -60,6 +62,13 @@ jobs:
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
           $sourceRevision = ($env:GITHUB_SHA).Substring(0, 12)
           & (Join-Path (Get-Location) 'scripts/two_pc_preflight.ps1') -PackageRoot $target -ExpectedRevision $sourceRevision -Offline
+      - name: Exercicer deux noeuds Windows extraits et leur redemarrage
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
+          python scripts/testnet_two_node_package_smoke.py --package-root $target
       - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4
         with:
