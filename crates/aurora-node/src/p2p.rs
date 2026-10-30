@@ -828,7 +828,7 @@ fn build_blocks_page(chain: &AccountForkChain, start: u64) -> Result<Vec<u8>, P2
     let mut count = 0u32;
     let count_offset = frame.len();
     frame.extend_from_slice(&count.to_be_bytes());
-    for block in chain.arrival_block_page(
+    for block in chain.arrival_block_page_iter(
         usize::try_from(start).map_err(|_| P2pError::Protocol("block cursor exceeds usize"))?,
         PAGE_BLOCKS,
     ) {
@@ -1978,6 +1978,46 @@ mod tests {
             .map(|block| block.header.hash().unwrap())
             .collect();
         assert_eq!(after_hashes, vec![first_hash, second_hash, late_hash]);
+    }
+
+    #[test]
+    fn borrowed_inventory_pages_keep_wire_order_and_bounds() {
+        let mut chain = chain();
+        let genesis = chain.tip_hash();
+        let first = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, vec![]).unwrap();
+        chain.submit(first).unwrap();
+        let side = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, vec![]).unwrap();
+        chain.submit(side).unwrap();
+
+        let total = chain.known_block_count();
+        for start in 0..=total {
+            let expected = chain.arrival_block_page(start, PAGE_BLOCKS);
+            let borrowed = chain.arrival_block_page_iter(start, PAGE_BLOCKS);
+            assert_eq!(borrowed.len(), expected.len());
+            for (before, after) in expected.iter().zip(borrowed) {
+                assert_eq!(before.header.hash().unwrap(), after.header.hash().unwrap());
+            }
+
+            let reply = build_blocks_page(&chain, start as u64).unwrap();
+            let (announced, decoded) = read_blocks(&reply).unwrap();
+            assert_eq!(announced, total as u64);
+            assert_eq!(decoded.len(), expected.len());
+            for (before, after) in expected.iter().zip(decoded.iter()) {
+                assert_eq!(
+                    before.to_canonical_bytes().unwrap(),
+                    after.to_canonical_bytes().unwrap()
+                );
+            }
+        }
+        assert!(matches!(
+            build_blocks_page(&chain, (total + 1) as u64),
+            Err(P2pError::Protocol("block cursor out of range"))
+        ));
+        assert_eq!(
+            chain.arrival_block_page_iter(usize::MAX, PAGE_BLOCKS).len(),
+            0
+        );
+        assert_eq!(chain.arrival_block_page_iter(0, 0).len(), 0);
     }
 
     #[test]

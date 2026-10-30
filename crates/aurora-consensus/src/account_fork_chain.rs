@@ -484,14 +484,22 @@ impl AccountForkChain {
 
     /// Stable local inventory page: accepting a late side branch only appends to this order.
     pub fn arrival_block_page(&self, start: usize, limit: usize) -> Vec<&AccountBlock> {
-        if start >= self.arrival_order.len() {
-            return Vec::new();
-        }
-        self.arrival_order[start..]
+        self.arrival_block_page_iter(start, limit).collect()
+    }
+
+    /// Borrow an inventory page without allocating an intermediate vector.
+    /// The same stable arrival order is used for TCP replies and snapshot replay.
+    pub fn arrival_block_page_iter(
+        &self,
+        start: usize,
+        limit: usize,
+    ) -> impl ExactSizeIterator<Item = &AccountBlock> + '_ {
+        self.arrival_order
+            .get(start..)
+            .unwrap_or_default()
             .iter()
             .take(limit)
             .map(|hash| &self.blocks[hash])
-            .collect()
     }
 
     /// Constant-size lookup used before allocating a candidate chain.
