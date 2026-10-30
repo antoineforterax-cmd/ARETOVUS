@@ -1650,6 +1650,26 @@ fn sync_from_peer_with_request_limit(
     persist: bool,
     restart_after_requests: usize,
 ) -> Result<usize, P2pError> {
+    sync_from_peer_with_admission(
+        address,
+        chain,
+        data_dir,
+        persist,
+        restart_after_requests,
+        reject_future_block_timestamp,
+    )
+}
+
+/// Keep the local-clock decision injectable for deterministic loopback tests.
+/// Production always passes the existing wall-clock admission function.
+fn sync_from_peer_with_admission(
+    address: SocketAddr,
+    chain: &mut AccountForkChain,
+    data_dir: &Path,
+    persist: bool,
+    restart_after_requests: usize,
+    check_timestamp: impl Fn(u64) -> Result<(), P2pError>,
+) -> Result<usize, P2pError> {
     #[cfg(test)]
     let profile_enabled = std::env::var_os("AURORA_P2P_PROFILE").is_some();
     #[cfg(test)]
@@ -1777,7 +1797,7 @@ fn sync_from_peer_with_request_limit(
         let phase_started = Instant::now();
         let mut page_accepted = 0usize;
         for block in blocks {
-            reject_future_block_timestamp(block.header.timestamp)?;
+            check_timestamp(block.header.timestamp)?;
             match candidate.submit(block) {
                 Ok(_) => page_accepted += 1,
                 Err(AccountForkChainError::DuplicateBlock) => {}
@@ -3085,6 +3105,88 @@ mod tests {
         }
         assert!(timed_out, "peer accepted 128 MiB without reading");
         assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn tcp_clock_catchup_retries_an_atomic_future_page_and_restores() {
+        // One real TCP page contains an admissible block followed by a
+        // consensus-valid future block. An injected local clock is the only
+        // simulated component; no OS clock or consensus rule is modified.
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-clock-catchup-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let mut remote = chain();
+        let ordinary =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 2, 0, vec![]).unwrap();
+        remote.submit(ordinary).unwrap();
+        let future =
+            AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), 8_201, 0, vec![]).unwrap();
+        remote.submit(future).unwrap();
+        let expected_tip = remote.tip_hash();
+        let expected_work = remote.chain_work();
+
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            for _ in 0..2 {
+                let (stream, _) = listener.accept().unwrap();
+                // A rejected page closes its socket mid-session, so the
+                // handler may return an ordinary disconnected-peer error.
+                let _ = handle_peer_shared(
+                    stream,
+                    &Mutex::new(remote.clone()),
+                    &Mutex::new(Mempool::default()),
+                    Path::new("."),
+                    &[],
+                );
+            }
+        });
+
+        let mut local = chain();
+        let original_tip = local.tip_hash();
+        let reject = sync_from_peer_with_admission(
+            address,
+            &mut local,
+            &dir,
+            true,
+            MAX_SESSION_REQUESTS.saturating_sub(2),
+            |timestamp| check_block_timestamp_at(timestamp, 1_000),
+        );
+        assert!(matches!(
+            reject,
+            Err(P2pError::Protocol(
+                "block timestamp exceeds local future allowance"
+            ))
+        ));
+        assert_eq!(local.tip_hash(), original_tip);
+        assert_eq!(local.height(), 0);
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 0);
+
+        // Exactly the same TCP inventory becomes admissible when the local
+        // clock has advanced, and only then may the page be persisted.
+        let accepted = sync_from_peer_with_admission(
+            address,
+            &mut local,
+            &dir,
+            true,
+            MAX_SESSION_REQUESTS.saturating_sub(2),
+            |timestamp| check_block_timestamp_at(timestamp, 1_001),
+        )
+        .unwrap();
+        assert_eq!(accepted, 2);
+        assert_eq!(local.height(), 2);
+        assert_eq!(local.tip_hash(), expected_tip);
+        assert_eq!(local.chain_work(), expected_work);
+        let restored =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+                .unwrap();
+        assert_eq!(restored.tip_hash(), expected_tip);
+        assert_eq!(restored.chain_work(), expected_work);
+        assert_eq!(restored.known_block_count(), local.known_block_count());
+        server.join().unwrap();
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
