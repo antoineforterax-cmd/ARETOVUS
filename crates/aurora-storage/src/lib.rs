@@ -4,8 +4,9 @@
 //! caller-provided deterministic genesis state. This is not an optimized database or
 //! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     error::Error,
+    ffi::OsString,
     fmt,
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
@@ -100,39 +101,31 @@ pub fn save_snapshot(
     if blocks.len() == 0 {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
-    // One directory traversal replaces a filesystem metadata lookup for each
-    // historical block. Only regular files can satisfy a content-addressed
-    // reference: reject directories and symlinks rather than publishing a
-    // manifest pointing to an object outside the managed storage directory.
-    // Do not ignore errors while walking the directory: a partial inventory
-    // could otherwise turn an inaccessible object into an apparent new file.
-    let mut existing = HashMap::with_capacity(blocks.len());
+    // Only index objects referenced by this chain: unrelated or orphaned
+    // files must not make temporary memory usage depend on directory size.
+    // Walking the directory once avoids one metadata syscall per old block.
+    let mut missing = chain
+        .blocks_with_ids_by_arrival()
+        .map(|(id, _)| OsString::from(format!("{id}.{BLOCK_EXTENSION}")))
+        .collect::<HashSet<_>>();
     for entry in fs::read_dir(&block_dir)? {
         let entry = entry?;
         let name = entry.file_name();
-        if Path::new(&name)
-            .extension()
-            .is_some_and(|ext| ext == BLOCK_EXTENSION)
-        {
-            existing.insert(name, entry.file_type()?.is_file());
+        if missing.contains(&name) {
+            // Symlinks are not durable immutable block objects, even when
+            // their targets happen to exist outside this managed directory.
+            if !entry.file_type()?.is_file() {
+                return Err(StorageError::InvalidFormat("block object is not a file"));
+            }
+            missing.remove(&name);
         }
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        match existing.get(
-            block_path
-                .file_name()
-                .expect("block object path has filename"),
-        ) {
-            Some(true) => {}
-            Some(false) => {
-                return Err(StorageError::InvalidFormat("block object is not a file"));
-            }
-            None => {
-                let encoded = block.to_canonical_bytes()?;
-                write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
-            }
+        if missing.contains(block_path.file_name().expect("block object path has filename")) {
+            let encoded = block.to_canonical_bytes()?;
+            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
         }
         block_ids.push(*block_id);
     }
@@ -987,6 +980,21 @@ mod tests {
         save_snapshot(&path, &original).unwrap();
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn snapshot_inventory_ignores_unrelated_orphaned_files() {
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        // Unrelated artifacts cannot satisfy a block ID or block a save.
+        let block_dir = path.join(BLOCK_DIRECTORY);
+        fs::write(block_dir.join("unrelated.aurblk"), b"not a block").unwrap();
+        fs::create_dir(block_dir.join("junk.aurblk")).unwrap();
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), original.tip_hash());
         fs::remove_dir_all(path).unwrap();
     }
