@@ -1099,7 +1099,10 @@ mod tests {
         let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 50, 0, Vec::new()).unwrap();
         recovered.submit(next).unwrap();
         let fresh = save_snapshot(&path, &recovered).unwrap();
-        assert!(manifests[0].exists(), "last valid recovery index was pruned");
+        assert!(
+            manifests[0].exists(),
+            "last valid recovery index was pruned"
+        );
 
         fs::write(&fresh, b"corrupt fresh manifest").unwrap();
         let fallback = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
