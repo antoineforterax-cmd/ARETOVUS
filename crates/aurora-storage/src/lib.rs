@@ -180,6 +180,17 @@ pub fn save_snapshot(
 }
 
 fn write_immutable(path: &Path, bytes: &[u8], limit: usize) -> Result<(), StorageError> {
+    write_immutable_with_sync(path, bytes, limit, File::sync_all)
+}
+
+// The sync operation is injectable for deterministic failure tests without
+// exhausting a real filesystem or changing the on-disk format.
+fn write_immutable_with_sync(
+    path: &Path,
+    bytes: &[u8],
+    limit: usize,
+    sync_file: impl FnOnce(&File) -> io::Result<()>,
+) -> Result<(), StorageError> {
     if bytes.len() > limit {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
@@ -201,7 +212,7 @@ fn write_immutable(path: &Path, bytes: &[u8], limit: usize) -> Result<(), Storag
         .open(&temporary)?;
     let result = (|| {
         file.write_all(bytes)?;
-        file.sync_all()?;
+        sync_file(&file)?;
         fs::rename(&temporary, path)?;
         sync_directory(path.parent().expect("file has a parent"))?;
         Ok::<_, io::Error>(())
@@ -1065,6 +1076,48 @@ mod tests {
                 .count(),
             1
         );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn injected_file_sync_failure_preserves_previous_manifest_and_allows_retry() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_hash = next.header.hash().unwrap();
+        let encoded = next.to_canonical_bytes().unwrap();
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_hash}.{BLOCK_EXTENSION}"));
+
+        // Deterministically fail *after* write_all and *before* rename.
+        // No system disk saturation or privileged mount is required.
+        let failure = write_immutable_with_sync(
+            &block_path,
+            &encoded,
+            MAX_ACCOUNT_BLOCK_BYTES,
+            |_| Err(io::Error::other("injected file sync failure")),
+        );
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        assert!(!block_path.exists());
+        assert!(previous_manifest.exists());
+        assert!(!fs::read_dir(path.join(BLOCK_DIRECTORY))
+            .unwrap()
+            .any(|entry| entry.unwrap().file_name().to_string_lossy().ends_with(".tmp")));
+
+        let restored =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), 0);
+        assert_eq!(restored.tip_hash(), previous_tip);
+
+        original.submit(next).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let retried = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retried.height(), 1);
+        assert_eq!(retried.tip_hash(), next_hash);
         fs::remove_dir_all(path).unwrap();
     }
 
