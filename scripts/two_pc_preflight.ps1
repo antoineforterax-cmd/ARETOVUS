@@ -86,8 +86,8 @@ if (-not $PeerAddress) {
 }
 
 $ip = $null
-if (-not [System.Net.IPAddress]::TryParse($PeerAddress, [ref] $ip) -
-    or $ip.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) {
+if ((-not [System.Net.IPAddress]::TryParse($PeerAddress, [ref] $ip)) -or
+    ($ip.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork)) {
     throw 'PeerAddress must be a numeric IPv4 address.'
 }
 $octets = $ip.GetAddressBytes()
