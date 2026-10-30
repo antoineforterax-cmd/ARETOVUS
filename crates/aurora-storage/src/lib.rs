@@ -6,7 +6,6 @@
 use std::{
     collections::HashSet,
     error::Error,
-    ffi::OsString,
     fmt,
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
@@ -101,35 +100,21 @@ pub fn save_snapshot(
     if blocks.len() == 0 {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
-    // Only index objects referenced by this chain: unrelated or orphaned
-    // files must not make temporary memory usage depend on directory size.
-    // Walking the directory once avoids one metadata syscall per old block.
-    let mut missing = chain
-        .blocks_with_ids_by_arrival()
-        .map(|(id, _)| OsString::from(format!("{id}.{BLOCK_EXTENSION}")))
-        .collect::<HashSet<_>>();
-    for entry in fs::read_dir(&block_dir)? {
-        let entry = entry?;
-        let name = entry.file_name();
-        if missing.contains(&name) {
-            // Symlinks are not durable immutable block objects, even when
-            // their targets happen to exist outside this managed directory.
-            if !entry.file_type()?.is_file() {
-                return Err(StorageError::InvalidFormat("block object is not a file"));
-            }
-            missing.remove(&name);
-        }
-    }
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        if missing.contains(
-            block_path
-                .file_name()
-                .expect("block object path has filename"),
-        ) {
-            let encoded = block.to_canonical_bytes()?;
-            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+        // Do not follow symlinks at content-addressed paths: an immutable
+        // block must be a regular file owned by the storage directory.
+        match fs::symlink_metadata(&block_path) {
+            Ok(metadata) if metadata.file_type().is_file() => {}
+            Ok(_) => {
+                return Err(StorageError::InvalidFormat("block object is not a file"));
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let encoded = block.to_canonical_bytes()?;
+                write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+            }
+            Err(error) => return Err(error.into()),
         }
         block_ids.push(*block_id);
     }
@@ -989,7 +974,7 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_inventory_ignores_unrelated_orphaned_files() {
+    fn snapshot_ignores_unrelated_orphaned_files() {
         let path = dir();
         let original = chain();
         let manifest = save_snapshot(&path, &original).unwrap();
