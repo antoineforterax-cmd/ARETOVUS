@@ -76,6 +76,32 @@ pub fn payment_intent_confirmation_phrase(
     format!("SEND AURORA-TESTNET {destination} {amount} {fee} {nonce}")
 }
 
+/// Verify the signed bytes against the independently reviewed CLI intent.
+/// This catches accidental field substitution or signing a different payload.
+/// It cannot detect a malicious executable that controls both sides of the check.
+pub fn verify_signed_payment_intent(
+    transaction: &aurora_core::accounts::AccountTransaction,
+    sender: AccountId,
+    recipient: AccountId,
+    amount: Amount,
+    fee: Amount,
+    nonce: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use aurora_core::{accounts::POST_QUANTUM_ACCOUNT_TX_VERSION, network::NetworkId};
+    if transaction.version != POST_QUANTUM_ACCOUNT_TX_VERSION
+        || transaction.network != NetworkId::Testnet
+        || transaction.sender != sender
+        || transaction.recipient != recipient
+        || transaction.amount != amount
+        || transaction.fee != fee
+        || transaction.nonce != nonce
+    {
+        return Err("signed transaction differs from reviewed payment intent".into());
+    }
+    crate::signed_payment::validate(transaction)?;
+    Ok(())
+}
+
 /// Require a human to independently repeat the transaction's network,
 /// complete recipient, amount, fee and nonce before any signing or broadcast.
 ///
@@ -151,6 +177,61 @@ mod tests {
             units(1),
             Amount::MAX,
             PaymentLimits::default()
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn signed_payment_must_match_the_reviewed_intent_even_if_resigned() {
+        use crate::{build_signed_transaction, WalletKey};
+        let key = WalletKey::from_seed_bytes([98; 32]);
+        let sender = key.account_id();
+        let recipient = AccountId([0x39; 32]);
+        let amount = units(100);
+        let fee = units(5);
+        let nonce = 7;
+        let transaction =
+            build_signed_transaction(&key, recipient, amount, fee, nonce).unwrap();
+        assert!(verify_signed_payment_intent(
+            &transaction,
+            sender,
+            recipient,
+            amount,
+            fee,
+            nonce
+        )
+        .is_ok());
+        let altered = [
+            build_signed_transaction(&key, AccountId([0x40; 32]), amount, fee, nonce).unwrap(),
+            build_signed_transaction(&key, recipient, units(101), fee, nonce).unwrap(),
+            build_signed_transaction(&key, recipient, amount, units(6), nonce).unwrap(),
+            build_signed_transaction(&key, recipient, amount, fee, nonce + 1).unwrap(),
+        ];
+        for signed in &altered {
+            assert!(
+                verify_signed_payment_intent(signed, sender, recipient, amount, fee, nonce)
+                    .is_err(),
+                "resigning a changed field must not bypass intent review"
+            );
+        }
+        assert!(verify_signed_payment_intent(
+            &transaction,
+            AccountId([0x50; 32]),
+            recipient,
+            amount,
+            fee,
+            nonce
+        )
+        .is_err());
+        let mut tampered = transaction;
+        tampered.auth_data[100] ^= 1;
+        assert!(verify_signed_payment_intent(
+            &tampered,
+            sender,
+            recipient,
+            amount,
+            fee,
+            nonce
         )
         .is_err());
     }
