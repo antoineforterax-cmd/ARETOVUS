@@ -1063,17 +1063,18 @@ mod tests {
 
         // Commit a different branch from the recovered tip. Age-based
         // pruning must not delete the only intact previous generation.
-        let next =
-            AccountBlock::build(NetworkId::Regtest, safe_tip, 50, 0, Vec::new()).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 50, 0, Vec::new()).unwrap();
         recovered.submit(next).unwrap();
         let new_manifest = save_snapshot(&path, &recovered).unwrap();
-        assert!(manifests[0].exists(), "last valid recovery index was pruned");
+        assert!(
+            manifests[0].exists(),
+            "last valid recovery index was pruned"
+        );
 
         // A subsequent failure of the fresh generation must still permit
         // recovering the original safe tip without manufacturing a genesis.
         fs::write(new_manifest, b"broken index").unwrap();
-        let fallback =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let fallback = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(fallback.height(), 1);
         assert_eq!(fallback.tip_hash(), safe_tip);
         fs::remove_dir_all(path).unwrap();
