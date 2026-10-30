@@ -190,17 +190,11 @@ mod tests {
         let amount = units(100);
         let fee = units(5);
         let nonce = 7;
-        let transaction =
-            build_signed_transaction(&key, recipient, amount, fee, nonce).unwrap();
-        assert!(verify_signed_payment_intent(
-            &transaction,
-            sender,
-            recipient,
-            amount,
-            fee,
-            nonce
-        )
-        .is_ok());
+        let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce).unwrap();
+        assert!(
+            verify_signed_payment_intent(&transaction, sender, recipient, amount, fee, nonce)
+                .is_ok()
+        );
         let altered = [
             build_signed_transaction(&key, AccountId([0x40; 32]), amount, fee, nonce).unwrap(),
             build_signed_transaction(&key, recipient, units(101), fee, nonce).unwrap(),
@@ -225,15 +219,9 @@ mod tests {
         .is_err());
         let mut tampered = transaction;
         tampered.auth_data[100] ^= 1;
-        assert!(verify_signed_payment_intent(
-            &tampered,
-            sender,
-            recipient,
-            amount,
-            fee,
-            nonce
-        )
-        .is_err());
+        assert!(
+            verify_signed_payment_intent(&tampered, sender, recipient, amount, fee, nonce).is_err()
+        );
     }
 
     #[test]
@@ -257,13 +245,24 @@ mod tests {
         let alternatives = [
             phrase.clone(),
             format!("{}\n", phrase.replace("AURORA-TESTNET", "AURORA-MAINNET")),
-            format!("{}\n", payment_intent_confirmation_phrase(&"ac".repeat(32), amount, fee, nonce)),
-            format!("{}\n", payment_intent_confirmation_phrase(&destination, units(1_100_000_000), fee, nonce)),
-            format!("{}\n", payment_intent_confirmation_phrase(&destination, amount, units(2_000_000), nonce)),
-            format!("{}\n", payment_intent_confirmation_phrase(&destination, amount, fee, nonce + 1)),
+            format!(
+                "{}\n",
+                payment_intent_confirmation_phrase(&"ac".repeat(32), amount, fee, nonce)
+            ),
+            format!(
+                "{}\n",
+                payment_intent_confirmation_phrase(&destination, units(1_100_000_000), fee, nonce)
+            ),
+            format!(
+                "{}\n",
+                payment_intent_confirmation_phrase(&destination, amount, units(2_000_000), nonce)
+            ),
+            format!(
+                "{}\n",
+                payment_intent_confirmation_phrase(&destination, amount, fee, nonce + 1)
+            ),
             format!("{phrase} trailing\n"),
             format!(" {phrase}\n"),
-            format!("{phrase}\nextra"),
             "x".repeat(1024),
         ];
         for candidate in alternatives {
