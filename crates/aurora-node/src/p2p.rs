@@ -280,6 +280,10 @@ impl PendingHandshake {
 }
 
 const MAX_ACTIVE_SESSIONS: usize = 32;
+// After the active limit is reached, reclaim only idle post-handshake
+// sessions whose current I/O phase has made no progress for at least 2 s.
+// This is an admission fairness safeguard, not an authentication mechanism.
+const IDLE_RECLAIM_MIN_AGE: Duration = Duration::from_secs(2);
 const IO_QUANTUM: usize = 64 * 1024;
 
 struct ReadyPeer {
@@ -451,7 +455,28 @@ fn dispatch_handshakes(
                 Ok(Some(hello)) => {
                     let peer = pending.swap_remove(index);
                     if active.len() == MAX_ACTIVE_SESSIONS {
-                        continue;
+                        // An unauthenticated peer that completed HELLO can
+                        // otherwise keep an idle session forever and block
+                        // every new connection. Reclaim the oldest inactive
+                        // session only; do not interrupt an in-flight request,
+                        // pending request, or response being written.
+                        let victim = active
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, current)| {
+                                current.hello_done
+                                    && !current.in_flight
+                                    && current.request.is_none()
+                                    && current.output.is_empty()
+                                    && current.phase_started.elapsed() >= IDLE_RECLAIM_MIN_AGE
+                            })
+                            .min_by_key(|(_, current)| current.phase_started)
+                            .map(|(index, _)| index);
+                        if let Some(victim) = victim {
+                            active.swap_remove(victim);
+                        } else {
+                            continue;
+                        }
                     }
                     next_id = next_id
                         .checked_add(1)
