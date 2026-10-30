@@ -1102,8 +1102,7 @@ mod tests {
         assert!(manifests[0].exists(), "last valid recovery index was pruned");
 
         fs::write(&fresh, b"corrupt fresh manifest").unwrap();
-        let fallback =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let fallback = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(fallback.height(), 1);
         assert_eq!(fallback.tip_hash(), safe_tip);
         fs::remove_dir_all(path).unwrap();
