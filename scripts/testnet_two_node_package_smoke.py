@@ -41,7 +41,7 @@ def wallet_account(wallet: Path, keyfile: Path) -> str:
     # The wallet prints a warning on stderr for ephemeral plain-testnet
     # keys; parse only the 64-hex account line from the combined output.
     output = run(wallet, "address", "--key-file", keyfile)
-    matches = re.findall(r"(?m)^([0-9a-fA-F]{64})\\s*$", output)
+    matches = re.findall(r"(?m)^([0-9a-fA-F]{64})$", output)
     if len(matches) != 1:
         raise AssertionError(f"Unexpected testnet wallet address output: {output[-300:]}")
     return matches[0].lower()
@@ -192,7 +192,7 @@ def main() -> None:
                 "--to", bob, "--amount", "1.25", "--fee", "0.01",
                 "--node", a_address, "--yes",
             )
-            ids = re.findall(r"(?m)^transaction_id=([0-9a-fA-F]{64})\\s*$", sent)
+            ids = re.findall(r"(?m)^transaction_id=([0-9a-fA-F]{64})$", sent)
             if len(ids) != 1:
                 raise AssertionError(f"Wallet did not return transaction ID: {sent[-800:]}")
             txid = ids[0]
