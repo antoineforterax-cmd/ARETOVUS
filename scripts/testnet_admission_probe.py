@@ -54,10 +54,18 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                     time.sleep(0.01)
                 idle = wallet_probe(port)
                 with ExitStack() as clients:
-                    for index in range(8):
+                    count = 32 if kind == "saturated_after_hello" else 8
+                    for index in range(count):
                         sock = clients.enter_context(socket.socket())
                         sock.settimeout(5)
-                        source = ("127.0.0.2" if index < 4 else "127.0.0.3") if kind.endswith("after_hello") else ("127.0.0.2" if kind == "same_ip" else f"127.0.0.{index + 2}")
+                        if kind == "saturated_after_hello":
+                            # Eight loopback IPs, four sockets per IP; exhaust
+                            # the global limit without violating per-IP caps.
+                            source = f"127.0.0.{index // 4 + 2}"
+                        elif kind.endswith("after_hello"):
+                            source = "127.0.0.2" if index < 4 else "127.0.0.3"
+                        else:
+                            source = "127.0.0.2" if kind == "same_ip" else f"127.0.0.{index + 2}"
                         sock.bind((source, 0))
                         sock.connect(("127.0.0.1", port))
                         if kind.endswith("after_hello"):
@@ -65,7 +73,9 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                             size = struct.unpack(">I", receive(sock, 4))[0]
                             if size != 74 or receive(sock, size)[:2] != bytes([0x85, 2]):
                                 raise AssertionError("post-handshake session was not established")
-                            if kind == "partial_after_hello":
+                            if kind in ("partial_after_hello", "saturated_after_hello"):
+                                # Complete hello, then deliberately stall midway
+                                # through a valid bounded request frame.
                                 sock.sendall(struct.pack(">I", 4 * 1024 * 1024) + bytes([4]))
                             else:
                                 sock.sendall(struct.pack(">I", 1) + bytes([4]))
@@ -92,7 +102,7 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                 recovered = wallet_probe(port)
                 return {"case": kind, "idle_seconds": idle, "wallet_seconds": latency,
                         "sync_seconds": sync_seconds, "recovered_seconds": recovered,
-                        "connections": 8}
+                        "connections": count}
             finally:
                 server.terminate()
                 try:
@@ -114,7 +124,7 @@ def main() -> None:
     try:
         cases = ["same_ip", "silent_multi_ip", "partial_multi_ip"]
         if args.post_handshake:
-            cases += ["idle_after_hello", "partial_after_hello"]
+            cases += ["idle_after_hello", "partial_after_hello", "saturated_after_hello"]
         for kind in cases:
             result = run_case(binary, kind, args.max_wallet_seconds)
             results.append(result)
