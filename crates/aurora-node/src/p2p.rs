@@ -285,11 +285,11 @@ const MAX_ACTIVE_SESSIONS: usize = 32;
 // absolute I/O deadline must not be reset on partial reads.
 // This is an admission fairness safeguard, not an authentication mechanism.
 const IDLE_RECLAIM_MIN_AGE: Duration = Duration::from_secs(2);
-// At full capacity, an unauthenticated peer can trickle single bytes forever
-// and keep last_progress fresh. A request that has not supplied even 128
-// framed bytes in the grace period may be preempted to serve a new peer.
-// Completed, queued, or in-flight work is never preempted.
-const MIN_SLOW_REQUEST_BYTES: usize = 128;
+// At capacity, fixed byte-count cutoffs can be bypassed by a peer that
+// trickles just above the threshold. Require minimum average progress during
+// a pending request, measured from its *absolute* phase start (not reset by
+// individual reads). This is a fairness threshold only under saturation.
+const MIN_ADMISSION_REQUEST_BYTES_PER_SEC: u128 = 512;
 const IO_QUANTUM: usize = 64 * 1024;
 
 struct ReadyPeer {
@@ -418,11 +418,16 @@ fn oldest_reclaimable_session(active: &[ActivePeer], now: Instant) -> Option<usi
         .enumerate()
         .filter(|(_, current)| {
             let idle = now.saturating_duration_since(current.last_progress) >= IDLE_RECLAIM_MIN_AGE;
-            // Fresh one-byte writes must not reset the admission grace period.
-            // Keep sessions that are transferring a substantial frame intact.
+            // A fresh 12-byte trickle must not evade fairness just because
+            // it exceeds a fixed threshold. Never reclaim completed or
+            // in-flight requests, regardless of their average rate.
+            let phase_age = now.saturating_duration_since(current.phase_started);
             let slow = !current.input.is_empty()
-                && current.input.len() < MIN_SLOW_REQUEST_BYTES
-                && now.saturating_duration_since(current.phase_started) >= IDLE_RECLAIM_MIN_AGE;
+                && phase_age >= IDLE_RECLAIM_MIN_AGE
+                && (current.input.len() as u128).saturating_mul(1000)
+                    < phase_age
+                        .as_millis()
+                        .saturating_mul(MIN_ADMISSION_REQUEST_BYTES_PER_SEC);
             current.hello_done
                 && !current.in_flight
                 && current.request.is_none()
@@ -3755,7 +3760,13 @@ mod handshake_admission_tests {
             None
         );
         peer.phase_started = old;
-        peer.input.resize(MIN_SLOW_REQUEST_BYTES, 0);
+        peer.input.resize(180, 0);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            Some(0)
+        );
+        peer.input
+            .resize((MIN_ADMISSION_REQUEST_BYTES_PER_SEC as usize) * 2 + 64, 0);
         assert_eq!(
             oldest_reclaimable_session(std::slice::from_ref(&peer), now),
             None
