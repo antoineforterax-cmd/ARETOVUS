@@ -2051,7 +2051,8 @@ mod tests {
         ));
         let _ = fs::remove_dir_all(&dir);
         save_snapshot(&dir, &slow).unwrap();
-        let original = aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
+        let original =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
                 .unwrap();
         assert_eq!(original.tip_hash(), before.0);
         assert_eq!(original.chain_work(), before.1);
@@ -2067,7 +2068,8 @@ mod tests {
         assert_eq!(slow.chain_work(), fast.chain_work());
         assert_eq!(slow.known_block_count(), fast.known_block_count());
         save_snapshot(&dir, &slow).unwrap();
-        let restored = aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
+        let restored =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
                 .unwrap();
         assert_eq!(restored.tip_hash(), fast.tip_hash());
         assert_eq!(restored.chain_work(), fast.chain_work());
