@@ -2386,23 +2386,16 @@ mod tests {
             .unwrap_or(2_048);
         assert!((256..=100_001).contains(&count));
         let started = Instant::now();
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-volume-{}-{count}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-volume-{}-{count}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
         let mut remote = chain();
         for height in 1..=count {
-            let block = AccountBlock::build(
-                NetworkId::Regtest,
-                remote.tip_hash(),
-                height + 1,
-                0,
-                vec![],
-            )
-            .unwrap();
+            let block =
+                AccountBlock::build(NetworkId::Regtest, remote.tip_hash(), height + 1, 0, vec![])
+                    .unwrap();
             remote.submit(block).unwrap();
         }
         let side_parent = remote
@@ -2412,14 +2405,8 @@ mod tests {
             .header
             .hash()
             .unwrap();
-        let side = AccountBlock::build(
-            NetworkId::Regtest,
-            side_parent,
-            count + 10,
-            0,
-            vec![],
-        )
-        .unwrap();
+        let side =
+            AccountBlock::build(NetworkId::Regtest, side_parent, count + 10, 0, vec![]).unwrap();
         let side_hash = side.header.hash().unwrap();
         remote.submit(side).unwrap();
         let expected_tip = remote.tip_hash();
@@ -2458,9 +2445,11 @@ mod tests {
 
         drop(receiver);
         let restore_started = Instant::now();
-        let restored =
-            aurora_storage::load_latest_snapshot(&receiver_dir, AccountLedger::new(NetworkId::Regtest))
-                .unwrap();
+        let restored = aurora_storage::load_latest_snapshot(
+            &receiver_dir,
+            AccountLedger::new(NetworkId::Regtest),
+        )
+        .unwrap();
         let restore_elapsed = restore_started.elapsed();
         assert_eq!(restored.known_block_count(), expected_count);
         assert_eq!(restored.height(), count);
