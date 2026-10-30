@@ -191,7 +191,13 @@ fn write_immutable_with_sync(
     limit: usize,
     sync_file: impl FnOnce(&File) -> io::Result<()>,
 ) -> Result<(), StorageError> {
-    write_immutable_with_io(path, bytes, limit, |file, data| file.write_all(data), sync_file)
+    write_immutable_with_io(
+        path,
+        bytes,
+        limit,
+        |file, data| file.write_all(data),
+        sync_file,
+    )
 }
 
 fn write_immutable_with_io(
@@ -1126,7 +1132,8 @@ mod tests {
                 .to_string_lossy()
                 .ends_with(".tmp")));
 
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.height(), 0);
         assert_eq!(recovered.tip_hash(), previous_tip);
         original.submit(next).unwrap();
