@@ -15,6 +15,15 @@ jobs:
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Precompile before measuring
         run: cargo test --locked -p aurora-storage --lib --no-run
+      - name: Check available disk before expensive storage probe
+        run: |
+          set -euo pipefail
+          df -h .
+          available_kib=$(df -Pk . | awk 'NR==2 {print $4}')
+          if [ "$available_kib" -lt 10485760 ]; then
+            echo "Insufficient free disk for an opt-in million-block probe: need at least 10 GiB" >&2
+            exit 1
+          fi
       - name: Real one-million-block persistence and restart (opt-in only)
         env:
           AURORA_MILLION_BLOCK_PROBE: "1"
