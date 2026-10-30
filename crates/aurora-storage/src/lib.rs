@@ -4,7 +4,7 @@
 //! caller-provided deterministic genesis state. This is not an optimized database or
 //! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     error::Error,
     fmt,
     fs::{self, File, OpenOptions},
@@ -100,21 +100,35 @@ pub fn save_snapshot(
     if blocks.len() == 0 {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
+    // One directory traversal replaces a filesystem metadata lookup for each
+    // historical block. Only regular files can satisfy a content-addressed
+    // reference: reject directories and symlinks rather than publishing a
+    // manifest pointing to an object outside the managed storage directory.
+    // Do not ignore errors while walking the directory: a partial inventory
+    // could otherwise turn an inaccessible object into an apparent new file.
+    let mut existing = HashMap::with_capacity(blocks.len());
+    for entry in fs::read_dir(&block_dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        if Path::new(&name)
+            .extension()
+            .is_some_and(|ext| ext == BLOCK_EXTENSION)
+        {
+            existing.insert(name, entry.file_type()?.is_file());
+        }
+    }
     let mut block_ids = Vec::with_capacity(blocks.len());
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        // A single metadata lookup replaces exists() + is_file() on every
-        // previously persisted block. Do not treat I/O errors as missing objects.
-        match fs::metadata(&block_path) {
-            Ok(metadata) if metadata.is_file() => {}
-            Ok(_) => {
+        match existing.get(block_path.file_name().expect("block object path has filename")) {
+            Some(true) => {}
+            Some(false) => {
                 return Err(StorageError::InvalidFormat("block object is not a file"));
             }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            None => {
                 let encoded = block.to_canonical_bytes()?;
                 write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
             }
-            Err(error) => return Err(error.into()),
         }
         block_ids.push(*block_id);
     }
@@ -970,6 +984,36 @@ mod tests {
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn snapshot_does_not_trust_symlinked_block_object() {
+        use std::os::unix::fs::symlink;
+
+        let path = dir();
+        let original = chain();
+        save_snapshot(&path, &original).unwrap();
+        let block_id = original.blocks_with_ids_by_arrival().next().unwrap().0;
+        let object = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        let external = path.join("external-block");
+        fs::rename(&object, &external).unwrap();
+        symlink(&external, &object).unwrap();
+
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+
+        fs::remove_file(&object).unwrap();
+        fs::rename(&external, &object).unwrap();
+        save_snapshot(&path, &original).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.known_block_count(), original.known_block_count());
         fs::remove_dir_all(path).unwrap();
     }
 
