@@ -177,7 +177,7 @@ pub fn save_snapshot(
         sha256_plain(&body),
         INDEX_EXTENSION
     ));
-    write_immutable(&destination, &body, MAX_SNAPSHOT_BYTES)?;
+    write_manifest_with_directory_sync(&destination, &body, sync_directory)?;
     prune_old_indexes(dir, &destination);
     if let Err(error) = prune_unreferenced_index_pages(dir) {
         eprintln!("cannot prune old AURORA index pages: {error}");
@@ -216,6 +216,28 @@ fn write_immutable_with_io(
     write_immutable_with_operations(path, bytes, limit, write_file, sync_file, |from, to| {
         fs::rename(from, to)
     })
+}
+
+/// A manifest may already be visible after a failed parent-directory fsync.
+/// A retry must durably commit that existing entry before returning success
+/// or pruning older recovery points. Do not perform this on each existing
+/// block object: snapshots can reference hundreds of thousands of blocks.
+fn write_manifest_with_directory_sync(
+    path: &Path,
+    bytes: &[u8],
+    sync_existing_parent: impl FnOnce(&Path) -> io::Result<()>,
+) -> Result<(), StorageError> {
+    if path.exists() {
+        if read_bounded_limit(path, MAX_SNAPSHOT_BYTES)? != bytes {
+            return Err(StorageError::InvalidFormat(
+                "content-addressed file mismatch",
+            ));
+        }
+        File::open(path)?.sync_all()?;
+        sync_existing_parent(path.parent().expect("file has a parent"))?;
+        return Ok(());
+    }
+    write_immutable(path, bytes, MAX_SNAPSHOT_BYTES)
 }
 
 fn write_immutable_with_operations(
@@ -1131,6 +1153,70 @@ mod tests {
                 .count(),
             1
         );
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn manifest_parent_sync_failure_leaves_visible_generation_recoverable() {
+        let path = dir();
+        let mut original = chain();
+        let previous_tip = original.tip_hash();
+        let previous_manifest = save_snapshot(&path, &original).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next_tip = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+
+        // First construct valid immutable objects, then inject a failure
+        // specifically after the manifest rename but before parent fsync.
+        let new_manifest = save_snapshot(&path, &original).unwrap();
+        let bytes = fs::read(&new_manifest).unwrap();
+        fs::remove_file(&new_manifest).unwrap();
+        let mut reached_parent_sync = false;
+        let failure = write_immutable_with_directory_sync(
+            &new_manifest,
+            &bytes,
+            MAX_SNAPSHOT_BYTES,
+            |file, data| file.write_all(data),
+            File::sync_all,
+            |from, to| fs::rename(from, to),
+            |_| {
+                reached_parent_sync = true;
+                Err(io::Error::other("injected manifest parent fsync failure"))
+            },
+        );
+        assert!(reached_parent_sync);
+        assert!(matches!(failure, Err(StorageError::Io(_))));
+        // The rename has succeeded, so the new manifest is visible, but a
+        // power loss at this point could still roll back the directory entry.
+        assert_eq!(fs::read(&new_manifest).unwrap(), bytes);
+        assert!(previous_manifest.exists());
+        assert!(!fs::read_dir(&path).unwrap().any(|entry| entry
+            .unwrap()
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".tmp")));
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 1);
+        assert_eq!(recovered.tip_hash(), next_tip);
+
+        // A retry may not report success until it has synchronized the
+        // already-visible entry. A repeated fsync error must be propagated.
+        let mut retry_sync_attempted = false;
+        let retry_failure = write_manifest_with_directory_sync(&new_manifest, &bytes, |_| {
+            retry_sync_attempted = true;
+            Err(io::Error::other("injected retry directory sync failure"))
+        });
+        assert!(retry_sync_attempted);
+        assert!(matches!(retry_failure, Err(StorageError::Io(_))));
+        write_manifest_with_directory_sync(&new_manifest, &bytes, sync_directory).unwrap();
+
+        // The normal save path must accept this now-durable manifest.
+        save_snapshot(&path, &original).unwrap();
+        let retried = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(retried.height(), 1);
+        assert_eq!(retried.tip_hash(), next_tip);
         fs::remove_dir_all(path).unwrap();
     }
 
