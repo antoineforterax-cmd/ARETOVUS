@@ -540,7 +540,8 @@ mod tests {
         let plain = root.join("plain.aurkey");
         let recovery = root.join("recovery.txt");
         let password = "test-only long wallet password";
-        key.save_encrypted_testnet_file(&encrypted, password).unwrap();
+        key.save_encrypted_testnet_file(&encrypted, password)
+            .unwrap();
         key.save_plain_testnet_file(&plain).unwrap();
         key.save_recovery_file(&recovery).unwrap();
 
