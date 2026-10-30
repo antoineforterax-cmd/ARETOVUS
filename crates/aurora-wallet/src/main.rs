@@ -383,6 +383,9 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err("wallet limits changed during review; review the payment again".into());
             }
             let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce)?;
+            aurora_wallet::safety::verify_signed_payment_intent(
+                &transaction, key.account_id(), recipient, amount, fee, nonce,
+            )?;
             aurora_wallet::signed_payment::save(destination_file, &transaction)?;
             println!(
                 "signed_file={} prepared_txid={}",
@@ -529,6 +532,14 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let transaction =
                 build_signed_transaction(&key, recipient, amount, fee, account.next_nonce)?;
+            aurora_wallet::safety::verify_signed_payment_intent(
+                &transaction,
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                account.next_nonce,
+            )?;
             let (id, pending) = rpc::submit_transaction(node, &transaction)?;
             println!("transaction_id={id}");
             println!("mempool=pending transactions={pending}");
