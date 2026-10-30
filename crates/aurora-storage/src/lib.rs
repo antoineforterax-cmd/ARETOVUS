@@ -333,9 +333,7 @@ fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
             return false;
         }
         let count = u32::from_be_bytes(body[69..73].try_into().expect("fixed slice")) as usize;
-        return count > 0
-            && count <= MAX_LEGACY_BLOCKS
-            && body.len() == 73 + count * 32;
+        return count > 0 && count <= MAX_LEGACY_BLOCKS && body.len() == 73 + count * 32;
     }
     if version != INDEX_VERSION || body.len() < 81 + 32 {
         return false;
