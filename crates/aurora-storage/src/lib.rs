@@ -2193,9 +2193,14 @@ mod tests {
         let started = std::time::Instant::now();
         let mut saves = 0usize;
         for height in 1..=count {
-            let block =
-                AccountBlock::build(NetworkId::Regtest, original.tip_hash(), height + 1, 0, vec![])
-                    .unwrap();
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                height + 1,
+                0,
+                vec![],
+            )
+            .unwrap();
             original.submit(block).unwrap();
             if height % 64 == 0 || height == count {
                 save_snapshot(&path, &original).unwrap();
