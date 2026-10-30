@@ -471,6 +471,17 @@ impl AccountForkChain {
             .collect()
     }
 
+    /// Accepted blocks and their already-validated IDs in persistent arrival order.
+    /// Reading these IDs avoids recalculating header hashes during snapshot saves.
+    /// This is a read-only view and does not change consensus or arrival ordering.
+    pub fn blocks_with_ids_by_arrival(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&Hash256, &AccountBlock)> + '_ {
+        self.arrival_order
+            .iter()
+            .map(|hash| (hash, &self.blocks[hash]))
+    }
+
     /// Stable local inventory page: accepting a late side branch only appends to this order.
     pub fn arrival_block_page(&self, start: usize, limit: usize) -> Vec<&AccountBlock> {
         if start >= self.arrival_order.len() {
