@@ -58,7 +58,8 @@ jobs:
           if (-not $archive) { throw 'Missing Windows archive' }
           $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
-          .\\scripts\\two_pc_preflight.ps1 -PackageRoot $target -ExpectedRevision $env:GITHUB_SHA.Substring(0, 12) -Offline
+          $sourceRevision = ($env:GITHUB_SHA).Substring(0, 12)
+          & (Join-Path (Get-Location) 'scripts/two_pc_preflight.ps1') -PackageRoot $target -ExpectedRevision $sourceRevision -Offline
       - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4
         with:
