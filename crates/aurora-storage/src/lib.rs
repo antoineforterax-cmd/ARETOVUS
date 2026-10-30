@@ -1127,15 +1127,21 @@ mod tests {
         }
         assert!(!genesis_manifest.exists());
 
-        // The two newest manifests are checksummed and complete, but each
-        // references a missing immutable index page.
-        for manifest in &manifests[1..] {
+        // The two newest manifests remain checksummed and intact. One
+        // references a corrupt immutable page, the other a missing page.
+        for (index, manifest) in manifests[1..].iter().enumerate() {
             let bytes = fs::read(manifest).unwrap();
             let page_id = Hash256::from_bytes(bytes[81..113].try_into().unwrap());
             let page = path
                 .join(INDEX_PAGE_DIRECTORY)
                 .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
-            fs::remove_file(page).unwrap();
+            if index == 0 {
+                let mut damaged = fs::read(&page).unwrap();
+                damaged[24] ^= 1;
+                fs::write(page, damaged).unwrap();
+            } else {
+                fs::remove_file(page).unwrap();
+            }
         }
         let mut recovered =
             load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
