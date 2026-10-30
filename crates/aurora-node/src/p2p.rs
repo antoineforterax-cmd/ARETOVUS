@@ -1613,6 +1613,20 @@ fn sync_from_peer_with_request_limit(
     persist: bool,
     restart_after_requests: usize,
 ) -> Result<usize, P2pError> {
+    #[cfg(test)]
+    let profile_enabled = std::env::var_os("AURORA_P2P_PROFILE").is_some();
+    #[cfg(test)]
+    let profile_started = Instant::now();
+    #[cfg(test)]
+    let mut profile_clone = Duration::ZERO;
+    #[cfg(test)]
+    let mut profile_validate = Duration::ZERO;
+    #[cfg(test)]
+    let mut profile_save = Duration::ZERO;
+    #[cfg(test)]
+    let mut profile_publish = Duration::ZERO;
+    #[cfg(test)]
+    let mut profile_pages = 0usize;
     let (mut stream, mut session_bytes) = open_sync_session(address, chain)?;
     let mut session_started = Instant::now();
     let mut session_requests = 0usize;
@@ -1715,7 +1729,15 @@ fn sync_from_peer_with_request_limit(
                 u64::try_from(blocks.len()).map_err(|_| P2pError::Protocol("page too large"))?,
             )
             .ok_or(P2pError::Protocol("cursor overflow"))?;
+        #[cfg(test)]
+        let phase_started = Instant::now();
         let mut candidate = chain.clone();
+        #[cfg(test)]
+        {
+            profile_clone += phase_started.elapsed();
+        }
+        #[cfg(test)]
+        let phase_started = Instant::now();
         let mut page_accepted = 0usize;
         for block in blocks {
             reject_future_block_timestamp(block.header.timestamp)?;
@@ -1725,12 +1747,29 @@ fn sync_from_peer_with_request_limit(
                 Err(error) => return Err(P2pError::Chain(error)),
             }
         }
+        #[cfg(test)]
+        {
+            profile_validate += phase_started.elapsed();
+            profile_pages += 1;
+        }
         if page_accepted != 0 {
+            #[cfg(test)]
+            let phase_started = Instant::now();
             if persist {
                 save_snapshot(data_dir, &candidate)?;
             }
+            #[cfg(test)]
+            {
+                profile_save += phase_started.elapsed();
+            }
+            #[cfg(test)]
+            let phase_started = Instant::now();
             *chain = candidate;
             accepted += page_accepted;
+            #[cfg(test)]
+            {
+                profile_publish += phase_started.elapsed();
+            }
         }
         // Never reserve from the peer's announced total. Retained entries name
         // validated blocks in the local chain; only this page (<= PAGE_BLOCKS)
@@ -1740,6 +1779,23 @@ fn sync_from_peer_with_request_limit(
         if cursor >= total {
             break;
         }
+    }
+    #[cfg(test)]
+    if profile_enabled {
+        let total = profile_started.elapsed();
+        let accounted = profile_clone + profile_validate + profile_save + profile_publish;
+        let remaining = total.saturating_sub(accounted);
+        eprintln!(
+            "p2p sync phases: pages={} blocks={} clone_seconds={:.3} validation_seconds={:.3} save_seconds={:.3} publish_seconds={:.3} other_seconds={:.3} total_seconds={:.3}",
+            profile_pages,
+            accepted,
+            profile_clone.as_secs_f64(),
+            profile_validate.as_secs_f64(),
+            profile_save.as_secs_f64(),
+            profile_publish.as_secs_f64(),
+            remaining.as_secs_f64(),
+            total.as_secs_f64()
+        );
     }
     Ok(accepted)
 }
