@@ -24,6 +24,30 @@ jobs:
       - name: Restore >100k blocks and side branch
         run: /usr/bin/time -v cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
 
+  storage-profile-8192:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo test --locked -p aurora-storage --lib --no-run
+      - name: Profile 8192 blocks and verify persisted snapshot counts
+        env:
+          AURORA_STORAGE_PROFILE: "1"
+          AURORA_STORAGE_PROFILE_BLOCKS: "8192"
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-8192.log
+          grep -Eq 'test result: ok\\. 1 passed; 0 failed; 0 ignored;' storage-profile-8192.log
+          grep -q 'storage phases:' storage-profile-8192.log
+          grep -q 'storage volume probe: height=8192 known_blocks=8193 snapshot_calls=128 ' storage-profile-8192.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: massive-storage-profile-8192
+          path: storage-profile-8192.log
+          retention-days: 14
+
   repeated-partitions:
     runs-on: ubuntu-latest
     timeout-minutes: 20
