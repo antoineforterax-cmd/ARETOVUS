@@ -95,7 +95,7 @@ def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
                         deadline = time.monotonic() + 2.3
                         while time.monotonic() < deadline:
                             for sock in trickle_clients:
-                                sock.sendall(b"\\0")
+                                sock.sendall(b"\x00")
                             time.sleep(0.15)
                     else:
                         time.sleep(2.1 if kind == "saturated_after_hello" else 0.15)
