@@ -1,0 +1,74 @@
+name: massive-regression-matrix
+
+on:
+  push:
+    branches: [test/massive-regression-matrix-20261031]
+    paths:
+      - ".github/workflows/massive-regression-matrix.yml"
+      - "crates/**"
+      - "scripts/testnet_partitions.py"
+      - "scripts/testnet_admission_probe.py"
+      - "scripts/testnet_soak.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-over-100k:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Restore >100k blocks and side branch
+        run: /usr/bin/time -v cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
+
+  repeated-partitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo build --locked -p aurora-node
+      - name: Six partition/reconnect rounds
+        run: python3 scripts/testnet_partitions.py --binary target/debug/aurora-node --output target/massive-partitions --rounds 6
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: massive-partition-evidence
+          path: |
+            target/massive-partitions/*.json
+            target/massive-partitions/*.log
+          retention-days: 14
+
+  p2p-hostile-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - run: cargo build --locked -p aurora-node
+      - name: Post-handshake trickle and honest-wallet recovery
+        run: python3 scripts/testnet_admission_probe.py --binary target/debug/aurora-node --post-handshake --max-wallet-seconds 5 --report target/massive-admission.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: massive-admission-evidence
+          path: target/massive-admission.json
+          retention-days: 14
+
+  three-node-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Seventy-two local restart/sync rounds
+        run: python3 scripts/testnet_soak.py --rounds 72 --interval-seconds 2
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: massive-soak-failure-logs
+          path: target/aurora-soak-*/**/*.log
+          retention-days: 14
