@@ -4,7 +4,7 @@ on:
   push:
     # Scale probes run only on dedicated volume branches. PRs keep the
     # original 2048-block baseline; no heavyweight test on main.
-    branches: [volume/p2p-tcp-regtest-baseline, "volume/p2p-scale-*"]
+    branches: [volume/p2p-tcp-regtest-baseline, "volume/p2p-scale-*", "volume/p2p-phase-profile-*"]
     paths:
       - "crates/aurora-node/**"
       - ".github/workflows/p2p-volume-probe.yml"
@@ -32,12 +32,13 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Mesurer le transfert TCP, la persistance par page et la reprise
         env:
-          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || (github.ref == 'refs/heads/volume/p2p-scale-8192' && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || '2048' }}
+          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || ((github.ref == 'refs/heads/volume/p2p-scale-8192' || github.ref == 'refs/heads/volume/p2p-phase-profile-8192') && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || '2048' }}
+          AURORA_P2P_PROFILE: "1"
         run: |
           # A scale branch must not silently fall back to the 2048-block
           # baseline if a workflow expression changes.
           case "$GITHUB_REF" in
-            refs/heads/volume/p2p-scale-8192)
+            refs/heads/volume/p2p-scale-8192|refs/heads/volume/p2p-phase-profile-8192)
               test "$AURORA_P2P_VOLUME_BLOCKS" = 8192 ;;
             refs/heads/volume/p2p-scale-16384)
               test "$AURORA_P2P_VOLUME_BLOCKS" = 16384 ;;
@@ -46,6 +47,7 @@ jobs:
           /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee p2p-volume-results.log
           test ${PIPESTATUS[0]} -eq 0
           grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' p2p-volume-results.log
+          grep -q 'p2p sync phases:' p2p-volume-results.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
