@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-8192.log
-          grep -Eq 'test result: ok\\. 1 passed; 0 failed; 0 ignored;' storage-profile-8192.log
+          grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' storage-profile-8192.log
           grep -q 'storage phases:' storage-profile-8192.log
           grep -Eq 'storage volume probe: height=8192 known_blocks=8193 snapshot_calls=128([[:space:]]|$)' storage-profile-8192.log
       - uses: actions/upload-artifact@v4
