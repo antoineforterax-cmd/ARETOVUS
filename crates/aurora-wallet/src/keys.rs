@@ -84,7 +84,7 @@ impl WalletKey {
 
     /// Whether a key file uses the authenticated encrypted AURKEY4 format.
     pub fn file_is_encrypted(path: &Path) -> Result<bool, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         let mut magic = [0u8; 8];
         file.read_exact(&mut magic)?;
         if &magic == ENCRYPTED_MAGIC {
@@ -146,7 +146,7 @@ impl WalletKey {
         path: &Path,
         password: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != ENCRYPTED_FILE_BYTES as u64 {
             return Err("invalid AURKEY4 file length".into());
         }
@@ -241,7 +241,7 @@ impl WalletKey {
 
     /// Read only a bounded recovery text file and validate its expected identity.
     pub fn load_recovery_file(path: &Path, expected: AccountId) -> Result<Self, Box<dyn Error>> {
-        let file = File::open(path)?;
+        let file = open_regular_wallet_file(path)?;
         // Reserve beyond the read limit so secret bytes never move through reallocation.
         let mut code = Zeroizing::new(Vec::with_capacity(258));
         file.take(257).read_to_end(&mut code)?;
@@ -268,7 +268,7 @@ impl WalletKey {
 
     /// Read and validate a plain testnet seed file.
     pub fn load_plain_testnet_file(path: &Path) -> Result<Self, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != KEY_FILE_BYTES as u64 {
             return Err("invalid AURKEY3 file length".into());
         }
@@ -290,6 +290,38 @@ impl Drop for WalletKey {
     fn drop(&mut self) {
         self.seed.zeroize();
     }
+}
+
+/// Reject symlinks, directories and device files before reading secret key material.
+/// On Unix, compare the opened file identity to the lstat result to reject a
+/// final-component replacement between those operations.
+fn open_regular_wallet_file(path: &Path) -> io::Result<File> {
+    let expected = std::fs::symlink_metadata(path)?;
+    if !expected.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "wallet secret must be a regular file, not a symlink",
+        ));
+    }
+    let file = File::open(path)?;
+    let opened = file.metadata()?;
+    if !opened.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "wallet secret is not a regular file",
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if opened.dev() != expected.dev() || opened.ino() != expected.ino() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "wallet key path was replaced while opening",
+            ));
+        }
+    }
+    Ok(file)
 }
 
 fn derive_password_key(password: &str, salt: &[u8; 16]) -> Result<[u8; 32], Box<dyn Error>> {
