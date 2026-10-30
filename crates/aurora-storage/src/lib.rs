@@ -1125,7 +1125,8 @@ mod tests {
         let page = fs::read(&page_path).unwrap();
         fs::write(&page_path, &page[..page.len() / 2]).unwrap();
 
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.height(), 0);
         assert_eq!(recovered.tip_hash(), safe_tip);
         assert_eq!(recovered.known_block_count(), 1);
@@ -1134,7 +1135,8 @@ mod tests {
         assert!(save_snapshot(&path, &chain).is_err());
         fs::remove_file(&page_path).unwrap();
         save_snapshot(&path, &chain).unwrap();
-        let repaired = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let repaired =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(repaired.height(), 1);
         assert_eq!(repaired.tip_hash(), new_tip);
         assert_eq!(repaired.known_block_count(), 2);
