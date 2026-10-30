@@ -2457,7 +2457,10 @@ mod tests {
             .any(|block| block.header.hash().unwrap() == side_hash));
         stop_tx.send(()).unwrap();
         let sessions = server.join().unwrap();
-        assert!(sessions > 1, "volume test did not exercise TCP session rollover");
+        assert!(
+            sessions > 1,
+            "volume test did not exercise TCP session rollover"
+        );
 
         drop(receiver);
         let restore_started = Instant::now();
