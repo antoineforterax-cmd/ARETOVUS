@@ -524,6 +524,67 @@ mod tests {
         fs::remove_file(path).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn wallet_secret_readers_reject_symlinks_but_accept_original_files() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "aurora-wallet-links-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&root).unwrap();
+        let key = WalletKey::from_seed_bytes([0x68; 32]);
+        let encrypted = root.join("encrypted.aurkey");
+        let plain = root.join("plain.aurkey");
+        let recovery = root.join("recovery.txt");
+        let password = "test-only long wallet password";
+        key.save_encrypted_testnet_file(&encrypted, password).unwrap();
+        key.save_plain_testnet_file(&plain).unwrap();
+        key.save_recovery_file(&recovery).unwrap();
+
+        let encrypted_link = root.join("encrypted-link.aurkey");
+        let plain_link = root.join("plain-link.aurkey");
+        let recovery_link = root.join("recovery-link.txt");
+        symlink(&encrypted, &encrypted_link).unwrap();
+        symlink(&plain, &plain_link).unwrap();
+        symlink(&recovery, &recovery_link).unwrap();
+
+        assert!(WalletKey::file_is_encrypted(&encrypted_link).is_err());
+        assert!(WalletKey::file_is_encrypted(&plain_link).is_err());
+        assert!(WalletKey::load_encrypted_testnet_file(&encrypted_link, password).is_err());
+        assert!(WalletKey::load_plain_testnet_file(&plain_link).is_err());
+        assert!(WalletKey::load_recovery_file(&recovery_link, key.account_id()).is_err());
+
+        assert!(WalletKey::file_is_encrypted(&encrypted).unwrap());
+        assert!(!WalletKey::file_is_encrypted(&plain).unwrap());
+        assert_eq!(
+            WalletKey::load_encrypted_testnet_file(&encrypted, password)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        assert_eq!(
+            WalletKey::load_plain_testnet_file(&plain)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        assert_eq!(
+            WalletKey::load_recovery_file(&recovery, key.account_id())
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+
+        assert!(WalletKey::file_is_encrypted(&root).is_err());
+        assert!(WalletKey::load_encrypted_testnet_file(&root, password).is_err());
+        assert!(WalletKey::load_plain_testnet_file(&root).is_err());
+        assert!(WalletKey::load_recovery_file(&root, key.account_id()).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn key_file_rejects_corruption() {
         let path = std::env::temp_dir().join(format!(
