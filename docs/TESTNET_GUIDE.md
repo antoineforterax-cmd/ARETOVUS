@@ -179,6 +179,16 @@ cargo run --locked -p aurora-wallet -- address --key-file ./wallet-restaure.aurk
 
 Compare l’adresse restaurée à l’adresse d’origine. La sauvegarde du seul dossier du nœud ne contient pas la clé du wallet. Sans fichier de clé ou sans mot de passe, la récupération est impossible. `backup` et `restore` exigent le format chiffré AURKEY4; le format en clair AURKEY3 reste réservé aux essais.
 
+### Inspecter une transaction signée sans charger de clé
+
+Le fichier produit par `aurora-wallet sign-offline` peut être copié sur un **autre ordinateur de confiance** et inspecté avant une éventuelle diffusion :
+
+```sh
+cargo run --locked -p aurora-wallet -- inspect-signed --from ./payment.aurtx
+```
+
+Cette commande effectue seulement la lecture bornée du fichier, le décodage canonique et la vérification de la signature Testnet v3 ; elle affiche le réseau, le txid, l’émetteur, le destinataire complet, le montant, les frais et le nonce. **Elle ne charge aucune clé privée, ne se connecte à aucun nœud et ne diffuse rien.** Comparer indépendamment les champs affichés aux instructions attendues. Le fichier signé peut être diffusé par toute personne qui le possède : ne pas le confondre avec une sauvegarde de clé. Un logiciel d’inspection compromis peut mentir, et ce dispositif n’est pas un signataire matériel indépendant. Aucun fonds réel.
+
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
 
 ```sh
