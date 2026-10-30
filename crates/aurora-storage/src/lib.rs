@@ -1095,21 +1095,22 @@ mod tests {
 
         // Deterministically fail *after* write_all and *before* rename.
         // No system disk saturation or privileged mount is required.
-        let failure = write_immutable_with_sync(
-            &block_path,
-            &encoded,
-            MAX_ACCOUNT_BLOCK_BYTES,
-            |_| Err(io::Error::other("injected file sync failure")),
-        );
+        let failure =
+            write_immutable_with_sync(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES, |_| {
+                Err(io::Error::other("injected file sync failure"))
+            });
         assert!(matches!(failure, Err(StorageError::Io(_))));
         assert!(!block_path.exists());
         assert!(previous_manifest.exists());
         assert!(!fs::read_dir(path.join(BLOCK_DIRECTORY))
             .unwrap()
-            .any(|entry| entry.unwrap().file_name().to_string_lossy().ends_with(".tmp")));
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")));
 
-        let restored =
-            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.height(), 0);
         assert_eq!(restored.tip_hash(), previous_tip);
 
