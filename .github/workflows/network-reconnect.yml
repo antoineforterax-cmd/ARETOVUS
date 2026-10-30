@@ -1,0 +1,39 @@
+name: network-reconnect
+
+on:
+  push:
+    branches: [test/network-peer-reconnect-resume]
+    paths:
+      - "scripts/testnet_reconnect.py"
+      - ".github/workflows/network-reconnect.yml"
+      - "crates/aurora-node/**"
+  pull_request:
+    paths:
+      - "scripts/testnet_reconnect.py"
+      - ".github/workflows/network-reconnect.yml"
+      - "crates/aurora-node/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconnect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Compiler le nœud
+        run: cargo build --locked -p aurora-node
+      - name: Vérifier la reprise P2P après disparition et retour du serveur
+        run: python3 scripts/testnet_reconnect.py --binary target/debug/aurora-node --output target/network-reconnect --deadline-seconds 75
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: network-reconnect-evidence
+          path: |
+            target/network-reconnect/results.json
+            target/network-reconnect/*.log
+          retention-days: 14
