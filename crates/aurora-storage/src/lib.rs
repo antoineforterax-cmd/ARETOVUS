@@ -104,15 +104,18 @@ pub fn save_snapshot(
     for block in blocks {
         let block_id = block.header.hash()?;
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
-        if block_path.exists() {
-            // A directory at a content-addressed block path is not a valid block.
-            // Do not publish a manifest that would reference this object.
-            if !block_path.is_file() {
+        // A single metadata lookup replaces exists() + is_file() on every
+        // previously persisted block. Do not treat I/O errors as missing objects.
+        match fs::metadata(&block_path) {
+            Ok(metadata) if metadata.is_file() => {}
+            Ok(_) => {
                 return Err(StorageError::InvalidFormat("block object is not a file"));
             }
-        } else {
-            let encoded = block.to_canonical_bytes()?;
-            write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let encoded = block.to_canonical_bytes()?;
+                write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+            }
+            Err(error) => return Err(error.into()),
         }
         block_ids.push(block_id);
     }
@@ -913,6 +916,36 @@ mod tests {
         assert_eq!(restored.state(), original.state());
         fs::remove_dir_all(path).unwrap();
     }
+    #[test]
+    fn repeated_snapshot_reuses_blocks_and_rejects_non_file_object() {
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        // Re-saving an unchanged chain must reuse persisted block objects.
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+
+        let block_id = original.all_blocks_by_arrival()[0].header.hash().unwrap();
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        fs::remove_file(&block_path).unwrap();
+        fs::create_dir(&block_path).unwrap();
+        // Never publish a manifest that would reference a directory.
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+
+        fs::remove_dir(&block_path).unwrap();
+        // A genuinely missing object can be written again and survives restart.
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), original.height());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
     #[test]
     fn snapshot_roundtrip_keeps_secondary_branches_for_reorganization() {
         let path = dir();
