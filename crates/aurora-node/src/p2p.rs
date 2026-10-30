@@ -285,6 +285,11 @@ const MAX_ACTIVE_SESSIONS: usize = 32;
 // absolute I/O deadline must not be reset on partial reads.
 // This is an admission fairness safeguard, not an authentication mechanism.
 const IDLE_RECLAIM_MIN_AGE: Duration = Duration::from_secs(2);
+// At capacity, fixed byte-count cutoffs can be bypassed by a peer that
+// trickles just above the threshold. Require minimum average progress during
+// a pending request, measured from its *absolute* phase start (not reset by
+// individual reads). This is a fairness threshold only under saturation.
+const MIN_ADMISSION_REQUEST_BYTES_PER_SEC: u128 = 512;
 const IO_QUANTUM: usize = 64 * 1024;
 
 struct ReadyPeer {
@@ -404,20 +409,32 @@ impl ActivePeer {
 }
 type PeerResponse = (u64, Result<Vec<u8>, P2pError>);
 
-/// Select only an idle session when the global active-session limit is full.
-/// An in-flight task or a queued/writing response must never be preempted.
+/// Reclaim a stale idle session, or a very slow *incomplete* request only
+/// when global admission is full. A completed/queued/in-flight request or
+/// a pending response is never interrupted. This is fairness, not auth.
 fn oldest_reclaimable_session(active: &[ActivePeer], now: Instant) -> Option<usize> {
     active
         .iter()
         .enumerate()
         .filter(|(_, current)| {
+            let idle = now.saturating_duration_since(current.last_progress) >= IDLE_RECLAIM_MIN_AGE;
+            // A fresh 12-byte trickle must not evade fairness just because
+            // it exceeds a fixed threshold. Never reclaim completed or
+            // in-flight requests, regardless of their average rate.
+            let phase_age = now.saturating_duration_since(current.phase_started);
+            let slow = !current.input.is_empty()
+                && phase_age >= IDLE_RECLAIM_MIN_AGE
+                && (current.input.len() as u128).saturating_mul(1000)
+                    < phase_age
+                        .as_millis()
+                        .saturating_mul(MIN_ADMISSION_REQUEST_BYTES_PER_SEC);
             current.hello_done
                 && !current.in_flight
                 && current.request.is_none()
                 && current.output.is_empty()
-                && now.saturating_duration_since(current.last_progress) >= IDLE_RECLAIM_MIN_AGE
+                && (idle || slow)
         })
-        .min_by_key(|(_, current)| current.last_progress)
+        .min_by_key(|(_, current)| current.phase_started)
         .map(|(index, _)| index)
 }
 
@@ -3704,6 +3721,64 @@ mod handshake_admission_tests {
         peer.output.clear();
 
         peer.hello_done = false;
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
+    }
+
+    #[test]
+    fn trickle_request_cannot_hold_all_admission_slots() {
+        let (pending, _client, _counts) = pending();
+        let now = Instant::now();
+        let old = now - IDLE_RECLAIM_MIN_AGE - Duration::from_millis(1);
+        let mut peer = ActivePeer {
+            id: 1,
+            stream: pending.stream,
+            _lease: pending.lease,
+            hello: vec![WALLET_HELLO],
+            hello_done: true,
+            in_flight: false,
+            input: vec![0, 0, 2, 0, GET_PEERS],
+            request: None,
+            output: Vec::new(),
+            written: 0,
+            started: old,
+            phase_started: old,
+            last_progress: now - Duration::from_millis(10),
+            requests: 0,
+            bytes: 0,
+        };
+        // A fresh one-byte trickle used to make this peer unreclaimable.
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            Some(0)
+        );
+        peer.phase_started = now;
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
+        peer.phase_started = old;
+        peer.input.resize(180, 0);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            Some(0)
+        );
+        peer.input
+            .resize((MIN_ADMISSION_REQUEST_BYTES_PER_SEC as usize) * 2 + 64, 0);
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
+        peer.input.truncate(5);
+        peer.in_flight = true;
+        assert_eq!(
+            oldest_reclaimable_session(std::slice::from_ref(&peer), now),
+            None
+        );
+        peer.in_flight = false;
+        peer.output.push(0);
         assert_eq!(
             oldest_reclaimable_session(std::slice::from_ref(&peer), now),
             None
