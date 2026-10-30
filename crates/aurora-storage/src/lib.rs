@@ -1377,9 +1377,17 @@ mod tests {
         let manifests = fs::read_dir(&path)
             .unwrap()
             .filter_map(Result::ok)
-            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == INDEX_EXTENSION))
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == INDEX_EXTENSION)
+            })
             .count();
-        assert_eq!(manifests, 4, "retain the oldest anchor plus three recent generations");
+        assert_eq!(
+            manifests, 4,
+            "retain the oldest anchor plus three recent generations"
+        );
         assert!(first_manifest.exists(), "oldest recovery anchor was pruned");
 
         let block_id = shared_recent_block.unwrap();
