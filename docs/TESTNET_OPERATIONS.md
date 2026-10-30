@@ -33,6 +33,19 @@ Copy-Item -LiteralPath .\aurora-seed -Destination .\backup-aurora-seed -Recurse
 cargo run --locked -p aurora-node -- testnet verify --data-dir .\backup-aurora-seed
 ```
 
+### Contrôle automatisé de copie hors processus
+
+Le smoke test `scripts/testnet_smoke.py` vérifie une copie complète d'un
+dossier de nœud **arrêté** vers un autre dossier temporaire. Il appelle
+`testnet verify` sur la source et sur la copie, puis compare la hauteur et
+le hash du sommet. Il retire ensuite les pages v6 de la copie de test pour
+s'assurer qu'une sauvegarde incomplète n'est pas acceptée silencieusement
+comme équivalente à la source.
+
+Ce scénario n'utilise **qu'un seul hôte**. Il ne prouve ni la restauration
+hors machine, ni la résistance à une panne électrique ou à un disque plein.
+Conserver une sauvegarde réellement hors machine et suivre la procédure ci-dessus.
+
 ## Restaurer après une panne
 
 1. Arrêter les processus utilisant le dossier. Garder une copie du dossier endommagé et des journaux pour diagnostiquer la panne.
