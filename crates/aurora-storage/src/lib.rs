@@ -1105,6 +1105,44 @@ mod tests {
     }
 
     #[test]
+    fn truncated_new_index_page_falls_back_and_requires_repair_before_retry() {
+        let path = dir();
+        let mut chain = chain();
+        let safe_tip = chain.tip_hash();
+        save_snapshot(&path, &chain).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let new_tip = next.header.hash().unwrap();
+        chain.submit(next).unwrap();
+        let new_manifest = save_snapshot(&path, &chain).unwrap();
+        let manifest = fs::read(&new_manifest).unwrap();
+        // The single page ID precedes the v6 manifest checksum.
+        let start = manifest.len() - CHECKSUM_LEN - 32;
+        let page_id = Hash256::from_bytes(manifest[start..start + 32].try_into().unwrap());
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let page = fs::read(&page_path).unwrap();
+        fs::write(&page_path, &page[..page.len() / 2]).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), safe_tip);
+        assert_eq!(recovered.known_block_count(), 1);
+
+        // A content-addressed page with mismatched bytes must not be silently reused.
+        assert!(save_snapshot(&path, &chain).is_err());
+        fs::remove_file(&page_path).unwrap();
+        save_snapshot(&path, &chain).unwrap();
+        let repaired = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(repaired.height(), 1);
+        assert_eq!(repaired.tip_hash(), new_tip);
+        assert_eq!(repaired.known_block_count(), 2);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn failed_index_page_write_keeps_previous_snapshot_and_allows_retry() {
         let path = dir();
         let mut chain = chain();
