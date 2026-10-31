@@ -796,6 +796,23 @@ fn read_bounded_limit_with_preopen_hook(
     }
     before_open();
     let file = File::open(path)?;
+    // On Unix, reject a path swapped after the symlink/type preflight but
+    // before open(). The descriptor identity must match the original inode.
+    // Once open, later path swaps cannot redirect this descriptor.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let opened = file.metadata()?;
+        if !opened.file_type().is_file()
+            || opened.dev() != metadata.dev()
+            || opened.ino() != metadata.ino()
+        {
+            return Err(StorageError::InvalidFormat(
+                "storage object changed between preflight and open",
+            ));
+        }
+    }
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take((limit + 1) as u64).read_to_end(&mut bytes)?;
     if bytes.len() > limit {
