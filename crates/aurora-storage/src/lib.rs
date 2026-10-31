@@ -143,6 +143,8 @@ fn save_snapshot_inner(
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
+    #[cfg(test)]
+    let mut new_block_objects = 0usize;
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
         // Do not follow symlinks at content-addressed paths: an immutable
@@ -155,6 +157,10 @@ fn save_snapshot_inner(
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 let encoded = block.to_canonical_bytes()?;
                 write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+                #[cfg(test)]
+                {
+                    new_block_objects += 1;
+                }
             }
             Err(error) => return Err(error.into()),
         }
@@ -187,6 +193,10 @@ fn save_snapshot_inner(
             .map_err(|_| StorageError::InvalidFormat("page count exceeds u32"))?
             .to_be_bytes(),
     );
+    #[cfg(test)]
+    let mut cache_page_hits = 0usize;
+    #[cfg(test)]
+    let mut uncached_page_checks = 0usize;
     for (page_number, chunk) in block_ids.chunks(INDEX_PAGE_BLOCKS).enumerate() {
         // An append-only arrival prefix may be reused only if every block ID
         // still matches the earlier complete page. Crucially, the page's disk
@@ -250,8 +260,11 @@ fn save_snapshot_inner(
         };
         if let Some(page_id) = cached_id {
             #[cfg(test)]
-            if let Some(cache) = cache.as_deref_mut() {
-                cache.reused_full_pages += 1;
+            {
+                cache_page_hits += 1;
+                if let Some(cache) = cache.as_deref_mut() {
+                    cache.reused_full_pages += 1;
+                }
             }
             body.extend_from_slice(page_id.as_bytes());
             continue;
@@ -276,6 +289,10 @@ fn save_snapshot_inner(
         let page_id = sha256_plain(&page);
         let page_path = page_dir.join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
+        #[cfg(test)]
+        {
+            uncached_page_checks += 1;
+        }
         if chunk.len() == INDEX_PAGE_BLOCKS {
             if let Some(cache) = cache.as_deref_mut() {
                 if page_number < MAX_CACHED_FULL_INDEX_PAGES {
@@ -315,6 +332,8 @@ fn save_snapshot_inner(
     #[cfg(test)]
     let profile_manifest_done = profile_started.elapsed();
     prune_old_indexes(dir, &destination);
+    #[cfg(test)]
+    let profile_prune_indexes_done = profile_started.elapsed();
     if let Err(error) = prune_unreferenced_index_pages(dir) {
         eprintln!("cannot prune old AURORA index pages: {error}");
     }
@@ -322,14 +341,20 @@ fn save_snapshot_inner(
     if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
         let total = profile_started.elapsed();
         eprintln!(
-            "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3}",
+            "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3} existing_block_metadata_checks={} new_block_objects={} cache_page_hits={} uncached_page_checks={} prune_manifest_seconds={:.3} prune_page_seconds={:.3}",
             block_ids.len(),
             page_count,
             profile_blocks_done.as_secs_f64(),
             (profile_pages_done - profile_blocks_done).as_secs_f64(),
             (profile_manifest_done - profile_pages_done).as_secs_f64(),
             (total - profile_manifest_done).as_secs_f64(),
-            total.as_secs_f64()
+            total.as_secs_f64(),
+            block_ids.len() - new_block_objects,
+            new_block_objects,
+            cache_page_hits,
+            uncached_page_checks,
+            (profile_prune_indexes_done - profile_manifest_done).as_secs_f64(),
+            (total - profile_prune_indexes_done).as_secs_f64()
         );
     }
     Ok(destination)
