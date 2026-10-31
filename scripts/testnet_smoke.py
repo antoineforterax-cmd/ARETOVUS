@@ -566,11 +566,10 @@ def main() -> int:
             )
             if rejected_inspect.returncode == 0 or "verified_signed_transaction=true" in rejected_inspect.stdout:
                 raise AssertionError("inspector accepted a corrupted signature")
+            invalid_intent_args = list(expected_intent_args)
+            invalid_intent_args[invalid_intent_args.index("--from") + 1] = str(damaged)
             invalid_intent = subprocess.run(
-                [str(wallet), "verify-signed-intent", *[
-                    (str(damaged) if argument == str(signed_file) else argument)
-                    for argument in expected_intent_args
-                ]],
+                [str(wallet), "verify-signed-intent", *invalid_intent_args],
                 cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
             )
             if invalid_intent.returncode == 0 or "verified_signed_intent=true" in invalid_intent.stdout:
