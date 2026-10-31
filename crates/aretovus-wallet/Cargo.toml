@@ -1,6 +1,6 @@
 [package]
-name = "aurora-wallet"
-description = "AURORA experimental ML-DSA testnet command-line wallet"
+name = "aretovus-wallet"
+description = "ARETOVUS experimental ML-DSA testnet command-line wallet"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -10,8 +10,8 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-aurora-core.workspace = true
-aurora-consensus.workspace = true
+aretovus-core.workspace = true
+aretovus-consensus.workspace = true
 ml-dsa.workspace = true
 getrandom.workspace = true
 argon2 = "=0.6.0"

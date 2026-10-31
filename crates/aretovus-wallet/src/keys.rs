@@ -7,7 +7,7 @@ use std::{
 };
 
 use argon2::{Algorithm, Argon2, Params, Version};
-use aurora_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
+use aretovus_core::{accounts::AccountId, hash::sha256_plain, signature::post_quantum_account_id};
 use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn key_file_roundtrip_is_stable_and_never_overwrites() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-wallet-key-{}-{}",
+            "aretovus-wallet-key-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -408,7 +408,7 @@ mod tests {
     #[test]
     fn encrypted_key_roundtrip_rejects_wrong_password_and_tampering() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-wallet-encrypted-{}-{}",
+            "aretovus-wallet-encrypted-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -433,15 +433,15 @@ mod tests {
     fn encrypted_backup_restores_identity_without_reusing_ciphertext() {
         let unique = NEXT.fetch_add(1, Ordering::Relaxed);
         let source = std::env::temp_dir().join(format!(
-            "aurora-wallet-backup-source-{}-{unique}",
+            "aretovus-wallet-backup-source-{}-{unique}",
             std::process::id()
         ));
         let backup = std::env::temp_dir().join(format!(
-            "aurora-wallet-backup-copy-{}-{unique}",
+            "aretovus-wallet-backup-copy-{}-{unique}",
             std::process::id()
         ));
         let restored = std::env::temp_dir().join(format!(
-            "aurora-wallet-backup-restored-{}-{unique}",
+            "aretovus-wallet-backup-restored-{}-{unique}",
             std::process::id()
         ));
         let key = WalletKey::from_seed_bytes([44; 32]);
@@ -525,12 +525,12 @@ mod tests {
         let tx = crate::build_signed_transaction(
             &restored,
             AccountId([25; 32]),
-            aurora_core::amount::Amount::from_units(100).unwrap(),
-            aurora_core::amount::Amount::from_units(3).unwrap(),
+            aretovus_core::amount::Amount::from_units(100).unwrap(),
+            aretovus_core::amount::Amount::from_units(3).unwrap(),
             7,
         )
         .unwrap();
-        aurora_core::signature::verify_account_transaction(&tx).unwrap();
+        aretovus_core::signature::verify_account_transaction(&tx).unwrap();
         assert!(restored
             .save_encrypted_testnet_file(&replacement, "entirely new password")
             .is_err());
@@ -563,7 +563,7 @@ mod tests {
         use std::os::unix::fs::symlink;
 
         let root = std::env::temp_dir().join(format!(
-            "aurora-wallet-links-{}-{}",
+            "aretovus-wallet-links-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -625,7 +625,7 @@ mod tests {
         use std::os::unix::fs::symlink;
 
         let root = std::env::temp_dir().join(format!(
-            "aurora-wallet-swap-{}-{}",
+            "aretovus-wallet-swap-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -647,7 +647,7 @@ mod tests {
     #[test]
     fn key_file_rejects_corruption() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-wallet-corrupt-{}-{}",
+            "aretovus-wallet-corrupt-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));

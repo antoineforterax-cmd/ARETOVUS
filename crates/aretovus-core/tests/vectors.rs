@@ -1,16 +1,16 @@
-//! Vecteurs de test d'aurora-core.
+//! Vecteurs de test d'aretovus-core.
 //!
 //! Les valeurs attendues ont été calculées par une implémentation **indépendante** en Python
 //! (`scripts/reference_vectors.py`, `hashlib` + `struct`), pas par le code Rust testé.
 //! Statut : écrits ; leur exécution doit être faite avec `cargo test` (voir README).
 
-use aurora_core::amount::{Amount, MAX_UNITS};
-use aurora_core::codec::{CanonicalDecode, CanonicalEncode};
-use aurora_core::experimental::{
+use aretovus_core::amount::{Amount, MAX_UNITS};
+use aretovus_core::codec::{CanonicalDecode, CanonicalEncode};
+use aretovus_core::experimental::{
     OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION,
 };
-use aurora_core::hash::{sha256_plain, tagged_hash, Domain, Hash256};
-use aurora_core::network::NetworkId;
+use aretovus_core::hash::{sha256_plain, tagged_hash, Domain, Hash256};
+use aretovus_core::network::NetworkId;
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()

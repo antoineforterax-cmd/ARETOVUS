@@ -14,13 +14,13 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use aurora_consensus::{
+use aretovus_consensus::{
     account_block::{AccountBlock, MAX_ACCOUNT_BLOCK_BYTES},
     account_fork_chain::{AccountForkChain, AccountForkChainError},
     difficulty::DifficultyParams,
     reward::RewardParams,
 };
-use aurora_core::{
+use aretovus_core::{
     accounts::AccountId,
     codec::{CanonicalDecode, CanonicalEncode},
     hash::{sha256_plain, Hash256},
@@ -53,8 +53,8 @@ pub enum StorageError {
     Io(io::Error),
     InvalidFormat(&'static str),
     ChecksumMismatch,
-    Decode(aurora_core::codec::DecodeError),
-    Encode(aurora_core::codec::EncodeError),
+    Decode(aretovus_core::codec::DecodeError),
+    Encode(aretovus_core::codec::EncodeError),
     Chain(AccountForkChainError),
     NoSnapshot,
 }
@@ -69,13 +69,13 @@ impl From<io::Error> for StorageError {
         Self::Io(e)
     }
 }
-impl From<aurora_core::codec::DecodeError> for StorageError {
-    fn from(e: aurora_core::codec::DecodeError) -> Self {
+impl From<aretovus_core::codec::DecodeError> for StorageError {
+    fn from(e: aretovus_core::codec::DecodeError) -> Self {
         Self::Decode(e)
     }
 }
-impl From<aurora_core::codec::EncodeError> for StorageError {
-    fn from(e: aurora_core::codec::EncodeError) -> Self {
+impl From<aretovus_core::codec::EncodeError> for StorageError {
+    fn from(e: aretovus_core::codec::EncodeError) -> Self {
         Self::Encode(e)
     }
 }
@@ -1095,12 +1095,12 @@ fn decode_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::{hash::Hash256, network::NetworkId};
+    use aretovus_core::{hash::Hash256, network::NetworkId};
     use std::sync::atomic::AtomicU64;
     static TEST_ID: AtomicU64 = AtomicU64::new(0);
     fn dir() -> PathBuf {
         std::env::temp_dir().join(format!(
-            "aurora-storage-{}-{}",
+            "aretovus-storage-{}-{}",
             std::process::id(),
             TEST_ID.fetch_add(1, Ordering::Relaxed)
         ))
@@ -1721,7 +1721,7 @@ mod tests {
         let mut genesis =
             AccountBlock::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
         genesis.header.nonce =
-            aurora_consensus::proof_of_work::mine_nonce(&genesis.header, 8, 0, 100_000).unwrap();
+            aretovus_consensus::proof_of_work::mine_nonce(&genesis.header, 8, 0, 100_000).unwrap();
         let rewards = RewardParams::experimental_testnet(AccountId([7; 32]));
         let original = AccountForkChain::new_with_protocol_params(
             genesis,
@@ -1741,7 +1741,7 @@ mod tests {
 
     #[test]
     fn latest_snapshot_uses_cumulative_work_even_when_winning_chain_is_shorter() {
-        use aurora_consensus::{
+        use aretovus_consensus::{
             account_fork_chain::AccountForkChain, difficulty::DifficultyParams,
             proof_of_work::mine_nonce,
         };

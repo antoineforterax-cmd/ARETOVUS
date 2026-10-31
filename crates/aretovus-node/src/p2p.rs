@@ -10,23 +10,23 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-pub use aurora_consensus::testnet::{
+pub use aretovus_consensus::testnet::{
     protocol_fingerprint, TESTNET_MAX_FUTURE_BLOCK_SECS as MAX_FUTURE_BLOCK_SECS,
 };
-use aurora_consensus::{
+use aretovus_consensus::{
     account_block::AccountBlock,
     account_fork_chain::{AccountForkChain, AccountForkChainError},
 };
 #[cfg(test)]
-use aurora_core::hash::sha256_plain;
-use aurora_core::{
+use aretovus_core::hash::sha256_plain;
+use aretovus_core::{
     accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
     hash::Hash256,
     merkle::merkle_proof,
     network::NetworkId,
 };
-use aurora_storage::{save_snapshot, save_snapshot_with_page_cache, SnapshotPageCache};
+use aretovus_storage::{save_snapshot, save_snapshot_with_page_cache, SnapshotPageCache};
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
@@ -76,7 +76,7 @@ pub enum P2pError {
     Io(io::Error),
     Protocol(&'static str),
     Chain(AccountForkChainError),
-    Storage(aurora_storage::StorageError),
+    Storage(aretovus_storage::StorageError),
     ChainLockPoisoned,
 }
 impl std::fmt::Display for P2pError {
@@ -101,8 +101,8 @@ impl From<AccountForkChainError> for P2pError {
         Self::Chain(e)
     }
 }
-impl From<aurora_storage::StorageError> for P2pError {
-    fn from(e: aurora_storage::StorageError) -> Self {
+impl From<aretovus_storage::StorageError> for P2pError {
+    fn from(e: aretovus_storage::StorageError) -> Self {
         Self::Storage(e)
     }
 }
@@ -129,7 +129,7 @@ pub fn reject_future_block_timestamp(timestamp: u64) -> Result<(), P2pError> {
 #[derive(Default)]
 struct Mempool {
     transactions: Vec<AccountTransaction>,
-    pending: Option<(Hash256, aurora_core::state::AccountLedger)>,
+    pending: Option<(Hash256, aretovus_core::state::AccountLedger)>,
     #[cfg(test)]
     rebuilds: usize,
 }
@@ -164,7 +164,7 @@ impl Mempool {
         &mut self,
         chain: &AccountForkChain,
         id: AccountId,
-    ) -> aurora_core::state::AccountState {
+    ) -> aretovus_core::state::AccountState {
         if self.pending.as_ref().map(|(tip, _)| *tip) != Some(chain.tip_hash()) {
             #[cfg(test)]
             {
@@ -2010,13 +2010,13 @@ pub fn sync_from_peer_with_retry(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_consensus::{
+    use aretovus_consensus::{
         difficulty::DifficultyParams,
         proof_of_work::mine_nonce,
         reward::RewardParams,
         testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS},
     };
-    use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
+    use aretovus_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
     use std::{fs, net::Ipv4Addr, sync::mpsc, thread};
 
     #[test]
@@ -2092,7 +2092,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         save_snapshot(&dir, &slow).unwrap();
         let original =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
                 .unwrap();
         assert_eq!(original.tip_hash(), before.0);
         assert_eq!(original.chain_work(), before.1);
@@ -2109,7 +2109,7 @@ mod tests {
         assert_eq!(slow.known_block_count(), fast.known_block_count());
         save_snapshot(&dir, &slow).unwrap();
         let restored =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))
                 .unwrap();
         assert_eq!(restored.tip_hash(), fast.tip_hash());
         assert_eq!(restored.chain_work(), fast.chain_work());
@@ -2641,7 +2641,7 @@ mod tests {
         let current = shared.lock().unwrap();
         assert_eq!(current.known_block_count(), 3);
         let restored =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
                 .unwrap();
         assert_eq!(restored.known_block_count(), 3);
         assert_eq!(restored.tip_hash(), current.tip_hash());
@@ -2740,7 +2740,7 @@ mod tests {
 
         drop(receiver);
         let restore_started = Instant::now();
-        let restored = aurora_storage::load_latest_snapshot(
+        let restored = aretovus_storage::load_latest_snapshot(
             &receiver_dir,
             AccountLedger::new(NetworkId::Regtest),
         )
@@ -2893,7 +2893,7 @@ mod tests {
         assert_eq!(received.height(), 1);
         assert_ne!(received.tip_hash(), server_genesis);
         let restored =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
                 .unwrap();
         assert_eq!(restored.tip_hash(), received.tip_hash());
         fs::remove_dir_all(dir).unwrap();
@@ -2926,7 +2926,7 @@ mod tests {
             client.tip_hash(),
             2,
             0,
-            Some(aurora_core::accounts::AccountId([0x77; 32])),
+            Some(aretovus_core::accounts::AccountId([0x77; 32])),
             vec![],
         )
         .unwrap();
@@ -3200,7 +3200,7 @@ mod tests {
         assert_eq!(local.tip_hash(), expected_tip);
         assert_eq!(local.chain_work(), expected_work);
         let restored =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
                 .unwrap();
         assert_eq!(restored.tip_hash(), expected_tip);
         assert_eq!(restored.chain_work(), expected_work);
@@ -3428,7 +3428,7 @@ mod tests {
         drop(receiver);
 
         let restored =
-            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+            aretovus_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
                 .unwrap();
         assert_eq!(restored.height(), committed_height);
         assert_eq!(restored.tip_hash(), committed_tip);
@@ -3474,7 +3474,7 @@ mod tests {
 
     #[test]
     fn deterministic_decoder_fuzz_smoke_rejects_arbitrary_bytes_without_panicking() {
-        use aurora_consensus::experimental::BlockHeader;
+        use aretovus_consensus::experimental::BlockHeader;
 
         let mut state = 0xA0_52_4F_52_41u64;
         for case in 0..1024usize {
@@ -3555,7 +3555,7 @@ mod tests {
 #[cfg(test)]
 mod orphan_reinsertion_tests {
     use super::*;
-    use aurora_core::{
+    use aretovus_core::{
         accounts::{ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_AUTH_BYTES},
         amount::Amount,
         signature::post_quantum_account_id,
@@ -3994,11 +3994,11 @@ mod handshake_admission_tests {
         write_frame(&mut client, &hello).unwrap();
         let received = poll_until_ready(&mut peer).unwrap();
         assert_eq!(received, hello);
-        let genesis = aurora_consensus::testnet::testnet_genesis_block();
+        let genesis = aretovus_consensus::testnet::testnet_genesis_block();
         let chain = AccountForkChain::new(
             genesis,
-            aurora_consensus::testnet::TESTNET_INITIAL_BITS,
-            aurora_core::state::AccountLedger::new(NetworkId::Testnet),
+            aretovus_consensus::testnet::TESTNET_INITIAL_BITS,
+            aretovus_core::state::AccountLedger::new(NetworkId::Testnet),
         )
         .unwrap();
         assert!(check_hello(&received, &chain).is_err());
@@ -4008,7 +4008,7 @@ mod handshake_admission_tests {
 #[cfg(test)]
 mod self_transfer_tests {
     use super::*;
-    use aurora_core::{
+    use aretovus_core::{
         accounts::{AccountTxError, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_AUTH_BYTES},
         amount::Amount,
         signature::{post_quantum_account_id, verify_account_transaction},

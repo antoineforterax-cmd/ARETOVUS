@@ -1,7 +1,7 @@
 //! Canonical v3 transaction construction and AUR amount parsing.
 use std::error::Error;
 
-use aurora_core::{
+use aretovus_core::{
     accounts::{AccountId, AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     amount::{Amount, UNITS_PER_COIN},
     network::NetworkId,
@@ -70,15 +70,15 @@ pub fn build_signed_transaction(
         recipient,
         amount,
         fee,
-        auth_data: vec![0; aurora_core::accounts::POST_QUANTUM_AUTH_BYTES],
+        auth_data: vec![0; aretovus_core::accounts::POST_QUANTUM_AUTH_BYTES],
     };
     let public_key = key.public_key();
-    tx.auth_data[..aurora_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key);
+    tx.auth_data[..aretovus_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key);
     let signature = key
         .signing_key()
         .sign(tx.signing_digest()?.as_bytes())
         .encode();
-    tx.auth_data[aurora_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES..]
+    tx.auth_data[aretovus_core::accounts::ML_DSA_65_PUBLIC_KEY_BYTES..]
         .copy_from_slice(signature.as_slice());
     tx.check_stateless()?;
     Ok(tx)
@@ -116,7 +116,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(tx.auth_data.len(), 5_261);
-        assert!(aurora_core::signature::verify_account_transaction(&tx).is_ok());
+        assert!(aretovus_core::signature::verify_account_transaction(&tx).is_ok());
     }
 }
 

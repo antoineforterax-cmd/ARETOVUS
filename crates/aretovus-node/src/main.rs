@@ -9,21 +9,21 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use aurora_consensus::{
+use aretovus_consensus::{
     account_block::AccountBlock,
     account_fork_chain::AccountForkChain,
     proof_of_work::mine_nonce,
     reward::RewardParams,
     testnet::{testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_INITIAL_BITS, TESTNET_TREASURY},
 };
-use aurora_core::{
+use aretovus_core::{
     accounts::{AccountId, AccountTransaction},
     hash::Hash256,
     network::NetworkId,
     state::AccountLedger,
 };
-use aurora_node::p2p;
-use aurora_storage::{load_latest_snapshot, save_snapshot, StorageError};
+use aretovus_node::p2p;
+use aretovus_storage::{load_latest_snapshot, save_snapshot, StorageError};
 use p2p::{
     discover_peers_with_retry, fetch_mempool, propagate_block_with_retry, serve as serve_peers,
     sync_from_peer_with_retry, MAX_DISCOVERED_PEERS,
@@ -335,7 +335,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             } else {
                 regtest_chain()?
             };
-            println!("AURORA local regtest (experimental)");
+            println!("ARETOVUS local regtest (experimental)");
             println!(
                 "network: regtest\ndifficulty_bits: {}\nheight: {}\ngenesis: {}",
                 chain.difficulty_bits(),
@@ -352,20 +352,20 @@ fn run() -> Result<(), Box<dyn Error>> {
             Some("serve") => run_testnet_peer(args, true),
             Some("sync") => run_testnet_peer(args, false),
             Some("verify") => run_testnet_verify(args),
-            _ => Err("Usage: aurora-node testnet mine|serve|sync|verify ...".into()),
+            _ => Err("Usage: aretovus-node testnet mine|serve|sync|verify ...".into()),
         }?,
         Some("--help") | Some("-h") => {
-            println!("Usage:\n  aurora-node regtest [--data-dir PATH]\n  aurora-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aurora-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aurora-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]\n  aurora-node testnet verify --data-dir PATH");
+            println!("Usage:\n  aretovus-node regtest [--data-dir PATH]\n  aretovus-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aretovus-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aretovus-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]\n  aretovus-node testnet verify --data-dir PATH");
             println!("Experimental testnet: bounded TCP push/pull and opt-in one-hop peer discovery; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
         }
-        _ => return Err("Run aurora-node --help for available commands".into()),
+        _ => return Err("Run aretovus-node --help for available commands".into()),
     }
     Ok(())
 }
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("aurora-node: {error}");
+        eprintln!("aretovus-node: {error}");
         process::exit(1);
     }
 }
@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn testnet_mining_reward_and_snapshot_restart_are_reproducible() {
         let dir = std::env::temp_dir().join(format!(
-            "aurora-node-{}-{}",
+            "aretovus-node-{}-{}",
             process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -391,11 +391,11 @@ mod tests {
         assert_eq!(chain.height(), 1);
         assert_eq!(
             chain.state().total_issued().to_units(),
-            500 * aurora_core::amount::UNITS_PER_COIN
+            500 * aretovus_core::amount::UNITS_PER_COIN
         );
         assert_eq!(
             chain.state().account(miner).balance.to_units(),
-            475 * aurora_core::amount::UNITS_PER_COIN
+            475 * aretovus_core::amount::UNITS_PER_COIN
         );
         let expected_tip = chain.tip_hash();
         let expected_state = chain.state().clone();
@@ -409,7 +409,7 @@ mod tests {
     #[test]
     fn testnet_verify_rejects_missing_data_and_accepts_saved_chain() {
         let dir = std::env::temp_dir().join(format!(
-            "aurora-node-verify-{}-{}",
+            "aretovus-node-verify-{}-{}",
             process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
