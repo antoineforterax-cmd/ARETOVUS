@@ -322,7 +322,8 @@ pub fn submit_transaction(
     tx: &AccountTransaction,
 ) -> Result<(Hash256, u32), Box<dyn Error>> {
     let encoded = tx.to_canonical_bytes()?;
-    let expected = aretovus_core::hash::tagged_hash(aretovus_core::hash::Domain::AccountTxId, &encoded);
+    let expected =
+        aretovus_core::hash::tagged_hash(aretovus_core::hash::Domain::AccountTxId, &encoded);
     let mut stream = connect(node)?;
     let mut request = vec![SUBMIT_TX];
     request.extend_from_slice(&encoded);
