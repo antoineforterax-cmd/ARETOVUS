@@ -91,7 +91,7 @@ def main() -> int:
     parser.add_argument("--hours", type=float, default=4.0)
     parser.add_argument("--interval-seconds", type=float, default=300.0)
     parser.add_argument("--command-timeout", type=float, default=300.0)
-    parser.add_argument("--output", type=Path, default=Path("aurora-operational-evidence.jsonl"))
+    parser.add_argument("--output", type=Path, default=Path("aretovus-operational-evidence.jsonl"))
     parser.add_argument("--commit", default="unrecorded")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()

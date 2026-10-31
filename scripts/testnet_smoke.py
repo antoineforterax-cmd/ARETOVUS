@@ -236,7 +236,7 @@ def main() -> int:
     if not binary.is_file() or not wallet.is_file():
         raise FileNotFoundError("built node or wallet executable is missing")
 
-    with tempfile.TemporaryDirectory(prefix="aurora-p2p-smoke-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="aretovus-p2p-smoke-") as temporary:
         base = Path(temporary)
         node_a, node_b = base / "node-a", base / "node-b"
         keyfile = base / "miner.aurkey"
@@ -260,7 +260,7 @@ def main() -> int:
                     cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
                 )
                 # Keep the parent stream alive until the server exits.
-                server._aurora_log_stream = stream  # type: ignore[attr-defined]
+                server._aretovus_log_stream = stream  # type: ignore[attr-defined]
                 servers.append(server)
                 wait_listening(server, address, log)
 
@@ -729,7 +729,7 @@ def main() -> int:
                  "--listen", f"{addr_a[0]}:{addr_a[1]}"],
                 cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
             )
-            server_a._aurora_log_stream = stream  # type: ignore[attr-defined]
+            server_a._aretovus_log_stream = stream  # type: ignore[attr-defined]
             servers.append(server_a)
             wait_listening(server_a, addr_a, logs[0])
 
@@ -771,7 +771,7 @@ def main() -> int:
                  "--listen", f"{addr_a[0]}:{addr_a[1]}"],
                 cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
             )
-            server_a._aurora_log_stream = stream  # type: ignore[attr-defined]
+            server_a._aretovus_log_stream = stream  # type: ignore[attr-defined]
             servers.append(server_a)
             wait_listening(server_a, addr_a, logs[0])
 
@@ -811,7 +811,7 @@ def main() -> int:
                  "--listen", f"{addr_c[0]}:{addr_c[1]}"],
                 cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
             )
-            server_c._aurora_log_stream = stream  # type: ignore[attr-defined]
+            server_c._aretovus_log_stream = stream  # type: ignore[attr-defined]
             servers.append(server_c)
             wait_listening(server_c, addr_c, fork_log)
 
@@ -831,7 +831,7 @@ def main() -> int:
                  "--listen", f"{addr_a[0]}:{addr_a[1]}"],
                 cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
             )
-            server_a._aurora_log_stream = stream  # type: ignore[attr-defined]
+            server_a._aretovus_log_stream = stream  # type: ignore[attr-defined]
             servers.append(server_a)
             wait_listening(server_a, addr_a, logs[0])
 
@@ -862,7 +862,7 @@ def main() -> int:
                  "--peer", f"{addr_c[0]}:{addr_c[1]}"],
                 cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, text=True,
             )
-            server_d._aurora_log_stream = stream  # type: ignore[attr-defined]
+            server_d._aretovus_log_stream = stream  # type: ignore[attr-defined]
             servers.append(server_d)
             wait_listening(server_d, addr_d, live_log)
 
@@ -954,7 +954,7 @@ def main() -> int:
                 except subprocess.TimeoutExpired:
                     server.kill()
                     server.wait(timeout=5)
-                stream = getattr(server, "_aurora_log_stream", None)
+                stream = getattr(server, "_aretovus_log_stream", None)
                 if stream is not None:
                     stream.close()
     return 0

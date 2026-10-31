@@ -36,7 +36,7 @@ def wait_listening(server: subprocess.Popen[bytes], port: int, log: Path) -> Non
 def main() -> None:
     if not NODE.is_file():
         raise FileNotFoundError(NODE)
-    with tempfile.TemporaryDirectory(prefix="aurora-lock-smoke-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="aretovus-lock-smoke-") as temporary:
         data_dir = Path(temporary) / "node"
         log = Path(temporary) / "server.log"
         port = free_port()

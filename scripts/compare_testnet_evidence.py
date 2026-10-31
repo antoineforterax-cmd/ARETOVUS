@@ -115,7 +115,7 @@ def self_test() -> None:
         ]
         return "\n".join(json.dumps(e) for e in events) + "\n"
 
-    with tempfile.TemporaryDirectory(prefix="aurora-evidence-selftest-") as d:
+    with tempfile.TemporaryDirectory(prefix="aretovus-evidence-selftest-") as d:
         left, right = Path(d, "a.jsonl"), Path(d, "b.jsonl")
         left.write_text(fixture("pc-a", 4, "d" * 64), encoding="utf-8")
         right.write_text(fixture("pc-b", 4, "d" * 64), encoding="utf-8")

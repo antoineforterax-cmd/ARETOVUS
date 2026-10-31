@@ -200,7 +200,7 @@ def main() -> None:
     wallet = package / "bin" / "aretovus-wallet.exe"
     if not wallet.is_file():
         raise FileNotFoundError(wallet)
-    with tempfile.TemporaryDirectory(prefix="aurora-packaged-two-nodes-") as temp:
+    with tempfile.TemporaryDirectory(prefix="aretovus-packaged-two-nodes-") as temp:
         root = Path(temp)
         a_data, b_data, miner_data = (
             root / "server-a", root / "server-b", root / "miner"

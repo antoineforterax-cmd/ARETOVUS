@@ -49,7 +49,7 @@ def main() -> int:
     if not binary.is_file():
         raise FileNotFoundError("aretovus-node build output is missing")
 
-    base = Path(tempfile.mkdtemp(prefix="aurora-soak-", dir=ROOT / "target"))
+    base = Path(tempfile.mkdtemp(prefix="aretovus-soak-", dir=ROOT / "target"))
     dirs = {name: base / name for name in ("a", "b", "c", "miner")}
     addresses = {name: free_address() for name in ("a", "b", "c")}
     while len({address[1] for address in addresses.values()}) != 3:
