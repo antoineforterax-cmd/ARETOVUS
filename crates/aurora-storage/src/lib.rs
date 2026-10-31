@@ -1247,6 +1247,63 @@ mod tests {
     }
 
     #[test]
+    fn corrupt_or_torn_newest_storage_objects_fall_back_without_silent_replay() {
+        let root = dir();
+        let mut original = chain();
+        let safe_tip = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        let next =
+            AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let block_id = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+        let latest = save_snapshot(&root, &original).unwrap();
+        let latest_tip = original.tip_hash();
+        let manifest = fs::read(&latest).unwrap();
+        let page_id = Hash256::from_bytes(manifest[81..113].try_into().unwrap());
+        let page = root
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let block = root
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+
+        for object in [&latest, &page, &block] {
+            let clean = fs::read(object).unwrap();
+            assert!(clean.len() > 4);
+            for truncated_length in [0, clean.len() / 2, clean.len() - 1] {
+                fs::write(object, &clean[..truncated_length]).unwrap();
+                let restored =
+                    load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+                assert_eq!(
+                    restored.tip_hash(),
+                    safe_tip,
+                    "partial object accepted: {} at {truncated_length} bytes",
+                    object.display()
+                );
+            }
+            for byte_offset in [0, clean.len() / 2, clean.len() - 1] {
+                let mut damaged = clean.clone();
+                damaged[byte_offset] ^= 0x80;
+                fs::write(object, damaged).unwrap();
+                let restored =
+                    load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+                assert_eq!(
+                    restored.tip_hash(),
+                    safe_tip,
+                    "mutated object accepted: {} at offset {byte_offset}",
+                    object.display()
+                );
+            }
+            fs::write(object, clean).unwrap();
+            let recovered =
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert_eq!(recovered.tip_hash(), latest_tip);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cached_complete_v6_page_revalidates_disk_and_exact_arrival_prefix() {
         let path = dir();
         let mut original = chain();
