@@ -1,4 +1,4 @@
-# Décisions du responsable — première série du 31 octobre 2026
+# Décisions du responsable — suivi des choix du 31 octobre 2026
 
 > **Compte rendu des réponses explicites du responsable du projet**, recueillies le 31 octobre 2026. Ce document consigne la direction recherchée ; il n’autorise aucune modification du consensus, de l’émission, de la difficulté, de la gestion des clés ou de la trésorerie. Il ne valide pas le lancement d'un mainnet. Référence consultée : `main` au SHA `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f` ; questionnaire source : [DECISION_OPTIONS.md](DECISION_OPTIONS.md).
 
@@ -18,6 +18,28 @@
 | **W06** | **A puis B** | V1 : **sauvegarde/restauration chiffrées**. Plus tard : **récupération volontaire via gardiens**, sans admin ni confiscation automatique. | Tests de restauration hors hôte, modèle de menace des gardiens et des délais, versionnement compatible. |
 | **G01** | **A maintenant ; ensuite décisions et vote de la communauté** | **Aucune dépense de trésorerie dans le profil actuel**. Pour le futur : une équipe **élue d'au moins trois personnes**, compétentes en technique/finance, **conseille sans pouvoir décider seule** ; la communauté conserve la décision. Projet de vote conditionné à la détention d'un minimum d'AUR, seuil amené à décroître avec l'émission. **Aucun barème, quorum, pouvoir de vote ou mécanisme d'exécution n'est encore fixé.** | Étudier risques Sybil/ploutocratie, seuil, élection/révocation des conseillers, exécution des décisions et gouvernance de secours. |
 | **G06** | **A : audit indépendant** | Règle de lancement : **pas de fonds réels avant revue humaine extérieure qualifiée**, correction des défauts et validation des preuves. | Définir champ, commit d'audit, critères de sortie et procédure de réévaluation. |
+
+## Deuxième série — réponses du responsable du 31 octobre 2026
+
+Ces huit réponses complètent la première série. **Les orientations sont conservées telles qu'exprimées ; « à comparer » et « je ne sais pas » restent des décisions ouvertes.** Aucun choix de protocole ni nouvelle fonctionnalité n'est activé par cette fiche.
+
+| ID | Réponse du responsable | Interprétation et statut | Suites / précautions |
+| --- | --- | --- | --- |
+| **E02** | **A : aucun préminage** (confirmé deux fois) | **Orientation retenue.** Aucun AUR attribué avant le premier bloc ; correspond déjà à la genèse vide du testnet. **Attention :** « aucun préminage » ne signifie pas « 100 % aux mineurs », puisque l'émission actuelle partage 95 % mineur / 5 % trésorerie. | Documenter le lancement équitable, l'accès initial au minage et l'absence d'allocation cachée ; aucun changement à la genèse testnet actuelle. |
+| **E03** | **Réduire progressivement la récompense ; halving peut-être préférable, incertitude exprimée** | **À comparer — aucune courbe nouvelle validée.** La formule actuelle réduit continûment la récompense selon le reliquat, sans halving. | Simuler (A) décroissance actuelle, (B) halvings à intervalles définis, (C) courbe alternative ; comparer calendrier sur 10 M / 100 M / 500 M blocs, plancher, plafond de 500 M AUR, revenus de minage, budget de sécurité et changements brusques de revenus. Ne pas coder de halving silencieusement. |
+| **E06** | **Frais adaptés aux coûts réels** | **Orientation retenue ; méthode ouverte.** Privilégier des frais proportionnés aux ressources et à la pression du réseau, sans annoncer de barème figé. | Distinguer politique locale de relais anti-spam/mempool, coût de vérification et règle de frais ou base-fee consensuelle (modification de protocole). Tester spam, mineurs, petites transactions et coûts ML-DSA. |
+| **N02** | **Découverte des pairs automatique et décentralisée** | **Objectif d'architecture retenu**, non livré ; le testnet utilise encore des pairs connus et de la découverte limitée. | Étudier amorçage initial de plusieurs sources, découverte distribuée, défense Sybil/éclipse, confidentialité IP/DNS, NAT et reprise sans serveur central unique. |
+| **N08** | **Raspberry Pi par utilisateur** | **Objectif de nœud abordable : chaque participant qui le souhaite doit pouvoir faire fonctionner son propre nœud sur un Raspberry Pi suffisamment capable** ; **ce n'est pas une obligation matérielle faite à chaque utilisateur**. | Fixer modèles de Pi, RAM, support SSD, coût/énergie ; mesurer synchronisation réelle, stockage, CPU, vérification ML-DSA, réseaux hostiles et reorgs avant garantie de compatibilité. |
+| **W02** | **Incertain ; service de garde facultatif envisagé** | **NON TRANCHÉ.** Recommandation de prudence : conservation des clés par l'utilisateur **par défaut** ; un service de garde, s'il existe, doit rester **facultatif et hors noyau de confiance consensuel**. Aucun service n'est approuvé. | Comparer non-custodial (défaut), garde facultative tierce et récupération assistée sans dépossession des clés. Modèle de menace, obligation légale, confidentialité, exposition des fonds et interdiction d'une sauvegarde forcée sur serveur. |
+| **G02** | **Règles communautaires, conseil élu et votes** | **Orientation retenue** selon [G01 plus haut](#complément-g01--proposition-de-gouvernance-exprimée-le-31-octobre-2026) : conseil élu de 3 personnes minimum, expertise technique/finance, consultatif uniquement ; la communauté décide. | Finaliser éligibilité, méthode anti-Sybil, durée des mandats, élection/révocation, transparence, quorum et exécution cryptographique des décisions. |
+| **G07** | **Oui aux binaires signés** | **Objectif de distribution retenu : téléchargements authentifiables, accompagnés de sommes de contrôle et de provenance vérifiable**. Cela ne constitue ni un audit ni une preuve de sécurité du programme. | Choisir identité et rotation des clés de signature, attestation CI, archives reproductibles, documentation de vérification Windows/Linux/macOS, publication des empreintes et gestion des clés compromises. |
+
+**Décisions de direction prises dans cette série :** E02, E06, N02, N08, G02 et G07. **À comparer :** E03. **Indécis / alternatives ouvertes :** W02. Ces réponses ne tranchent pas les sous-paramètres techniques ; une règle de consensus nécessite tests, revue et approbation spécifique avant intégration.
+
+### Attention : halving ≠ difficulté de minage
+
+Le **halving** agit sur la *quantité d'AUR créée par bloc* à des hauteurs déterminées. La **difficulté PoW** ajuste l'effort pour trouver un bloc et peut augmenter ou diminuer. Aucun de ces mécanismes ne se substitue à l'autre. L'émission actuelle d'AURORA dépend du reliquat d'émission, non du hashrate : le changement éventuel serait une **rupture de consensus** exigeant nouveau profil/réseau, vecteurs indépendants et analyse de migration.
+
 
 ## Distinctions importantes
 
