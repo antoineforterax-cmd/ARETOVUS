@@ -10,8 +10,43 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+
+from testnet_system_monitor import ResourceMonitor
+
+@contextmanager
+def lock_evidence_logs(paths: tuple[Path, ...]):
+    """Prevent concurrent collectors corrupting append-only evidence on one host.
+
+    Advisory OS locks live on persistent .lock sidecars; never delete them by hand.
+    """
+    if len(set(paths)) != len(paths):
+        raise ValueError("Evidence logs must have distinct paths")
+    with ExitStack() as stack:
+        for path in sorted(paths, key=str):
+            lock = path.with_name(path.name + ".lock")
+            lock.parent.mkdir(parents=True, exist_ok=True)
+            handle = stack.enter_context(lock.open("a+b"))
+            if lock.stat().st_size == 0:
+                handle.write(b"0")
+                handle.flush()
+            handle.seek(0)
+            try:
+                if sys.platform == "win32":
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    stack.callback(msvcrt.locking, handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    stack.callback(fcntl.flock, handle.fileno(), fcntl.LOCK_UN)
+            except OSError as exc:
+                raise RuntimeError("Another collector is using this evidence output") from exc
+        yield
+
 
 TIP_PATTERN = re.compile(r"\bheight=(\d+)\s+tip=([0-9a-f]{64})\b")
 
@@ -137,6 +172,19 @@ def self_test() -> None:
         False, False, False
     )
     from unittest.mock import patch
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="aurora-evidence-lock-") as folder:
+        node_log = Path(folder) / "node.jsonl"
+        resources_log = Path(folder) / "resources.jsonl"
+        with lock_evidence_logs((node_log, resources_log)):
+            try:
+                with lock_evidence_logs((node_log,)):
+                    raise AssertionError("Duplicate evidence lock accepted")
+            except RuntimeError as exc:
+                assert "Another collector" in str(exc)
+        with lock_evidence_logs((node_log, resources_log)):
+            pass  # OS lock released correctly
 
     valid = "verified testnet data: height=42 tip=" + "ab" * 32
     with patch("subprocess.run", return_value=subprocess.CompletedProcess(
@@ -177,6 +225,8 @@ def main() -> int:
     parser.add_argument("--hours", type=float, default=4.0)
     parser.add_argument("--interval-seconds", type=float, default=300.0)
     parser.add_argument("--command-timeout", type=float, default=300.0)
+    parser.add_argument("--telemetry-interval-seconds", type=float, default=5.0)
+    parser.add_argument("--telemetry-output", type=Path)
     parser.add_argument("--output", type=Path, default=Path("aurora-operational-evidence.jsonl"))
     parser.add_argument("--commit", default="unrecorded")
     parser.add_argument("--self-test", action="store_true")
@@ -190,6 +240,8 @@ def main() -> int:
         parser.error("hours must be 4..168 and interval-seconds 1..3600")
     if not 5 <= args.command_timeout <= 3600:
         parser.error("command-timeout must be 5..3600 seconds")
+    if not 1 <= args.telemetry_interval_seconds <= 300:
+        parser.error("telemetry-interval-seconds must be 1..300")
     if not re.fullmatch(r"[a-zA-Z0-9_.-]{1,64}", args.host_label):
         parser.error("host-label must contain only A-Z, a-z, 0-9, _, -, .")
     if not re.fullmatch(r"[a-fA-F0-9]{40}", args.commit):
@@ -201,6 +253,9 @@ def main() -> int:
     output = args.output.resolve()
     if output == executable or output.is_relative_to(data_dir):
         parser.error("output evidence must be outside node data-dir")
+    telemetry = (args.telemetry_output or output.with_name(output.stem + ".resources.jsonl")).resolve()
+    if telemetry == output or telemetry == executable or telemetry.is_relative_to(data_dir):
+        parser.error("telemetry output must be a separate file outside the node data-dir")
     output.parent.mkdir(parents=True, exist_ok=True)
     digest = binary_sha256(executable)
     started = time.monotonic()
@@ -213,13 +268,17 @@ def main() -> int:
 
     def record(handle, event: str, **values: object) -> None:
         handle.write(json.dumps({"event": event, "utc": utc_now(),
-                                 "host_label": args.host_label, **values}, sort_keys=True) + "\n")
+                                 "host_label": args.host_label, "run_id": run_id,
+                                 **values}, sort_keys=True) + "\n")
         handle.flush()
 
     # A four-hour physical test is a useful intermediate gate, not 72h certification.
     # Never infer hardware independence from the host-label supplied by the operator.
     # Append-only evidence: do not overwrite older runs or silently count them as part of this run.
-    with output.open("a", encoding="utf-8") as evidence:
+    run_id = uuid.uuid4().hex
+    with lock_evidence_logs((output, telemetry)), ResourceMonitor(telemetry, data_dir, args.host_label,
+                         args.telemetry_interval_seconds, run_id=run_id) as resources, \
+         output.open("a", encoding="utf-8") as evidence:
         record(evidence, "start", duration_required_seconds=duration, commit=args.commit,
                binary_sha256=digest, initial_monotonic=time.monotonic(), version=1)
         while True:
@@ -244,6 +303,8 @@ def main() -> int:
             if remaining <= 0:
                 break
             time.sleep(min(args.interval_seconds, remaining))
+        resource_errors = resources.stop()
+        failures += resource_errors
         elapsed = time.monotonic() - started
         unchanged = binary_sha256(executable) == digest
         duration_reached = elapsed >= duration
@@ -252,12 +313,14 @@ def main() -> int:
             duration, elapsed, failures, unchanged, len(heights)
         )
         record(evidence, "finish", elapsed_seconds=round(elapsed, 3), samples=samples,
-               errors=failures, binary_unchanged=unchanged, distinct_heights=len(heights),
+               errors=failures, resource_errors=resource_errors, binary_unchanged=unchanged,
+               resource_log_sha256=binary_sha256(telemetry),
+               distinct_heights=len(heights),
                last_height=last_tip[0] if last_tip else None,
                last_tip=last_tip[1] if last_tip else None,
                duration_reached=duration_reached, local_probe_passed=successful,
                counts_as_4h=counts_as_4h, counts_as_72h=counts_as_72h)
-    print(f"Evidence: {output}; local probe passed={successful}; "
+    print(f"Evidence: {output}; telemetry: {telemetry}; local probe passed={successful}; "
           f"4h threshold={counts_as_4h}; "
           f"72h threshold={counts_as_72h}")
     return 0 if successful else 1

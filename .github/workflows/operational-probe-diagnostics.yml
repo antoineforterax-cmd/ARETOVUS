@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "scripts/testnet_operational_probe.py"
+      - "scripts/testnet_system_monitor.py"
+      - "scripts/validate_testnet_4h_v2.py"
+      - "docs/validation/MULTI_HOST_V2_PERFORMANCE_PLAYBOOK.md"
       - "scripts/compare_testnet_evidence.py"
       - "docs/validation/PHYSICAL_TWO_PC_4H_OBSERVATIONS_2026-10-31.md"
       - ".github/workflows/operational-probe-diagnostics.yml"
@@ -25,8 +28,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile operational evidence scripts
-        run: python -m py_compile scripts/testnet_operational_probe.py scripts/compare_testnet_evidence.py
+        run: python -m py_compile scripts/testnet_operational_probe.py scripts/testnet_system_monitor.py scripts/compare_testnet_evidence.py scripts/validate_testnet_4h_v2.py
       - name: Test probe error timing and Windows RAM snapshot
         run: python scripts/testnet_operational_probe.py --self-test
+      - name: Validate passive resource monitor and error reporting
+        run: python scripts/testnet_system_monitor.py
+      - name: Validate strict v2 4h/72h evidence and resource-trace gate
+        run: python scripts/validate_testnet_4h_v2.py --self-test
       - name: Keep strict two-host 4h/72h evidence validation
         run: python scripts/compare_testnet_evidence.py --self-test

@@ -4,7 +4,7 @@
 
 ## Essai d'endurance sur deux PC : palier réaliste de 4 heures
 
-Le protocole de validation pratique est dans le [guide deux PC / 4 heures](validation/MULTI_HOST_72H_RUNBOOK_2026-10-31.md). Il décrit le nœud sur chaque PC, le prélèvement des hauteurs et des hashes en lecture seule, les journaux de preuve et la comparaison finale. Le palier de quatre heures se lance avec `--hours 4` et se vérifie avec `--minimum-hours 4` ; il ne vaut **pas** 72 heures. Les essais précédents sur deux PC ne prouvent pas automatiquement une endurance de quatre heures. Le protocole et les scripts doivent être intégrés et testés avant utilisation.
+Le protocole de validation pratique est dans le [guide deux PC / 4 heures](validation/MULTI_HOST_72H_RUNBOOK_2026-10-31.md). Pour une **prochaine campagne v2**, voir [l'instrumentation CPU/RAM continue et la comparaison stricte des quatre fichiers](validation/MULTI_HOST_V2_PERFORMANCE_PLAYBOOK.md) ; cette v2 n'a pas encore été exécutée sur deux machines. Il décrit le nœud sur chaque PC, le prélèvement des hauteurs et des hashes en lecture seule, les journaux de preuve et la comparaison finale. Le palier de quatre heures se lance avec `--hours 4` et se vérifie avec `--minimum-hours 4` ; il ne vaut **pas** 72 heures. Les essais précédents sur deux PC ne prouvent pas automatiquement une endurance de quatre heures. Le protocole et les scripts doivent être intégrés et testés avant utilisation.
 
 ## Vérifier une installation
 
