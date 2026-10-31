@@ -3,7 +3,7 @@
 
 **État : questionnaire d'orientation, pas un vote déjà validé.** Référence de la situation : `main` au SHA `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f` (31 octobre 2026). La documentation d'accueil en [PR #125](https://github.com/antoineforterax-cmd/AURORA/pull/125) distingue les règles expérimentales déjà implémentées des choix futurs.
 
-> **Décisions effectivement exprimées le 31 octobre 2026 :** [relevé des 12 réponses du responsable](RESPONSES_2026-10-31.md). Ce document conserve les autres options encore ouvertes.
+> **Décisions et orientations exprimées le 31 octobre 2026 :** [registre évolutif des réponses du responsable, y compris le projet d'interface de minage](RESPONSES_2026-10-31.md). Ce document conserve les autres options encore ouvertes.
 
 ## Comment répondre
 
@@ -22,7 +22,7 @@ Comptes + nonce ; Rust ; transactions testnet ML-DSA-65 ; PoW SHA-256 ; cible st
 
 | ID | Question | A | B | C | Proposition | Priorité |
 | --- | --- | --- | --- | --- | --- | --- |
-| V01 | Qu'appelle-t-on une « v1 complète » ? | CLI/nœuds stables | + explorateur lecture seule | + wallet graphique et mobile | **B**, GUI plus tard | P0 |
+| V01 | Qu'appelle-t-on une « v1 complète » ? | CLI/nœuds stables | + explorateur lecture seule | + wallet graphique et mobile | **B**, GUI plus tard, y compris **interface de contrôle du minage** comme objectif différé | P0 |
 | V02 | Public visé en premier ? | Développeurs/testeurs | Grand public | Les deux simultanément | **A** | P0 |
 | V03 | Premier lancement public ? | Réseau local contrôlé | Testnet public supervisé | Mainnet | **A**, puis B sur critères | P0 |
 | V04 | Ordre des composants produit ? | Noyau → explorer → GUI | GUI avant explorer | Mobile d'abord | **A** | P0 |
