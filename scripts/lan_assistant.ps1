@@ -30,18 +30,25 @@ function Read-Beacon([string]$message, [string]$source, [string]$myHash) {
     return $source
 }
 function New-NodeArgs([string]$role, [string]$address = '') {
-    if ($role -eq 'A') {
-        return @('testnet','serve','--data-dir',(Join-Path $script:Root 'two-pc/assistant-a'),'--listen','0.0.0.0:19444')
+    if ($role -eq 'A' -and (Test-PrivateIPv4 $address)) {
+        return @('testnet','serve','--data-dir',(Join-Path $script:Root 'two-pc/assistant-a'),'--listen',"$($address):19444")
     }
     if ($role -eq 'B' -and (Test-PrivateIPv4 $address)) {
         return @('testnet','serve','--data-dir',(Join-Path $script:Root 'two-pc/assistant-b'),'--listen','127.0.0.1:19445','--peer',"$($address):19444")
     }
     throw 'Invalid role or private IPv4 peer'
 }
-function Test-PrivateProfile {
-    return (@(Get-NetConnectionProfile -ErrorAction Stop | Where-Object {
-        $_.NetworkCategory -eq 'Private' -and $_.IPv4Connectivity -ne 'Disconnected'
-    }).Count -gt 0)
+function Get-PrivateBindIp {
+    $active = @(Get-NetConnectionProfile -ErrorAction Stop | Where-Object { $_.IPv4Connectivity -ne 'Disconnected' })
+    if ($active.Count -eq 0 -or @($active | Where-Object { $_.NetworkCategory -ne 'Private' }).Count -gt 0) {
+        throw 'Un profil Windows Public actif est present, ou aucun reseau Prive actif. Connexion refusee.'
+    }
+    $ips = @(foreach ($profile in $active) {
+        Get-NetIPAddress -InterfaceIndex $profile.InterfaceIndex -AddressFamily IPv4 -ErrorAction Stop |
+            Where-Object { Test-PrivateIPv4 $_.IPAddress } | Select-Object -ExpandProperty IPAddress
+    } | Select-Object -Unique)
+    if ($ips.Count -ne 1) { throw 'Plusieurs reseaux IP prives actifs, ou aucun. Deconnecter VPN/adaptateurs supplementaires avant utilisation.' }
+    return [string]$ips[0]
 }
 function Test-Tcp([string]$ip) {
     if (-not (Test-PrivateIPv4 $ip)) { return $false }
@@ -80,7 +87,7 @@ if ($SelfTest) {
     if ($null -ne (Read-Beacon (New-Beacon $hash) '192.168.1.2' ('b' * 64))) { throw 'Hash mismatch accepted' }
     if ($null -ne (Read-Beacon (New-Beacon $hash) '8.8.8.8' $hash)) { throw 'Public peer accepted' }
     if ($null -ne (Read-Beacon 'bad' '192.168.1.2' $hash)) { throw 'Bad beacon accepted' }
-    if ((New-NodeArgs 'A')[-1] -cne '0.0.0.0:19444') { throw 'A arguments wrong' }
+    if ((New-NodeArgs 'A' '192.168.1.5')[-1] -cne '192.168.1.5:19444') { throw 'A arguments wrong' }
     if ((New-NodeArgs 'B' '192.168.1.2')[-1] -cne '192.168.1.2:19444') { throw 'B arguments wrong' }
     try { $null = New-NodeArgs 'B' '8.8.8.8'; throw 'Public peer accepted as B' }
     catch { if ($_.Exception.Message -eq 'Public peer accepted as B') { throw } }
@@ -140,9 +147,11 @@ $script:Listener = $null
 $script:Sender = $null
 $script:LastBroadcast = [DateTime]::MinValue
 $script:Warned = $false
+$script:BindIp = ''
 function Start-Node([string]$role,[string]$address='') {
     if ($null -ne $script:Proc -and -not $script:Proc.HasExited) { throw 'Un noeud fonctionne deja. Arretez-le avec Ctrl+C.' }
-    if (-not (Test-PrivateProfile)) { throw 'Profil reseau Prive requis. Ne pas utiliser sur un reseau Public.' }
+    $localIp = Get-PrivateBindIp
+    if ($role -eq 'A') { $address = $localIp; $script:BindIp = $localIp }
     $nodeArgs = @(New-NodeArgs $role $address)
     # Paths cannot contain a quote on Windows. Each CLI argument is quoted; no cmd /c interpolation.
     $quoted = @($nodeArgs | ForEach-Object { '"' + $_.Replace('"','') + '"' })
@@ -163,7 +172,7 @@ function Connect-B {
 $start.Add_Click({ try { Start-Node 'A' } catch { Alert $_.Exception.Message } })
 $join.Add_Click({
     try {
-        if (-not (Test-PrivateProfile)) { throw 'Un reseau Windows Prive est requis.' }
+        $null = Get-PrivateBindIp
         $script:Requested=$true
         $status.Text='Recherche de PC A sur le LAN...'
         if ($script:Discovered) { $ip.Text=$script:Discovered; Connect-B }
@@ -173,7 +182,9 @@ $manual.Add_Click({ try { Connect-B } catch { Alert $_.Exception.Message } })
 try {
     $script:Hash = Test-Package
     $status.Text='Paquet verifie. Selectionner PC A ou PC B.'
+    $bind = Get-PrivateBindIp
     $script:Sender=New-Object System.Net.Sockets.UdpClient
+    $script:Sender.Client.Bind([Net.IPEndPoint]::new([Net.IPAddress]::Parse($bind),0))
     $script:Sender.EnableBroadcast=$true
     $script:Listener=New-Object System.Net.Sockets.UdpClient
     $script:Listener.Client.ExclusiveAddressUse=$false
