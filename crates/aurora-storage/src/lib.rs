@@ -96,7 +96,9 @@ pub struct SnapshotPageCache {
 }
 
 struct CachedIndexPage {
-    block_ids: Box<[Hash256]>,
+    /// Full bytes previously written and checked by the ordinary v6 encoder.
+    /// Exact comparison avoids re-encoding and re-hashing an unchanged page.
+    page_bytes: Box<[u8]>,
     page_id: Hash256,
 }
 
@@ -193,11 +195,18 @@ fn save_snapshot_inner(
         let cached_id = if chunk.len() == INDEX_PAGE_BLOCKS {
             if let Some(cache) = cache.as_deref_mut() {
                 if let Some(saved) = cache.pages.get(page_number) {
-                    if saved.block_ids.as_ref() == chunk {
+                    if saved.page_bytes[24..24 + INDEX_PAGE_BLOCKS * 32]
+                        .chunks_exact(32)
+                        .zip(chunk.iter())
+                        .all(|(bytes, id)| bytes == id.as_bytes().as_slice())
+                    {
                         let page_path =
                             page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
                         match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
-                            Ok(bytes) if sha256_plain(&bytes) == saved.page_id => {
+                            // Byte-for-byte equality to the page previously
+                            // hashed and durably written is as strict as the
+                            // classic write_immutable existing-file check.
+                            Ok(bytes) if bytes.as_slice() == saved.page_bytes.as_ref() => {
                                 Some(saved.page_id)
                             }
                             Ok(_) => {
@@ -258,7 +267,7 @@ fn save_snapshot_inner(
                 if page_number < MAX_CACHED_FULL_INDEX_PAGES {
                     cache.pages.truncate(page_number);
                     cache.pages.push(CachedIndexPage {
-                        block_ids: chunk.to_vec().into_boxed_slice(),
+                        page_bytes: page.into_boxed_slice(),
                         page_id,
                     });
                 }
@@ -1111,13 +1120,13 @@ mod tests {
         assert_eq!(cache.pages.len(), 1);
 
         // A stale arrival prefix must force recomputation instead of reuse.
-        cache.pages[0].block_ids[0] = Hash256::ZERO;
+        cache.pages[0].page_bytes[24] ^= 1;
         let before = cache.reused_full_pages;
         save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         assert_eq!(cache.reused_full_pages, before);
         assert_eq!(
-            cache.pages[0].block_ids[0],
-            *original.blocks_with_ids_by_arrival().next().unwrap().0
+            &cache.pages[0].page_bytes[24..56],
+            original.blocks_with_ids_by_arrival().next().unwrap().0.as_bytes()
         );
 
         // Even after cache reuse, all old block paths must still be checked.
