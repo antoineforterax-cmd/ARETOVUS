@@ -17,14 +17,15 @@
 | Transfert de sauvegarde v6 entre deux runners, restauration, réorganisation | [#89](https://github.com/antoineforterax-cmd/AURORA/pull/89), `d2b7466db44859dd64ce573c6c3132ac9d9206bb` | [Workflow cross-runner réussi à la tête de PR](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41143881862) ; [CI intégrée réussie](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41196031467) | Runner CI n'est pas un PC de terrain |
 | Renforcement des assertions du profilage stockage | [#86](https://github.com/antoineforterax-cmd/AURORA/pull/86), `8457afb9ec958292cd87d671d28f5c5f9c7755da` | [CI intégrée réussie](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41196334623) | Preuve limitée au profilage synthétique de stockage |
 | Matrice de régression étendue : 100 003 blocs, trois partitions, P2P hostile, 72 cycles | [#85](https://github.com/antoineforterax-cmd/AURORA/pull/85), `01ae3aa91e5aaea1c8420235982341a631245bb3` | [5 jobs sur branche réussis](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41143191869) ; [CI intégrée réussie](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41196632186) | 72 cycles locaux (~16 minutes), **pas** 72 heures ; volume Regtest synthétique |
+| Persistance et restauration de 1 000 001 blocs connus (dont genèse) | [#87](https://github.com/antoineforterax-cmd/AURORA/pull/87), `2be0c0d131e8f4c53eec6388ebe513e82f878ae3` | [Essai d'un million de blocs réussi à la tête de PR](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41143906083) ; CI du commit intégré à confirmer | Exclu de la CI courante, Regtest synthétique, **pas** une synchronisation P2P à cette échelle |
 
 La fusion d'une PR ne vaut pas validation du nouveau commit combiné ; l'ensemble `main` doit être vérifié après chaque intégration.
 
-## Mesures sur branches de test, distinctes des fusions
+## Mesures de performance sur essais dédiés
 
-- [PR #87 — un million de blocs en persistance](https://github.com/antoineforterax-cmd/AURORA/pull/87) : [workflow réussi au SHA `b97a30a`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41143906083). Exactement **1 000 001 blocs connus** (genèse comprise), construction 70,0 s, sauvegarde 1 329,6 s, restauration 72,9 s ; 637 336 KiB de RSS maximale ; 1 849,86 s pour le test complet. Ce n'est **pas** la synchronisation P2P d'un million de blocs.
+- [PR #87 — un million de blocs en persistance](https://github.com/antoineforterax-cmd/AURORA/pull/87) : [workflow réussi au SHA de tête `b97a30a`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41143906083), fusionné sur `main` au SHA `2be0c0d`. Exactement **1 000 001 blocs connus** (genèse comprise), construction 70,0 s, sauvegarde 1 329,6 s, restauration 72,9 s ; 637 336 KiB de RSS maximale ; 1 849,86 s pour le test complet. Ce n'est **pas** la synchronisation P2P d'un million de blocs.
 
-La PR #87 reste une preuve **sur sa branche** : ses tests réussis ne prouvent pas encore l'intégration sur `main`. Les PR #85 et #86 ont, elles, été fusionnées et leurs CI intégrées ont réussi aux SHA indiqués dans le tableau ci-dessus.
+Les PR #85, #86 et #87 sont fusionnées ; les CI intégrées sont vérifiées pour #85 et #86, tandis que celle de #87 doit encore être confirmée. Le test million de blocs a été exécuté sur la **tête de #87** et n'est pas relancé par défaut sur `main`.
 
 ## Portes de sortie vers un testnet public durable
 
