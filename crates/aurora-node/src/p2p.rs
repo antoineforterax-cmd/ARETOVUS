@@ -3883,6 +3883,58 @@ mod handshake_admission_tests {
     }
 
     #[test]
+    fn saturated_admission_prefers_an_idle_session_and_protects_busy_requests() {
+        let now = Instant::now();
+        let old = now - IDLE_RECLAIM_MIN_AGE - Duration::from_millis(20);
+        let mut active = Vec::new();
+        let mut clients = Vec::new();
+        for id in 0..MAX_ACTIVE_SESSIONS {
+            let (pending, client, _) = pending();
+            clients.push(client);
+            active.push(ActivePeer {
+                id: id as u64,
+                stream: pending.stream,
+                _lease: pending.lease,
+                hello: vec![WALLET_HELLO],
+                hello_done: true,
+                in_flight: false,
+                input: Vec::new(),
+                request: None,
+                output: Vec::new(),
+                written: 0,
+                started: old,
+                phase_started: old,
+                last_progress: now,
+                requests: 0,
+                bytes: 0,
+            });
+        }
+        // A pending valid request and a partially written response must
+        // never be evicted just to accept another connection.
+        active[0].in_flight = true;
+        active[0].last_progress = old;
+        active[1].output = vec![1, 2, 3];
+        active[1].last_progress = old;
+        // An incomplete but recently trickled very slowly request should
+        // be chosen under saturation even if it sent bytes just now.
+        active[2].input = vec![0, 0, 2, 0, GET_PEERS];
+        active[2].last_progress = now - Duration::from_millis(1);
+        assert_eq!(active.len(), MAX_ACTIVE_SESSIONS);
+        assert_eq!(oldest_reclaimable_session(&active, now), Some(2));
+        active.swap_remove(2);
+        assert_eq!(active.len(), MAX_ACTIVE_SESSIONS - 1);
+        assert!(active.iter().any(|peer| peer.id == 0 && peer.in_flight));
+        assert!(active
+            .iter()
+            .any(|peer| peer.id == 1 && !peer.output.is_empty()));
+        assert!(active.iter().all(|peer| peer.id != 2));
+        // No more session is eligible when the remaining peers are recent,
+        // busy, or have an in-progress response.
+        assert_eq!(oldest_reclaimable_session(&active, now), None);
+        drop(clients);
+    }
+
+    #[test]
     fn fragmented_preface_does_not_consume_the_next_frame() {
         let (mut peer, mut client, counts) = pending();
         client.write_all(&[0, 0]).unwrap();
