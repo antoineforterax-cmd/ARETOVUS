@@ -1,4 +1,4 @@
-//! Consensus rules and experimental testnet implementation for AURORA.
+//! Consensus rules and experimental testnet implementation for ARETOVUS.
 //!
 //! This crate contains the account-chain consensus, cumulative-work fork selection,
 //! bounded proof-of-work retargeting, reward accounting, and header verification

@@ -1,4 +1,4 @@
-//! Chaîne linéaire en mémoire pour les tests locaux AURORA.
+//! Chaîne linéaire en mémoire pour les tests locaux ARETOVUS.
 //!
 //! Limites explicites : difficulté constante fournie à la construction, aucun ajustement,
 //! aucune horodatation validée, aucune validation d'état/solde, aucune branche concurrente,

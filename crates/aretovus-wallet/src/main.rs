@@ -1,4 +1,4 @@
-//! AURORA v3 testnet command-line wallet.
+//! ARETOVUS v3 testnet command-line wallet.
 use std::{
     error::Error,
     io::{self, Write},

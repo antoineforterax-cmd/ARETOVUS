@@ -1,4 +1,4 @@
-//! Public NIST ACVP examples for the exact ML-DSA-65 dependency used by AURORA.
+//! Public NIST ACVP examples for the exact ML-DSA-65 dependency used by ARETOVUS.
 //! This is a regression suite, not an ACVTS validation or FIPS certificate.
 
 use ml_dsa::{
@@ -133,7 +133,7 @@ fn nist_acvp_ml_dsa_65_deterministic_signatures_match_byte_for_byte() {
         let public_key = verifying_key(&case);
         assert!(public_key.verify_with_context(&message, &context, &signature));
         if context.is_empty() {
-            // Same empty-context Signer/Verifier entry points as AURORA v3.
+            // Same empty-context Signer/Verifier entry points as ARETOVUS v3.
             assert_eq!(key.sign(&message).encode(), signature.encode());
             assert!(public_key.verify(&message, &signature).is_ok());
         }

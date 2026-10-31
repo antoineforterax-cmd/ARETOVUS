@@ -1,4 +1,4 @@
-//! Bounded TCP wallet requests to an AURORA testnet node.
+//! Bounded TCP wallet requests to an ARETOVUS testnet node.
 use std::{
     error::Error,
     io::{self, Read, Write},
@@ -192,7 +192,7 @@ pub(super) fn connect(node: SocketAddr) -> Result<TcpStream, Box<dyn Error>> {
     write_frame(&mut stream, &[WALLET_HELLO])?;
     let hello = read_frame(&mut stream)?;
     if hello.len() != 74 || hello[0] != WALLET_HELLO_REPLY || hello[1] != 2 {
-        return Err("node rejected wallet RPC or is not the AURORA testnet".into());
+        return Err("node rejected wallet RPC or is not the ARETOVUS testnet".into());
     }
     if &hello[2..34] != testnet_protocol_fingerprint().as_bytes() {
         return Err("node uses different testnet consensus or peer protocol rules".into());

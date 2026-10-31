@@ -1,11 +1,11 @@
-//! Outil de preuve de travail pour les expériences locales AURORA.
+//! Outil de preuve de travail pour les expériences locales ARETOVUS.
 //!
 //! ATTENTION : ce module n'est PAS encore le consensus de la blockchain. La difficulté est
 //! fournie par l'appelant, n'est pas encodée dans l'en-tête et n'est pas ajustée par une chaîne.
 //! Il ne doit pas être utilisé pour un réseau public ni pour sécuriser des fonds.
 //!
 //! Le mécanisme actuel compte les bits à zéro en tête du hash SHA-256 de l'en-tête. C'est une
-//! méthode simple pour tester le cycle nonce/hash, pas une décision définitive sur le PoW AURORA.
+//! méthode simple pour tester le cycle nonce/hash, pas une décision définitive sur le PoW ARETOVUS.
 
 use crate::experimental::BlockHeader;
 use aretovus_core::codec::EncodeError;

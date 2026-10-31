@@ -92,7 +92,7 @@ impl WalletKey {
         } else if &magic == KEY_MAGIC {
             Ok(false)
         } else {
-            Err("unknown AURORA key format".into())
+            Err("unknown ARETOVUS key format".into())
         }
     }
 
@@ -488,7 +488,7 @@ mod tests {
     #[test]
     fn recovery_survives_original_file_and_password_loss_and_signs() {
         let base = std::env::temp_dir().join(format!(
-            "aurora-recovery-{}-{}",
+            "aretovus-recovery-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn recovery_file_rejects_corruption_oversize_and_foreign_identity() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-recovery-bad-{}-{}",
+            "aretovus-recovery-bad-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));

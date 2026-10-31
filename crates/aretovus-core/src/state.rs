@@ -1,4 +1,4 @@
-//! Registre de comptes déterministe pour le prototype AURORA.
+//! Registre de comptes déterministe pour le prototype ARETOVUS.
 //!
 //! Testnet exige ML-DSA-65 natif (profil v3); Regtest conserve les profils historiques.
 //! Les transferts passent la vérification de signature du profil versionné.

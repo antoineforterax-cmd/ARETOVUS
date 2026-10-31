@@ -1,4 +1,4 @@
-//! Commandes du nœud local AURORA : regtest et testnet expérimental.
+//! Commandes du nœud local ARETOVUS : regtest et testnet expérimental.
 use std::{
     collections::{HashSet, VecDeque},
     error::Error,
