@@ -566,6 +566,15 @@ def main() -> int:
             )
             if rejected_inspect.returncode == 0 or "verified_signed_transaction=true" in rejected_inspect.stdout:
                 raise AssertionError("inspector accepted a corrupted signature")
+            invalid_intent = subprocess.run(
+                [str(wallet), "verify-signed-intent", *[
+                    (str(damaged) if argument == str(signed_file) else argument)
+                    for argument in expected_intent_args
+                ]],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if invalid_intent.returncode == 0 or "verified_signed_intent=true" in invalid_intent.stdout:
+                raise AssertionError("intent verifier accepted a damaged signed file")
             rejected_broadcast = subprocess.run(
                 [str(wallet), "broadcast", "--from", str(damaged),
                  "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
@@ -596,6 +605,9 @@ def main() -> int:
                 )
                 if offline_review != inspected:
                     raise AssertionError("inspection output depended on the availability of the private key")
+                offline_intent = run_wallet(wallet, "verify-signed-intent", *expected_intent_args)
+                if offline_intent != approved_intent:
+                    raise AssertionError("signed-intent verification depended on the private key file")
                 public_without_key = run_wallet(
                     wallet, "account", "--address", miner,
                     "--node", f"{addr_b[0]}:{addr_b[1]}",
