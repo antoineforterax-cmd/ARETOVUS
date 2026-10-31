@@ -73,9 +73,9 @@ def crash_recovery_test(binary: Path, data_dir: Path, miner: str) -> int:
             # snapshot we intended to protect from accidental loss.
             snapshots = [
                 (int(match.group(1)), match.group(2))
-                for snapshot in data_dir.glob("snapshot-*.auridx")
+                for snapshot in data_dir.glob("snapshot-*.aretidx")
                 if (match := re.fullmatch(
-                    r"snapshot-(\d{20})-([0-9a-f]{64})-[0-9a-f]{64}\.auridx",
+                    r"snapshot-(\d{20})-([0-9a-f]{64})-[0-9a-f]{64}\.aretidx",
                     snapshot.name,
                 ))
             ]
@@ -173,7 +173,7 @@ def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
     # fail verification or fall back to a different, older valid state.
     damaged = data_dir.with_name(f"{data_dir.name}-corrupt-block-copy")
     shutil.copytree(data_dir, damaged)
-    blocks = sorted((damaged / "blocks-v5").glob("*.aurblk"))
+    blocks = sorted((damaged / "blocks-v5").glob("*.aretblk"))
     if not blocks:
         raise AssertionError("offline test snapshot unexpectedly has no v5 blocks")
     first_block = blocks[0]
@@ -239,7 +239,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="aretovus-p2p-smoke-") as temporary:
         base = Path(temporary)
         node_a, node_b = base / "node-a", base / "node-b"
-        keyfile = base / "miner.aurkey"
+        keyfile = base / "miner.aretkey"
         key_output = run_wallet(wallet, "keygen", "--out", str(keyfile), "--plain-testnet")
         miner_match = re.search(r"address=([0-9a-f]{64})", key_output)
         if miner_match is None:
@@ -322,7 +322,7 @@ def main() -> int:
                 raise AssertionError("recovery secret leaked to command output")
             run_wallet(wallet, "recovery-verify", "--from", str(recovery_file),
                        "--expected-account", miner)
-            bad_restore = base / "wrong-account.aurkey"
+            bad_restore = base / "wrong-account.aretkey"
             refused_restore = subprocess.run(
                 [str(wallet), "recovery-restore", "--from", str(recovery_file),
                  "--out", str(bad_restore), "--expected-account", RECIPIENT,
@@ -424,7 +424,7 @@ def main() -> int:
                     "max_amount=1.00000000", "max_amount=0.50000000"
                 ))
                 output, errors = reviewing.communicate(
-                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {review_nonce}\n",
+                    input=f"SEND ARETOVUS-TESTNET {RECIPIENT} 1.00000000 0.00000003 {review_nonce}\n",
                     timeout=20,
                 )
                 if reviewing.returncode == 0 or "wallet limits changed during review" not in errors:
@@ -481,7 +481,7 @@ def main() -> int:
             authorized = subprocess.run(
                 [str(wallet), "sign-offline", *signing_args],
                 cwd=ROOT, text=True,
-                input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
+                input=f"SEND ARETOVUS-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                 capture_output=True, timeout=20,
             )
             prepared = authorized.stdout + authorized.stderr
@@ -495,7 +495,7 @@ def main() -> int:
             )
             for expected in [
                 "verified_signed_transaction=true",
-                "network=AURORA-TESTNET version=3",
+                "network=ARETOVUS-TESTNET version=3",
                 f"txid={prepared_match.group(1)}",
                 f"recipient={RECIPIENT}",
                 "amount=1.00000000 fee=0.00000003",
@@ -636,7 +636,7 @@ def main() -> int:
             if cancelled.returncode == 0 or "broadcast cancelled" not in cancelled.stderr:
                 raise AssertionError("broadcast did not require explicit authorization")
 
-            unavailable_key = base / "offline-key-unavailable.aurkey"
+            unavailable_key = base / "offline-key-unavailable.aretkey"
             keyfile.rename(unavailable_key)
             try:
                 offline_review = run_wallet(
@@ -658,7 +658,7 @@ def main() -> int:
                      "--node", f"{addr_b[0]}:{addr_b[1]}",
                      "--expected-txid", prepared_match.group(1)],
                     cwd=ROOT, text=True,
-                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
+                    input=f"SEND ARETOVUS-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                     capture_output=True, timeout=20,
                 )
                 sent = broadcast.stdout + broadcast.stderr
