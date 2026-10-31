@@ -1,5 +1,10 @@
 # ARETOVUS, de A à Z
 
+<p align="center">
+  <img src="../../assets/aretovus-logo.svg" alt="Emblème officiel ARETOVUS" width="240">
+</p>
+
+
 Ce guide explique le projet et permet de faire un premier essai sans compiler le code. Sa version de référence est **`testnet-v0.0.1-experimental.1`**, issue du commit **`421d443370e83a9ffa0c128da9f09d6f99b0ef8f`**, publiée le 27 octobre 2026. Le développement peut avancer après cette version : les paramètres d’un essai doivent rester rattachés au binaire utilisé.
 
 ARETOVUS est une blockchain expérimentale. Ses unités de test servent à éprouver le logiciel; elles ne doivent pas être traitées comme des fonds réels. Le projet n’a reçu aucun audit humain indépendant.
