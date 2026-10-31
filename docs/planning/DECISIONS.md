@@ -8,7 +8,7 @@
 | D-02 | Modèle comptes + nonce | Testnet v3 | Implémenté expérimentalement |
 | D-03 | Signatures ML-DSA-65 | Testnet v3 ; SHA-256 reste utilisé | Implémenté expérimentalement |
 | D-04 | PoW SHA-256, 60 s, retarget borné | Testnet | Implémenté expérimentalement |
-| D-05 | 500 M AUR, 8 décimales, genèse vide | Testnet | Implémenté expérimentalement ; mainnet non arrêté |
+| D-05 | 500 M ARETOVUS, 8 décimales, genèse vide | Testnet | Implémenté expérimentalement ; mainnet non arrêté |
 | D-06 | Émission proportionnelle décroissante | Formule `min(reliquat,max(1,floor(reliquat/1_000_000)))` en unités minimales | Implémenté expérimentalement |
 | D-07 | 5 % trésorerie / 95 % mineur | Compte testnet fixe sans politique de dépense | Implémenté expérimentalement |
 | D-08 | Frais 50 % mineur / 50 % brûlés | Burn sans réouverture du plafond | Implémenté expérimentalement |
