@@ -14,13 +14,13 @@ une fin d'entrée annule avant signature. Un montant nul et un paiement vers
 le compte source sont refusés par ce parcours de paiement.
 
 ```sh
-aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --dry-run
-aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --max-amount 1 --max-fee 0.00000003
+aretovus-wallet send --key-file wallet.aretkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --dry-run
+aretovus-wallet send --key-file wallet.aretkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --max-amount 1 --max-fee 0.00000003
 ```
 
 Remplacer l'adresse et le port par ceux du testnet utilisé. L'aperçu
 `--dry-run` consulte le compte mais ne signe et ne soumet aucune transaction.
-Les plafonds sont inclusifs, exprimés en AUR et vérifiés avec l'arithmétique
+Les plafonds sont inclusifs, exprimés en ARETOVUS et vérifiés avec l'arithmétique
 entière du protocole. Les options de ligne de commande s'appliquent à cet
 appel. Une [politique persistante](PERSISTENT_WALLET_LIMITS.md), chargée
 automatiquement pour ce fichier wallet, peut imposer des limites plus basses.
@@ -36,9 +36,9 @@ et la seconde lecture du compte. Il ne peut pas être combiné à `--dry-run`.
 ## Vérifier une sauvegarde avant d'en avoir besoin
 
 ```sh
-aretovus-wallet backup --key-file wallet.aurkey --out backup.aurkey
-aretovus-wallet verify-backup --from backup.aurkey --expected-account ADRESSE_HEX
-aretovus-wallet restore --from backup.aurkey --out restored.aurkey
+aretovus-wallet backup --key-file wallet.aretkey --out backup.aretkey
+aretovus-wallet verify-backup --from backup.aretkey --expected-account ADRESSE_HEX
+aretovus-wallet restore --from backup.aretkey --out restored.aretkey
 ```
 
 Le mot de passe est demandé dans le terminal, jamais comme argument.
