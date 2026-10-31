@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the *packaged* AURORA Windows node across two loopback processes.
+"""Verify the *packaged* ARETOVUS Windows node across two loopback processes.
 
 This is not a two-computer test: both nodes share one Windows CI runner.
 No wallet secrets, real funds, network configuration, or external hosts.
@@ -194,10 +194,10 @@ def main() -> None:
     parser.add_argument("--package-root", type=Path, required=True)
     args = parser.parse_args()
     package = args.package_root.resolve()
-    node = package / "bin" / "aurora-node.exe"
+    node = package / "bin" / "aretovus-node.exe"
     if not node.is_file():
         raise FileNotFoundError(node)
-    wallet = package / "bin" / "aurora-wallet.exe"
+    wallet = package / "bin" / "aretovus-wallet.exe"
     if not wallet.is_file():
         raise FileNotFoundError(wallet)
     with tempfile.TemporaryDirectory(prefix="aurora-packaged-two-nodes-") as temp:

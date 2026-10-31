@@ -42,12 +42,12 @@ def main() -> int:
     if not 1 <= args.rounds <= 200 or not 0 <= args.interval_seconds <= 60:
         parser.error("rounds must be 1..200 and interval-seconds 0..60")
 
-    subprocess.run([CARGO, "build", "--locked", "-p", "aurora-node"], cwd=ROOT, check=True)
-    binary = ROOT / "target" / "debug" / "aurora-node"
+    subprocess.run([CARGO, "build", "--locked", "-p", "aretovus-node"], cwd=ROOT, check=True)
+    binary = ROOT / "target" / "debug" / "aretovus-node"
     if not binary.is_file():
         binary = binary.with_suffix(".exe")
     if not binary.is_file():
-        raise FileNotFoundError("aurora-node build output is missing")
+        raise FileNotFoundError("aretovus-node build output is missing")
 
     base = Path(tempfile.mkdtemp(prefix="aurora-soak-", dir=ROOT / "target"))
     dirs = {name: base / name for name in ("a", "b", "c", "miner")}

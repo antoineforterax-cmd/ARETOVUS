@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a two-process AURORA testnet propagation and convergence smoke test."""
+"""Run a two-process ARETOVUS testnet propagation and convergence smoke test."""
 from __future__ import annotations
 
 import os
@@ -228,11 +228,11 @@ def write_limit_recovery_test(binary: Path, data_dir: Path, miner: str) -> int |
 
 
 def main() -> int:
-    subprocess.run([CARGO, "build", "--locked", "-p", "aurora-node"], cwd=ROOT, check=True)
-    subprocess.run([CARGO, "build", "--locked", "-p", "aurora-wallet"], cwd=ROOT, check=True)
+    subprocess.run([CARGO, "build", "--locked", "-p", "aretovus-node"], cwd=ROOT, check=True)
+    subprocess.run([CARGO, "build", "--locked", "-p", "aretovus-wallet"], cwd=ROOT, check=True)
     suffix = ".exe" if os.name == "nt" else ""
-    binary = ROOT / "target" / "debug" / f"aurora-node{suffix}"
-    wallet = ROOT / "target" / "debug" / f"aurora-wallet{suffix}"
+    binary = ROOT / "target" / "debug" / f"aretovus-node{suffix}"
+    wallet = ROOT / "target" / "debug" / f"aretovus-wallet{suffix}"
     if not binary.is_file() or not wallet.is_file():
         raise FileNotFoundError("built node or wallet executable is missing")
 
