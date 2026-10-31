@@ -204,6 +204,18 @@ fn save_snapshot_inner(
                     if same_prefix {
                         let page_path =
                             page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
+                        // A cached object must remain a regular file; do not
+                        // accept a symlink to identical bytes as immutable storage.
+                        match fs::symlink_metadata(&page_path) {
+                            Ok(metadata) if !metadata.file_type().is_file() => {
+                                return Err(StorageError::InvalidFormat(
+                                    "cached index page is not a regular file",
+                                ));
+                            }
+                            Ok(_) => {}
+                            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                            Err(error) => return Err(StorageError::Io(error)),
+                        }
                         match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
                             // Byte-for-byte equality to the page previously
                             // hashed and durably written is as strict as the
@@ -1121,6 +1133,32 @@ mod tests {
         save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         assert_eq!(cache.pages.len(), 1);
 
+        // Cached index pages must not silently follow an external symlink,
+        // even when its target contains exactly the expected bytes.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let valid_target = path.join("saved-index-page");
+            fs::rename(&page_path, &valid_target).unwrap();
+            symlink(&valid_target, &page_path).unwrap();
+            let before =
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert!(matches!(
+                save_snapshot_with_page_cache(&path, &original, &mut cache),
+                Err(StorageError::InvalidFormat(
+                    "cached index page is not a regular file"
+                ))
+            ));
+            assert!(cache.pages.is_empty());
+            fs::remove_file(&page_path).unwrap();
+            fs::rename(&valid_target, &page_path).unwrap();
+            let after =
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert_eq!(before.tip_hash(), after.tip_hash());
+            assert_eq!(before.state(), after.state());
+            save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        }
+
         // A stale arrival prefix must force recomputation instead of reuse.
         cache.pages[0].page_bytes[24] ^= 1;
         let before = cache.reused_full_pages;
@@ -1152,6 +1190,81 @@ mod tests {
         fs::remove_dir(&block_path).unwrap();
         fs::rename(&external, &block_path).unwrap();
         save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn cached_page_io_failure_after_reuse_preserves_previous_manifest() {
+        let path = dir();
+        let mut committed = chain();
+        for timestamp in 2..=4096 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                committed.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            committed.submit(block).unwrap();
+        }
+        let mut cache = SnapshotPageCache::default();
+        let previous_manifest =
+            save_snapshot_with_page_cache(&path, &committed, &mut cache).unwrap();
+        assert_eq!(cache.pages.len(), 1);
+        let before = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+
+        // The existing complete page must be reused before the appended
+        // one-block partial page is persisted.
+        let mut candidate = committed.clone();
+        let appended = AccountBlock::build(
+            NetworkId::Regtest,
+            candidate.tip_hash(),
+            4097,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        candidate.submit(appended).unwrap();
+        let mut page = Vec::new();
+        page.extend_from_slice(INDEX_PAGE_MAGIC);
+        page.extend_from_slice(&INDEX_PAGE_VERSION.to_be_bytes());
+        page.extend_from_slice(&(INDEX_PAGE_BLOCKS as u64).to_be_bytes());
+        page.extend_from_slice(&1u32.to_be_bytes());
+        for (block_id, _) in candidate
+            .blocks_with_ids_by_arrival()
+            .skip(INDEX_PAGE_BLOCKS)
+        {
+            page.extend_from_slice(block_id.as_bytes());
+        }
+        let checksum = sha256_plain(&page);
+        page.extend_from_slice(checksum.as_bytes());
+        let partial_page_id = sha256_plain(&page);
+        let partial_page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{partial_page_id}.{INDEX_PAGE_EXTENSION}"));
+
+        // Deterministic I/O failure at the new page path: this simulates an
+        // interrupted save, not a physical power-loss durability test.
+        fs::create_dir(&partial_page_path).unwrap();
+        let reuse_before = cache.reused_full_pages;
+        assert!(save_snapshot_with_page_cache(&path, &candidate, &mut cache).is_err());
+        assert_eq!(cache.reused_full_pages, reuse_before + 1);
+        assert!(cache.pages.is_empty());
+        assert!(previous_manifest.is_file());
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.tip_hash(), before.tip_hash());
+        assert_eq!(recovered.known_block_count(), before.known_block_count());
+        assert_eq!(recovered.state(), before.state());
+
+        fs::remove_dir(&partial_page_path).unwrap();
+        save_snapshot_with_page_cache(&path, &candidate, &mut cache).unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(recovered.tip_hash(), candidate.tip_hash());
+        assert_eq!(recovered.known_block_count(), candidate.known_block_count());
+        assert_eq!(recovered.state(), candidate.state());
         fs::remove_dir_all(path).unwrap();
     }
 
