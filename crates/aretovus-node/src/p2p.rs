@@ -1495,7 +1495,7 @@ pub fn serve(
         let sync_data_dir = Arc::clone(&data_dir);
         let sync_peers = Arc::clone(&advertised_peers);
         thread::Builder::new()
-            .name("aurora-peer-sync".to_string())
+            .name("aretovus-peer-sync".to_string())
             .spawn(move || loop {
                 for peer in sync_peers.iter().copied() {
                     if let Err(error) =
@@ -1521,7 +1521,7 @@ pub fn serve(
         let ready_rx = Arc::clone(&ready_rx);
         let responses = response_tx.clone();
         thread::Builder::new()
-            .name(format!("aurora-peer-{worker_id}"))
+            .name(format!("aretovus-peer-{worker_id}"))
             .spawn(move || loop {
                 let task = {
                     let receiver = match ready_rx.lock() {
@@ -2086,7 +2086,7 @@ mod tests {
         assert!(check_block_timestamp_at(child_time, CAUGHT_UP).is_ok());
 
         let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-clock-skew-retarget-{}",
+            "aretovus-p2p-clock-skew-retarget-{}",
             std::process::id()
         ));
         let _ = fs::remove_dir_all(&dir);
@@ -2337,7 +2337,7 @@ mod tests {
     #[test]
     fn repeated_block_in_one_sync_page_is_rejected_before_persistence() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-repeated-page-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-repeated-page-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let mut remote = chain();
         let first =
@@ -2607,7 +2607,7 @@ mod tests {
     #[test]
     fn background_sync_merges_remote_blocks_without_dropping_local_branch() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-background-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-background-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mut remote = chain();
@@ -2663,7 +2663,7 @@ mod tests {
         assert!((256..=100_001).contains(&count));
         let started = Instant::now();
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-volume-{}-{count}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-volume-{}-{count}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -2768,7 +2768,7 @@ mod tests {
 
     #[test]
     fn peer_sync_transfers_and_persists_validated_blocks() {
-        let dir = std::env::temp_dir().join(format!("aurora-p2p-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("aretovus-p2p-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mut server_chain = chain();
@@ -2802,7 +2802,7 @@ mod tests {
     #[test]
     fn concurrent_peer_sessions_share_chain_without_serializing_network_io() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-concurrent-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-concurrent-{}", std::process::id()));
         let dir_a = dir.join("a");
         let dir_b = dir.join("b");
         fs::create_dir_all(&dir_a).unwrap();
@@ -2863,7 +2863,7 @@ mod tests {
 
     #[test]
     fn pushed_block_is_validated_and_persisted_by_peer() {
-        let dir = std::env::temp_dir().join(format!("aurora-p2p-push-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("aretovus-p2p-push-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
@@ -2901,7 +2901,7 @@ mod tests {
 
     #[test]
     fn invalid_reward_block_from_peer_is_rejected_without_persistence() {
-        let dir = std::env::temp_dir().join(format!("aurora-p2p-invalid-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("aretovus-p2p-invalid-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
@@ -3133,7 +3133,7 @@ mod tests {
         // consensus-valid future block. An injected local clock is the only
         // simulated component; no OS clock or consensus rule is modified.
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-clock-catchup-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-clock-catchup-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3212,7 +3212,7 @@ mod tests {
     #[test]
     fn future_block_in_sync_page_is_rejected_before_persistence() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-future-page-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-future-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
@@ -3259,7 +3259,7 @@ mod tests {
     #[test]
     fn invalid_second_block_does_not_partially_apply_a_sync_page() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-atomic-page-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-atomic-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let server_chain = chain();
@@ -3308,7 +3308,7 @@ mod tests {
     #[test]
     fn disconnected_peer_does_not_publish_a_partial_sync_page() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-truncated-page-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-truncated-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mut server_chain = chain();
@@ -3348,7 +3348,7 @@ mod tests {
     #[test]
     fn invalid_later_page_preserves_last_committed_page_on_disk() {
         let dir =
-            std::env::temp_dir().join(format!("aurora-p2p-later-bad-page-{}", std::process::id()));
+            std::env::temp_dir().join(format!("aretovus-p2p-later-bad-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3440,7 +3440,7 @@ mod tests {
     #[test]
     fn failed_snapshot_does_not_publish_a_synced_page() {
         let path = std::env::temp_dir().join(format!(
-            "aurora-p2p-snapshot-failure-{}",
+            "aretovus-p2p-snapshot-failure-{}",
             std::process::id()
         ));
         let _ = fs::remove_file(&path);
@@ -3500,7 +3500,7 @@ mod tests {
 
     #[test]
     fn oversized_untrusted_frame_is_rejected_before_session_processing() {
-        let dir = std::env::temp_dir().join(format!("aurora-p2p-oversized-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("aretovus-p2p-oversized-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
@@ -3617,7 +3617,7 @@ mod orphan_reinsertion_tests {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         std::env::temp_dir().join(format!(
-            "aurora-orphans-{label}-{}-{id}",
+            "aretovus-orphans-{label}-{}-{id}",
             std::process::id()
         ))
     }

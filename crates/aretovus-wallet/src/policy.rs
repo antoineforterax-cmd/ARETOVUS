@@ -102,7 +102,7 @@ mod tests {
 
     fn path() -> PathBuf {
         std::env::temp_dir().join(format!(
-            "aurora-limits-{}-{}",
+            "aretovus-limits-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ))
