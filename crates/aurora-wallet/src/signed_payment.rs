@@ -1,7 +1,7 @@
 //! Bounded transfer of a signed v3 testnet transaction between offline and online machines.
 use std::{
     error::Error,
-    fs::{self, OpenOptions},
+    fs::OpenOptions,
     io::{Read, Write},
     path::Path,
 };
@@ -72,6 +72,7 @@ mod tests {
     use crate::{build_signed_transaction, WalletKey};
     use aurora_core::{accounts::AccountId, amount::Amount};
     use std::{
+        fs,
         path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
     };
