@@ -38,7 +38,7 @@ jobs:
             log="p2p-storage-io/${blocks}.log"
             echo "Running TCP with $blocks blocks after genesis on SHA $GITHUB_SHA"
             /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture > "$log" 2>&1
-            grep -Eq 'test result: ok\\. 1 passed; 0 failed; 0 ignored;' "$log"
+            grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -Eq "network volume probe: network=regtest blocks=$((blocks + 2)) height=${blocks}([[:space:]]|$)" "$log"
             grep -q 'p2p sync phases:' "$log"
             grep -q 'storage phases:' "$log"
@@ -69,14 +69,14 @@ jobs:
               )}
               assert stats["existing_block_metadata_checks"] > blocks
               assert stats["cache_page_hits"] > 0
-              sync = re.findall(r"p2p sync phases: [^\\n]+", data)
+              sync = re.findall(r"p2p sync phases: [^\n]+", data)
               assert sync
               print(f"{blocks} TCP blocks, snapshots={len(lines)}")
               for key, value in stats.items():
                   print(f"  {key}={value:.3f}")
               print(sync[-1])
               print("Command RSS (Cargo + subprocesses, not isolated node RSS):")
-              print(re.search(r"Maximum resident set size \\(kbytes\\):\\s*[0-9]+", data).group(0))
+              print(re.search(r"Maximum resident set size \(kbytes\):\s*[0-9]+", data).group(0))
           print("Loopback Regtest only; profiling instrumentation is a debug/test dependency, not an audit.")
           PY
           cat p2p-storage-io/summary.txt >> "$GITHUB_STEP_SUMMARY"
