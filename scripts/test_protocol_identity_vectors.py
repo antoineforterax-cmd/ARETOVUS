@@ -11,10 +11,10 @@ def tagged(name: bytes, data: bytes) -> bytes:
 
 def compute(nonce: int) -> bytes:
     root = tagged(b"ARETOVUS/exp/v1/merkle-empty", b"")
-    commitment = tagged(b"ARETOVUS/exp/v0/account-tx-list", root + b"\\x00")
+    commitment = tagged(b"ARETOVUS/exp/v0/account-tx-list", root + b"\x00")
     header = (
         struct.pack(">I", 1)
-        + b"\\x02"
+        + b"\x02"
         + bytes(32)
         + commitment
         + root
