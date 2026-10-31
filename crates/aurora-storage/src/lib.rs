@@ -5,9 +5,9 @@
 //! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
     collections::HashSet,
-    fmt::Write as _,
     error::Error,
     fmt,
+    fmt::Write as _,
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
     path::{Path, PathBuf},
