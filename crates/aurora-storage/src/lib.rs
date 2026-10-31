@@ -91,6 +91,8 @@ impl From<AccountForkChainError> for StorageError {
 #[derive(Default)]
 pub struct SnapshotPageCache {
     pages: Vec<CachedIndexPage>,
+    #[cfg(test)]
+    reused_full_pages: usize,
 }
 
 struct CachedIndexPage {
@@ -222,6 +224,10 @@ fn save_snapshot_inner(
             None
         };
         if let Some(page_id) = cached_id {
+            #[cfg(test)]
+            if let Some(cache) = cache.as_deref_mut() {
+                cache.reused_full_pages += 1;
+            }
             body.extend_from_slice(page_id.as_bytes());
             continue;
         }
@@ -1047,6 +1053,87 @@ mod tests {
         assert_eq!(restored.height(), original.height());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn cached_complete_v6_page_revalidates_disk_and_exact_arrival_prefix() {
+        let path = dir();
+        let mut original = chain();
+        // Exactly one complete page, including genesis.
+        for timestamp in 2..=4096 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            original.submit(block).unwrap();
+        }
+        let mut cache = SnapshotPageCache::default();
+        let first_manifest = save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.pages.len(), 1);
+        assert_eq!(cache.reused_full_pages, 0);
+        let first_page_id = cache.pages[0].page_id;
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{first_page_id}.{INDEX_PAGE_EXTENSION}"));
+        let original_page = fs::read(&page_path).unwrap();
+
+        // An appended block makes a partial second page; the complete prefix
+        // is reused, but the new manifest must still commit the new block.
+        let next = AccountBlock::build(
+            NetworkId::Regtest,
+            original.tip_hash(),
+            4097,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        original.submit(next).unwrap();
+        let next_manifest = save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_ne!(next_manifest, first_manifest);
+        assert_eq!(cache.reused_full_pages, 1);
+        assert_eq!(cache.pages.len(), 1);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.state(), original.state());
+
+        // The cache is NOT permission to trust a previously persisted file.
+        // A modified page must abort before publishing another manifest.
+        fs::write(&page_path, b"damaged cached page").unwrap();
+        assert!(save_snapshot_with_page_cache(&path, &original, &mut cache).is_err());
+        assert!(cache.pages.is_empty());
+        fs::write(&page_path, &original_page).unwrap();
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.pages.len(), 1);
+
+        // A stale arrival prefix must force recomputation instead of reuse.
+        cache.pages[0].block_ids[0] = Hash256::ZERO;
+        let before = cache.reused_full_pages;
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.reused_full_pages, before);
+        assert_eq!(cache.pages[0].block_ids[0], *original.blocks_with_ids_by_arrival().next().unwrap().0);
+
+        // Even after cache reuse, all old block paths must still be checked.
+        let genesis_id = *original.blocks_with_ids_by_arrival().next().unwrap().0;
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{genesis_id}.{BLOCK_EXTENSION}"));
+        let external = path.join("saved-genesis");
+        fs::rename(&block_path, &external).unwrap();
+        fs::create_dir(&block_path).unwrap();
+        assert!(matches!(
+            save_snapshot_with_page_cache(&path, &original, &mut cache),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+        assert!(cache.pages.is_empty());
+        fs::remove_dir(&block_path).unwrap();
+        fs::rename(&external, &block_path).unwrap();
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         fs::remove_dir_all(path).unwrap();
     }
 
