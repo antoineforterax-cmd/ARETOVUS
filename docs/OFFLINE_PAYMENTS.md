@@ -8,7 +8,7 @@ wallet (§7) et sans nouvelle règle de consensus.
 
 Sur la machine connectée, interroger uniquement l'adresse publique :
 ```sh
-aurora-wallet account --address COMPTE_SOURCE_HEX --node 127.0.0.1:7000
+aretovus-wallet account --address COMPTE_SOURCE_HEX --node 127.0.0.1:7000
 ```
 
 Cette commande ne charge aucune clé privée. Le solde et le nonce affichés
@@ -20,7 +20,7 @@ confiance.
 ## Machine qui conserve la clé, sans connexion
 
 ```sh
-aurora-wallet sign-offline --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --nonce 0 --out payment.aurtx
+aretovus-wallet sign-offline --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --nonce 0 --out payment.aurtx
 ```
 
 Remplacer les valeurs, notamment le nonce, par celles du paiement prévu.
@@ -48,9 +48,9 @@ ni graine privée. Transférer ce fichier à la machine connectée.
 ## Machine connectée, sans clé privée
 
 ```sh
-aurora-wallet broadcast --from payment.aurtx --node 127.0.0.1:7000
-aurora-wallet status --node 127.0.0.1:7000 --txid ID_TRANSACTION
-aurora-wallet verify --node 127.0.0.1:7000 --txid ID_TRANSACTION --confirmations 1
+aretovus-wallet broadcast --from payment.aurtx --node 127.0.0.1:7000
+aretovus-wallet status --node 127.0.0.1:7000 --txid ID_TRANSACTION
+aretovus-wallet verify --node 127.0.0.1:7000 --txid ID_TRANSACTION --confirmations 1
 ```
 
 Adapter le port et le nombre de confirmations. La diffusion charge le

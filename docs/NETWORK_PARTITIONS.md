@@ -18,7 +18,7 @@ est 4, 7 puis 10. Les mineurs restent donc sous le premier retarget pour isoler
 la convergence et la réorganisation des effets de difficulté.
 
 Commande :
-python3 scripts/testnet_partitions.py --binary target/debug/aurora-node --output target/partitions --rounds 3
+python3 scripts/testnet_partitions.py --binary target/debug/aretovus-node --output target/partitions --rounds 3
 
 Le dossier de sortie doit être neuf : aucun résultat précédent n'est effacé.
 Les journaux et results.json sont conservés par le workflow network-partitions.

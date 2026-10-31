@@ -42,7 +42,7 @@ Le workflow `p2p-admission` construit le commit de référence
 même script pour les deux :
 
 ```sh
-python3 scripts/testnet_admission_probe.py --binary target/debug/aurora-node --max-wallet-seconds 1.5 --report target/admission-after.json
+python3 scripts/testnet_admission_probe.py --binary target/debug/aretovus-node --max-wallet-seconds 1.5 --report target/admission-after.json
 ```
 
 Le script ne contacte que le serveur qu'il démarre sur la boucle locale. Sous
@@ -83,7 +83,7 @@ Le scénario supplémentaire `saturated_after_hello` dans
 `p2p-admission` ; il vérifie le wallet supplémentaire, une synchronisation,
 et la récupération après fermeture des 32 clients. Le premier commit de test
 a reproduit le défaut sur le runner CI
-([run 41113506674](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41113506674)),
+([run 41113506674](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41113506674)),
 avec une fermeture de la connexion wallet ; il faut vérifier les commits
 de correction et leurs propres CI avant de déclarer ce scénario résolu.
 

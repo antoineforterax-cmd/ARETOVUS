@@ -1,7 +1,7 @@
 # Mesurer les validations répétées du mempool
 
 Première étape de l'issue #7 : mesurer avant d'activer un cache.
-Le benchmark se trouve dans `aurora-core/tests/mempool_benchmark.rs`.
+Le benchmark se trouve dans `aretovus-core/tests/mempool_benchmark.rs`.
 Il génère des transactions v3 ML-DSA-65 signées avec une graine publique de test,
 puis mesure en release trois tailles de file (1, 64, 256), seize passages et trois
 échantillons par taille. Génération des clés, signatures et échauffement sont
@@ -26,7 +26,7 @@ une mesure séparée de ce travail complet, sans prétendre isoler chaque coût.
 ## Reproduction
 
 ```sh
-cargo test --release --locked -p aurora-core --test mempool_benchmark -- --include-ignored --nocapture --test-threads=1
+cargo test --release --locked -p aretovus-core --test mempool_benchmark -- --include-ignored --nocapture --test-threads=1
 ```
 
 Le workflow `mempool-benchmark` conserve résultats, commit, version du compilateur
