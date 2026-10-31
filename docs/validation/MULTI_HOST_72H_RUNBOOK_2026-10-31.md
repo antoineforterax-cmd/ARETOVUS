@@ -1,6 +1,40 @@
-# AURORA — validation sur deux machines et endurance de 72 h (plan opératoire)
+# AURORA — endurance physique sur deux PC : palier 4 h et option 72 h
 
-**Statut : prêt à exécuter, PAS exécuté.** Ceci n'est ni un audit ni une certification de sécurité. N'utiliser que des clés, comptes et fonds **Regtest/Testnet jetables**, aucun fonds réel. Ne jamais exposer le port P2P sur Internet pour ce test.
+**Statut : collecte et procédure prêtes à exécuter, campagnes de 4 h et de 72 h PAS exécutées par ces scripts.** Ceci n'est ni un audit ni une certification de sécurité. N'utiliser que des clés, comptes et fonds **Regtest/Testnet jetables**, aucun fonds réel. Ne jamais exposer le port P2P sur Internet pour ce test.
+
+## Palier réaliste : 4 heures sur deux PC
+
+**Objectif prioritaire : 4 h** sans pannes silencieuses et avec convergence des deux machines, pour une première validation d'endurance. Les deux machines ont déjà servi aux essais : il n'est pas nécessaire de refaire les vérifications élémentaires de connectivité avant chaque campagne si elles sont déjà documentées. **Le palier 4 h ne doit jamais être décrit comme une campagne 72 h**. Les essais de 72 h pourront être conduits plus tard sur du matériel dédié.
+
+Le collecteur `scripts/testnet_operational_probe.py` accepte désormais `--hours 4` (durée par défaut) et inscrit `counts_as_4h` dans son dernier événement JSONL. Il continue à inscrire `counts_as_72h=false` pour cet essai. Il faut que la hauteur change au moins une fois pendant la campagne et que toutes les vérifications réussissent.
+
+Utiliser le **même commit exact** sur les deux PC (à récupérer par `git rev-parse HEAD` sur la source utilisée pour produire le binaire) ; les données du nœud sont indépendantes. Ne jamais mettre un SHA inventé ni un SHA d'une autre version.
+
+Sur **PC A, dans PowerShell**, tandis que son nœud tourne :
+
+```powershell
+$sha = (git rev-parse HEAD).Trim()
+python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 4 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
+```
+
+Sur **PC B**, avec le même commit :
+
+```powershell
+$sha = (git rev-parse HEAD).Trim()
+python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-b-data --host-label pc-b --hours 4 --interval-seconds 300 --output .\evidence-pc-b.jsonl --commit $sha
+```
+
+Les deux commandes doivent être lancées à peu près au même moment. Il faut produire des blocs de test et observer leur propagation pendant les 4 h, puis laisser les chaînes converger avant les derniers prélèvements ; sinon la comparaison du sommet peut échouer. Les interruptions réseau ou redémarrages volontaires doivent être consignés manuellement avec horodatages ; un échec de vérification fait **échouer** le palier strict, et ne doit pas être effacé. Conserver les logs des serveurs séparément.
+
+Rassembler les deux JSONL après les 4 h sur un PC, puis :
+
+```powershell
+python scripts/compare_testnet_evidence.py --left .\evidence-pc-a.jsonl --right .\evidence-pc-b.jsonl --minimum-hours 4
+```
+
+Le comparateur refuse les durées insuffisantes, sommets différents, erreurs de lecture, commits différents, labels identiques et fenêtres de temps disjointes. Il vérifie un chevauchement d'au moins 3 heures pour le palier de 4 heures. Il **ne peut pas prouver à lui seul** que les fichiers viennent de deux ordinateurs physiques ni garantir l'authenticité de leurs timestamps. Documenter séparément la machine et le réseau utilisés.
+
+La campagne longue reste disponible en remplaçant `--hours 4` par `--hours 72`, et `--minimum-hours 4` par `--minimum-hours 72` ; il s'agit d'un **autre palier**, facultatif pour cette phase d'essai.
 
 ## Préparation — deux PC vraiment distincts
 
@@ -30,7 +64,7 @@ Terminal 2, **dossier différent** réservé au mineur, avec adresse de mineur j
 
 ### Comparer automatiquement les deux journaux terminés
 
-Après **arrêt du minage**, attendre la convergence et exporter les deux fichiers de preuves, sans clés. Placer les deux JSONL sur une machine d'analyse et exécuter :
+Après **arrêt du minage**, attendre la convergence et exporter les deux fichiers de preuves, sans clés. Cette section décrit le mode **72 h** ; pour 4 h, utiliser la commande du début du guide. Placer les deux JSONL sur une machine d'analyse et exécuter :
 
 ```powershell
 python scripts/compare_testnet_evidence.py --left .\\evidence-pc-a.jsonl --right .\\evidence-pc-b.jsonl
@@ -40,7 +74,7 @@ Ce contrôleur refuse une campagne interrompue, un SHA non enregistré, deux app
 
 **Remarque importante :** l'option `--peer` n'implique pas une découverte automatique de tout le réseau. Si la commande sur votre version ne peut pas se connecter, consigner le message d'erreur et vérifier la syntaxe depuis `--help`, sans modifier la sécurité de l'OS. Les répertoires de serveur et mineur ne doivent jamais être écrits par deux processus en même temps.
 
-## Journal d'endurance en lecture seule
+## Option supplémentaire — journal d'endurance longue durée (72 h)
 
 Sur **chacune** des deux machines, pendant que son serveur tourne :
 
