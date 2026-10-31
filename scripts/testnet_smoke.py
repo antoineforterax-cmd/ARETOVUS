@@ -162,7 +162,7 @@ def offline_backup_validation_test(binary: Path, data_dir: Path) -> None:
         )
 
     # A v6 index manifest without its pages is an incomplete backup.
-    pages = list((backup / "index-pages-v6").glob("*.aurpage"))
+    pages = list((backup / "index-pages-v6").glob("*.aretpage"))
     if not pages:
         raise AssertionError("offline test snapshot unexpectedly has no v6 index pages")
     for page in pages:
