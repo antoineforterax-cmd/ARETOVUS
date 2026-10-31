@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import re
 import shutil
 import sys
 import threading
@@ -109,12 +110,15 @@ class ResourceMonitor:
     """Separate append-only JSONL file; never mix with strict node evidence."""
 
     def __init__(self, path: Path, data_dir: Path, host_label: str,
-                 interval_seconds: float = 5.0):
+                 interval_seconds: float = 5.0, run_id: str = ""):
         if not 1 <= interval_seconds <= 300:
             raise ValueError("resource interval must be 1..300 seconds")
+        if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+            raise ValueError("resource run_id must be 32 lowercase hex characters")
         self.path = path
         self.data_dir = data_dir
         self.label = host_label
+        self.run_id = run_id
         self.interval = interval_seconds
         self.samples = 0
         self.errors = 0
@@ -126,7 +130,7 @@ class ResourceMonitor:
     def _write(self, event: str, **values: object) -> None:
         assert self._handle is not None
         self._handle.write(json.dumps(
-            {"event": event, "host_label": self.label,
+            {"event": event, "host_label": self.label, "run_id": self.run_id,
              "unix_utc": round(time.time(), 3), **values},
             sort_keys=True
         ) + "\n")
@@ -186,11 +190,12 @@ def self_test() -> None:
     with tempfile.TemporaryDirectory(prefix="aurora-resources-") as temp:
         root = Path(temp)
         path = root / "telemetry.jsonl"
+        run_id = "a" * 32
         with patch(__name__ + ".snapshot", side_effect=[
             ({"ram_load_percent": 90, "cpu_percent": None}, (1, 10)),
             ({"ram_load_percent": 73, "cpu_percent": 25.0}, (2, 20)),
         ]):
-            with ResourceMonitor(path, root, "host-test", interval_seconds=1) as m:
+            with ResourceMonitor(path, root, "host-test", interval_seconds=1, run_id=run_id) as m:
                 for _ in range(40):
                     if m.samples >= 1:
                         break
@@ -199,11 +204,13 @@ def self_test() -> None:
                 assert m.errors == 0
         events = [json.loads(line) for line in path.read_text().splitlines()]
         assert events[0]["event"] == "start"
+        assert events[0]["run_id"] == run_id
+        assert all(event["run_id"] == run_id for event in events)
         assert events[-1]["event"] == "finish"
         assert events[-1]["errors"] == 0
         assert events[1]["ram_load_percent"] == 90
         with patch(__name__ + ".snapshot", side_effect=OSError("private path")):
-            with ResourceMonitor(path, root, "host-test", interval_seconds=1) as m:
+            with ResourceMonitor(path, root, "host-test", interval_seconds=1, run_id=run_id) as m:
                 for _ in range(40):
                     if m.errors >= 1:
                         break
