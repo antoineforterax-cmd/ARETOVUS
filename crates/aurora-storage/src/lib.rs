@@ -770,6 +770,16 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 }
 
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
+    read_bounded_limit_with_preopen_hook(path, limit, || {})
+}
+
+// Inject the exact metadata-check/open boundary in adversarial local tests.
+// The ordinary call uses a no-op, so production never performs any mutation.
+fn read_bounded_limit_with_preopen_hook(
+    path: &Path,
+    limit: usize,
+    before_open: impl FnOnce(),
+) -> Result<Vec<u8>, StorageError> {
     // Immutable manifests, pages and blocks must be real files at their own
     // paths. Following symlinks here would contradict the write-side guard
     // and could silently accept data outside the AURORA storage tree.
@@ -784,6 +794,7 @@ fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError
             "storage object exceeds byte limit",
         ));
     }
+    before_open();
     let file = File::open(path)?;
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take((limit + 1) as u64).read_to_end(&mut bytes)?;
@@ -1294,6 +1305,38 @@ mod tests {
                 load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
             assert_eq!(restored.tip_hash(), expected);
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_rejects_file_swapped_for_symlink_between_metadata_and_open() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let original = root.join("original");
+        let outside = root.join("outside");
+        fs::write(&object, b"original chain bytes").unwrap();
+        fs::write(&outside, b"external substitute").unwrap();
+
+        let attempted = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            // Force a deterministic TOCTOU race instead of probabilistic
+            // parallel threads or timing sleeps.
+            fs::rename(&object, &original).unwrap();
+            symlink(&outside, &object).unwrap();
+        });
+        assert!(
+            attempted.is_err(),
+            "read followed the replacement symlink after a valid preflight"
+        );
+        fs::remove_file(&object).unwrap();
+        fs::rename(&original, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"original chain bytes"
+        );
         fs::remove_dir_all(root).unwrap();
     }
 
