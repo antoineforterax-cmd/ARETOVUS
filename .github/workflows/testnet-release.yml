@@ -2,7 +2,7 @@ name: testnet-release
 
 on:
   push:
-    branches: [feature/emission-schedule-v0]
+    branches: [feature/aretovus-native-protocol-v1]
     paths: [".github/release-request.json"]
   workflow_dispatch:
 
@@ -30,6 +30,8 @@ jobs:
           import json, os, re, subprocess
           from pathlib import Path
           request = json.loads(Path('.github/release-request.json').read_text())
+          assert request.get("protocol") == "aretovus-native-v1", "wrong protocol identity"
+          assert request.get("ready") is True, "native ARETOVUS release blocked until explicit validation"
           source, tag = request['source'], request['tag']
           assert re.fullmatch(r'[0-9a-f]{40}', source), 'source must be a full commit hash'
           assert re.fullmatch(r'testnet-v[0-9]+\.[0-9]+\.[0-9]+-experimental\.[0-9]+', tag), 'experimental tag required'
