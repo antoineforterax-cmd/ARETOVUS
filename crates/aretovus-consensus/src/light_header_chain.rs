@@ -1,7 +1,7 @@
 //! Header-only consensus verification for experimental SPV clients.
 use std::collections::BTreeMap;
 
-use aurora_core::{hash::Hash256, network::NetworkId};
+use aretovus_core::{hash::Hash256, network::NetworkId};
 
 use crate::{
     difficulty::{ChainWork, DifficultyParams},
@@ -261,7 +261,7 @@ mod tests {
             testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS,
         },
     };
-    use aurora_core::accounts::AccountTransaction;
+    use aretovus_core::accounts::AccountTransaction;
 
     fn child(parent: Hash256, timestamp: u64, bits: u16) -> BlockHeader {
         let mut block = AccountBlock::build(

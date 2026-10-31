@@ -7,7 +7,7 @@ use crate::{
     fork_chain::ChainUpdate,
     reward::{apply_block_reward, RewardError, RewardParams},
 };
-use aurora_core::{
+use aretovus_core::{
     accounts::POST_QUANTUM_ACCOUNT_TX_VERSION, codec::EncodeError, hash::Hash256,
     network::NetworkId, state::AccountLedger,
 };
@@ -516,7 +516,7 @@ impl AccountForkChain {
 mod tests {
     use super::*;
     use crate::account_block::AccountBlockError;
-    use aurora_core::{
+    use aretovus_core::{
         accounts::{AccountId, AccountTransaction, ACCOUNT_TX_VERSION},
         amount::Amount,
         network::NetworkId,
@@ -566,14 +566,14 @@ mod tests {
 
     #[test]
     fn testnet_accepts_and_applies_a_native_ml_dsa_transaction() {
-        use aurora_core::accounts::{
+        use aretovus_core::accounts::{
             ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
         };
         use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
 
         let key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
         let public_key = key.verifying_key().encode();
-        let sender = aurora_core::signature::post_quantum_account_id(public_key.as_slice());
+        let sender = aretovus_core::signature::post_quantum_account_id(public_key.as_slice());
         let mut state = AccountLedger::new(NetworkId::Testnet);
         state
             .credit_issuance(sender, Amount::from_units(10).unwrap())
@@ -617,16 +617,16 @@ mod tests {
             AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
 
         for legacy_version in [
-            aurora_core::accounts::ACCOUNT_TX_VERSION,
-            aurora_core::accounts::HYBRID_ACCOUNT_TX_VERSION,
+            aretovus_core::accounts::ACCOUNT_TX_VERSION,
+            aretovus_core::accounts::HYBRID_ACCOUNT_TX_VERSION,
         ] {
             let mut legacy = tx(0, 9, 1);
             legacy.network = NetworkId::Testnet;
             legacy.version = legacy_version;
-            legacy.auth_data = if legacy_version == aurora_core::accounts::ACCOUNT_TX_VERSION {
+            legacy.auth_data = if legacy_version == aretovus_core::accounts::ACCOUNT_TX_VERSION {
                 vec![0; 64]
             } else {
-                vec![0; aurora_core::accounts::HYBRID_AUTH_BYTES]
+                vec![0; aretovus_core::accounts::HYBRID_AUTH_BYTES]
             };
             let block =
                 AccountBlock::build(NetworkId::Testnet, chain.tip_hash(), 2, 0, vec![legacy])

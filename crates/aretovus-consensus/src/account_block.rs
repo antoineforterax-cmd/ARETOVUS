@@ -5,7 +5,7 @@ use crate::{
     experimental::{BlockHeader, HEADER_VERSION, MAX_BLOCK_TXS},
     proof_of_work::{check_proof, PowError},
 };
-use aurora_core::{
+use aretovus_core::{
     accounts::{AccountId, AccountTransaction, AccountTxError},
     amount::Amount,
     codec::{
@@ -243,7 +243,7 @@ impl CanonicalDecode for AccountBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::{
+    use aretovus_core::{
         accounts::{AccountId, ACCOUNT_TX_VERSION},
         network::NetworkId,
     };

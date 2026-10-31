@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use aurora_core::{hash::Hash256, network::NetworkId};
+use aretovus_core::{hash::Hash256, network::NetworkId};
 
 use crate::{
     block_validation::{check_block_pow, BlockPowError},

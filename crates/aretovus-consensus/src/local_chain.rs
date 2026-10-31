@@ -6,8 +6,8 @@
 
 use std::fmt;
 
-use aurora_core::hash::Hash256;
-use aurora_core::network::NetworkId;
+use aretovus_core::hash::Hash256;
+use aretovus_core::network::NetworkId;
 
 use crate::block_validation::{check_block_pow, BlockPowError};
 use crate::experimental::Block;

@@ -1,6 +1,6 @@
 [package]
-name = "aurora-consensus"
-description = "AURORA (prototype experimental) : bloc experimental et verifications sans etat"
+name = "aretovus-consensus"
+description = "ARETOVUS (prototype experimental) : bloc experimental et verifications sans etat"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -10,7 +10,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-aurora-core.workspace = true
+aretovus-core.workspace = true
 
 [dev-dependencies]
 ed25519-dalek.workspace = true

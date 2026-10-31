@@ -48,8 +48,8 @@ pub fn check_block_pow(block: &Block, difficulty_bits: u16) -> Result<(), BlockP
 mod tests {
     use super::*;
     use crate::experimental::Block;
-    use aurora_core::hash::Hash256;
-    use aurora_core::network::NetworkId;
+    use aretovus_core::hash::Hash256;
+    use aretovus_core::network::NetworkId;
 
     fn empty_block() -> Block {
         Block::build(NetworkId::Regtest, Hash256::ZERO, 1, 0, vec![]).unwrap()

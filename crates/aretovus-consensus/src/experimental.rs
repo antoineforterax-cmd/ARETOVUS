@@ -10,14 +10,14 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use aurora_core::codec::{
+use aretovus_core::codec::{
     decode_vec, encode_vec, CanonicalDecode, CanonicalEncode, DecodeError, Decoder, EncodeError,
     Encoder,
 };
-use aurora_core::experimental::{Transaction, TxError};
-use aurora_core::hash::{tagged_hash, Domain, Hash256};
-use aurora_core::merkle::{merkle_root, MAX_MERKLE_LEAVES};
-use aurora_core::network::NetworkId;
+use aretovus_core::experimental::{Transaction, TxError};
+use aretovus_core::hash::{tagged_hash, Domain, Hash256};
+use aretovus_core::merkle::{merkle_root, MAX_MERKLE_LEAVES};
+use aretovus_core::network::NetworkId;
 
 /// Version de format de l'en-tête expérimental.
 pub const HEADER_VERSION: u32 = 1;
@@ -226,8 +226,8 @@ impl CanonicalDecode for Block {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::amount::Amount;
-    use aurora_core::experimental::{OutPoint, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION};
+    use aretovus_core::amount::Amount;
+    use aretovus_core::experimental::{OutPoint, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION};
 
     fn tx(seed: u8, network: NetworkId) -> Transaction {
         Transaction {
