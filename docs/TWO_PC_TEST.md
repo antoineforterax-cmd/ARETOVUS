@@ -134,3 +134,19 @@ Les sorties doivent afficher des valeurs identiques de `height`, `tip` **et** `w
 **Échec / stop immédiatement :** archive ou checksum divergents, connexion TCP impossible, refus de fingerprint, perte de snapshot, `height` identique mais `tip` divergent après rattrapage, preuve d'inclusion incohérente, nouvelle règle de pare-feu publique ou un dossier de données utilisé par deux processus.
 
 Cela ne démontre **ni** un mainnet sécurisé, **ni** la stabilité sur 72 h, **ni** 100 000 blocs synchronisés entre machines, **ni** une résistance générale aux pairs malveillants. Ces campagnes demandent des rapports séparés.
+
+
+## Assistant Windows : connexion automatique sur LAN privé (version expérimentale)
+
+Les nouvelles archives du testnet construites avec cette fonctionnalité incluent **AURORA-LAN.cmd**, une interface Windows sans installation Python ni droit administrateur. Cet assistant **ne remplace pas les vérifications finales de ce protocole** et ne prétend pas réaliser un essai complet sur deux ordinateurs.
+
+1. Extraire sur chaque ordinateur **le même paquet Windows**, vérifier la provenance et exécuter le préflight normal (checksums et SHA identiques). Les checksums dans un ZIP non signé ne prouvent pas, à eux seuls, l'identité de l'éditeur.
+2. Sur un **LAN privé de confiance**, double-cliquer AURORA-LAN.cmd sur chaque PC. Il exige un profil Windows **Privé**, sans désactiver le pare-feu.
+3. Sur PC A, choisir **« PC A : démarrer le serveur »**. Le programme lance le serveur aurora-node testnet dans sa propre fenêtre, sur TCP **19444** ; il émet une annonce de découverte UDP **19446** sur le réseau local.
+4. Sur PC B, cliquer **« PC B : connexion automatique »**. L'assistant écoute l'annonce, compare le hash **annoncé** du binaire A avec son propre binaire, vérifie la disponibilité TCP, puis lance le nœud B sur son adresse loopback avec le pair IP_A:19444. Si la découverte UDP est bloquée, saisir simplement **l'IPv4 privée de PC A** et utiliser le bouton manuel.
+5. Si le pare-feu refuse TCP 19444, l'administrateur autorisé doit créer une **règle entrante restreinte au profil Privé et à l'IP de PC B**. Le programme n'ouvre **aucune règle**, ne configure pas de redirection NAT et ne fonctionne pas sur Internet/public Wi-Fi.
+6. **Arrêt sûr :** utiliser **Ctrl+C** dans la fenêtre de chaque nœud, attendre sa fermeture, puis effectuer les tests prévus plus haut : transfert entre PC, redémarrage, convergence vérifiée avec testnet verify sur les dossiers arrêtés (height, tip, work), sauvegarde. Le mineur utilise toujours un dossier différent.
+
+**Sécurité :** une annonce UDP n'est pas authentifiée ; un autre appareil du LAN pourrait mentir sur sa version ou son hash. N'utiliser l'assistant que sur un réseau privé fiable et comparer les deux packages par une source de confiance. Les dossiers two-pc/assistant-a et two-pc/assistant-b sont distincts et respectent les verrous de stockage. Ni clés privées, ni mots de passe, ni fonds réels ne sont utilisés par le guide automatique.
+
+**Limites :** le lanceur ne mine pas en continu, ne crée pas de wallet, ne confirme pas automatiquement les transactions et ne prouve pas, à lui seul, la convergence de deux PC physiques. Les assistants GUI plus avancés restent un chantier séparé.
