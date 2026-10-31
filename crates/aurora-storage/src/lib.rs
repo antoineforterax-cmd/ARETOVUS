@@ -1184,6 +1184,67 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn restore_rejects_symlinked_manifest_page_and_block_even_when_bytes_are_valid() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        let mut original = chain();
+        let stable_tip = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        let next = AccountBlock::build(
+            NetworkId::Regtest,
+            stable_tip,
+            2,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let next_id = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+        let latest = save_snapshot(&root, &original).unwrap();
+        let newest_tip = original.tip_hash();
+        let latest_bytes = fs::read(&latest).unwrap();
+        let page_id = Hash256::from_bytes(latest_bytes[81..113].try_into().unwrap());
+        let page = root
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let block = root
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_id}.{BLOCK_EXTENSION}"));
+
+        let load_tip = || {
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest))
+                .unwrap()
+                .tip_hash()
+        };
+        assert_eq!(load_tip(), newest_tip);
+
+        // Each path still resolves to identical valid bytes. The loader must
+        // not silently trust links in its immutable storage tree.
+        for (target, backup_name) in [
+            (latest.as_path(), "saved-manifest-for-read-test"),
+            (page.as_path(), "saved-page-for-read-test"),
+            (block.as_path(), "saved-block-for-read-test"),
+        ] {
+            let backup = root.join(backup_name);
+            fs::rename(target, &backup).unwrap();
+            symlink(&backup, target).unwrap();
+            assert_eq!(
+                load_tip(),
+                stable_tip,
+                "loader followed a symlinked immutable storage object: {}",
+                target.display()
+            );
+            fs::remove_file(target).unwrap();
+            fs::rename(&backup, target).unwrap();
+            assert_eq!(load_tip(), newest_tip);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn cached_complete_v6_page_revalidates_disk_and_exact_arrival_prefix() {
         let path = dir();
