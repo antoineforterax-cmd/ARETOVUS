@@ -93,7 +93,7 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
             &["--from", "--sender", "--to", "--amount", "--fee", "--nonce"],
             &[],
         ),
-        "broadcast" => (&["--from", "--node"], &["--yes"]),
+        "broadcast" => (&["--from", "--node", "--expected-txid"], &["--yes"]),
         "verify" => (&["--node", "--txid", "--confirmations"], &[]),
         "status" => (&["--node", "--txid"], &[]),
         "wait" => (&["--node", "--txid", "--timeout-seconds"], &[]),
@@ -451,6 +451,18 @@ fn run() -> Result<(), Box<dyn Error>> {
                 aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let node = node_address(&args)?;
             let id = transaction.txid()?;
+            if flag(&args, "--expected-txid") {
+                // Compare the loaded signed bytes to an independently reviewed txid
+                // *before* contacting a node, even when --yes skips the prompt.
+                let expected = txid(option(&args, "--expected-txid")?)?;
+                if id != expected {
+                    return Err(
+                        "signed payment differs from externally reviewed txid; not broadcast"
+                            .into(),
+                    );
+                }
+                println!("external_txid_pin_verified=true");
+            }
             let destination = account_id_hex(transaction.recipient);
             println!("Review SIGNED payment on AURORA Testnet txid={id}");
             println!(
@@ -666,7 +678,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
             println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
-            println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--yes]");
+            println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--expected-txid VERIFIED_TXID] [--yes]");
+            println!("    Pin a txid from independent review to block swapped signed-file authorization before RPC.");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("  aurora-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");

@@ -197,6 +197,14 @@ cargo run --locked -p aurora-wallet -- verify-signed-intent --from ./payment.aur
 
 L'outil refuse tout décalage sur l'émetteur, le destinataire, le montant, les frais ou le nonce, même lorsque la transaction comporte une signature cryptographique valable. Il ne possède aucun mode `--yes` ni accès RPC. Il **ne prouve pas** que la personne qui a préparé l'ordre était autorisée ni que l'ordinateur de vérification est sain. Les valeurs attendues doivent venir d'un **canal de confiance indépendant**, autrement un attaquant pourrait fournir une fausse transaction *et* une fausse référence cohérente.
 
+Pour diffuser ensuite depuis la machine connectée, reporte le **txid déjà vérifié sur l'autre machine** :
+
+```sh
+cargo run --locked -p aurora-wallet -- broadcast --from ./payment.aurtx --node 127.0.0.1:18444 --expected-txid <txid-vérifié-hex>
+```
+
+Le drapeau optionnel `--expected-txid` **refuse la diffusion avant tout accès réseau** si le fichier a été remplacé entre la revue et l'envoi, y compris par un *autre paiement portant une signature valide*. Un txid pris sur la même machine suspecte, ou fourni par l'attaquant, ne constitue **pas** une preuve de consentement. Sans le drapeau, cette protection supplémentaire n'est pas active ; les autres vérifications du wallet restent applicables. Ne jamais utiliser de véritables fonds.
+
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
 
 ```sh
