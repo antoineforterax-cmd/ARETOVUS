@@ -1,6 +1,6 @@
 # Signaler une vulnérabilité
 
-AURORA est expérimental. Aucun commit n’a reçu d’audit humain externe indépendant et aucune version n’est destinée à des fonds réels.
+ARETOVUS est expérimental. Aucun commit n’a reçu d’audit humain externe indépendant et aucune version n’est destinée à des fonds réels.
 
 Utiliser le bouton **Report a vulnerability** dans l’onglet **Security** du dépôt, lorsqu’il est disponible : https://github.com/antoineforterax-cmd/AURORA/security/advisories/new.
 

@@ -1,4 +1,4 @@
-# Contribuer à AURORA
+# Contribuer à ARETOVUS
 
 Pour tout développement assisté par IA, lire d'abord [AGENTS.md](AGENTS.md) : ordre de travail, cartographie des PR, tests de sécurité adversariaux et règles avant fusion. Les décisions de protocole restent sous le contrôle du responsable du projet.
 
@@ -10,7 +10,7 @@ Installer Rust stable, Cargo et Python 3.12 ou plus récent. Sous Windows, compi
 
 ```sh
 git clone https://github.com/antoineforterax-cmd/AURORA.git
-cd AURORA
+cd ARETOVUS
 git switch main
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -22,7 +22,7 @@ python scripts/testnet_smoke.py
 Le test de volume est séparé car il écrit plus de 100 000 fichiers de blocs :
 
 ```sh
-cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
+cargo test --locked -p aretovus-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
 ```
 
 Il couvre le stockage et le rejeu; il ne constitue pas un essai réseau de 72 heures. Les campagnes libFuzzer sont décrites dans [FUZZING.md](docs/FUZZING.md).

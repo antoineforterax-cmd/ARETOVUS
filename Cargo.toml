@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/aurora-core",
-    "crates/aurora-consensus",
-    "crates/aurora-storage",
-    "crates/aurora-node",
-    "crates/aurora-wallet",
+    "crates/aretovus-core",
+    "crates/aretovus-consensus",
+    "crates/aretovus-storage",
+    "crates/aretovus-node",
+    "crates/aretovus-wallet",
 ]
 
 [workspace.package]
@@ -20,8 +20,8 @@ sha2 = "0.10"
 ed25519-dalek = { version = "2.1", default-features = false, features = ["std"] }
 ml-dsa = "=0.1.1"
 getrandom = "=0.2.17"
-aurora-core = { path = "crates/aurora-core" }
-aurora-consensus = { path = "crates/aurora-consensus" }
+aretovus-core = { path = "crates/aretovus-core" }
+aretovus-consensus = { path = "crates/aretovus-consensus" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

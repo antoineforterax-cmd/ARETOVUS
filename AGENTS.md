@@ -1,10 +1,10 @@
-# Instructions pour Codex — AURORA
+# Instructions pour Codex — ARETOVUS
 
 Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](https://github.com/antoineforterax-cmd/AURORA/blob/docs/aurora-master-plan-2026-10/docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
 
 ## Objet
 
-AURORA est une blockchain Rust **expérimentale** ; aucun fonds réel ni annonce de sécurité mainnet. Le responsable fixe la vision, les orientations architecturales et les décisions de protocole. Codex accélère l'implémentation, les tests, la revue et la documentation. Ne jamais inventer une approbation, une preuve, un test réussi ou un audit indépendant.
+ARETOVUS est une blockchain Rust **expérimentale** ; aucun fonds réel ni annonce de sécurité mainnet. Le responsable fixe la vision, les orientations architecturales et les décisions de protocole. Codex accélère l'implémentation, les tests, la revue et la documentation. Ne jamais inventer une approbation, une preuve, un test réussi ou un audit indépendant.
 
 ## Situation et branches
 
@@ -49,3 +49,7 @@ Pas de modification non approuvée de genèse, émission, frais, consensus, prop
 Donner : `branche/commit de départ ; fichiers ; résultat ; nouvelle branche/commit ; PR et dépendances ; tests + SHA et liens ; sous-revues et reproductions ; limites et risques ; statut (sur branche / en revue / fusionné) ; prochaine étape proposée au responsable`.
 
 La référence reste le **comportement réel du code sur le SHA ciblé**, et non une description historique ou une affirmation d'agent.
+
+## Renommage de marque ARETOVUS (2026-10-31)
+
+Ne pas modifier les séparateurs de domaine cryptographiques `AURORA/`, les constantes `AURORIDX`, les identités de genèse, les empreintes réseau, les anciens schémas `aurora://`, les chemins de stockage historiques ou les symboles monétaires de testnet sans migration de protocole distincte. Le dépôt et les branches historiques peuvent garder `AURORA` dans leurs URLs pour conserver les liens existants. Voir `docs/BRANDING_COMPATIBILITY.md`.
