@@ -88,6 +88,7 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
             ],
             &["--yes", "--dry-run"],
         ),
+        "inspect-signed" => (&["--from"], &[]),
         "broadcast" => (&["--from", "--node"], &["--yes"]),
         "verify" => (&["--node", "--txid", "--confirmations"], &[]),
         "status" => (&["--node", "--txid"], &[]),
@@ -402,6 +403,22 @@ fn run() -> Result<(), Box<dyn Error>> {
             );
             println!("not_broadcast: nonce and balance must be checked on the connected machine");
         }
+        "inspect-signed" => {
+            let transaction =
+                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+            // load validates canonical encoding, testnet domain and signature.
+            println!("verified_signed_transaction=true");
+            println!("network=AURORA-TESTNET version={}", transaction.version);
+            println!("txid={}", transaction.txid()?);
+            println!("sender={}", account_id_hex(transaction.sender));
+            println!("recipient={}", account_id_hex(transaction.recipient));
+            println!(
+                "amount={} fee={} nonce={}",
+                transaction.amount, transaction.fee, transaction.nonce
+            );
+            println!("read_only=true private_key_loaded=false network_requests=none");
+            println!("Compare every field on a trusted independent device before broadcasting.");
+        }
         "broadcast" => {
             let transaction =
                 aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
@@ -618,6 +635,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("    A FILE.limits policy is applied automatically to send, including --yes; one-shot limits only tighten it.");
             println!("  aurora-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
+            println!("  aurora-wallet inspect-signed --from SIGNED_FILE");
+            println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--yes]");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
