@@ -1,4 +1,4 @@
-//! `aurora-core` : briques communes du **prototype expérimental** AURORA.
+//! `aretovus-core` : briques communes du **prototype expérimental** AURORA.
 //!
 //! Ce crate contient :
 //! - [`amount`] : montants entiers (jamais de flottants) ;

@@ -11,13 +11,13 @@
 //! contre-exemples). `proptest` et `cargo-fuzz` sont prévus (TST-03), pas encore installés.
 //! Statut : écrits ; leur exécution doit être faite avec `cargo test` (voir README).
 
-use aurora_core::amount::{Amount, MAX_UNITS};
-use aurora_core::codec::{CanonicalDecode, CanonicalEncode, DecodeError};
-use aurora_core::experimental::{
+use aretovus_core::amount::{Amount, MAX_UNITS};
+use aretovus_core::codec::{CanonicalDecode, CanonicalEncode, DecodeError};
+use aretovus_core::experimental::{
     OutPoint, Transaction, TxInput, TxOutput, MAX_AUTH_BYTES, RECIPIENT_LEN, TX_VERSION,
 };
-use aurora_core::hash::Hash256;
-use aurora_core::network::NetworkId;
+use aretovus_core::hash::Hash256;
+use aretovus_core::network::NetworkId;
 
 /// Générateur xorshift64 : déterministe, sans dépendance, **non cryptographique** (tests seulement).
 struct Rng(u64);

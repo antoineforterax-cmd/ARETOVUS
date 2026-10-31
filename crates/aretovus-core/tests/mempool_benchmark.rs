@@ -1,7 +1,7 @@
 //! Reproducible microbenchmark; never installs a cache in production.
 use std::{hint::black_box, time::Instant};
 
-use aurora_core::{
+use aretovus_core::{
     accounts::{
         AccountId, AccountTransaction, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
         POST_QUANTUM_AUTH_BYTES,
