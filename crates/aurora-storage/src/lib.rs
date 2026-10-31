@@ -368,6 +368,19 @@ fn write_immutable_with_io(
     })
 }
 
+// Do not follow symlinks when reusing immutable storage objects.
+// A broken symlink also occupies a path and must not be treated as absent.
+fn immutable_regular_file_exists(path: &Path) -> Result<bool, StorageError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_file() => Ok(true),
+        Ok(_) => Err(StorageError::InvalidFormat(
+            "immutable storage path is not a regular file",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
+
 /// A manifest may already be visible after a failed parent-directory fsync.
 /// A retry must durably commit that existing entry before returning success
 /// or pruning older recovery points. Do not perform this on each existing
@@ -377,7 +390,7 @@ fn write_manifest_with_directory_sync(
     bytes: &[u8],
     sync_existing_parent: impl FnOnce(&Path) -> io::Result<()>,
 ) -> Result<(), StorageError> {
-    if path.exists() {
+    if immutable_regular_file_exists(path)? {
         if read_bounded_limit(path, MAX_SNAPSHOT_BYTES)? != bytes {
             return Err(StorageError::InvalidFormat(
                 "content-addressed file mismatch",
@@ -423,7 +436,7 @@ fn write_immutable_with_directory_sync(
             "storage object exceeds byte limit",
         ));
     }
-    if path.exists() {
+    if immutable_regular_file_exists(path)? {
         if read_bounded_limit(path, limit)? == bytes {
             return Ok(());
         }
@@ -1080,6 +1093,60 @@ mod tests {
         assert_eq!(restored.height(), original.height());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cold_snapshot_rejects_symlinked_index_pages_and_manifest() {
+        use std::os::unix::fs::symlink;
+
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        let page_path = fs::read_dir(path.join(INDEX_PAGE_DIRECTORY))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let saved_page = path.join("saved-index-page");
+        fs::rename(&page_path, &saved_page).unwrap();
+        symlink(&saved_page, &page_path).unwrap();
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat(
+                "immutable storage path is not a regular file"
+            ))
+        ));
+        assert!(manifest.is_file());
+        fs::remove_file(&page_path).unwrap();
+        let nonexistent = path.join("missing-index-target");
+        symlink(&nonexistent, &page_path).unwrap();
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat(
+                "immutable storage path is not a regular file"
+            ))
+        ));
+        fs::remove_file(&page_path).unwrap();
+        fs::rename(&saved_page, &page_path).unwrap();
+
+        let saved_manifest = path.join("saved-manifest");
+        fs::rename(&manifest, &saved_manifest).unwrap();
+        symlink(&saved_manifest, &manifest).unwrap();
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat(
+                "immutable storage path is not a regular file"
+            ))
+        ));
+        fs::remove_file(&manifest).unwrap();
+        fs::rename(&saved_manifest, &manifest).unwrap();
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.state(), original.state());
         fs::remove_dir_all(path).unwrap();
     }
 
