@@ -2,6 +2,10 @@
 
 ARETOVUS est le nom de marque qui remplace AURORA pour le projet Rust de blockchain expérimentale. Ce changement **ne constitue pas** un nouveau réseau, un nouveau protocole ou une réinitialisation des données. Aucun fonds réel ne doit être utilisé.
 
+## Identité visuelle
+
+L'emblème officiel fourni par le responsable est conservé dans [`assets/aretovus-logo.svg`](../assets/aretovus-logo.svg) (version vectorisée fidèle au visuel fourni, en ivoire sur fond noir). Le logo figure dans le [README principal](../README.md) et dans le [guide d'accueil](guide-fr/README.md). Son affichage n'intervient dans aucune donnée de consensus, fichier de clés ou format réseau.
+
 ## Identifiants conservés intentionnellement
 
 - Les préfixes de séparation de domaine de hachage et de signature `AURORA/exp/...` et `AURORA/testnet/...` sont des entrées cryptographiques : **les modifier change les identifiants et signatures**.
