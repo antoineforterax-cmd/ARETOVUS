@@ -115,7 +115,7 @@ Chaque document apparaît dans **une seule catégorie**. Déplier un thème pour
 
 
 <details>
-<summary><strong>6 · Résultats et méthodes de validation</strong> · 17 documents</summary>
+<summary><strong>6 · Résultats et méthodes de validation</strong> · 18 documents</summary>
 
 - [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md)
 - [POST_MERGE_VALIDATION_GATES_2026-10-31.md](POST_MERGE_VALIDATION_GATES_2026-10-31.md)
@@ -130,6 +130,7 @@ Chaque document apparaît dans **une seule catégorie**. Déplier un thème pour
 - [MEMPOOL_SIGNATURE_CACHE.md](MEMPOOL_SIGNATURE_CACHE.md)
 - [NETWORK_PARTITIONS.md](NETWORK_PARTITIONS.md)
 - [ORPHAN_TRANSACTION_REINSERTION.md](ORPHAN_TRANSACTION_REINSERTION.md)
+- [RETARGET_SIMULATION.md](RETARGET_SIMULATION.md) — Vecteurs et comparaison de retarget
 - [P2P_ADMISSION.md](P2P_ADMISSION.md)
 - [P2P_VOLUME_CAMPAIGN.md](P2P_VOLUME_CAMPAIGN.md)
 - [WALLET_RPC_DEADLINES.md](WALLET_RPC_DEADLINES.md)
