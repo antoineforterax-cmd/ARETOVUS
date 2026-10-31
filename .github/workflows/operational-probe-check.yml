@@ -1,0 +1,26 @@
+name: operational-probe-check
+
+on:
+  push:
+    branches: [ops/multihost-72h-evidence-20261031]
+    paths:
+      - "scripts/testnet_operational_probe.py"
+      - ".github/workflows/operational-probe-check.yml"
+  pull_request:
+    paths:
+      - "scripts/testnet_operational_probe.py"
+      - ".github/workflows/operational-probe-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe-self-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python source
+        run: python3 -m py_compile scripts/testnet_operational_probe.py
+      - name: Parser rejects malformed or forged tips
+        run: python3 scripts/testnet_operational_probe.py --self-test
