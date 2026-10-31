@@ -160,7 +160,7 @@ Une future archive construite depuis **la même branche et le même commit** con
 - **Linux :** `AURORA-LAN.sh` ; lancer avec `sh AURORA-LAN.sh`.
 - **Windows :** `AURORA-LAN.cmd` ; lancer dans un dossier Windows extrait comme décrit précédemment.
 
-Sur macOS et Linux, il faut **Python 3.10 ou supérieur**. L'assistant utilise la bibliothèque standard Python, et **Tkinter quand il est disponible** pour une fenêtre graphique ; sinon, il passe en **mode terminal**. La présence de Python/Tkinter ne découle pas du paquet AURORA : vérifier cette dépendance séparément. Sur macOS, un fichier téléchargé non signé peut déclencher les protections de Gatekeeper ; ne pas les désactiver globalement. Sous Linux, ne pas désactiver les protections du système ni lancer l'assistant en root.
+Sur macOS et Linux, il faut **Python 3.10 ou supérieur**. L'assistant utilise la bibliothèque standard Python, et **Tkinter quand il est disponible** pour une fenêtre graphique ; sinon, il passe en **mode terminal**. La présence de Python/Tkinter ne découle pas du paquet AURORA : vérifier cette dépendance séparément. Certains extracteurs ZIP perdent le bit d'exécution des binaires Unix : l'assistant vérifie **d'abord** les hashes du paquet, puis restaure uniquement la permission exécutable sur ses deux binaires locaux, sans privilèges administrateur ni changement de contenu. Sur macOS, un fichier téléchargé non signé peut déclencher les protections de Gatekeeper ; ne pas les désactiver globalement. Sous Linux, ne pas désactiver les protections du système ni lancer l'assistant en root.
 
 ### Parcours à deux machines
 
