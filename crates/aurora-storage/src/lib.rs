@@ -337,7 +337,11 @@ fn sync_directory(_dir: &Path) -> io::Result<()> {
 /// Before discarding an old recovery index, validate both its manifest
 /// and its immutable v6 index pages. A checksummed manifest whose pages
 /// disappeared is not itself a usable recovery point.
-fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
+fn index_manifest_and_pages_valid(
+    dir: &Path,
+    path: &Path,
+    verified_pages: &mut HashSet<(Hash256, usize)>,
+) -> bool {
     let Ok(bytes) = read_bounded(path) else {
         return false;
     };
@@ -378,18 +382,25 @@ fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
     }
     for (page_number, digest) in body[81..].as_chunks::<32>().0.iter().enumerate() {
         let page_id = Hash256::from_bytes(*digest);
+        let Some(start) = page_number.checked_mul(INDEX_PAGE_BLOCKS) else {
+            return false;
+        };
+        // Different retained manifests commonly reference the same immutable
+        // full page. Validate it once within this prune attempt, never across
+        // save_snapshot calls: a later call must detect on-disk corruption.
+        if verified_pages.contains(&(page_id, start)) {
+            continue;
+        }
         let page_path = dir
             .join(INDEX_PAGE_DIRECTORY)
             .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         let Ok(page) = read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) else {
             return false;
         };
-        let Some(start) = page_number.checked_mul(INDEX_PAGE_BLOCKS) else {
-            return false;
-        };
         if sha256_plain(&page) != page_id || decode_index_page(&page, start).is_err() {
             return false;
         }
+        verified_pages.insert((page_id, start));
     }
     true
 }
@@ -410,9 +421,10 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             path != current && path.extension().is_some_and(|ext| ext == INDEX_EXTENSION)
         })
         .collect::<Vec<_>>();
+    let mut verified_pages = HashSet::new();
     if older
         .iter()
-        .any(|path| !index_manifest_and_pages_valid(dir, path))
+        .any(|path| !index_manifest_and_pages_valid(dir, path, &mut verified_pages))
     {
         eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
         return;
