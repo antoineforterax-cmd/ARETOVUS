@@ -1126,7 +1126,12 @@ mod tests {
         assert_eq!(cache.reused_full_pages, before);
         assert_eq!(
             &cache.pages[0].page_bytes[24..56],
-            original.blocks_with_ids_by_arrival().next().unwrap().0.as_bytes()
+            original
+                .blocks_with_ids_by_arrival()
+                .next()
+                .unwrap()
+                .0
+                .as_bytes()
         );
 
         // Even after cache reuse, all old block paths must still be checked.
