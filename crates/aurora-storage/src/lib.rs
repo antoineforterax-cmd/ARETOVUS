@@ -1253,8 +1253,7 @@ mod tests {
         let safe_tip = original.tip_hash();
         save_snapshot(&root, &original).unwrap();
 
-        let next =
-            AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
         let block_id = next.header.hash().unwrap();
         original.submit(next).unwrap();
         let latest = save_snapshot(&root, &original).unwrap();
