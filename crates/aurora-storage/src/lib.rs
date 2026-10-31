@@ -36,6 +36,8 @@ const INDEX_PAGE_VERSION: u32 = 1;
 const INDEX_PAGE_DIRECTORY: &str = "index-pages-v6";
 const INDEX_PAGE_EXTENSION: &str = "aurpage";
 const INDEX_PAGE_BLOCKS: usize = 4_096;
+/// At most 4 MiB of verified arrival-order IDs may be kept across P2P pages.
+const MAX_CACHED_FULL_INDEX_PAGES: usize = 32;
 const MAX_INDEX_PAGE_BYTES: usize = 24 + INDEX_PAGE_BLOCKS * 32 + 32;
 const BLOCK_DIRECTORY: &str = "blocks-v5";
 const INDEX_EXTENSION: &str = "auridx";
@@ -82,13 +84,53 @@ impl From<AccountForkChainError> for StorageError {
     }
 }
 
+/// Full index pages already committed within one P2P synchronization.
+/// This is never serialized or shared across processes, and is invalidated
+/// after any failed save. Every block path and cached page is rechecked on disk
+/// before the next manifest is published.
+#[derive(Default)]
+pub struct SnapshotPageCache {
+    pages: Vec<CachedIndexPage>,
+    #[cfg(test)]
+    reused_full_pages: usize,
+}
+
+struct CachedIndexPage {
+    /// Full bytes previously written and checked by the ordinary v6 encoder.
+    /// Exact comparison avoids re-encoding and re-hashing an unchanged page.
+    page_bytes: Box<[u8]>,
+    page_id: Hash256,
+}
+
 /// Persist content-addressed blocks, immutable v6 pages and a checksummed manifest.
 /// The v4 snapshot and v5 index readers remain available for recovery and migration.
 pub fn save_snapshot(
     dir: impl AsRef<Path>,
     chain: &AccountForkChain,
 ) -> Result<PathBuf, StorageError> {
-    let dir = dir.as_ref();
+    save_snapshot_inner(dir.as_ref(), chain, None)
+}
+
+/// Opt-in cache for repeated saves during a single accepted peer inventory.
+/// It keeps only complete, exactly matched index pages, not block-file status.
+/// Errors discard the cache; normal save_snapshot remains the cold reference.
+pub fn save_snapshot_with_page_cache(
+    dir: impl AsRef<Path>,
+    chain: &AccountForkChain,
+    cache: &mut SnapshotPageCache,
+) -> Result<PathBuf, StorageError> {
+    let result = save_snapshot_inner(dir.as_ref(), chain, Some(cache));
+    if result.is_err() {
+        cache.pages.clear();
+    }
+    result
+}
+
+fn save_snapshot_inner(
+    dir: &Path,
+    chain: &AccountForkChain,
+    mut cache: Option<&mut SnapshotPageCache>,
+) -> Result<PathBuf, StorageError> {
     fs::create_dir_all(dir)?;
     let block_dir = dir.join(BLOCK_DIRECTORY);
     fs::create_dir_all(&block_dir)?;
@@ -146,6 +188,62 @@ pub fn save_snapshot(
             .to_be_bytes(),
     );
     for (page_number, chunk) in block_ids.chunks(INDEX_PAGE_BLOCKS).enumerate() {
+        // An append-only arrival prefix may be reused only if every block ID
+        // still matches the earlier complete page. Crucially, the page's disk
+        // contents are read and checked *again on each save*. The memory cache
+        // is never evidence that an object survived an external mutation.
+        let cached_id = if chunk.len() == INDEX_PAGE_BLOCKS {
+            if let Some(cache) = cache.as_deref_mut() {
+                if let Some(saved) = cache.pages.get(page_number) {
+                    let cached_body = &saved.page_bytes[24..24 + INDEX_PAGE_BLOCKS * 32];
+                    let cached_ids = cached_body.as_chunks::<32>().0;
+                    let same_prefix = cached_ids
+                        .iter()
+                        .zip(chunk.iter())
+                        .all(|(bytes, id)| bytes == id.as_bytes());
+                    if same_prefix {
+                        let page_path =
+                            page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
+                        match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
+                            // Byte-for-byte equality to the page previously
+                            // hashed and durably written is as strict as the
+                            // classic write_immutable existing-file check.
+                            Ok(bytes) if bytes.as_slice() == saved.page_bytes.as_ref() => {
+                                Some(saved.page_id)
+                            }
+                            Ok(_) => {
+                                return Err(StorageError::InvalidFormat(
+                                    "content-addressed index page mismatch",
+                                ));
+                            }
+                            Err(StorageError::Io(error))
+                                if error.kind() == io::ErrorKind::NotFound =>
+                            {
+                                None
+                            }
+                            Err(error) => return Err(error),
+                        }
+                    } else {
+                        cache.pages.truncate(page_number);
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        if let Some(page_id) = cached_id {
+            #[cfg(test)]
+            if let Some(cache) = cache.as_deref_mut() {
+                cache.reused_full_pages += 1;
+            }
+            body.extend_from_slice(page_id.as_bytes());
+            continue;
+        }
         let mut page = Vec::with_capacity(24 + chunk.len() * 32 + CHECKSUM_LEN);
         page.extend_from_slice(INDEX_PAGE_MAGIC);
         page.extend_from_slice(&INDEX_PAGE_VERSION.to_be_bytes());
@@ -166,7 +264,23 @@ pub fn save_snapshot(
         let page_id = sha256_plain(&page);
         let page_path = page_dir.join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
+        if chunk.len() == INDEX_PAGE_BLOCKS {
+            if let Some(cache) = cache.as_deref_mut() {
+                if page_number < MAX_CACHED_FULL_INDEX_PAGES {
+                    cache.pages.truncate(page_number);
+                    cache.pages.push(CachedIndexPage {
+                        page_bytes: page.into_boxed_slice(),
+                        page_id,
+                    });
+                }
+            }
+        }
         body.extend_from_slice(page_id.as_bytes());
+    }
+    if let Some(cache) = cache {
+        cache
+            .pages
+            .truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
     }
     #[cfg(test)]
     let profile_pages_done = profile_started.elapsed();
@@ -954,6 +1068,90 @@ mod tests {
         assert_eq!(restored.height(), original.height());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn cached_complete_v6_page_revalidates_disk_and_exact_arrival_prefix() {
+        let path = dir();
+        let mut original = chain();
+        // Exactly one complete page, including genesis.
+        for timestamp in 2..=4096 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            original.submit(block).unwrap();
+        }
+        let mut cache = SnapshotPageCache::default();
+        let first_manifest = save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.pages.len(), 1);
+        assert_eq!(cache.reused_full_pages, 0);
+        let first_page_id = cache.pages[0].page_id;
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{first_page_id}.{INDEX_PAGE_EXTENSION}"));
+        let original_page = fs::read(&page_path).unwrap();
+
+        // An appended block makes a partial second page; the complete prefix
+        // is reused, but the new manifest must still commit the new block.
+        let next =
+            AccountBlock::build(NetworkId::Regtest, original.tip_hash(), 4097, 0, Vec::new())
+                .unwrap();
+        original.submit(next).unwrap();
+        let next_manifest = save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_ne!(next_manifest, first_manifest);
+        assert_eq!(cache.reused_full_pages, 1);
+        assert_eq!(cache.pages.len(), 1);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.state(), original.state());
+
+        // The cache is NOT permission to trust a previously persisted file.
+        // A modified page must abort before publishing another manifest.
+        fs::write(&page_path, b"damaged cached page").unwrap();
+        assert!(save_snapshot_with_page_cache(&path, &original, &mut cache).is_err());
+        assert!(cache.pages.is_empty());
+        fs::write(&page_path, &original_page).unwrap();
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.pages.len(), 1);
+
+        // A stale arrival prefix must force recomputation instead of reuse.
+        cache.pages[0].page_bytes[24] ^= 1;
+        let before = cache.reused_full_pages;
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        assert_eq!(cache.reused_full_pages, before);
+        assert_eq!(
+            &cache.pages[0].page_bytes[24..56],
+            original
+                .blocks_with_ids_by_arrival()
+                .next()
+                .unwrap()
+                .0
+                .as_bytes()
+        );
+
+        // Even after cache reuse, all old block paths must still be checked.
+        let genesis_id = *original.blocks_with_ids_by_arrival().next().unwrap().0;
+        let block_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{genesis_id}.{BLOCK_EXTENSION}"));
+        let external = path.join("saved-genesis");
+        fs::rename(&block_path, &external).unwrap();
+        fs::create_dir(&block_path).unwrap();
+        assert!(matches!(
+            save_snapshot_with_page_cache(&path, &original, &mut cache),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+        assert!(cache.pages.is_empty());
+        fs::remove_dir(&block_path).unwrap();
+        fs::rename(&external, &block_path).unwrap();
+        save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         fs::remove_dir_all(path).unwrap();
     }
 
