@@ -599,12 +599,19 @@ def main() -> int:
             if (f"recipient={'44' * 32}" not in swapped_details
                     or f"txid={prepared_match.group(1)}" in swapped_details):
                 raise AssertionError("adversarial signed payment was not independently different")
-            rejected_swap = subprocess.run(
-                [str(wallet), "broadcast", "--from", str(swapped_file),
-                 "--node", "127.0.0.1:1",
-                 "--expected-txid", prepared_match.group(1), "--yes"],
-                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
-            )
+            # Replace the *same reviewed file path* with a different valid
+            # authorization, then restore the original bytes for the good path.
+            reviewed_bytes = signed_file.read_bytes()
+            signed_file.write_bytes(swapped_file.read_bytes())
+            try:
+                rejected_swap = subprocess.run(
+                    [str(wallet), "broadcast", "--from", str(signed_file),
+                     "--node", "127.0.0.1:1",
+                     "--expected-txid", prepared_match.group(1), "--yes"],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+            finally:
+                signed_file.write_bytes(reviewed_bytes)
             if (rejected_swap.returncode == 0
                     or "signed payment differs from externally reviewed txid" not in rejected_swap.stderr
                     or "transaction_id=" in rejected_swap.stdout):
@@ -648,7 +655,8 @@ def main() -> int:
                     raise AssertionError("keyless public account query changed before broadcast")
                 broadcast = subprocess.run(
                     [str(wallet), "broadcast", "--from", str(signed_file),
-                     "--node", f"{addr_b[0]}:{addr_b[1]}"],
+                     "--node", f"{addr_b[0]}:{addr_b[1]}",
+                     "--expected-txid", prepared_match.group(1)],
                     cwd=ROOT, text=True,
                     input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                     capture_output=True, timeout=20,
@@ -658,8 +666,9 @@ def main() -> int:
                     raise AssertionError(f"broadcast without a key failed: {sent}")
             finally:
                 unavailable_key.rename(keyfile)
-            if f"transaction_id={prepared_match.group(1)}" not in sent:
-                raise AssertionError("broadcast changed the offline-signed transaction")
+            if (f"transaction_id={prepared_match.group(1)}" not in sent
+                    or "external_txid_pin_verified=true" not in sent):
+                raise AssertionError("broadcast did not preserve the externally reviewed transaction")
             duplicate = subprocess.run(
                 [str(wallet), "broadcast", "--from", str(signed_file),
                  "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
