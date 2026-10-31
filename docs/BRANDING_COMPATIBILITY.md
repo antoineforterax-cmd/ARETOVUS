@@ -7,6 +7,8 @@ ARETOVUS est le nom de marque qui remplace AURORA pour le projet Rust de blockch
 - Les préfixes de séparation de domaine de hachage et de signature `AURORA/exp/...` et `AURORA/testnet/...` sont des entrées cryptographiques : **les modifier change les identifiants et signatures**.
 - Les octets magiques `AURORIDX` (index v6), la genèse, les paramètres de réseau, l'empreinte de réseau et les formats de stockage restent identiques.
 - Le schéma URI `aurora://testnet/`, le nom de verrou local `.aurora.lock`, les anciens fichiers de sauvegarde, les tags/releases, les anciennes archives, et les messages de preuve archivés restent reconnus comme historiques.
+- Les anciens marqueurs `network=AURORA-TESTNET`, la confirmation manuelle `SEND AURORA-TESTNET`, les en-têtes des politiques wallet et les variables de tests `AURORA_*` restent des identifiants de compatibilité. Les workflows les utilisent encore intentionnellement ; les modifier demande des tests de migration ciblés.
+- Les scripts de comparaison utilisent volontairement `aurora-node` lorsqu'ils compilent un commit historique, mais la version courante expose `aretovus-node`.
 - Le symbole économique expérimental `AUR` est conservé, car un nouveau ticker et sa migration n'ont pas été définis ni validés. Ce n'est **pas** une assurance de disponibilité du ticker.
 - Les anciennes URLs `github.com/antoineforterax-cmd/AURORA`, les références et SHA historiques sont conservés pour l'intégrité des preuves. Le dépôt GitHub est désormais nommé `antoineforterax-cmd/ARETOVUS` ; les URLs historiques peuvent rediriger vers ce dépôt. Les SHA, tags et références de preuve restent immuables.
 
