@@ -20,6 +20,11 @@ on:
       - ".github/workflows/testnet-packages.yml"
   pull_request:
     paths:
+      - "scripts/lan_assistant.ps1"
+      - "scripts/lan_assistant_unix.py"
+      - "AURORA-LAN.cmd"
+      - "AURORA-LAN.sh"
+      - "AURORA-LAN.command"
       - "scripts/package_testnet.py"
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
@@ -73,11 +78,22 @@ jobs:
         run: |
           pkg=$(find dist -maxdepth 1 -type f -name 'aurora-testnet-*.zip' -print -quit)
           python - "$pkg" <<'PY'
-          import sys, zipfile
-          with zipfile.ZipFile(sys.argv[1]) as z:
-              for name in ('AURORA-LAN.sh', 'AURORA-LAN.command', 'scripts/lan_assistant_unix.py'):
-                  assert name in z.namelist(), name
-          print('unix_lan_packaging=ok')
+          import pathlib, subprocess, sys, tempfile, zipfile
+          with tempfile.TemporaryDirectory() as temp:
+              with zipfile.ZipFile(sys.argv[1]) as z:
+                  for name in ('AURORA-LAN.sh', 'AURORA-LAN.command', 'scripts/lan_assistant_unix.py'):
+                      assert name in z.namelist(), name
+                  z.extractall(temp)
+              script = pathlib.Path(temp) / 'scripts' / 'lan_assistant_unix.py'
+              ok = subprocess.run([sys.executable, str(script), '--verify-package'],
+                                  capture_output=True, text=True, timeout=30)
+              assert ok.returncode == 0, ok.stderr
+              with (pathlib.Path(temp) / 'bin' / 'aurora-node').open('ab') as node:
+                  node.write(b'INTENTIONAL-CORRUPTION')
+              bad = subprocess.run([sys.executable, str(script), '--verify-package'],
+                                   capture_output=True, text=True, timeout=30)
+              assert bad.returncode != 0, 'tampered node binary accepted'
+          print('unix_lan_package_integrity=ok')
           PY
       - name: Vérifier l'archive Windows avant usage sur deux PC
         if: runner.os == 'Windows'
