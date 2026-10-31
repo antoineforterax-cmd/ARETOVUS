@@ -52,7 +52,7 @@ def main() -> int:
     parser.add_argument("--binary", type=Path)
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--host-label", type=str, default="node-a")
-    parser.add_argument("--hours", type=float, default=72.0)
+    parser.add_argument("--hours", type=float, default=4.0)
     parser.add_argument("--interval-seconds", type=float, default=300.0)
     parser.add_argument("--command-timeout", type=float, default=300.0)
     parser.add_argument("--output", type=Path, default=Path("aurora-operational-evidence.jsonl"))
@@ -64,12 +64,14 @@ def main() -> int:
         return 0
     if args.binary is None or args.data_dir is None:
         parser.error("--binary and --data-dir are required unless --self-test")
-    if not 0 < args.hours <= 168 or not 1 <= args.interval_seconds <= 3600:
-        parser.error("hours must be (0, 168] and interval-seconds 1..3600")
+    if not 4 <= args.hours <= 168 or not 1 <= args.interval_seconds <= 3600:
+        parser.error("hours must be 4..168 and interval-seconds 1..3600")
     if not 5 <= args.command_timeout <= 3600:
         parser.error("command-timeout must be 5..3600 seconds")
     if not re.fullmatch(r"[a-zA-Z0-9_.-]{1,64}", args.host_label):
         parser.error("host-label must contain only A-Z, a-z, 0-9, _, -, .")
+    if not re.fullmatch(r"[a-fA-F0-9]{40}", args.commit):
+        parser.error("--commit must be a real 40-character Git SHA (git rev-parse HEAD)")
     executable = args.binary.resolve()
     data_dir = args.data_dir.resolve()
     if not executable.is_file() or not data_dir.is_dir():
@@ -92,6 +94,8 @@ def main() -> int:
                                  "host_label": args.host_label, **values}, sort_keys=True) + "\n")
         handle.flush()
 
+    # A four-hour physical test is a useful intermediate gate, not 72h certification.
+    # Never infer hardware independence from the host-label supplied by the operator.
     # Append-only evidence: do not overwrite older runs or silently count them as part of this run.
     with output.open("a", encoding="utf-8") as evidence:
         record(evidence, "start", duration_required_seconds=duration, commit=args.commit,
@@ -133,8 +137,10 @@ def main() -> int:
                last_height=last_tip[0] if last_tip else None,
                last_tip=last_tip[1] if last_tip else None,
                duration_reached=duration_reached, local_probe_passed=successful,
+               counts_as_4h=successful and duration >= 4 * 3600,
                counts_as_72h=successful and duration >= 72 * 3600)
     print(f"Evidence: {output}; local probe passed={successful}; "
+          f"4h threshold={successful and duration >= 4 * 3600}; "
           f"72h threshold={successful and duration >= 72 * 3600}")
     return 0 if successful else 1
 
