@@ -2,7 +2,25 @@
 
 > Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
 
-Pour découvrir le projet et faire un premier essai : [AURORA, de A à Z](docs/guide-fr/README.md). La [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) fournit les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
+## Bienvenue : AURORA en une minute
+
+**AURORA est un prototype de blockchain autonome en Rust.** Un portefeuille signe des transactions, des nœuds les vérifient et les mineurs produisent des blocs grâce à une preuve de travail (PoW). Aujourd'hui, le logiciel se teste sur des machines indépendantes ; **il n'existe pas encore de mainnet ni de garantie adaptée à des fonds réels**.
+
+Notre cap : bâtir d'abord un **noyau fiable, facile à vérifier et à maintenir**, puis étudier une confidentialité plus forte, des protections volontaires contre la perte de fonds et des nœuds accessibles sur du matériel modeste. Ce sont des ambitions de recherche, **pas des fonctionnalités déjà livrées**. Voir le [cahier des charges](docs/planning/CAHIER_DES_CHARGES.md).
+
+### Où aller ?
+
+| Vous cherchez… | Commencez ici |
+| --- | --- |
+| **Découvrir en français**, sans connaître la blockchain | [Guide débutant : AURORA de A à Z](docs/guide-fr/README.md) |
+| **Essayer le logiciel** sur Windows, Linux ou macOS | [Installation et premier démarrage](docs/guide-fr/03-installation.md) |
+| **Comprendre la direction du projet** et les fonctionnalités futures | [Vision et feuille de route](docs/planning/README.md) |
+| **Savoir ce qui est décidé, proposé ou encore à comparer** | [Tableau vivant des décisions](docs/planning/DECISIONS.md) |
+| **Vérifier les règles exactes** et les limites du testnet | [Consensus](docs/CONSENSUS.md) · [Rapport de validation](docs/TESTNET_VALIDATION_REPORT.md) |
+| **Aider, auditer ou signaler un problème** | [Contribuer](CONTRIBUTING.md) · [Sécurité](SECURITY.md) |
+
+**Important pour l'installation :** la [release expérimentale du 27 octobre 2026](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) correspond au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` ; elle n'est pas nécessairement identique au code de `main`. Ne mélangez pas les données ou binaires de profils incompatibles. Pour les essais Windows sur deux PC, voir le [guide dédié](docs/TWO_PC_TEST.md).
+
 
 ## État actuel
 
