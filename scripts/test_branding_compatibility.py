@@ -12,16 +12,21 @@ def read(path: str) -> str:
 
 def main() -> None:
     manifests = ["Cargo.toml", "Cargo.lock", "fuzz/Cargo.toml"]
+    workspace = read("Cargo.toml")
+    lockfile = read("Cargo.lock")
     for component in CRATES:
         crate = ROOT / "crates" / f"aretovus-{component}"
         assert crate.joinpath("Cargo.toml").is_file(), crate
         assert not ROOT.joinpath("crates", f"aurora-{component}").exists()
-        manifests.append(f"crates/aretovus-{component}/Cargo.toml")
+        manifest = f"crates/aretovus-{component}/Cargo.toml"
+        manifests.append(manifest)
+        assert f"crates/aretovus-{component}" in workspace, component
+        assert f'name = "aretovus-{component}"' in lockfile, component
+        assert f'name = "aretovus-{component}"' in read(manifest), component
     for manifest in manifests:
         source = read(manifest)
         for component in CRATES:
-            assert f'name = "aretovus-{component}"' in source or manifest != "Cargo.lock" and f"aretovus-{component}" in source or component not in ("node", "storage", "wallet") and manifest == "Cargo.toml", (manifest, component)
-            assert f'name = "aurora-{component}"' not in source, (manifest, component)
+            assert f"aurora-{component}" not in source, (manifest, component)
 
     for path in ("README.md", "CONTRIBUTING.md", "SECURITY.md", "AGENTS.md"):
         source = read(path)
