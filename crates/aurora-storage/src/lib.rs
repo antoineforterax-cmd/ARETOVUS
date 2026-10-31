@@ -7,6 +7,7 @@ use std::{
     collections::HashSet,
     error::Error,
     fmt,
+    fmt::Write as _,
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
     path::{Path, PathBuf},
@@ -101,8 +102,15 @@ pub fn save_snapshot(
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
+    // Retain filename and PathBuf allocations across all block objects. Never
+    // cache file existence or type: every object still gets symlink_metadata.
+    let mut block_name = String::with_capacity(64 + 1 + BLOCK_EXTENSION.len());
+    let mut block_path = block_dir.join("block.aurblk");
     for (block_id, block) in blocks {
-        let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        block_name.clear();
+        write!(&mut block_name, "{block_id}.{BLOCK_EXTENSION}")
+            .expect("formatting into a String cannot fail");
+        block_path.set_file_name(&block_name);
         // Do not follow symlinks at content-addressed paths: an immutable
         // block must be a regular file owned by the storage directory.
         match fs::symlink_metadata(&block_path) {
@@ -954,6 +962,49 @@ mod tests {
         assert_eq!(restored.height(), original.height());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         assert_eq!(restored.known_block_count(), original.known_block_count());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn snapshot_traversal_checks_last_existing_block_and_restores_a_missing_one() {
+        let path = dir();
+        let mut original = chain();
+        let mut last_id = original.tip_hash();
+        // Exercise every filename after the initial reusable path buffer.
+        for timestamp in 2..=70 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            last_id = block.header.hash().unwrap();
+            original.submit(block).unwrap();
+        }
+        let manifest = save_snapshot(&path, &original).unwrap();
+        assert_eq!(
+            fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count(),
+            original.known_block_count()
+        );
+        let last_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{last_id}.{BLOCK_EXTENSION}"));
+        fs::remove_file(&last_path).unwrap();
+        fs::create_dir(&last_path).unwrap();
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+        // Removing an object cannot be masked by the previous save. A retry
+        // recreates it at the correct hash path and recovers all blocks.
+        fs::remove_dir(&last_path).unwrap();
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.state(), original.state());
         fs::remove_dir_all(path).unwrap();
     }
 
