@@ -588,6 +588,39 @@ def main() -> int:
             )
             if override.returncode == 0 or "unsupported option" not in override.stderr:
                 raise AssertionError("broadcast silently accepted signed-field overrides")
+            # Adversarial file substitution: a second *validly signed* payment
+            # must not replace the transaction reviewed on the offline machine.
+            swapped_file = base / "swapped-payment.aurtx"
+            swapped_args = list(signing_args)
+            swapped_args[swapped_args.index("--to") + 1] = "44" * 32
+            swapped_args[swapped_args.index("--out") + 1] = str(swapped_file)
+            run_wallet(wallet, "sign-offline", *swapped_args, "--yes")
+            swapped_details = run_wallet(wallet, "inspect-signed", "--from", str(swapped_file))
+            if (f"recipient={'44' * 32}" not in swapped_details
+                    or f"txid={prepared_match.group(1)}" in swapped_details):
+                raise AssertionError("adversarial signed payment was not independently different")
+            rejected_swap = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(swapped_file),
+                 "--node", "127.0.0.1:1",
+                 "--expected-txid", prepared_match.group(1), "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if (rejected_swap.returncode == 0
+                    or "signed payment differs from externally reviewed txid" not in rejected_swap.stderr
+                    or "transaction_id=" in rejected_swap.stdout):
+                raise AssertionError(
+                    f"file substitution was not rejected before RPC: {rejected_swap.stdout} {rejected_swap.stderr}"
+                )
+            invalid_pin = subprocess.run(
+                [str(wallet), "broadcast", "--from", str(signed_file),
+                 "--node", "127.0.0.1:1",
+                 "--expected-txid", "not-a-txid", "--yes"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if (invalid_pin.returncode == 0
+                    or "transaction_id=" in invalid_pin.stdout):
+                raise AssertionError("noncanonical pinned txid was accepted")
+
             cancelled = subprocess.run(
                 [str(wallet), "broadcast", "--from", str(signed_file),
                  "--node", f"{addr_b[0]}:{addr_b[1]}"],
