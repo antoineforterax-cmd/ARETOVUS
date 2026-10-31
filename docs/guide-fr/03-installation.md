@@ -4,13 +4,13 @@
 
 ## Choisir l’archive
 
-La [Release expérimentale de référence](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) propose les archives du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et un fichier externe `SHA256SUMS.txt`.
+La [Release expérimentale de référence](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) propose les archives du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et un fichier externe `SHA256SUMS.txt`.
 
 | Ordinateur | Archive de cette Release |
 | --- | --- |
-| Windows x86-64 | `aurora-testnet-windows-x86_64-421d443370e8.zip` |
-| Linux x86-64 | `aurora-testnet-linux-x86_64-421d443370e8.zip` |
-| macOS Apple Silicon | `aurora-testnet-macos-arm64-421d443370e8.zip` |
+| Windows x86-64 | `aretovus-testnet-windows-x86_64-421d443370e8.zip` |
+| Linux x86-64 | `aretovus-testnet-linux-x86_64-421d443370e8.zip` |
+| macOS Apple Silicon | `aretovus-testnet-macos-arm64-421d443370e8.zip` |
 
 Ne choisissez pas une archive uniquement parce que son nom contient votre système : l’architecture doit aussi correspondre. Cette publication ne fournit pas de binaire Windows 32 bits ou macOS Intel. Elle ne constitue pas une certification de toutes les anciennes versions de Windows ou de Linux.
 
@@ -21,19 +21,19 @@ Les programmes sont non signés. Le SHA-256 permet de comparer le téléchargeme
 Téléchargez l’archive Windows et le `SHA256SUMS.txt` externe dans le même dossier. Dans PowerShell, depuis ce dossier :
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\aurora-testnet-windows-x86_64-421d443370e8.zip
+Get-FileHash -Algorithm SHA256 .\aretovus-testnet-windows-x86_64-421d443370e8.zip
 Get-Content .\SHA256SUMS.txt
 ```
 
 Comparez les 64 caractères du résultat avec la ligne portant exactement le nom de l’archive. Les lettres majuscules et minuscules de cette empreinte ont le même sens. N’exécutez pas un téléchargement dont l’empreinte diffère.
 
-Extrayez ensuite dans un **nouveau dossier**, par exemple `C:\Users\PC\Desktop\AURORA\version-421d443`. Si un essai automatisé utilise déjà `C:\Users\PC\Desktop\AURORA`, ne remplacez pas son installation ou ses données. Une archive Release s’extrait directement; les artefacts Actions historiques pouvaient contenir une seconde archive imbriquée.
+Extrayez ensuite dans un **nouveau dossier**, par exemple `C:\Users\PC\Desktop\ARETOVUS\version-421d443`. Si un essai automatisé utilise déjà `C:\Users\PC\Desktop\ARETOVUS`, ne remplacez pas son installation ou ses données. Une archive Release s’extrait directement; les artefacts Actions historiques pouvaient contenir une seconde archive imbriquée.
 
 Depuis le dossier extrait, qui contient `bin` :
 
 ```powershell
-.\bin\aurora-node.exe --help
-.\bin\aurora-wallet.exe --help
+.\bin\aretovus-node.exe --help
+.\bin\aretovus-wallet.exe --help
 ```
 
 Ces deux commandes doivent afficher l’aide. Vous n’avez pas besoin de Rust ni de Visual C++ Build Tools pour exécuter ces binaires déjà construits. L’éditeur de liens Visual C++ concerne la compilation depuis les sources.
@@ -43,9 +43,9 @@ Ces deux commandes doivent afficher l’aide. Vous n’avez pas besoin de Rust n
 Vérifiez l’empreinte de l’archive avec `sha256sum` sous Linux ou `shasum -a 256` sous macOS, en la comparant au fichier externe publié. Après extraction, si les droits d’exécution ont été perdus :
 
 ```sh
-chmod +x bin/aurora-node bin/aurora-wallet
-./bin/aurora-node --help
-./bin/aurora-wallet --help
+chmod +x bin/aretovus-node bin/aretovus-wallet
+./bin/aretovus-node --help
+./bin/aretovus-wallet --help
 ```
 
 Les commandes de ce guide gardent les mêmes options. Par exemple, `--data-dir .\demo\noeud-a` devient `--data-dir ./demo/noeud-a`.

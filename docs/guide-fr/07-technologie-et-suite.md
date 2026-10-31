@@ -16,7 +16,7 @@
 | Horodatages | Strictement croissants et supérieurs à la médiane des onze ancêtres disponibles; admission locale bornée à deux heures dans le futur. |
 | Choix de chaîne | Travail cumulé, puis règle déterministe d’égalité; les réorganisations rejouent les règles de chaque branche. |
 | Stockage | Fichiers locaux immuables de blocs, pages d’index v6 et manifestes checksummés; lecture des anciens formats v4/v5 compatibles. |
-| Réseau | Protocole TCP propre à AURORA, fingerprint P2P v4, pairs configurés, pages et quotas bornés, rattrapage périodique. |
+| Réseau | Protocole TCP propre à ARETOVUS, fingerprint P2P v4, pairs configurés, pages et quotas bornés, rattrapage périodique. |
 | Wallet | CLI, fichiers chiffrés, sauvegarde/restauration, preuves Merkle et vérification légère SPV. |
 
 La [carte des cinq crates](../../ARCHITECTURE.md) aide à retrouver les modules. Le [protocole](../PROTOCOL.md) précise les formats et limites; cette page en résume les choix, sans proposer une autre spécification.
@@ -41,7 +41,7 @@ Une découverte distribuée ne crée pas une route réseau à travers tout pare-
 
 **ASERT n’est pas intégré.** La difficulté courante utilise un nombre entier de bits nuls et des ajustements par fenêtre. Passer à une cible plus fine touche au PoW, au calcul du travail, au client léger et potentiellement aux formats ou à l’empreinte de protocole. Ce changement demande une spécification, des vecteurs indépendants et des essais de réorganisation avant activation sur un nouveau profil.
 
-Un PoW visant à réduire l’avantage du matériel spécialisé doit être étudié à partir de constructions existantes et de mesures. Ce guide ne présente pas le SHA-256 courant comme résistant aux ASIC et ne propose pas d’algorithme cryptographique inventé pour AURORA.
+Un PoW visant à réduire l’avantage du matériel spécialisé doit être étudié à partir de constructions existantes et de mesures. Ce guide ne présente pas le SHA-256 courant comme résistant aux ASIC et ne propose pas d’algorithme cryptographique inventé pour ARETOVUS.
 
 L’accessibilité d’un mineur sur PC ne suffit pas à établir une décentralisation durable. Les coûts d’énergie, la distribution de puissance, les règles d’admission et les risques de manipulation temporelle restent à mesurer.
 
@@ -53,7 +53,7 @@ Un exécutable autonome n’est pas isolé du système comme une machine virtuel
 
 ## Ce qui reste à prouver
 
-Les contrôles CI vérifient des propriétés précises sur des commits précis. La [campagne de volume du commit `421d443`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40527921129) a testé un stockage contenant 100 003 blocs connus, avec une branche secondaire et rechargement. Ce scénario n’est pas une synchronisation réseau de 100 000 blocs et n’est pas un essai de panne électrique.
+Les contrôles CI vérifient des propriétés précises sur des commits précis. La [campagne de volume du commit `421d443`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129) a testé un stockage contenant 100 003 blocs connus, avec une branche secondaire et rechargement. Ce scénario n’est pas une synchronisation réseau de 100 000 blocs et n’est pas un essai de panne électrique.
 
 Les travaux suivants restent distincts : endurance avec transactions et mesures, scénarios de pairs hostiles, longues réorganisations, données corrompues, disque réellement plein, restauration hors machine, simulation indépendante du retarget, vecteurs cryptographiques et revue humaine indépendante. La [fiche de finalisation](../FINALIZATION_CHECKLIST.md) et le [rapport d’essais](../TESTNET_VALIDATION_REPORT.md) suivent les preuves disponibles et les tâches ouvertes.
 

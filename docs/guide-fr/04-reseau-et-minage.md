@@ -10,7 +10,7 @@ Dans un premier terminal :
 
 ```powershell
 New-Item -ItemType Directory -Path .\demo\cles
-.\bin\aurora-wallet.exe keygen --out .\demo\cles\alice.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\demo\cles\alice.aurkey
 ```
 
 Choisissez un mot de passe d’au moins douze caractères et confirmez-le. La saisie est masquée. Conservez l’adresse affichée après `address=`; elle est publique. Le fichier de clé et le mot de passe sont privés.
@@ -18,7 +18,7 @@ Choisissez un mot de passe d’au moins douze caractères et confirmez-le. La sa
 La commande suivante permet de retrouver l’adresse et de la mettre dans une variable PowerShell pour ce terminal :
 
 ```powershell
-$alice = .\bin\aurora-wallet.exe address --key-file .\demo\cles\alice.aurkey
+$alice = .\bin\aretovus-wallet.exe address --key-file .\demo\cles\alice.aurkey
 ```
 
 Chaque nouvelle fenêtre possède ses propres variables. Si vous changez de fenêtre, refaites cette commande ou recopiez l’adresse publique.
@@ -28,7 +28,7 @@ Chaque nouvelle fenêtre possède ses propres variables. Si vous changez de fen�
 Dans une deuxième fenêtre, depuis le dossier extrait :
 
 ```powershell
-.\bin\aurora-node.exe testnet serve --data-dir .\demo\noeud-a --listen 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet serve --data-dir .\demo\noeud-a --listen 127.0.0.1:19444
 ```
 
 Laissez cette fenêtre ouverte. `127.0.0.1` désigne votre propre PC : aucune ouverture de port sur la box n’est nécessaire pour ce scénario. Un dossier neuf reçoit la genèse de ce testnet.
@@ -38,7 +38,7 @@ Laissez cette fenêtre ouverte. `127.0.0.1` désigne votre propre PC : aucune ou
 Revenez dans le premier terminal, où `$alice` contient l’adresse :
 
 ```powershell
-.\bin\aurora-node.exe testnet mine --data-dir .\demo\mineur --miner $alice --count 1 --peer 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet mine --data-dir .\demo\mineur --miner $alice --count 1 --peer 127.0.0.1:19444
 ```
 
 Le mineur synchronise sa copie depuis le serveur, récupère ses transactions en attente, construit un bloc puis l’envoie au serveur. Ici `--count 1` demande un seul bloc et la commande se termine ensuite. Elle ne lance pas un service de minage permanent.
@@ -52,7 +52,7 @@ Le dossier `demo\mineur` est différent de `demo\noeud-a`. Un serveur et un mine
 Dans une troisième fenêtre :
 
 ```powershell
-.\bin\aurora-node.exe testnet serve --data-dir .\demo\noeud-b --listen 127.0.0.1:19445 --peer 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet serve --data-dir .\demo\noeud-b --listen 127.0.0.1:19445 --peer 127.0.0.1:19444
 ```
 
 B interroge périodiquement A et valide les blocs reçus. La convergence n’est pas instantanée. Le tour de rattrapage est suivi d’un délai de dix secondes; les opérations de synchronisation peuvent ajouter du temps.
@@ -60,8 +60,8 @@ B interroge périodiquement A et valide les blocs reçus. La convergence n’est
 Dans un terminal libre, vérifiez les deux copies en lecture seule :
 
 ```powershell
-.\bin\aurora-node.exe testnet verify --data-dir .\demo\noeud-a
-.\bin\aurora-node.exe testnet verify --data-dir .\demo\noeud-b
+.\bin\aretovus-node.exe testnet verify --data-dir .\demo\noeud-a
+.\bin\aretovus-node.exe testnet verify --data-dir .\demo\noeud-b
 ```
 
 Attendez puis recommencez si B est encore en retard. Les valeurs `height` et `tip` doivent être identiques. Une hauteur identique avec un sommet différent signifie que les copies ne sont pas sur la même branche.
@@ -75,8 +75,8 @@ Arrêtez chaque serveur avec `Ctrl+C`. Les données restent dans son dossier. Re
 Pour télécharger une chaîne une seule fois, sans laisser de serveur ouvert, la commande suivante utilise encore un autre dossier :
 
 ```powershell
-.\bin\aurora-node.exe testnet sync --data-dir .\demo\copie --peer 127.0.0.1:19444
-.\bin\aurora-node.exe testnet verify --data-dir .\demo\copie
+.\bin\aretovus-node.exe testnet sync --data-dir .\demo\copie --peer 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet verify --data-dir .\demo\copie
 ```
 
 ## Essai de 72 heures
