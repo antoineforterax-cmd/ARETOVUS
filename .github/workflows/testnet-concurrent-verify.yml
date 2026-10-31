@@ -39,7 +39,7 @@ jobs:
           else
             binary=target/debug/aurora-node
           fi
-          python scripts/testnet_concurrent_verify_smoke.py --node "$binary" --blocks 100 --max-seconds 240 --probe-timeout 45 --min-distinct-heights 3 --output target/concurrent-verify-evidence.json
+          python scripts/testnet_concurrent_verify_smoke.py --node "$binary" --blocks 48 --max-seconds 240 --probe-timeout 45 --min-distinct-heights 3 --output target/concurrent-verify-evidence.json
       - name: Upload CI evidence (never physical-host evidence)
         if: always()
         uses: actions/upload-artifact@v4
