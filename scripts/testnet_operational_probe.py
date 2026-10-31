@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -222,14 +223,16 @@ def main() -> int:
 
     def record(handle, event: str, **values: object) -> None:
         handle.write(json.dumps({"event": event, "utc": utc_now(),
-                                 "host_label": args.host_label, **values}, sort_keys=True) + "\n")
+                                 "host_label": args.host_label, "run_id": run_id,
+                                 **values}, sort_keys=True) + "\n")
         handle.flush()
 
     # A four-hour physical test is a useful intermediate gate, not 72h certification.
     # Never infer hardware independence from the host-label supplied by the operator.
     # Append-only evidence: do not overwrite older runs or silently count them as part of this run.
+    run_id = uuid.uuid4().hex
     with ResourceMonitor(telemetry, data_dir, args.host_label,
-                         args.telemetry_interval_seconds) as resources, \
+                         args.telemetry_interval_seconds, run_id=run_id) as resources, \
          output.open("a", encoding="utf-8") as evidence:
         record(evidence, "start", duration_required_seconds=duration, commit=args.commit,
                binary_sha256=digest, initial_monotonic=time.monotonic(), version=1)
