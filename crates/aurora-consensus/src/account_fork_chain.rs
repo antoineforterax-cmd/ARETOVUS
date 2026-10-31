@@ -768,6 +768,45 @@ mod tests {
     }
 
     #[test]
+    fn future_dated_retarget_windows_cannot_jump_more_than_one_adjustment_bound() {
+        use crate::proof_of_work::mine_nonce;
+        let params = DifficultyParams {
+            target_block_seconds: 10,
+            adjustment_interval: 2,
+            max_adjustment_bits: 2,
+            min_bits: 1,
+            max_bits: 8,
+        };
+        let mut genesis = block(Hash256::ZERO, 100, vec![]);
+        genesis.header.nonce = mine_nonce(&genesis.header, 4, 0, 100_000).unwrap();
+        let mut chain =
+            AccountForkChain::new_with_params(genesis, 4, params, initial_state()).unwrap();
+        let mut timestamp = 100u64;
+        // Simulate a peer that pushes block time far ahead at every
+        // retarget window. Consensus retarget is bounded independently
+        // from the local clock admission check at the network boundary.
+        for height in 1..=12 {
+            timestamp += if height % 2 == 0 { 1_000_000 } else { 1 };
+            let parent_bits = chain.difficulty_bits();
+            let required = chain.next_difficulty_bits(timestamp).unwrap();
+            assert!((1..=8).contains(&required));
+            assert!(parent_bits.abs_diff(required) <= 2);
+            let before_height = chain.height();
+            let before_tip = chain.tip_hash();
+            let before_work = chain.chain_work();
+            let mut candidate = block(before_tip, timestamp, vec![]);
+            candidate.header.nonce = mine_nonce(&candidate.header, required, 0, 100_000).unwrap();
+            chain.submit(candidate).unwrap();
+            assert_eq!(chain.height(), before_height + 1);
+            assert_ne!(chain.tip_hash(), before_tip);
+            assert!(chain.chain_work() > before_work);
+            assert_eq!(chain.difficulty_bits(), required);
+        }
+        assert_eq!(chain.height(), 12);
+        assert_eq!(chain.difficulty_bits(), 1);
+    }
+
+    #[test]
     fn late_side_branch_does_not_shift_arrival_inventory_cursor() {
         let genesis = block(Hash256::ZERO, 1, vec![]);
         let genesis_hash = genesis.header.hash().unwrap();
