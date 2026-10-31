@@ -1,5 +1,8 @@
 # AURORA — décisions actuelles et arbitrages ouverts
 
+> **Questionnaire complet avec choix A/B/C :** [68 décisions à arbitrer, regroupées par domaine](DECISION_OPTIONS.md). Les recommandations ne sont ni des règles actives ni des décisions automatiquement approuvées. Les 88 IDs du [registre historique](../DECISION_REGISTER.md) restent accessibles pour l'historique mais ne sont pas 88 décisions encore ouvertes.
+
+
 **Point de référence :** `main` au SHA `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f`, situation consultée le 31 octobre 2026. **Document de décision et de suivi, sans modification de protocole.** Pour les règles exactes exécutées, le code à ce SHA et [TESTNET_DECISIONS.md](../TESTNET_DECISIONS.md) priment. L'ancien [registre phase 0](../DECISION_REGISTER.md) et la [baseline historique](../DECISION_BASELINE.md) sont conservés comme archives, **pas comme états courants**.
 
 ## Comment distinguer les statuts ?
