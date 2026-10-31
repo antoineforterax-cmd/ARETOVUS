@@ -2,7 +2,7 @@
 use std::process::{Command, Output, Stdio};
 
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_aurora-wallet"))
+    Command::new(env!("CARGO_BIN_EXE_aretovus-wallet"))
         .args(args)
         .stdin(Stdio::null())
         .output()
