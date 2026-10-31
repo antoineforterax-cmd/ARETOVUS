@@ -2550,6 +2550,65 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    /// Shared preflight and opt-in load test to ensure both volumes exercise
+    /// exactly the same snapshot and restoration assertions.
+    fn assert_storage_probe_round_trip(count: u64) {
+        assert!((1..=1_000_000).contains(&count));
+        let started = std::time::Instant::now();
+        let path = dir();
+        let mut original = chain();
+        for height in 1..=count {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                height + 1,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            original.submit(block).unwrap();
+        }
+        let tip = original.tip_hash();
+        assert_eq!(original.height(), count);
+        assert_eq!(original.known_block_count(), (count + 1) as usize);
+        let build_seconds = started.elapsed().as_secs_f64();
+        save_snapshot(&path, &original).unwrap();
+        let save_seconds = started.elapsed().as_secs_f64() - build_seconds;
+        drop(original);
+        let restore_start = std::time::Instant::now();
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height(), count);
+        assert_eq!(restored.known_block_count(), (count + 1) as usize);
+        assert_eq!(restored.tip_hash(), tip);
+        eprintln!(
+            "million-block probe: blocks={} build_seconds={:.1} save_seconds={:.1} restore_seconds={:.1}",
+            restored.known_block_count(),
+            build_seconds,
+            save_seconds,
+            restore_start.elapsed().as_secs_f64()
+        );
+        drop(restored);
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    /// Fast, unignored canary for the exact same data path as the million-block run.
+    #[test]
+    fn million_block_probe_preflight() {
+        assert_storage_probe_round_trip(512);
+    }
+
+    /// Real million-block storage/restart, deliberately excluded from routine CI.
+    #[test]
+    #[ignore = "explicit opt-in: AURORA_MILLION_BLOCK_PROBE=1"]
+    fn million_block_persistence_and_restart_probe() {
+        assert_eq!(
+            std::env::var("AURORA_MILLION_BLOCK_PROBE").as_deref(),
+            Ok("1"),
+            "set AURORA_MILLION_BLOCK_PROBE=1 to run the expensive probe"
+        );
+        assert_storage_probe_round_trip(1_000_000);
+    }
+
     #[test]
     fn corrupted_snapshot_is_rejected() {
         let path = dir();
