@@ -43,10 +43,9 @@ function Get-PrivateBindIp {
     if ($active.Count -eq 0 -or @($active | Where-Object { $_.NetworkCategory -ne 'Private' }).Count -gt 0) {
         throw 'Un profil Windows Public actif est present, ou aucun reseau Prive actif. Connexion refusee.'
     }
-    $ips = @(foreach ($profile in $active) {
-        Get-NetIPAddress -InterfaceIndex $profile.InterfaceIndex -AddressFamily IPv4 -ErrorAction Stop |
-            Where-Object { Test-PrivateIPv4 $_.IPAddress } | Select-Object -ExpandProperty IPAddress
-    } | Select-Object -Unique)
+    $ips = @($active | ForEach-Object {
+        Get-NetIPAddress -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4 -ErrorAction Stop
+    } | Where-Object { Test-PrivateIPv4 $_.IPAddress } | Select-Object -ExpandProperty IPAddress -Unique)
     if ($ips.Count -ne 1) { throw 'Plusieurs reseaux IP prives actifs, ou aucun. Deconnecter VPN/adaptateurs supplementaires avant utilisation.' }
     return [string]$ips[0]
 }
