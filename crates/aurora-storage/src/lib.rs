@@ -266,7 +266,7 @@ fn save_snapshot_inner(
         }
         body.extend_from_slice(page_id.as_bytes());
     }
-    if let Some(cache) = cache.as_deref_mut() {
+    if let Some(cache) = cache {
         cache
             .pages
             .truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
