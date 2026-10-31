@@ -11,7 +11,10 @@ on:
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
       - "scripts/lan_assistant.ps1"
+      - "scripts/lan_assistant_unix.py"
       - "AURORA-LAN.cmd"
+      - "AURORA-LAN.sh"
+      - "AURORA-LAN.command"
       - "scripts/testnet_two_node_package_smoke.py"
       - "docs/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
@@ -54,12 +57,28 @@ jobs:
         run: |
           & powershell.exe -NoProfile -NonInteractive -File scripts/lan_assistant.ps1 -SelfTest
           if ($LASTEXITCODE -ne 0) { throw 'LAN assistant self-test failed' }
+      - name: Verifier la syntaxe et les tests de l'assistant macOS/Linux
+        run: |
+          python -m py_compile scripts/lan_assistant_unix.py
+          python scripts/lan_assistant_unix.py --self-test
       - name: Construire les binaires du testnet
         run: cargo build --workspace --release --locked
       - name: Vérifier le verrou de dossier entre processus
         run: python scripts/testnet_lock_smoke.py
       - name: Créer l’archive et vérifier ses sommes de contrôle
         run: python scripts/package_testnet.py
+      - name: Verifier l'assistant integre au ZIP macOS/Linux
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          pkg=$(find dist -maxdepth 1 -type f -name 'aurora-testnet-*.zip' -print -quit)
+          python - "$pkg" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              for name in ('AURORA-LAN.sh', 'AURORA-LAN.command', 'scripts/lan_assistant_unix.py'):
+                  assert name in z.namelist(), name
+          print('unix_lan_packaging=ok')
+          PY
       - name: Vérifier l'archive Windows avant usage sur deux PC
         if: runner.os == 'Windows'
         shell: pwsh
@@ -68,7 +87,7 @@ jobs:
           if (-not $archive) { throw 'Missing Windows archive' }
           $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
-          foreach ($relative in @('AURORA-LAN.cmd', 'scripts/lan_assistant.ps1')) {
+          foreach ($relative in @('AURORA-LAN.cmd', 'AURORA-LAN.sh', 'AURORA-LAN.command', 'scripts/lan_assistant.ps1', 'scripts/lan_assistant_unix.py')) {
             if (-not (Test-Path -LiteralPath (Join-Path $target $relative))) { throw "Assistant LAN missing from package: $relative" }
           }
           $sourceRevision = ($env:GITHUB_SHA).Substring(0, 12)
