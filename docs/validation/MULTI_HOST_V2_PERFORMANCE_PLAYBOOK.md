@@ -36,6 +36,8 @@ python .\scripts\testnet_operational_probe.py --binary .\bin\aurora-node.exe --d
 
 **Important :** ces commandes ne sont correctes pour les archives *sans dépôt Git* que si la valeur `$sha` a été obtenue séparément depuis la provenance exacte du paquet ; sinon la commande Git échoue. Les dossiers `two-pc/server-*` sont les dossiers d'essai originaux ; les remplacer par les vrais dossiers sur chaque machine. Le volume de blocs doit progresser pendant l'essai pour passer le contrôle de vitalité. Il n'est pas nécessaire d'en produire 2 000 ni de charger du vrai argent.
 
+Chaque exécution reçoit automatiquement un **identifiant aléatoire de campagne (run ID) de 128 bits**. Il apparaît dans les deux fichiers et dans leurs échantillons. Le validateur rejette un mélange de campagnes, un écart important entre les horodatages de départ/fin et les trous dans les relevés **même si les sommes SHA-256 des fichiers ont été recalculées**. La SHA-256 et cet identifiant empêchent surtout les confusions et modifications accidentelles : **ils ne constituent ni une signature cryptographique d'éditeur ni une attestation indépendante contre la falsification volontaire des deux fichiers.**
+
 Chaque commande écrit **deux fichiers locaux** :
 - `evidence-pc-a-v2.jsonl` (respectivement B) : événements `start`, `sample`, `finish` avec hauteur, sommet, latence `verify`, erreurs et SHA256 du journal ressources.
 - `evidence-pc-a-v2.resources.jsonl` (respectivement B) : mesures toutes les ~5 secondes **pendant toute la campagne**, y compris pendant un `verify` bloqué : CPU système, RAM globale, RAM libre, espace disque libre. `disk_io_utilization_percent=null` : **l'activité réelle du disque n'est pas instrumentée**.
