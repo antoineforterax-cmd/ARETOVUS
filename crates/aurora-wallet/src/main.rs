@@ -679,6 +679,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
             println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
             println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--expected-txid VERIFIED_TXID] [--yes]");
+            println!("    Pin a txid from independent review to block swapped signed-file authorization before RPC.");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("  aurora-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
