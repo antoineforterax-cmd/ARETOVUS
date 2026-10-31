@@ -84,7 +84,7 @@ impl WalletKey {
 
     /// Whether a key file uses the authenticated encrypted AURKEY4 format.
     pub fn file_is_encrypted(path: &Path) -> Result<bool, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         let mut magic = [0u8; 8];
         file.read_exact(&mut magic)?;
         if &magic == ENCRYPTED_MAGIC {
@@ -146,7 +146,7 @@ impl WalletKey {
         path: &Path,
         password: &str,
     ) -> Result<Self, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != ENCRYPTED_FILE_BYTES as u64 {
             return Err("invalid AURKEY4 file length".into());
         }
@@ -241,7 +241,7 @@ impl WalletKey {
 
     /// Read only a bounded recovery text file and validate its expected identity.
     pub fn load_recovery_file(path: &Path, expected: AccountId) -> Result<Self, Box<dyn Error>> {
-        let file = File::open(path)?;
+        let file = open_regular_wallet_file(path)?;
         // Reserve beyond the read limit so secret bytes never move through reallocation.
         let mut code = Zeroizing::new(Vec::with_capacity(258));
         file.take(257).read_to_end(&mut code)?;
@@ -268,7 +268,7 @@ impl WalletKey {
 
     /// Read and validate a plain testnet seed file.
     pub fn load_plain_testnet_file(path: &Path) -> Result<Self, Box<dyn Error>> {
-        let mut file = File::open(path)?;
+        let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != KEY_FILE_BYTES as u64 {
             return Err("invalid AURKEY3 file length".into());
         }
@@ -290,6 +290,38 @@ impl Drop for WalletKey {
     fn drop(&mut self) {
         self.seed.zeroize();
     }
+}
+
+/// Reject symlinks, directories and device files before reading secret key material.
+/// On Unix, compare the opened file identity to the lstat result to reject a
+/// final-component replacement between those operations.
+pub(crate) fn open_regular_wallet_file(path: &Path) -> io::Result<File> {
+    let expected = std::fs::symlink_metadata(path)?;
+    if !expected.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "wallet secret must be a regular file, not a symlink",
+        ));
+    }
+    let file = File::open(path)?;
+    let opened = file.metadata()?;
+    if !opened.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "wallet secret is not a regular file",
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if opened.dev() != expected.dev() || opened.ino() != expected.ino() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "wallet key path was replaced while opening",
+            ));
+        }
+    }
+    Ok(file)
 }
 
 fn derive_password_key(password: &str, salt: &[u8; 16]) -> Result<[u8; 32], Box<dyn Error>> {
@@ -490,6 +522,68 @@ mod tests {
         fs::write(&path, [0xff; 155]).unwrap();
         assert!(WalletKey::load_recovery_file(&path, key.account_id()).is_err());
         fs::remove_file(path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn wallet_secret_readers_reject_symlinks_but_accept_original_files() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "aurora-wallet-links-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&root).unwrap();
+        let key = WalletKey::from_seed_bytes([0x68; 32]);
+        let encrypted = root.join("encrypted.aurkey");
+        let plain = root.join("plain.aurkey");
+        let recovery = root.join("recovery.txt");
+        let password = "test-only long wallet password";
+        key.save_encrypted_testnet_file(&encrypted, password)
+            .unwrap();
+        key.save_plain_testnet_file(&plain).unwrap();
+        key.save_recovery_file(&recovery).unwrap();
+
+        let encrypted_link = root.join("encrypted-link.aurkey");
+        let plain_link = root.join("plain-link.aurkey");
+        let recovery_link = root.join("recovery-link.txt");
+        symlink(&encrypted, &encrypted_link).unwrap();
+        symlink(&plain, &plain_link).unwrap();
+        symlink(&recovery, &recovery_link).unwrap();
+
+        assert!(WalletKey::file_is_encrypted(&encrypted_link).is_err());
+        assert!(WalletKey::file_is_encrypted(&plain_link).is_err());
+        assert!(WalletKey::load_encrypted_testnet_file(&encrypted_link, password).is_err());
+        assert!(WalletKey::load_plain_testnet_file(&plain_link).is_err());
+        assert!(WalletKey::load_recovery_file(&recovery_link, key.account_id()).is_err());
+
+        assert!(WalletKey::file_is_encrypted(&encrypted).unwrap());
+        assert!(!WalletKey::file_is_encrypted(&plain).unwrap());
+        assert_eq!(
+            WalletKey::load_encrypted_testnet_file(&encrypted, password)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        assert_eq!(
+            WalletKey::load_plain_testnet_file(&plain)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        assert_eq!(
+            WalletKey::load_recovery_file(&recovery, key.account_id())
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+
+        assert!(WalletKey::file_is_encrypted(&root).is_err());
+        assert!(WalletKey::load_encrypted_testnet_file(&root, password).is_err());
+        assert!(WalletKey::load_plain_testnet_file(&root).is_err());
+        assert!(WalletKey::load_recovery_file(&root, key.account_id()).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

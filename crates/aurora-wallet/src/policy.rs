@@ -1,7 +1,7 @@
 //! Optional, local per-payment limits automatically associated with a wallet path.
 use std::{
     error::Error,
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{self, Read, Write},
     path::{Path, PathBuf},
 };
@@ -57,7 +57,7 @@ pub fn load(key_file: &Path, expected: AccountId) -> Result<Option<PaymentLimits
     if !metadata.file_type().is_file() {
         return Err("wallet limits must be a regular file, not a symlink or directory".into());
     }
-    let file = File::open(path)?;
+    let file = crate::keys::open_regular_wallet_file(&path)?;
     let mut text = String::new();
     file.take(MAX_BYTES + 1).read_to_string(&mut text)?;
     if text.len() as u64 > MAX_BYTES {

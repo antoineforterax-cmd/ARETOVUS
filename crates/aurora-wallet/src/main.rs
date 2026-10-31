@@ -88,6 +88,7 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
             ],
             &["--yes", "--dry-run"],
         ),
+        "inspect-signed" => (&["--from"], &[]),
         "broadcast" => (&["--from", "--node"], &["--yes"]),
         "verify" => (&["--node", "--txid", "--confirmations"], &[]),
         "status" => (&["--node", "--txid"], &[]),
@@ -322,7 +323,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let key_path = Path::new(option(&args, "--key-file")?);
             let stored = aurora_wallet::policy::load(key_path, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, read_confirmation, PaymentLimits};
+            use aurora_wallet::safety::{check_payment, PaymentLimits};
             let requested = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -364,9 +365,21 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             println!("The signed file authorizes spending. Anyone holding it can broadcast; deleting it cannot revoke a copy.");
             if !flag(&args, "--yes") {
-                print!("Type SEND {destination} to authorize: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination,
+                    amount,
+                    fee,
+                    nonce,
+                );
+                print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !read_confirmation(&mut io::stdin().lock(), &destination)? {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    amount,
+                    fee,
+                    nonce,
+                )? {
                     return Err("offline payment cancelled before signing".into());
                 }
             }
@@ -374,6 +387,14 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err("wallet limits changed during review; review the payment again".into());
             }
             let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce)?;
+            aurora_wallet::safety::verify_signed_payment_intent(
+                &transaction,
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                nonce,
+            )?;
             aurora_wallet::signed_payment::save(destination_file, &transaction)?;
             println!(
                 "signed_file={} prepared_txid={}",
@@ -381,6 +402,22 @@ fn run() -> Result<(), Box<dyn Error>> {
                 transaction.txid()?
             );
             println!("not_broadcast: nonce and balance must be checked on the connected machine");
+        }
+        "inspect-signed" => {
+            let transaction =
+                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+            // load validates canonical encoding, testnet domain and signature.
+            println!("verified_signed_transaction=true");
+            println!("network=AURORA-TESTNET version={}", transaction.version);
+            println!("txid={}", transaction.txid()?);
+            println!("sender={}", account_id_hex(transaction.sender));
+            println!("recipient={}", account_id_hex(transaction.recipient));
+            println!(
+                "amount={} fee={} nonce={}",
+                transaction.amount, transaction.fee, transaction.nonce
+            );
+            println!("read_only=true private_key_loaded=false network_requests=none");
+            println!("Compare every field on a trusted independent device before broadcasting.");
         }
         "broadcast" => {
             let transaction =
@@ -398,10 +435,21 @@ fn run() -> Result<(), Box<dyn Error>> {
                 transaction.amount, transaction.fee, transaction.nonce
             );
             if !flag(&args, "--yes") {
-                print!("Type SEND {destination} to broadcast: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination,
+                    transaction.amount,
+                    transaction.fee,
+                    transaction.nonce,
+                );
+                print!("Type {phrase} to broadcast: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_confirmation(&mut io::stdin().lock(), &destination)?
-                {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    transaction.amount,
+                    transaction.fee,
+                    transaction.nonce,
+                )? {
                     return Err("broadcast cancelled; the signed file remains spendable".into());
                 }
             }
@@ -436,7 +484,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let key_path = Path::new(option(&args, "--key-file")?);
             let stored_limits = aurora_wallet::policy::load(key_path, key.account_id())?;
             let account = rpc::get_account(node, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, read_confirmation, PaymentLimits};
+            use aurora_wallet::safety::{check_payment, PaymentLimits};
             let limits = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -482,9 +530,21 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             if !flag(&args, "--yes") {
                 println!("A confirmed payment is irreversible. Check the full recipient address.");
-                print!("Type SEND {destination} to authorize: ");
+                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                    &destination,
+                    amount,
+                    fee,
+                    account.next_nonce,
+                );
+                print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !read_confirmation(&mut io::stdin().lock(), &destination)? {
+                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                    &mut io::stdin().lock(),
+                    &destination,
+                    amount,
+                    fee,
+                    account.next_nonce,
+                )? {
                     return Err("payment cancelled before signing".into());
                 }
             }
@@ -497,6 +557,14 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             let transaction =
                 build_signed_transaction(&key, recipient, amount, fee, account.next_nonce)?;
+            aurora_wallet::safety::verify_signed_payment_intent(
+                &transaction,
+                key.account_id(),
+                recipient,
+                amount,
+                fee,
+                account.next_nonce,
+            )?;
             let (id, pending) = rpc::submit_transaction(node, &transaction)?;
             println!("transaction_id={id}");
             println!("mempool=pending transactions={pending}");
@@ -567,6 +635,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("    A FILE.limits policy is applied automatically to send, including --yes; one-shot limits only tighten it.");
             println!("  aurora-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
+            println!("  aurora-wallet inspect-signed --from SIGNED_FILE");
+            println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--yes]");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");

@@ -355,6 +355,10 @@ def main() -> int:
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
             )
+            pending_nonce_match = re.search(r"next_nonce=(\d+)", before_review)
+            if pending_nonce_match is None:
+                raise AssertionError("wallet balance does not include next nonce")
+            review_nonce = pending_nonce_match.group(1)
             run_wallet(
                 wallet, "limits-create", "--key-file", str(keyfile),
                 "--max-amount", "1.00000000", "--max-fee", "0.00000003",
@@ -419,7 +423,10 @@ def main() -> int:
                 policy_file.write_text(original_policy.replace(
                     "max_amount=1.00000000", "max_amount=0.50000000"
                 ))
-                output, errors = reviewing.communicate(input=f"SEND {RECIPIENT}\n", timeout=20)
+                output, errors = reviewing.communicate(
+                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {review_nonce}\n",
+                    timeout=20,
+                )
                 if reviewing.returncode == 0 or "wallet limits changed during review" not in errors:
                     raise AssertionError(f"changed policy was not detected: {output}{errors}")
             finally:
@@ -473,7 +480,8 @@ def main() -> int:
                 raise AssertionError("offline preview wrote a signed file")
             authorized = subprocess.run(
                 [str(wallet), "sign-offline", *signing_args],
-                cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                cwd=ROOT, text=True,
+                input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                 capture_output=True, timeout=20,
             )
             prepared = authorized.stdout + authorized.stderr
@@ -482,6 +490,28 @@ def main() -> int:
             prepared_match = re.search(r"prepared_txid=([0-9a-f]{64})", prepared)
             if prepared_match is None or "network_requests=none" not in prepared:
                 raise AssertionError("offline signer did not identify the prepared transaction")
+            inspected = run_wallet(
+                wallet, "inspect-signed", "--from", str(signed_file),
+            )
+            for expected in [
+                "verified_signed_transaction=true",
+                "network=AURORA-TESTNET version=3",
+                f"txid={prepared_match.group(1)}",
+                f"recipient={RECIPIENT}",
+                "amount=1.00000000 fee=0.00000003",
+                f"nonce={nonce_match.group(1)}",
+                "read_only=true private_key_loaded=false network_requests=none",
+            ]:
+                if expected not in inspected:
+                    raise AssertionError(f"offline inspection omitted {expected}: {inspected}")
+            invalid_inspect = subprocess.run(
+                [str(wallet), "inspect-signed", "--from", str(signed_file),
+                 "--node", "127.0.0.1:1"],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if invalid_inspect.returncode == 0 or "unsupported option" not in invalid_inspect.stderr:
+                raise AssertionError("signed-file inspector accepted a network argument")
+
             balance_after_signing = run_wallet(
                 wallet, "balance", "--key-file", str(keyfile),
                 "--node", f"{addr_b[0]}:{addr_b[1]}",
@@ -493,6 +523,12 @@ def main() -> int:
             damaged_bytes = bytearray(signed_file.read_bytes())
             damaged_bytes[-1] ^= 1
             damaged.write_bytes(damaged_bytes)
+            rejected_inspect = subprocess.run(
+                [str(wallet), "inspect-signed", "--from", str(damaged)],
+                cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+            )
+            if rejected_inspect.returncode == 0 or "verified_signed_transaction=true" in rejected_inspect.stdout:
+                raise AssertionError("inspector accepted a corrupted signature")
             rejected_broadcast = subprocess.run(
                 [str(wallet), "broadcast", "--from", str(damaged),
                  "--node", f"{addr_b[0]}:{addr_b[1]}", "--yes"],
@@ -518,6 +554,11 @@ def main() -> int:
             unavailable_key = base / "offline-key-unavailable.aurkey"
             keyfile.rename(unavailable_key)
             try:
+                offline_review = run_wallet(
+                    wallet, "inspect-signed", "--from", str(signed_file),
+                )
+                if offline_review != inspected:
+                    raise AssertionError("inspection output depended on the availability of the private key")
                 public_without_key = run_wallet(
                     wallet, "account", "--address", miner,
                     "--node", f"{addr_b[0]}:{addr_b[1]}",
@@ -527,7 +568,8 @@ def main() -> int:
                 broadcast = subprocess.run(
                     [str(wallet), "broadcast", "--from", str(signed_file),
                      "--node", f"{addr_b[0]}:{addr_b[1]}"],
-                    cwd=ROOT, text=True, input=f"SEND {RECIPIENT}\n",
+                    cwd=ROOT, text=True,
+                    input=f"SEND AURORA-TESTNET {RECIPIENT} 1.00000000 0.00000003 {nonce_match.group(1)}\n",
                     capture_output=True, timeout=20,
                 )
                 sent = broadcast.stdout + broadcast.stderr
