@@ -33,8 +33,8 @@ jobs:
       - run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Profile 8192 blocks and verify persisted snapshot counts
         env:
-          ARETOVUS_STORAGE_PROFILE: "1"
-          ARETOVUS_STORAGE_PROFILE_BLOCKS: "8192"
+          AURORA_STORAGE_PROFILE: "1"
+          AURORA_STORAGE_PROFILE_BLOCKS: "8192"
         run: |
           set -euo pipefail
           /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-8192.log
