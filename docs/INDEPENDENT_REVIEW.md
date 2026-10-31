@@ -1,8 +1,8 @@
 # Dossier de revue indépendante — AURORA
 
 **Statut :** dossier préparatoire ; aucune revue extérieure qualifiée, approfondie et documentée n’est confirmée. Le responsable a déjà relu et corrigé du code, notamment en Python et rust, et réalisé des essais : cela relève des vérifications internes, distinctes de la revue demandée ici. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
-**Branche concernée :** `feature/emission-schedule-v0`.  
-**Base proposée pour la revue du consensus :** `7d0f1ee598235b7194f92081424c008c4c628ceb`; les changements documentaires et de lanceurs suivants doivent être examinés séparément et identifiés dans le rapport.
+**Branche à examiner aujourd'hui :** la révision explicitement choisie et épinglée par le reviewer (par défaut `main` à son SHA du jour), à confirmer avec les workflows du même commit.  
+**Référence historique :** `feature/emission-schedule-v0` et `7d0f1ee598235b7194f92081424c008c4c628ceb` constituaient une proposition de base **ancienne**, et ne doivent pas être présentés comme la révision actuelle.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 
 Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Elle reste une aide interne; elle ne remplit pas le critère de revue humaine externe indépendante.
@@ -40,13 +40,13 @@ Les contrôles CI couvrent les tests unitaires, un scénario multi-processus et 
 
 ## Limites connues à examiner
 
-- Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels. Le consensus exige des timestamps strictement croissants et un MTP, sans plafond lié à l’horloge locale; examiner les effets d’horodatages très futurs sur le retarget et la disponibilité des mineurs.
+- Les paramètres de difficulté du testnet sont volontairement faibles et ne protègent pas des fonds réels. La vérification actuelle impose le MTP et des bornes d'admission d'horodatage dans certains chemins du nœud; revoir leur couverture réelle, la résistance aux manipulations de temps et le retarget au SHA choisi.
 - Le nœud utilise une topologie amorcée par des adresses connues avec rattrapage et relais périodique des transactions depuis les pairs configurés; annonce spontanée à des pairs non configurés et découverte multi-sauts ne sont pas fournies. Les huit workers et la durée maximale de session de quinze minutes laissent un risque de saturation par connexions répétées ou entretenues; les tests de connexions lentes ne prouvent pas la résistance à cette saturation.
 - Le portefeuille chiffre ses nouvelles clés par défaut, mais l’ergonomie du mot de passe, la dérivation, la sérialisation du fichier et la sauvegarde/restauration n’ont pas été revues indépendamment. Le format en clair est réservé aux scripts de test; ne jamais utiliser ces clés hors testnet.
 - La preuve SPV dépend des pairs consultés et ne défend pas contre une éclipse.
 - La trésorerie reçoit des unités à une adresse fixe, mais aucune gouvernance ni règle de dépense n’est définie.
 - La chaîne conserve le sommet canonique et des points de contrôle d’état tous les 256 blocs; les autres états sont rejoués depuis un ancêtre connu. Le coût des états complets aux points de contrôle, du rejeu et de la copie de chaîne par page de synchronisation reste à mesurer avec de nombreux comptes et branches.
-- Les tests de snapshot ne simulent pas une panne électrique réelle, le disque plein, ni une restauration interversion.
+- Des tests automatisés simulent des erreurs d'écriture et certains scénarios de disque plein, mais ne prouvent pas une panne électrique physique ni une restauration hors machine à grande échelle. Contrôler les campagnes et le commit exact avant d'affirmer qu'une situation a été testée.
 - Le SHA-256 utilisé pour les identifiants et le PoW n’est pas une construction résistante aux ordinateurs quantiques.
 
 ## Voie pratique sans engager d’audit payant
