@@ -1,4 +1,4 @@
-# Comparaison préliminaire des modèles d'état — AURORA
+# Comparaison préliminaire des modèles d'état — ARETOVUS
 
 **Statut : comparaison historique de phase 0, conservée pour référence.**
 
@@ -7,7 +7,7 @@
 transactions v3 ML-DSA-65 et des transitions atomiques. La mention historique
 « TX-01 À COMPARER » ne décrit donc plus le code exécuté. Voir
 [CONSENSUS.md](CONSENSUS.md), [ARCHITECTURE.md](../ARCHITECTURE.md) et
-[le registre de comptes](../crates/aurora-core/src/state.rs).
+[le registre de comptes](../crates/aretovus-core/src/state.rs).
 
 Cette date est celle du constat documentaire, pas une date inventée de décision
 du porteur. La comparaison ci-dessous reste utile pour une recherche future,
@@ -23,7 +23,7 @@ Deux familles courantes sont comparées :
 - **UTXO** : les fonds sont représentés par des sorties non dépensées. Une transaction consomme des sorties existantes et en crée de nouvelles. C'est la famille utilisée par Bitcoin.
 - **Comptes** : le réseau conserve un état par compte, notamment un solde et généralement un compteur de séquence (*nonce*) pour ordonner les transactions. C'est la famille utilisée par Ethereum pour les comptes externes.
 
-Ces descriptions sont simplifiées : il existe des variantes et des modèles hybrides. Ce document ne présume pas qu'une variante est adaptée à AURORA.
+Ces descriptions sont simplifiées : il existe des variantes et des modèles hybrides. Ce document ne présume pas qu'une variante est adaptée à ARETOVUS.
 
 ## 2. Comparaison fonctionnelle
 

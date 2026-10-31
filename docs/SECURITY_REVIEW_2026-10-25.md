@@ -1,4 +1,4 @@
-# Revue technique initiale — AURORA
+# Revue technique initiale — ARETOVUS
 
 > Archive : décrit l’ancien prototype v0.0.1 au moment de sa rédaction. Pour les formats actuels, voir [CONSENSUS.md](CONSENSUS.md) et [PROTOCOL.md](PROTOCOL.md); pour les preuves, voir [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md).
 
