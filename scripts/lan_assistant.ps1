@@ -45,7 +45,7 @@ function Test-PrivateProfile {
 }
 function Test-Tcp([string]$ip) {
     if (-not (Test-PrivateIPv4 $ip)) { return $false }
-    $client = New-Object Net.Sockets.TcpClient
+    $client = New-Object System.Net.Sockets.TcpClient
     try {
         $async = $client.BeginConnect($ip, $script:Port, $null, $null)
         try {
@@ -89,46 +89,46 @@ if ($SelfTest) {
 }
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-[Windows.Forms.Application]::EnableVisualStyles()
-$form = New-Object Windows.Forms.Form
+[System.Windows.Forms.Application]::EnableVisualStyles()
+$form = New-Object System.Windows.Forms.Form
 $form.Text = 'AURORA - Assistant de connexion LAN (testnet)'
-$form.Size = New-Object Drawing.Size(670,430)
+$form.Size = New-Object System.Drawing.Size(670,430)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
-$form.Font = New-Object Drawing.Font('Segoe UI',10)
+$form.Font = New-Object System.Drawing.Font('Segoe UI',10)
 function Label([string]$txt,[int]$x,[int]$y,[int]$w,[int]$h=38) {
-    $obj = New-Object Windows.Forms.Label
+    $obj = New-Object System.Windows.Forms.Label
     $obj.Text=$txt
-    $obj.Location=New-Object Drawing.Point($x,$y)
-    $obj.Size=New-Object Drawing.Size($w,$h)
+    $obj.Location=New-Object System.Drawing.Point($x,$y)
+    $obj.Size=New-Object System.Drawing.Size($w,$h)
     $form.Controls.Add($obj)
     return $obj
 }
 function Button([string]$txt,[int]$x,[int]$y,[int]$w) {
-    $obj = New-Object Windows.Forms.Button
+    $obj = New-Object System.Windows.Forms.Button
     $obj.Text=$txt
-    $obj.Location=New-Object Drawing.Point($x,$y)
-    $obj.Size=New-Object Drawing.Size($w,42)
+    $obj.Location=New-Object System.Drawing.Point($x,$y)
+    $obj.Size=New-Object System.Drawing.Size($w,42)
     $form.Controls.Add($obj)
     return $obj
 }
 function Alert([string]$message) {
-    [Windows.Forms.MessageBox]::Show($message,'AURORA LAN','OK','Warning') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($message,'AURORA LAN','OK','Warning') | Out-Null
 }
 $warning = Label 'TESTNET experimental. Reseau Prive uniquement. Jamais de fonds reels.' 18 15 615
-$warning.ForeColor = [Drawing.Color]::DarkRed
+$warning.ForeColor = [System.Drawing.Color]::DarkRed
 $description = Label 'PC A heberge. PC B le detecte et se synchronise sans recopier son adresse.' 18 55 615
 $start = Button 'PC A : demarrer le serveur' 18 105 285
 $join = Button 'PC B : connexion automatique' 330 105 300
 $ipText = Label 'Si la decouverte est bloquee, saisir ici l IP privee de PC A :' 18 161 615
-$ip = New-Object Windows.Forms.TextBox
-$ip.Location = New-Object Drawing.Point(18,193)
+$ip = New-Object System.Windows.Forms.TextBox
+$ip.Location = New-Object System.Drawing.Point(18,193)
 $ip.Width=250
 $form.Controls.Add($ip)
 $manual = Button 'Connecter B avec cette adresse' 286 185 344
 $firewall = Label 'Pare-feu : TCP 19444 autorise uniquement pour PC B sur profil Prive, jamais Internet.' 18 250 615 48
-$firewall.ForeColor = [Drawing.Color]::DarkBlue
+$firewall.ForeColor = [System.Drawing.Color]::DarkBlue
 $status = Label 'Verification du paquet et de la decouverte...' 18 300 615 44
 $stop = Label 'Pour arreter proprement, utilisez Ctrl+C dans la fenetre de chaque noeud.' 18 355 615 34
 $script:Hash = $null
@@ -173,9 +173,9 @@ $manual.Add_Click({ try { Connect-B } catch { Alert $_.Exception.Message } })
 try {
     $script:Hash = Test-Package
     $status.Text='Paquet verifie. Selectionner PC A ou PC B.'
-    $script:Sender=New-Object Net.Sockets.UdpClient
+    $script:Sender=New-Object System.Net.Sockets.UdpClient
     $script:Sender.EnableBroadcast=$true
-    $script:Listener=New-Object Net.Sockets.UdpClient
+    $script:Listener=New-Object System.Net.Sockets.UdpClient
     $script:Listener.Client.ExclusiveAddressUse=$false
     $script:Listener.Client.SetSocketOption([Net.Sockets.SocketOptionLevel]::Socket,[Net.Sockets.SocketOptionName]::ReuseAddress,$true)
     $endpoint=[Net.IPEndPoint]::new([Net.IPAddress]::Any,$script:BeaconPort)
@@ -185,7 +185,7 @@ try {
     $status.Text='Preflight impossible. Corriger le paquet ou le reseau et relancer.'
     Alert $_.Exception.Message
 }
-$timer = New-Object Windows.Forms.Timer
+$timer = New-Object System.Windows.Forms.Timer
 $timer.Interval=850
 $timer.Add_Tick({
     if ($null -eq $script:Listener -or $null -eq $script:Hash) { return }
@@ -225,8 +225,8 @@ $timer.Add_Tick({
 $timer.Start()
 $form.Add_FormClosing({
     if($null -ne $script:Proc -and -not $script:Proc.HasExited){
-        $answer=[Windows.Forms.MessageBox]::Show('Le noeud est encore actif. Arretez-le avec Ctrl+C dans son terminal. Fermer cette interface sans arreter le noeud ?', 'Noeud actif', 'YesNo', 'Warning')
-        if($answer -ne [Windows.Forms.DialogResult]::Yes){$_.Cancel=$true}
+        $answer=[System.Windows.Forms.MessageBox]::Show('Le noeud est encore actif. Arretez-le avec Ctrl+C dans son terminal. Fermer cette interface sans arreter le noeud ?', 'Noeud actif', 'YesNo', 'Warning')
+        if($answer -ne [System.Windows.Forms.DialogResult]::Yes){$_.Cancel=$true}
     }
 })
 $form.Add_FormClosed({
@@ -234,4 +234,4 @@ $form.Add_FormClosed({
     if($null -ne $script:Listener){$script:Listener.Close()}
     if($null -ne $script:Sender){$script:Sender.Close()}
 })
-[Windows.Forms.Application]::Run($form)
+[System.Windows.Forms.Application]::Run($form)
