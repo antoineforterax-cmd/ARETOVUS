@@ -47,6 +47,20 @@ def probe(node: Path, directory: Path, timeout: float) -> tuple[float, tuple[int
     return round(elapsed, 4), parse_snapshot(result.stdout)
 
 
+def check_progress(previous: tuple[int, str, int] | None, current: tuple[int, str, int]) -> None:
+    """Reject contradictory read-only snapshots from a single, fork-free miner."""
+    if previous is None:
+        return
+    old_height, old_tip, old_known = previous
+    height, tip, known = current
+    if height < old_height:
+        raise AssertionError("verified canonical height went backwards")
+    if height == old_height and tip != old_tip:
+        raise AssertionError("verified canonical tip changed at unchanged height")
+    if known < old_known:
+        raise AssertionError("verified known-block count went backwards")
+
+
 def self_test() -> None:
     good = (
         "verified testnet data: height=12 tip=" + "ab" * 32
@@ -63,7 +77,21 @@ def self_test() -> None:
         except ValueError:
             continue
         raise AssertionError("invalid snapshot accepted")
-    print("concurrent_verify_parser_self_test=ok")
+    first = (12, "ab" * 32, 13)
+    check_progress(None, first)
+    check_progress(first, first)
+    check_progress(first, (13, "cd" * 32, 14))
+    for previous, current in (
+        (first, (11, "cd" * 32, 13)),    # height regression
+        (first, (12, "cd" * 32, 13)),    # same-height tip mutation
+        (first, (13, "cd" * 32, 12)),    # known-block regression
+    ):
+        try:
+            check_progress(previous, current)
+        except AssertionError:
+            continue
+        raise AssertionError("inconsistent verified sequence accepted")
+    print("concurrent_verify_parser_and_sequence_self_test=ok")
 
 
 def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> dict:
@@ -71,7 +99,7 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> d
     started = time.monotonic()
     samples: list[dict] = []
     miner_status = ""
-    last_height = -1
+    previous_snapshot: tuple[int, str, int] | None = None
     with tempfile.TemporaryDirectory(prefix="aurora-verify-overlap-") as root:
         root_path = Path(root)
         directory = root_path / "chain"
@@ -93,9 +121,10 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> d
                         continue
                     measured_at = time.monotonic()
                     seconds, (height, tip, known) = probe(node, directory, probe_timeout)
-                    if height < last_height:
-                        raise AssertionError("same-chain snapshot height regressed")
-                    last_height = height
+                    if height > blocks:
+                        raise AssertionError("snapshot exceeds requested mining height")
+                    check_progress(previous_snapshot, (height, tip, known))
+                    previous_snapshot = (height, tip, known)
                     samples.append({
                         "height": height, "tip": tip, "known_blocks": known,
                         "verify_seconds": seconds,
@@ -115,8 +144,7 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> d
                     raise AssertionError(
                         f"expected {blocks} mined blocks, verify returned {final[0]}"
                     )
-                if samples and final[0] < samples[-1]["height"]:
-                    raise AssertionError("final chain regressed")
+                check_progress(previous_snapshot, final)
                 miner_status = "completed"
             finally:
                 if miner.poll() is None:
@@ -132,6 +160,9 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> d
         "blocks": blocks,
         "during_mining_checks": len(samples),
         "overlapping_checks": sum(bool(x["overlap"]) for x in samples),
+        "distinct_overlapping_heights": len({
+            x["height"] for x in samples if x["overlap"]
+        }),
         "worst_verify_seconds": max((x["verify_seconds"] for x in samples), default=None),
         "final_verify_seconds": final_seconds,
         "final_height": final[0],
@@ -148,6 +179,7 @@ def main() -> int:
     p.add_argument("--blocks", type=int, default=24)
     p.add_argument("--max-seconds", type=float, default=180)
     p.add_argument("--probe-timeout", type=float, default=30)
+    p.add_argument("--min-distinct-heights", type=int, default=2)
     p.add_argument("--output", type=Path)
     p.add_argument("--self-test", action="store_true")
     args = p.parse_args()
@@ -160,17 +192,26 @@ def main() -> int:
         p.error("--blocks must be 4..100")
     if not 5 <= args.probe_timeout <= 120 or not 30 <= args.max_seconds <= 600:
         p.error("timeouts outside allowed safety bounds")
+    if not 1 <= args.min_distinct_heights <= 10:
+        p.error("--min-distinct-heights must be 1..10")
     report = exercise(args.node, args.blocks, args.max_seconds, args.probe_timeout)
     if not report["during_mining_checks"]:
         raise AssertionError("no verifier exercised while miner was active")
     if not report["overlapping_checks"]:
         raise AssertionError("no read/write overlap observed")
+    if report["distinct_overlapping_heights"] < args.min_distinct_heights:
+        raise AssertionError(
+            "insufficient in-flight snapshot progress: "
+            f"observed {report['distinct_overlapping_heights']} distinct heights, "
+            f"required {args.min_distinct_heights}"
+        )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(
         f"concurrent_verify=ok blocks={report['blocks']} "
         f"overlaps={report['overlapping_checks']} "
+        f"distinct_heights={report['distinct_overlapping_heights']} "
         f"final_height={report['final_height']} "
         f"max_verification_seconds={report['worst_verify_seconds']}"
     )
