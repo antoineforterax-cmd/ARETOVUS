@@ -1,0 +1,32 @@
+name: operational-probe-diagnostics
+
+on:
+  pull_request:
+    paths:
+      - "scripts/testnet_operational_probe.py"
+      - "scripts/compare_testnet_evidence.py"
+      - "docs/validation/PHYSICAL_TWO_PC_4H_OBSERVATIONS_2026-10-31.md"
+      - ".github/workflows/operational-probe-diagnostics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probes:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile operational evidence scripts
+        run: python -m py_compile scripts/testnet_operational_probe.py scripts/compare_testnet_evidence.py
+      - name: Test probe error timing and Windows RAM snapshot
+        run: python scripts/testnet_operational_probe.py --self-test
+      - name: Keep strict two-host 4h/72h evidence validation
+        run: python scripts/compare_testnet_evidence.py --self-test
