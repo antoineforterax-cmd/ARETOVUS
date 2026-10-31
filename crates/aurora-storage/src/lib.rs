@@ -1209,8 +1209,8 @@ mod tests {
             committed.submit(block).unwrap();
         }
         let mut cache = SnapshotPageCache::default();
-        let previous_manifest = save_snapshot_with_page_cache(&path, &committed, &mut cache)
-            .unwrap();
+        let previous_manifest =
+            save_snapshot_with_page_cache(&path, &committed, &mut cache).unwrap();
         assert_eq!(cache.pages.len(), 1);
         let before = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
 
@@ -1252,16 +1252,16 @@ mod tests {
         assert_eq!(cache.reused_full_pages, reuse_before + 1);
         assert!(cache.pages.is_empty());
         assert!(previous_manifest.is_file());
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest))
-            .unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.tip_hash(), before.tip_hash());
         assert_eq!(recovered.known_block_count(), before.known_block_count());
         assert_eq!(recovered.state(), before.state());
 
         fs::remove_dir(&partial_page_path).unwrap();
         save_snapshot_with_page_cache(&path, &candidate, &mut cache).unwrap();
-        let recovered = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest))
-            .unwrap();
+        let recovered =
+            load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(recovered.tip_hash(), candidate.tip_hash());
         assert_eq!(recovered.known_block_count(), candidate.known_block_count());
         assert_eq!(recovered.state(), candidate.state());
