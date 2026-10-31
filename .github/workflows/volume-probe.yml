@@ -6,8 +6,8 @@ on:
     # 100k+ block workload. The workflow remains manually dispatchable.
     branches: [feature/emission-schedule-v0, "volume/**"]
     paths:
-      - "crates/aurora-storage/**"
-      - "crates/aurora-consensus/**"
+      - "crates/aretovus-storage/**"
+      - "crates/aretovus-consensus/**"
       - ".github/workflows/volume-probe.yml"
   workflow_dispatch:
 
@@ -23,4 +23,4 @@ jobs:
       - name: Installer Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Cross 100,000 blocks, retain a side branch and restart from v6 storage
-        run: /usr/bin/time -v cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
+        run: /usr/bin/time -v cargo test --locked -p aretovus-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture

@@ -56,7 +56,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $archive = Get-ChildItem -Path dist -Filter 'aurora-testnet-windows-*.zip' | Select-Object -First 1
+          $archive = Get-ChildItem -Path dist -Filter 'aretovus-testnet-windows-*.zip' | Select-Object -First 1
           if (-not $archive) { throw 'Missing Windows archive' }
           $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
@@ -72,7 +72,7 @@ jobs:
       - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-testnet-${{ matrix.os }}
+          name: aretovus-testnet-${{ matrix.os }}
           path: dist/*.zip
           if-no-files-found: error
           retention-days: 14
