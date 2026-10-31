@@ -34,7 +34,7 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Mesurer le transfert TCP, la persistance par page et la reprise
         env:
-          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || ((github.ref == 'refs/heads/volume/p2p-scale-8192' || github.ref == 'refs/heads/volume/p2p-phase-profile-8192') && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || (github.ref == 'refs/heads/volume/p2p-scale-32768' && '32768') || (github.ref == 'refs/heads/volume/p2p-scale-65536' && '65536') || (github.ref == 'refs/heads/volume/p2p-scale-100001' && '100001') || '2048' }}
+          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || ((github.ref == 'refs/heads/volume/p2p-scale-8192' || github.ref == 'refs/heads/volume/p2p-phase-profile-8192') && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || (github.ref == 'refs/heads/volume/p2p-scale-32768' && '32768') || (github.ref == 'refs/heads/volume/p2p-scale-32768-cache-20261031' && '32768') || (github.ref == 'refs/heads/volume/p2p-scale-65536' && '65536') || (github.ref == 'refs/heads/volume/p2p-scale-100001' && '100001') || '2048' }}
           AURORA_P2P_PROFILE: "1"
         run: |
           # A scale branch must not silently fall back to the 2048-block
@@ -45,6 +45,8 @@ jobs:
             refs/heads/volume/p2p-scale-16384)
               test "$AURORA_P2P_VOLUME_BLOCKS" = 16384 ;;
             refs/heads/volume/p2p-scale-32768)
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 32768 ;;
+            refs/heads/volume/p2p-scale-32768-cache-20261031)
               test "$AURORA_P2P_VOLUME_BLOCKS" = 32768 ;;
             refs/heads/volume/p2p-scale-65536)
               test "$AURORA_P2P_VOLUME_BLOCKS" = 65536 ;;
