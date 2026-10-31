@@ -11,10 +11,42 @@ import subprocess
 import sys
 import time
 import uuid
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from testnet_system_monitor import ResourceMonitor
+
+@contextmanager
+def lock_evidence_logs(paths: tuple[Path, ...]):
+    """Prevent concurrent collectors corrupting append-only evidence on one host.
+
+    Advisory OS locks live on persistent .lock sidecars; never delete them by hand.
+    """
+    if len(set(paths)) != len(paths):
+        raise ValueError("Evidence logs must have distinct paths")
+    with ExitStack() as stack:
+        for path in sorted(paths, key=str):
+            lock = path.with_name(path.name + ".lock")
+            lock.parent.mkdir(parents=True, exist_ok=True)
+            handle = stack.enter_context(lock.open("a+b"))
+            if lock.stat().st_size == 0:
+                handle.write(b"0")
+                handle.flush()
+            handle.seek(0)
+            try:
+                if sys.platform == "win32":
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                    stack.callback(msvcrt.locking, handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    stack.callback(fcntl.flock, handle.fileno(), fcntl.LOCK_UN)
+            except OSError as exc:
+                raise RuntimeError("Another collector is using this evidence output") from exc
+        yield
+
 
 TIP_PATTERN = re.compile(r"\bheight=(\d+)\s+tip=([0-9a-f]{64})\b")
 
@@ -140,6 +172,19 @@ def self_test() -> None:
         False, False, False
     )
     from unittest.mock import patch
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="aurora-evidence-lock-") as folder:
+        node_log = Path(folder) / "node.jsonl"
+        resources_log = Path(folder) / "resources.jsonl"
+        with lock_evidence_logs((node_log, resources_log)):
+            try:
+                with lock_evidence_logs((node_log,)):
+                    raise AssertionError("Duplicate evidence lock accepted")
+            except RuntimeError as exc:
+                assert "Another collector" in str(exc)
+        with lock_evidence_logs((node_log, resources_log)):
+            pass  # OS lock released correctly
 
     valid = "verified testnet data: height=42 tip=" + "ab" * 32
     with patch("subprocess.run", return_value=subprocess.CompletedProcess(
@@ -231,7 +276,7 @@ def main() -> int:
     # Never infer hardware independence from the host-label supplied by the operator.
     # Append-only evidence: do not overwrite older runs or silently count them as part of this run.
     run_id = uuid.uuid4().hex
-    with ResourceMonitor(telemetry, data_dir, args.host_label,
+    with lock_evidence_logs((output, telemetry)), ResourceMonitor(telemetry, data_dir, args.host_label,
                          args.telemetry_interval_seconds, run_id=run_id) as resources, \
          output.open("a", encoding="utf-8") as evidence:
         record(evidence, "start", duration_required_seconds=duration, commit=args.commit,
