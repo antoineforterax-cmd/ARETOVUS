@@ -94,7 +94,8 @@ def self_test() -> None:
     print("concurrent_verify_parser_and_sequence_self_test=ok")
 
 
-def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> dict:
+def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float,
+             failure_output: Path | None = None) -> dict:
     node = node.resolve(strict=True)
     started = time.monotonic()
     samples: list[dict] = []
@@ -146,6 +147,25 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float) -> d
                     )
                 check_progress(previous_snapshot, final)
                 miner_status = "completed"
+            except Exception as exc:
+                # Save partial observations before TemporaryDirectory removes
+                # the test data, including on timeout or verifier failure.
+                if failure_output is not None:
+                    failure_output.parent.mkdir(parents=True, exist_ok=True)
+                    failure_output.write_text(json.dumps({
+                        "type": "single-runner-testnet-verify-under-mining",
+                        "status": "failed",
+                        "failure_type": type(exc).__name__,
+                        "blocks_requested": blocks,
+                        "samples": samples,
+                        "during_mining_checks": len(samples),
+                        "overlapping_checks": sum(bool(x["overlap"]) for x in samples),
+                        "distinct_overlapping_heights": len({
+                            x["height"] for x in samples if x["overlap"]
+                        }),
+                        "physical_two_host_test": False,
+                    }, indent=2) + "\n", encoding="utf-8")
+                raise
             finally:
                 if miner.poll() is None:
                     miner.terminate()
@@ -194,7 +214,8 @@ def main() -> int:
         p.error("timeouts outside allowed safety bounds")
     if not 1 <= args.min_distinct_heights <= 10:
         p.error("--min-distinct-heights must be 1..10")
-    report = exercise(args.node, args.blocks, args.max_seconds, args.probe_timeout)
+    report = exercise(args.node, args.blocks, args.max_seconds,
+                      args.probe_timeout, args.output)
     # Preserve evidence even if a stricter coverage gate rejects the run.
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
