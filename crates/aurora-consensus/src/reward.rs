@@ -171,7 +171,10 @@ mod tests {
                 .expect("treasury overflow");
             height += 1;
             assert!(issued <= CAP_UNITS, "issuance exceeded cap");
-            assert!(height <= 30_000_000, "emission unexpectedly failed to converge");
+            assert!(
+                height <= 30_000_000,
+                "emission unexpectedly failed to converge"
+            );
 
             if height == 10_000_000 {
                 assert_eq!(issued, 49_997_730_014_361_895);
