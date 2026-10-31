@@ -1357,6 +1357,36 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn read_rejects_same_inode_symlink_swap_between_check_and_open() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let moved = root.join("moved-original.auridx");
+        fs::write(&object, b"same original inode").unwrap();
+
+        let attempted = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            // The symlink points to the EXACT inode checked before open.
+            // Comparing inode numbers alone cannot reject this substitution.
+            fs::rename(&object, &moved).unwrap();
+            symlink(&moved, &object).unwrap();
+        });
+        assert!(
+            attempted.is_err(),
+            "reader accepted a symlink swap pointing to the original inode"
+        );
+        fs::remove_file(&object).unwrap();
+        fs::rename(&moved, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"same original inode"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn corrupt_or_torn_newest_storage_objects_fall_back_without_silent_replay() {
         let root = dir();
