@@ -16,7 +16,7 @@
 | **K04** | **Étudier B et C** | **Aucune règle de confidentialité choisie** : comparer confidentialité privée par défaut et mécanismes facultatifs. | Modèle de menace, comparaison cryptographique, implications du modèle de comptes, performance, compatibilité post-quantique. |
 | **K06** | **B : Tor/I2P facultatifs** | Orientation de recherche retenue pour **transports optionnels** ; ne pas affirmer qu'ils masquent les montants ou garantissent l'anonymat. | Prototype isolé, mesures de fuites IP/DNS, corrélations et résistance DoS. |
 | **W06** | **A puis B** | V1 : **sauvegarde/restauration chiffrées**. Plus tard : **récupération volontaire via gardiens**, sans admin ni confiscation automatique. | Tests de restauration hors hôte, modèle de menace des gardiens et des délais, versionnement compatible. |
-| **G01** | **A maintenant ; ensuite décisions et vote de la communauté** | **Aucune dépense de trésorerie dans le profil actuel**. Pour le futur : projet de gouvernance communautaire, **sans règle de vote, corps électoral ni autorité de signature encore décidés**. | Spécifier propositions, quorum, droits de vote, risques Sybil/ploutocratie, exécution des décisions et gouvernance de secours. |
+| **G01** | **A maintenant ; ensuite décisions et vote de la communauté** | **Aucune dépense de trésorerie dans le profil actuel**. Pour le futur : une équipe **élue d'au moins trois personnes**, compétentes en technique/finance, **conseille sans pouvoir décider seule** ; la communauté conserve la décision. Projet de vote conditionné à la détention d'un minimum d'AUR, seuil amené à décroître avec l'émission. **Aucun barème, quorum, pouvoir de vote ou mécanisme d'exécution n'est encore fixé.** | Étudier risques Sybil/ploutocratie, seuil, élection/révocation des conseillers, exécution des décisions et gouvernance de secours. |
 | **G06** | **A : audit indépendant** | Règle de lancement : **pas de fonds réels avant revue humaine extérieure qualifiée**, correction des défauts et validation des preuves. | Définir champ, commit d'audit, critères de sortie et procédure de réévaluation. |
 
 ## Distinctions importantes
@@ -30,6 +30,21 @@ AURORA reste une **blockchain expérimentale**, au statut de testnet, sans prote
 Sur le testnet actuel, la trésorerie reçoit 5 % de l'émission à une destination fixe, mais **aucune méthode autorisée de dépense n'est spécifiée**. Une future majorité de votes sur un site ou un forum **ne peut pas, à elle seule, débloquer ces montants**. Il faudra concevoir une autorisation cryptographique et une règle compatible avec les droits existants, éviter les prises de contrôle par faux comptes ou concentration de jetons, et tester les conséquences des réorganisations. **Ne promettre aucune récupération de ces fonds** sur le testnet actuel.
 
 Un vote communautaire peut désigner l'intention politique, mais l'exécution doit disposer de **règles vérifiables et auditables**. Les questions de modalités (« une personne/un vote », preuve d'identité, voix pondérée en AUR, quorum, délai, veto de sécurité, dépense multisignature, proposition et révocation des signataires) restent **ouvertes** ; elles ne sont pas implicitement approuvées.
+
+
+## Complément G01 — proposition de gouvernance exprimée le 31 octobre 2026
+
+**Proposition du responsable, non encore spécifiée ni implémentée :**
+
+1. **La communauté reste décisionnaire** des dépenses de trésorerie. Un **conseil de compétence élu**, d'au moins **trois personnes**, apporte des évaluations techniques et financières, publie des avis argumentés et aide à guider le projet ; **il ne peut ni approuver une dépense ni transférer les fonds seul**.
+2. **Droit de vote conditionnel :** le responsable envisage de réserver le vote formel aux portefeuilles détenant au moins un **solde minimal d'AUR** ; ce seuil diminuerait avec l'évolution de l'émission. Les portefeuilles sous le seuil pourraient continuer à **émettre des propositions / avis** — interprétation à faire confirmer, car le mot « émettre » n'a pas encore été précisé.
+3. **Le seuil n'est pas une preuve d'unicité :** une personne peut contrôler et approvisionner plusieurs portefeuilles. Un système « un portefeuille éligible = une voix » se contourne par fractionnement du solde. Un vote pondéré par les AUR empêche l'amplification par fractionnement linéaire, mais donne davantage de pouvoir aux gros détenteurs. Le mode de calcul de la voix reste **à arbitrer** (délégation, contrôle des comptes, pondération, garanties de confidentialité).
+4. **Ne pas indexer le droit de vote sur la difficulté brute :** le PoW réajuste la difficulté à la hausse **ou à la baisse**, selon la puissance de minage et le rythme des blocs. La récompense par bloc décroît selon la formule d'émission actuelle ; ce sont deux mécanismes distincts. Proposer, après analyse, un calendrier de seuils **prévisible, déterministe et borné**, fondé sur la hauteur ou l'émission brute cumulée, avec des captures de solde (`snapshots`) à une hauteur fixée pour chaque scrutin.
+5. **Pas de gouvernance exécutable sur le compte fixe actuel :** le compte de trésorerie testnet n'a pas de signature autorisée ni de mécanisme de décaissement. Un vote sur un site ne peut pas le débloquer ; toute future dépense requiert une autorisation cryptographiquement vérifiable, des règles versionnées et une revue indépendante.
+
+**Paramètres encore ouverts :** élection/mandat/révocation du conseil ; domaine exact de son avis ; montant minimal initial, plancher et méthode de réduction ; fondement du vote (portefeuille, AUR pondérés, preuve d'unicité) ; dépôt anti-spam éventuel ; quorum, approbation, délais, limites budgétaires ; conflits d'intérêts ; publication des comptes et mode d'exécution des paiements.
+
+**Statut : orientation produit exprimée + hypothèses techniques à comparer ; pas de décision de consensus ni de changement de droits de propriété.**
 
 ## Suite pratique
 
