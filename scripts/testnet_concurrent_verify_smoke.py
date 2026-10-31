@@ -91,6 +91,44 @@ def self_test() -> None:
         except AssertionError:
             continue
         raise AssertionError("inconsistent verified sequence accepted")
+    # Fault injection: a verifier failure must retain already collected samples.
+    from unittest.mock import patch
+
+    class FakeMiner:
+        stopped = False
+
+        def poll(self):
+            return -15 if self.stopped else None
+
+        def terminate(self):
+            self.stopped = True
+
+        def wait(self, timeout=5):
+            return -15
+
+    with tempfile.TemporaryDirectory(prefix="aurora-verify-failure-evidence-") as folder:
+        artifact = Path(folder) / "failure.json"
+        miner = FakeMiner()
+        with (patch("subprocess.Popen", return_value=miner),
+              patch.object(Path, "glob", return_value=[Path("snapshot-1.auridx")]),
+              patch(__name__ + ".probe", side_effect=[
+                  (0.01, (1, "ab" * 32, 2)),
+                  RuntimeError("injected verifier error"),
+              ]),
+              patch("time.sleep", return_value=None)):
+            try:
+                exercise(Path(__file__), 4, 30, 5, artifact)
+            except RuntimeError as exc:
+                assert str(exc) == "injected verifier error"
+            else:
+                raise AssertionError("injected verifier failure was accepted")
+        evidence = json.loads(artifact.read_text(encoding="utf-8"))
+        assert evidence["status"] == "failed"
+        assert evidence["failure_type"] == "RuntimeError"
+        assert evidence["during_mining_checks"] == 1
+        assert evidence["samples"][0]["height"] == 1
+        assert miner.stopped
+
     print("concurrent_verify_parser_and_sequence_self_test=ok")
 
 
