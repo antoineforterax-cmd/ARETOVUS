@@ -32,7 +32,7 @@ jobs:
         run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Profiler 2048 puis 8192 blocs sur le même runner
         env:
-          ARETOVUS_STORAGE_PROFILE: "1"
+          AURORA_STORAGE_PROFILE: "1"
           REQUESTED_BLOCKS: ${{ inputs.blocks || '' }}
         run: |
           set -euo pipefail
@@ -54,7 +54,7 @@ jobs:
           fi
           echo "Storage profile volumes: $block_counts"
           for blocks in $block_counts; do
-            export ARETOVUS_STORAGE_PROFILE_BLOCKS="$blocks"
+            export AURORA_STORAGE_PROFILE_BLOCKS="$blocks"
             log="storage-profile-${blocks}.log"
             echo "=== Starting $blocks-block storage profile ==="
             /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"

@@ -30,9 +30,9 @@ jobs:
           ref: b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61
           path: baseline
       - name: Compiler la référence avant correction
-        run: cargo build --locked --manifest-path baseline/Cargo.toml --target-dir target/admission-baseline -p aretovus-node
+        run: cargo build --locked --manifest-path baseline/Cargo.toml --target-dir target/admission-baseline -p aurora-node
       - name: Mesurer la référence
-        run: python3 scripts/testnet_admission_probe.py --binary target/admission-baseline/debug/aretovus-node --report target/admission-before.json
+        run: python3 scripts/testnet_admission_probe.py --binary target/admission-baseline/debug/aurora-node --report target/admission-before.json
       - name: Vérifier l'isolation des handshakes lents
         run: python3 scripts/testnet_admission_probe.py --binary target/debug/aretovus-node --post-handshake --max-wallet-seconds 1.5 --report target/admission-after.json
       - uses: actions/upload-artifact@v4

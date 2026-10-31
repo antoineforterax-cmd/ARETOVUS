@@ -33,7 +33,7 @@ jobs:
           test "$(findmnt -n -o FSTYPE --target "$mountdir")" = "tmpfs"
           test "$(findmnt -n -o TARGET --target "$mountdir")" = "$mountdir"
           df -h "$mountdir"
-          ARETOVUS_ENOSPC_PROBE=1 ARETOVUS_ENOSPC_TEST_ROOT="$mountdir" \
+          AURORA_ENOSPC_PROBE=1 AURORA_ENOSPC_TEST_ROOT="$mountdir" \
             cargo test --locked -p aretovus-storage --lib tests::genuine_enospc_tmpfs_preserves_recovery_and_retry \
               -- --exact --ignored --nocapture 2>&1 | tee real-enospc-tmpfs.log
           grep -Fq 'test result: ok. 1 passed; 0 failed;' real-enospc-tmpfs.log

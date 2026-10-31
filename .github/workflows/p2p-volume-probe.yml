@@ -34,24 +34,24 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Mesurer le transfert TCP, la persistance par page et la reprise
         env:
-          ARETOVUS_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || ((github.ref == 'refs/heads/volume/p2p-scale-8192' || github.ref == 'refs/heads/volume/p2p-phase-profile-8192') && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || (github.ref == 'refs/heads/volume/p2p-scale-32768' && '32768') || (github.ref == 'refs/heads/volume/p2p-scale-65536' && '65536') || (github.ref == 'refs/heads/volume/p2p-scale-100001' && '100001') || '2048' }}
-          ARETOVUS_P2P_PROFILE: "1"
+          AURORA_P2P_VOLUME_BLOCKS: ${{ inputs.blocks || ((github.ref == 'refs/heads/volume/p2p-scale-8192' || github.ref == 'refs/heads/volume/p2p-phase-profile-8192') && '8192') || (github.ref == 'refs/heads/volume/p2p-scale-16384' && '16384') || (github.ref == 'refs/heads/volume/p2p-scale-32768' && '32768') || (github.ref == 'refs/heads/volume/p2p-scale-65536' && '65536') || (github.ref == 'refs/heads/volume/p2p-scale-100001' && '100001') || '2048' }}
+          AURORA_P2P_PROFILE: "1"
         run: |
           # A scale branch must not silently fall back to the 2048-block
           # baseline if a workflow expression changes.
           case "$GITHUB_REF" in
             refs/heads/volume/p2p-scale-8192|refs/heads/volume/p2p-phase-profile-8192)
-              test "$ARETOVUS_P2P_VOLUME_BLOCKS" = 8192 ;;
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 8192 ;;
             refs/heads/volume/p2p-scale-16384)
-              test "$ARETOVUS_P2P_VOLUME_BLOCKS" = 16384 ;;
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 16384 ;;
             refs/heads/volume/p2p-scale-32768)
-              test "$ARETOVUS_P2P_VOLUME_BLOCKS" = 32768 ;;
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 32768 ;;
             refs/heads/volume/p2p-scale-65536)
-              test "$ARETOVUS_P2P_VOLUME_BLOCKS" = 65536 ;;
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 65536 ;;
             refs/heads/volume/p2p-scale-100001)
-              test "$ARETOVUS_P2P_VOLUME_BLOCKS" = 100001 ;;
+              test "$AURORA_P2P_VOLUME_BLOCKS" = 100001 ;;
           esac
-          printf 'Selected P2P volume: %s blocks after genesis\n' "$ARETOVUS_P2P_VOLUME_BLOCKS"
+          printf 'Selected P2P volume: %s blocks after genesis\n' "$AURORA_P2P_VOLUME_BLOCKS"
           /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee p2p-volume-results.log
           test ${PIPESTATUS[0]} -eq 0
           grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' p2p-volume-results.log
