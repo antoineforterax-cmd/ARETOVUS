@@ -755,7 +755,15 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 }
 
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
-    let metadata = fs::metadata(path)?;
+    // Immutable manifests, pages and blocks must be real files at their own
+    // paths. Following symlinks here would contradict the write-side guard
+    // and could silently accept data outside the AURORA storage tree.
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_file() {
+        return Err(StorageError::InvalidFormat(
+            "storage object is not a regular file",
+        ));
+    }
     if metadata.len() > limit as u64 {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
@@ -1184,6 +1192,116 @@ mod tests {
         fs::remove_dir_all(path).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn restore_rejects_symlinked_manifest_page_and_block_even_when_bytes_are_valid() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        let mut original = chain();
+        let stable_tip = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, stable_tip, 2, 0, Vec::new()).unwrap();
+        let next_id = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+        let latest = save_snapshot(&root, &original).unwrap();
+        let newest_tip = original.tip_hash();
+        let latest_bytes = fs::read(&latest).unwrap();
+        let page_id = Hash256::from_bytes(latest_bytes[81..113].try_into().unwrap());
+        let page = root
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let block = root
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{next_id}.{BLOCK_EXTENSION}"));
+
+        let load_tip = || {
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest))
+                .unwrap()
+                .tip_hash()
+        };
+        assert_eq!(load_tip(), newest_tip);
+
+        // Each path still resolves to identical valid bytes. The loader must
+        // not silently trust links in its immutable storage tree.
+        for (target, backup_name) in [
+            (latest.as_path(), "saved-manifest-for-read-test"),
+            (page.as_path(), "saved-page-for-read-test"),
+            (block.as_path(), "saved-block-for-read-test"),
+        ] {
+            let backup = root.join(backup_name);
+            fs::rename(target, &backup).unwrap();
+            symlink(&backup, target).unwrap();
+            assert_eq!(
+                load_tip(),
+                stable_tip,
+                "loader followed a symlinked immutable storage object: {}",
+                target.display()
+            );
+            fs::remove_file(target).unwrap();
+            fs::rename(&backup, target).unwrap();
+            assert_eq!(load_tip(), newest_tip);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn corrupt_or_torn_newest_storage_objects_fall_back_without_silent_replay() {
+        let root = dir();
+        let mut original = chain();
+        let safe_tip = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        let next = AccountBlock::build(NetworkId::Regtest, safe_tip, 2, 0, Vec::new()).unwrap();
+        let block_id = next.header.hash().unwrap();
+        original.submit(next).unwrap();
+        let latest = save_snapshot(&root, &original).unwrap();
+        let latest_tip = original.tip_hash();
+        let manifest = fs::read(&latest).unwrap();
+        let page_id = Hash256::from_bytes(manifest[81..113].try_into().unwrap());
+        let page = root
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let block = root
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+
+        for object in [&latest, &page, &block] {
+            let clean = fs::read(object).unwrap();
+            assert!(clean.len() > 4);
+            for truncated_length in [0, clean.len() / 2, clean.len() - 1] {
+                fs::write(object, &clean[..truncated_length]).unwrap();
+                let restored =
+                    load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+                assert_eq!(
+                    restored.tip_hash(),
+                    safe_tip,
+                    "partial object accepted: {} at {truncated_length} bytes",
+                    object.display()
+                );
+            }
+            for byte_offset in [0, clean.len() / 2, clean.len() - 1] {
+                let mut damaged = clean.clone();
+                damaged[byte_offset] ^= 0x80;
+                fs::write(object, damaged).unwrap();
+                let restored =
+                    load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+                assert_eq!(
+                    restored.tip_hash(),
+                    safe_tip,
+                    "mutated object accepted: {} at offset {byte_offset}",
+                    object.display()
+                );
+            }
+            fs::write(object, clean).unwrap();
+            let recovered =
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert_eq!(recovered.tip_hash(), latest_tip);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn cached_complete_v6_page_revalidates_disk_and_exact_arrival_prefix() {
         let path = dir();
@@ -1242,8 +1360,14 @@ mod tests {
             let valid_target = path.join("saved-index-page");
             fs::rename(&page_path, &valid_target).unwrap();
             symlink(&valid_target, &page_path).unwrap();
-            let before =
-                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            // Both retained manifests reference this complete page; read
+            // validation must reject the symlink rather than trust its bytes.
+            assert!(matches!(
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
+                Err(StorageError::InvalidFormat(
+                    "storage object is not a regular file"
+                ))
+            ));
             assert!(matches!(
                 save_snapshot_with_page_cache(&path, &original, &mut cache),
                 Err(StorageError::InvalidFormat(
@@ -1255,8 +1379,8 @@ mod tests {
             fs::rename(&valid_target, &page_path).unwrap();
             let after =
                 load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
-            assert_eq!(before.tip_hash(), after.tip_hash());
-            assert_eq!(before.state(), after.state());
+            assert_eq!(after.tip_hash(), original.tip_hash());
+            assert_eq!(after.state(), original.state());
             save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         }
 
