@@ -1,0 +1,50 @@
+name: testnet-concurrent-verify
+
+on:
+  pull_request:
+    paths:
+      - "scripts/testnet_concurrent_verify_smoke.py"
+      - ".github/workflows/testnet-concurrent-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-while-mining:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Syntax and adversarial parser checks
+        run: |
+          python -m py_compile scripts/testnet_concurrent_verify_smoke.py
+          python scripts/testnet_concurrent_verify_smoke.py --self-test
+      - name: Build node with locked dependencies
+        run: cargo build --locked -p aurora-node
+      - name: Repeated read-only verify during mining
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            binary=target/debug/aurora-node.exe
+          else
+            binary=target/debug/aurora-node
+          fi
+          python scripts/testnet_concurrent_verify_smoke.py --node "$binary" --blocks 24 --max-seconds 240 --probe-timeout 45 --output target/concurrent-verify-evidence.json
+      - name: Upload CI evidence (never physical-host evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testnet-concurrent-verify-${{ matrix.os }}
+          path: target/concurrent-verify-evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
