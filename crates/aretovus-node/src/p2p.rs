@@ -2662,8 +2662,10 @@ mod tests {
             .unwrap_or(2_048);
         assert!((256..=100_001).contains(&count));
         let started = Instant::now();
-        let dir =
-            std::env::temp_dir().join(format!("aretovus-p2p-volume-{}-{count}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "aretovus-p2p-volume-{}-{count}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3307,8 +3309,10 @@ mod tests {
 
     #[test]
     fn disconnected_peer_does_not_publish_a_partial_sync_page() {
-        let dir =
-            std::env::temp_dir().join(format!("aretovus-p2p-truncated-page-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "aretovus-p2p-truncated-page-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mut server_chain = chain();
@@ -3347,8 +3351,10 @@ mod tests {
     /// The rejected page must never become visible in memory or after restart.
     #[test]
     fn invalid_later_page_preserves_last_committed_page_on_disk() {
-        let dir =
-            std::env::temp_dir().join(format!("aretovus-p2p-later-bad-page-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "aretovus-p2p-later-bad-page-{}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3500,7 +3506,8 @@ mod tests {
 
     #[test]
     fn oversized_untrusted_frame_is_rejected_before_session_processing() {
-        let dir = std::env::temp_dir().join(format!("aretovus-p2p-oversized-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("aretovus-p2p-oversized-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
