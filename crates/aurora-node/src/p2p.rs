@@ -3344,10 +3344,8 @@ mod tests {
     /// The rejected page must never become visible in memory or after restart.
     #[test]
     fn invalid_later_page_preserves_last_committed_page_on_disk() {
-        let dir = std::env::temp_dir().join(format!(
-            "aurora-p2p-later-bad-page-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("aurora-p2p-later-bad-page-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 
@@ -3426,11 +3424,9 @@ mod tests {
         assert_eq!(receiver.known_block_count(), PAGE_BLOCKS + 1);
         drop(receiver);
 
-        let restored = aurora_storage::load_latest_snapshot(
-            &dir,
-            AccountLedger::new(NetworkId::Regtest),
-        )
-        .unwrap();
+        let restored =
+            aurora_storage::load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Regtest))
+                .unwrap();
         assert_eq!(restored.height(), committed_height);
         assert_eq!(restored.tip_hash(), committed_tip);
         assert_eq!(restored.known_block_count(), PAGE_BLOCKS + 1);
