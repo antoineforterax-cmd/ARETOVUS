@@ -49,10 +49,24 @@ pub fn save(path: &Path, transaction: &AccountTransaction) -> Result<(), Box<dyn
 }
 
 pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
-    if !fs::metadata(path)?.is_file() {
-        return Err("signed payment must be a regular file".into());
+    // A signed payment carries authorization to spend. Do not silently follow
+    // a last-component symlink to a different payment selected by an attacker.
+    let expected = fs::symlink_metadata(path)?;
+    if !expected.file_type().is_file() {
+        return Err("signed payment must be a regular file, not a symlink".into());
     }
     let file = File::open(path)?;
+    let opened = file.metadata()?;
+    if !opened.file_type().is_file() {
+        return Err("signed payment is not a regular file".into());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if opened.dev() != expected.dev() || opened.ino() != expected.ino() {
+            return Err("signed payment path changed during open".into());
+        }
+    }
     let mut bytes = Vec::new();
     file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_FILE_BYTES {
@@ -115,6 +129,24 @@ mod tests {
             );
         }
         fs::remove_file(path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn signed_payment_reader_rejects_symlinked_authorizations() {
+        use std::os::unix::fs::symlink;
+        let payment_path = path();
+        let link_path = path();
+        let tx = payment();
+        save(&payment_path, &tx).unwrap();
+        symlink(&payment_path, &link_path).unwrap();
+        assert!(load(&link_path).is_err());
+        // Reject a nonregular path too; never attempt to read it as a payment.
+        assert!(load(std::env::temp_dir().as_path()).is_err());
+        // The original, independently verified bytes remain readable.
+        assert_eq!(load(&payment_path).unwrap(), tx);
+        fs::remove_file(link_path).unwrap();
+        fs::remove_file(payment_path).unwrap();
     }
 
     #[test]
