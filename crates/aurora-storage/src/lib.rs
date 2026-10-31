@@ -1460,6 +1460,49 @@ mod tests {
     }
 
     #[test]
+    fn shared_retained_page_cache_never_survives_a_prune_pass() {
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        // Simulate two retained generations pointing to the same immutable
+        // page. They may reuse its verified digest only in this invocation.
+        let second_manifest = path.join("second-retained.auridx");
+        fs::copy(&manifest, &second_manifest).unwrap();
+        let mut verified_pages = HashSet::new();
+        assert!(index_manifest_and_pages_valid(
+            &path,
+            &manifest,
+            &mut verified_pages
+        ));
+        assert_eq!(verified_pages.len(), 1);
+        assert!(index_manifest_and_pages_valid(
+            &path,
+            &second_manifest,
+            &mut verified_pages
+        ));
+        assert_eq!(verified_pages.len(), 1);
+
+        // After a later on-disk corruption, a new pruning pass must perform
+        // the complete check again, not trust an earlier successful pass.
+        let manifest_bytes = fs::read(&manifest).unwrap();
+        let page_id = Hash256::from_bytes(manifest_bytes[81..113].try_into().unwrap());
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let mut damaged = fs::read(&page_path).unwrap();
+        damaged[24] ^= 1;
+        fs::write(&page_path, damaged).unwrap();
+        let mut next_pass = HashSet::new();
+        assert!(!index_manifest_and_pages_valid(
+            &path,
+            &manifest,
+            &mut next_pass
+        ));
+        assert!(next_pass.is_empty());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn v6_pages_are_pruned_only_after_last_manifest_reference() {
         let path = dir();
         let mut chain = chain();
