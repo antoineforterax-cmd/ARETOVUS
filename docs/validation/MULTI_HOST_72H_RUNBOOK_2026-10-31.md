@@ -1,4 +1,4 @@
-# AURORA — endurance physique sur deux PC : palier 4 h et option 72 h
+# ARETOVUS — endurance physique sur deux PC : palier 4 h et option 72 h
 
 **Statut : collecte et procédure prêtes à exécuter, campagnes de 4 h et de 72 h PAS exécutées par ces scripts.** Ceci n'est ni un audit ni une certification de sécurité. N'utiliser que des clés, comptes et fonds **Regtest/Testnet jetables**, aucun fonds réel. Ne jamais exposer le port P2P sur Internet pour ce test.
 
@@ -14,14 +14,14 @@ Sur **PC A, dans PowerShell**, tandis que son nœud tourne :
 
 ```powershell
 $sha = (git rev-parse HEAD).Trim()
-python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 4 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
+python scripts/testnet_operational_probe.py --binary .\target\debug\aretovus-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 4 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
 ```
 
 Sur **PC B**, avec le même commit :
 
 ```powershell
 $sha = (git rev-parse HEAD).Trim()
-python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-b-data --host-label pc-b --hours 4 --interval-seconds 300 --output .\evidence-pc-b.jsonl --commit $sha
+python scripts/testnet_operational_probe.py --binary .\target\debug\aretovus-node.exe --data-dir .\pc-b-data --host-label pc-b --hours 4 --interval-seconds 300 --output .\evidence-pc-b.jsonl --commit $sha
 ```
 
 Les deux commandes doivent être lancées à peu près au même moment. Il faut produire des blocs de test et observer leur propagation pendant les 4 h, puis laisser les chaînes converger avant les derniers prélèvements ; sinon la comparaison du sommet peut échouer. Les interruptions réseau ou redémarrages volontaires doivent être consignés manuellement avec horodatages ; un échec de vérification fait **échouer** le palier strict, et ne doit pas être effacé. Conserver les logs des serveurs séparément.
@@ -38,28 +38,28 @@ La campagne longue reste disponible en remplaçant `--hours 4` par `--hours 72`,
 
 ## Préparation — deux PC vraiment distincts
 
-1. Réserver deux PC physiques (A et B), sous Windows ou Linux, sur un **réseau privé/VPN contrôlé**. Noter les IP privées A et B, versions de système, CPU, RAM, disque, fuseau, décalage d'horloge et SHA du commit AURORA testé. Tester la connectivité IP; vérifier les pare-feux. Un serveur et deux dossiers dans une seule VM **ne comptent pas**.
+1. Réserver deux PC physiques (A et B), sous Windows ou Linux, sur un **réseau privé/VPN contrôlé**. Noter les IP privées A et B, versions de système, CPU, RAM, disque, fuseau, décalage d'horloge et SHA du commit ARETOVUS testé. Tester la connectivité IP; vérifier les pare-feux. Un serveur et deux dossiers dans une seule VM **ne comptent pas**.
 2. Installer exactement le même commit testé, vérifier `SHA256SUMS` et les versions, et démarrer avec des **répertoires de données indépendants et vides**. Le profil Testnet ML-DSA-65 v3 n'est pas interchangeable avec les anciens réseaux. Aucun déplacement de clés sensibles.
-3. Depuis la racine du dépôt, lancer `cargo build --locked -p aurora-node`, puis utiliser le binaire produit. Pour deux machines sur LAN de confiance, remplacer les adresses privées ci-dessous par vos IP. Si le pare-feu exige une règle, la limiter à l'autre hôte et à la durée de l'essai.
+3. Depuis la racine du dépôt, lancer `cargo build --locked -p aretovus-node`, puis utiliser le binaire produit. Pour deux machines sur LAN de confiance, remplacer les adresses privées ci-dessous par vos IP. Si le pare-feu exige une règle, la limiter à l'autre hôte et à la durée de l'essai.
 
 ### Sur PC A
 
 Terminal 1, dossier `pc-a-data` réservé au serveur :
 
 ```powershell
-.\target\debug\aurora-node.exe testnet serve --data-dir .\pc-a-data --listen 0.0.0.0:18444 --peer 192.168.1.11:18444
+.\target\debug\aretovus-node.exe testnet serve --data-dir .\pc-a-data --listen 0.0.0.0:18444 --peer 192.168.1.11:18444
 ```
 
 Terminal 2, **dossier différent** réservé au mineur, avec adresse de mineur jetable au format hexadécimal :
 
 ```powershell
-.\target\debug\aurora-node.exe testnet mine --data-dir .\pc-a-miner --miner 4141414141414141414141414141414141414141414141414141414141414141 --count 1 --peer 192.168.1.10:18444
+.\target\debug\aretovus-node.exe testnet mine --data-dir .\pc-a-miner --miner 4141414141414141414141414141414141414141414141414141414141414141 --count 1 --peer 192.168.1.10:18444
 ```
 
 ### Sur PC B
 
 ```powershell
-.\target\debug\aurora-node.exe testnet serve --data-dir .\pc-b-data --listen 0.0.0.0:18444 --peer 192.168.1.10:18444
+.\target\debug\aretovus-node.exe testnet serve --data-dir .\pc-b-data --listen 0.0.0.0:18444 --peer 192.168.1.10:18444
 ```
 
 ### Comparer automatiquement les deux journaux terminés
@@ -80,7 +80,7 @@ Sur **chacune** des deux machines, pendant que son serveur tourne :
 
 ```powershell
 $sha = (git rev-parse HEAD).Trim()
-python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 72 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
+python scripts/testnet_operational_probe.py --binary .\target\debug\aretovus-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 72 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
 ```
 
 Pour B, remplacer `pc-a-data` / `pc-a` / nom du fichier. Le programme échantillonne `testnet verify` sans modification de données, conserve UTC, hauteur, hash du sommet, espace disque, durée de chaque lecture et empreinte SHA-256 du binaire. Un journal `finish` est écrit uniquement à la fin. Une interruption prématurée ne produit **pas** de succès; `counts_as_72h` n'est vrai que si les 72 heures ont été parcourues, que le binaire est inchangé, qu'aucune lecture n'a échoué et que la hauteur a évolué.

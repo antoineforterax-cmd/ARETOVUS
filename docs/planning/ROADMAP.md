@@ -1,4 +1,4 @@
-# AURORA — Feuille de route technique et critères de validation
+# ARETOVUS — Feuille de route technique et critères de validation
 
 Les études peuvent avancer en parallèle. En revanche, une fonction sensible n'est considérée comme terminée qu'après les essais et la revue prévus. Les résultats ci-dessous sont rattachés à leurs branches : les PR ouvertes ne sont pas des fonctionnalités fusionnées.
 

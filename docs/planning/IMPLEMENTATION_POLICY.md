@@ -1,10 +1,10 @@
-# AURORA — Instructions de développement et d'intégration pour Codex
+# ARETOVUS — Instructions de développement et d'intégration pour Codex
 
-_Mise à jour : 29 octobre 2026. À utiliser avec [AGENTS.md](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/AGENTS.md) lorsqu'il est présent sur la branche de travail._
+_Mise à jour : 29 octobre 2026. À utiliser avec [AGENTS.md](https://github.com/antoineforterax-cmd/ARETOVUS/blob/feature/emission-schedule-v0/AGENTS.md) lorsqu'il est présent sur la branche de travail._
 
 ## 1. Mission et autorité
 
-AURORA est un testnet expérimental en Rust. Le responsable du projet décide de l'architecture, des orientations, des priorités et des règles économiques. Codex aide à implémenter, vérifier, documenter et repérer les défauts. Les propositions d'un agent, les tests réussis et l'ouverture d'une PR ne valent **pas** approbation d'un changement de consensus.
+ARETOVUS est un testnet expérimental en Rust. Le responsable du projet décide de l'architecture, des orientations, des priorités et des règles économiques. Codex aide à implémenter, vérifier, documenter et repérer les défauts. Les propositions d'un agent, les tests réussis et l'ouverture d'une PR ne valent **pas** approbation d'un changement de consensus.
 
 **Interdictions sans validation explicite du responsable :** modifier la genèse, l'offre, l'émission, les frais, les signatures admises, l'encodage consensus, le modèle de comptes, le choix de chaîne, les horodatages validés, les règles de réorganisation ou le format réseau incompatible ; fusionner vers `main` ; présenter le testnet comme sûr pour de vrais fonds. Ne pas introduire de porte dérobée, de récupération forcée ni de dépendance critique non examinée.
 
@@ -106,4 +106,4 @@ Action demandée au responsable :
 Prochaine tâche autorisée :
 ```
 
-Ne pas confondre `terminé sur une branche`, `fusionné dans la branche de référence` et `disponible dans une release`. Le responsable d'AURORA reste décisionnaire pour les changements du protocole et les fusions sensibles.
+Ne pas confondre `terminé sur une branche`, `fusionné dans la branche de référence` et `disponible dans une release`. Le responsable d'ARETOVUS reste décisionnaire pour les changements du protocole et les fusions sensibles.

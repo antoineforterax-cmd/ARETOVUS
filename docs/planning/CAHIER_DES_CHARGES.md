@@ -1,4 +1,4 @@
-# AURORA — Cahier des charges consolidé
+# ARETOVUS — Cahier des charges consolidé
 
 **Version** 0.1 / 2026-10-28 / **statut : proposition documentaire, à confronter au Word historique**.
 
@@ -15,7 +15,7 @@ Concevoir une blockchain indépendante en Rust, décentralisée et vérifiable, 
 - **Compatibilité** : versions réseau, migrations d'état et formats de stockage explicites, jamais implicites.
 
 ## 3. Périmètre implémenté du testnet (non mainnet)
-- Rust : `aurora-core`, `aurora-consensus`, `aurora-node`, `aurora-wallet`.
+- Rust : `aretovus-core`, `aretovus-consensus`, `aretovus-node`, `aretovus-wallet`.
 - Comptes, soldes et nonces ; transactions v3 signées ML-DSA-65 ; SHA-256 pour les hashes et PoW.
 - En-têtes canoniques, racines et preuves Merkle, sélection au travail cumulé, retarget, MTP et réorganisations.
 - Cible de 60 s par bloc ; taille maximale de bloc 4 MiB ; difficulté initiale de test très faible.
@@ -40,7 +40,7 @@ L'historique évoquait d'autres plafonds monétaires, une évolution possible du
 
 ## 7. Protection contre la perte de fonds, les erreurs et les arnaques (objectif prioritaire de recherche)
 
-AURORA vise un **parcours de sécurité volontaire** qui aide à prévenir la perte accidentelle de coins et certaines fraudes, sans promettre l'annulation d'une transaction irréversible ni confier les fonds à un administrateur central.
+ARETOVUS vise un **parcours de sécurité volontaire** qui aide à prévenir la perte accidentelle de coins et certaines fraudes, sans promettre l'annulation d'une transaction irréversible ni confier les fonds à un administrateur central.
 
 ### Protection contre la perte d'accès
 - Sauvegarde et restauration du portefeuille, y compris en cas de perte ou destruction de l'appareil.
@@ -62,7 +62,7 @@ Ces protections doivent préserver l'autonomie de l'utilisateur, être facultati
 
 **Statut : vision prioritaire du projet, à concevoir et mesurer ; aucune garantie d'anonymat absolu.**
 
-AURORA doit chercher à réunir deux atouts forts : **la protection contre la perte et les arnaques** (section 7) et **une confidentialité poussée dès la conception**. Ces deux piliers doivent fonctionner ensemble sans rendre le réseau inutilement lourd, lent ou centralisé.
+ARETOVUS doit chercher à réunir deux atouts forts : **la protection contre la perte et les arnaques** (section 7) et **une confidentialité poussée dès la conception**. Ces deux piliers doivent fonctionner ensemble sans rendre le réseau inutilement lourd, lent ou centralisé.
 
 ### Principe de minimisation
 - Le portefeuille ne doit collecter, conserver ou transmettre que les informations nécessaires à l'opération demandée et à la sécurité de l'utilisateur.
