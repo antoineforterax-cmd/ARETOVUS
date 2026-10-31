@@ -94,7 +94,7 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
         if blocks_in_tier <= 0:
             continue
         gross = min(blocks_in_tier * reward, CAP - issued)
-        # All candidate rewards and the cap are whole AUR, so 5% is exact
+        # All candidate rewards and the cap are whole ARETOVUS, so 5% is exact
         # in atomic units. This calculation is equivalent to per-block floors.
         treasury_part = (gross // 20)
         miner_part = gross - treasury_part
@@ -113,13 +113,13 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
     assert 0 <= issued <= CAP
     assert treasury + miner_issuance == issued
     print(
-        f"TOTAL: issued={issued / DECIMALS:.8f} AUR, "
-        f"treasury={treasury / DECIMALS:.8f} AUR, "
-        f"miner_issuance={miner_issuance / DECIMALS:.8f} AUR, "
+        f"TOTAL: issued={issued / DECIMALS:.8f} ARETOVUS, "
+        f"treasury={treasury / DECIMALS:.8f} ARETOVUS, "
+        f"miner_issuance={miner_issuance / DECIMALS:.8f} ARETOVUS, "
         f"blocks={blocks}, years={years_for_blocks(blocks):.4f}"
     )
     if issued < CAP:
-        print(f"REMAINDER: {CAP_AUR - issued / DECIMALS:.8f} AUR not issued")
+        print(f"REMAINDER: {CAP_AUR - issued / DECIMALS:.8f} ARETOVUS not issued")
     print("NOTE: fixed target-time assumption; excludes fees, orphan blocks, "
           "hashrate, market value, and miner costs.")
     return {"name": name, "issued": issued, "blocks": blocks, "years": years_for_blocks(blocks)}
@@ -153,19 +153,19 @@ def simulate_proportional_remaining() -> dict[str, int | float | str]:
 
     years = blocks * target_seconds / SECONDS_PER_YEAR
     print(f"\n## Current consensus: proportional remaining supply")
-    print(f"first block reward: {format_aur(first_reward)} AUR")
+    print(f"first block reward: {format_aur(first_reward)} ARETOVUS")
     for supply, milestone_blocks in reached:
         print(
-            f"reached {format_aur(supply)} issued AUR after "
+            f"reached {format_aur(supply)} issued ARETOVUS after "
             f"{milestone_blocks:,} blocks ({milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
         )
     print(
-        f"cap: {format_aur(issued)} AUR after {blocks:,} blocks "
+        f"cap: {format_aur(issued)} ARETOVUS after {blocks:,} blocks "
         f"({years:.2f} years at 60 seconds/block)"
     )
     print(
-        f"treasury={format_aur(treasury)} AUR; "
-        f"miner issuance={format_aur(miner_issuance)} AUR"
+        f"treasury={format_aur(treasury)} ARETOVUS; "
+        f"miner issuance={format_aur(miner_issuance)} ARETOVUS"
     )
     assert issued == CAP
     assert treasury + miner_issuance == CAP

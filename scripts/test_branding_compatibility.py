@@ -17,21 +17,21 @@ def main() -> None:
     for component in CRATES:
         crate = ROOT / "crates" / f"aretovus-{component}"
         assert crate.joinpath("Cargo.toml").is_file(), crate
-        assert not ROOT.joinpath("crates", f"aurora-{component}").exists()
+        assert not ROOT.joinpath("crates", f"aretovus-{component}").exists()
         manifest = f"crates/aretovus-{component}/Cargo.toml"
         manifests.append(manifest)
         assert f"crates/aretovus-{component}" in workspace, component
         assert f'name = "aretovus-{component}"' in lockfile, component
         assert f'name = "aretovus-{component}"' in read(manifest), component
-        assert "AURORA" not in read(manifest), manifest
+        assert "ARETOVUS" not in read(manifest), manifest
     for manifest in manifests:
         source = read(manifest)
         for component in CRATES:
-            assert f"aurora-{component}" not in source, (manifest, component)
+            assert f"aretovus-{component}" not in source, (manifest, component)
 
     for path in ("README.md", "CONTRIBUTING.md", "SECURITY.md", "AGENTS.md"):
         source = read(path)
-        assert "github.com/antoineforterax-cmd/AURORA" not in source, path
+        assert "github.com/antoineforterax-cmd/ARETOVUS" not in source, path
     assert read("README.md").startswith("# ARETOVUS")
     assert 'src="assets/aretovus-logo.svg"' in read("README.md")
     assert 'src="../../assets/aretovus-logo.svg"' in read("docs/guide-fr/README.md")
@@ -51,26 +51,26 @@ def main() -> None:
 
     source_hash = read("crates/aretovus-core/src/hash.rs")
     for tag in (
-        "AURORA/exp/v0/txid",
-        "AURORA/exp/v0/account-txid",
-        "AURORA/exp/v0/tx-signing",
-        "AURORA/exp/v0/block-header",
-        "AURORA/exp/v0/tx-list",
-        "AURORA/exp/v0/account-tx-list",
-        "AURORA/exp/v0/hybrid-account-id",
-        "AURORA/exp/v0/post-quantum-account-id",
-        "AURORA/exp/v1/merkle-leaf",
-        "AURORA/exp/v1/merkle-node",
-        "AURORA/exp/v1/merkle-empty",
+        "ARETOVUS/exp/v0/txid",
+        "ARETOVUS/exp/v0/account-txid",
+        "ARETOVUS/exp/v0/tx-signing",
+        "ARETOVUS/exp/v0/block-header",
+        "ARETOVUS/exp/v0/tx-list",
+        "ARETOVUS/exp/v0/account-tx-list",
+        "ARETOVUS/exp/v0/hybrid-account-id",
+        "ARETOVUS/exp/v0/post-quantum-account-id",
+        "ARETOVUS/exp/v1/merkle-leaf",
+        "ARETOVUS/exp/v1/merkle-node",
+        "ARETOVUS/exp/v1/merkle-empty",
     ):
         assert tag in source_hash, f"domain separator changed: {tag}"
-    assert "AURORIDX" in read("crates/aretovus-storage/src/lib.rs")
-    assert 'dir.join(".aurora.lock")' in read("crates/aretovus-node/src/main.rs")
-    assert 'const PREFIX: &str = "aurora://testnet/";' in read("crates/aretovus-wallet/src/uri.rs")
-    assert 'const PREFIX: &str = "aurora-testnet-recovery-v1:";' in read("crates/aretovus-wallet/src/recovery.rs")
-    assert 'const HEADER: &str = "AURORA-TESTNET-LIMITS-v1";' in read("crates/aretovus-wallet/src/policy.rs")
-    assert "SEND AURORA-TESTNET" in read("crates/aretovus-wallet/src/safety.rs")
-    assert "AURORA/testnet/native-ml-dsa-65-merkle-header/v4" in read("crates/aretovus-consensus/src/testnet.rs")
+    assert "ARETOIDX" in read("crates/aretovus-storage/src/lib.rs")
+    assert 'dir.join(".aretovus.lock")' in read("crates/aretovus-node/src/main.rs")
+    assert 'const PREFIX: &str = "aretovus://testnet/";' in read("crates/aretovus-wallet/src/uri.rs")
+    assert 'const PREFIX: &str = "aretovus-testnet-recovery-v1:";' in read("crates/aretovus-wallet/src/recovery.rs")
+    assert 'const HEADER: &str = "ARETOVUS-TESTNET-LIMITS-v1";' in read("crates/aretovus-wallet/src/policy.rs")
+    assert "SEND ARETOVUS-TESTNET" in read("crates/aretovus-wallet/src/safety.rs")
+    assert "ARETOVUS/testnet/native-ml-dsa-65-merkle-header/v4" in read("crates/aretovus-consensus/src/testnet.rs")
     assert "require_expected_testnet_identity" in read("crates/aretovus-node/src/main.rs")
     assert "testnet_commands_reject_valid_snapshot_with_wrong_genesis" in read("crates/aretovus-node/src/main.rs")
     assert "OpenOptions::new().write(true).open(path)?" in read("crates/aretovus-storage/src/lib.rs")
