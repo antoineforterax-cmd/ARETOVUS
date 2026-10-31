@@ -40,10 +40,10 @@ faire avancer le prototype dans un ordre sûr.
 | Langage | Rust stable, version épinglée | PROPOSÉ | Contrôle de types et outillage ; CI reproductible requise |
 | État des transactions | Comptes avec solde + nonce | PROPOSÉ | Correspond au choix de travail du porteur ; prototype à tester |
 | Montants | entiers signés? Non : entier non signé borné, unités minimales | À TESTER | Rejeter overflow/underflow ; nombre de décimales à confirmer |
-| Unité | 1 AUR = 10^8 unités minimales | PROPOSÉ | Choix de travail pour simulation, pas encore validé |
-| Plafond brut | 500 000 000 AUR créés au maximum | PROPOSÉ | Invariant de consensus strict ; burn ne réautorise pas une émission |
+| Unité | 1 ARETOVUS = 10^8 unités minimales | PROPOSÉ | Choix de travail pour simulation, pas encore validé |
+| Plafond brut | 500 000 000 ARETOVUS créés au maximum | PROPOSÉ | Invariant de consensus strict ; burn ne réautorise pas une émission |
 | Émission | courbe par paliers, bornée par l'offre restante et par le plafond | À SIMULER | Les seuils exacts viennent du simulateur ; aucun palier arbitraire ne doit être figé |
-| Récompense de départ | comparer 50, 100 et 500 AUR ; préférence de travail actuelle : 500 AUR | À SIMULER | Évaluer durée de palier, distribution cumulée et revenu de sécurité |
+| Récompense de départ | comparer 50, 100 et 500 ARETOVUS ; préférence de travail actuelle : 500 ARETOVUS | À SIMULER | Évaluer durée de palier, distribution cumulée et revenu de sécurité |
 | Trésorerie | 5 % de la récompense brute, comprise dans celle-ci ; mineur reçoit le reliquat | À SIMULER | Pas de création supplémentaire ; gouvernance et dépenses hors consensus à définir |
 | Frais | partage 50 % mineur / 50 % burn | À SIMULER | Règle d'arrondi entière obligatoire ; comparer sécurité/incitation des mineurs |
 | Préminage | aucun | PROPOSÉ | Simplicité et distribution vérifiable |
@@ -84,8 +84,8 @@ Le partage des frais est comptabilisé séparément de l'émission. Le burn réd
 
 ### Comparaison à simuler
 
-- Départ : 50, 100 et 500 AUR.
-- Paliers candidats : 500 → 100 → 60 → 50 → 30 → 10 → 1 AUR.
+- Départ : 50, 100 et 500 ARETOVUS.
+- Paliers candidats : 500 → 100 → 60 → 50 → 30 → 10 → 1 ARETOVUS.
 - Transition selon hauteur seule, offre créée seule, et règle hybride qui passe au palier suivant dès que le premier seuil (hauteur ou offre) est atteint.
 - Scénarios de blocs à la cible, plus rapides et plus lents.
 - Rapporter : émissions par année, cumul brut, solde restant, revenu mineur/trésorerie, nombre de blocs par palier, arrondis et fin d'émission.
