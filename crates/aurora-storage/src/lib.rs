@@ -958,6 +958,49 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_traversal_checks_last_existing_block_and_restores_a_missing_one() {
+        let path = dir();
+        let mut original = chain();
+        let mut last_id = original.tip_hash();
+        // Exercise every filename after the initial reusable path buffer.
+        for timestamp in 2..=70 {
+            let block = AccountBlock::build(
+                NetworkId::Regtest,
+                original.tip_hash(),
+                timestamp,
+                0,
+                Vec::new(),
+            )
+            .unwrap();
+            last_id = block.header.hash().unwrap();
+            original.submit(block).unwrap();
+        }
+        let manifest = save_snapshot(&path, &original).unwrap();
+        assert_eq!(
+            fs::read_dir(path.join(BLOCK_DIRECTORY)).unwrap().count(),
+            original.known_block_count()
+        );
+        let last_path = path
+            .join(BLOCK_DIRECTORY)
+            .join(format!("{last_id}.{BLOCK_EXTENSION}"));
+        fs::remove_file(&last_path).unwrap();
+        fs::create_dir(&last_path).unwrap();
+        assert!(matches!(
+            save_snapshot(&path, &original),
+            Err(StorageError::InvalidFormat("block object is not a file"))
+        ));
+        // Removing an object cannot be masked by the previous save. A retry
+        // recreates it at the correct hash path and recovers all blocks.
+        fs::remove_dir(&last_path).unwrap();
+        assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
+        let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        assert_eq!(restored.known_block_count(), original.known_block_count());
+        assert_eq!(restored.state(), original.state());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
     fn stored_arrival_hashes_match_block_headers_across_side_branches() {
         let mut original = chain();
         let genesis_hash = original.tip_hash();
