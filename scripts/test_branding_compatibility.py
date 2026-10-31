@@ -23,6 +23,7 @@ def main() -> None:
         assert f"crates/aretovus-{component}" in workspace, component
         assert f'name = "aretovus-{component}"' in lockfile, component
         assert f'name = "aretovus-{component}"' in read(manifest), component
+        assert "AURORA" not in read(manifest), manifest
     for manifest in manifests:
         source = read(manifest)
         for component in CRATES:

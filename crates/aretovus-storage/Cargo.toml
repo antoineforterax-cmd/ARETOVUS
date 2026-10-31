@@ -1,6 +1,6 @@
 [package]
 name = "aretovus-storage"
-description = "AURORA experimental validated chain snapshots"
+description = "ARETOVUS experimental validated chain snapshots"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
