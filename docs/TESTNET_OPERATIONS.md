@@ -2,6 +2,10 @@
 
 **Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (CI P2P v4 et états passée; campagnes prolongées en cours). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
 
+## Essai d'endurance sur deux PC : palier réaliste de 4 heures
+
+Le protocole de validation pratique est dans le [guide deux PC / 4 heures](validation/MULTI_HOST_72H_RUNBOOK_2026-10-31.md). Il décrit le nœud sur chaque PC, le prélèvement des hauteurs et des hashes en lecture seule, les journaux de preuve et la comparaison finale. Le palier de quatre heures se lance avec `--hours 4` et se vérifie avec `--minimum-hours 4` ; il ne vaut **pas** 72 heures. Les essais précédents sur deux PC ne prouvent pas automatiquement une endurance de quatre heures. Le protocole et les scripts doivent être intégrés et testés avant utilisation.
+
 ## Vérifier une installation
 
 Construire à partir d’un commit noté et de `Cargo.lock` :
