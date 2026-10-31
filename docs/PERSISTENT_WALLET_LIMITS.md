@@ -8,14 +8,14 @@ et appliqués automatiquement aux prochains paiements de ce wallet.
 ## Usage
 
 ```sh
-aretovus-wallet limits-create --key-file wallet.aurkey --max-amount 10 --max-fee 0.001
-aretovus-wallet limits-show --key-file wallet.aurkey
-aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000
+aretovus-wallet limits-create --key-file wallet.aretkey --max-amount 10 --max-fee 0.001
+aretovus-wallet limits-show --key-file wallet.aretkey
+aretovus-wallet send --key-file wallet.aretkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000
 ```
 
 La création demande le mot de passe si le wallet est chiffré. Elle crée
-`wallet.aurkey.limits`, sans écraser un fichier existant. Les deux plafonds
-sont obligatoires, exprimés en AUR, inclusifs et par paiement. Le plafond de
+`wallet.aretkey.limits`, sans écraser un fichier existant. Les deux plafonds
+sont obligatoires, exprimés en ARETOVUS, inclusifs et par paiement. Le plafond de
 montant doit être positif ; celui des frais peut être nul.
 
 `send` charge automatiquement ce fichier, même avec `--yes` ou
@@ -59,7 +59,7 @@ Le fichier contient l'adresse et les limites, aucune clé ni historique.
 Ses permissions sont 0600 à la création sous Unix ; sous Windows, elles
 dépendent du dossier parent. Aucun service distant ou télémétrie n'est ajouté.
 L'absence de nouvelle dépendance ou de règle de consensus conserve les formats
-v3 et AURKEY4. Revenir à une ancienne version du wallet supprime l'application
+v3 et ARETOVK4. Revenir à une ancienne version du wallet supprime l'application
 automatique de ces limites ; ne pas considérer ce retour arrière comme une
 protection équivalente.
 
