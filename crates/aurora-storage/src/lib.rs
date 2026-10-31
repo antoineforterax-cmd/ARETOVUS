@@ -204,6 +204,18 @@ fn save_snapshot_inner(
                     if same_prefix {
                         let page_path =
                             page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
+                        // A cached object must remain a regular file; do not
+                        // accept a symlink to identical bytes as immutable storage.
+                        match fs::symlink_metadata(&page_path) {
+                            Ok(metadata) if !metadata.file_type().is_file() => {
+                                return Err(StorageError::InvalidFormat(
+                                    "cached index page is not a regular file",
+                                ));
+                            }
+                            Ok(_) => {}
+                            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                            Err(error) => return Err(StorageError::Io(error)),
+                        }
                         match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
                             // Byte-for-byte equality to the page previously
                             // hashed and durably written is as strict as the
@@ -1120,6 +1132,38 @@ mod tests {
         fs::write(&page_path, &original_page).unwrap();
         save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         assert_eq!(cache.pages.len(), 1);
+
+        // Cached index pages must not silently follow an external symlink,
+        // even when its target contains exactly the expected bytes.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let valid_target = path.join("saved-index-page");
+            fs::rename(&page_path, &valid_target).unwrap();
+            symlink(&valid_target, &page_path).unwrap();
+            let before = load_latest_snapshot(
+                &path,
+                AccountLedger::new(NetworkId::Regtest),
+            )
+            .unwrap();
+            assert!(matches!(
+                save_snapshot_with_page_cache(&path, &original, &mut cache),
+                Err(StorageError::InvalidFormat(
+                    "cached index page is not a regular file"
+                ))
+            ));
+            assert!(cache.pages.is_empty());
+            fs::remove_file(&page_path).unwrap();
+            fs::rename(&valid_target, &page_path).unwrap();
+            let after = load_latest_snapshot(
+                &path,
+                AccountLedger::new(NetworkId::Regtest),
+            )
+            .unwrap();
+            assert_eq!(before.tip_hash(), after.tip_hash());
+            assert_eq!(before.state(), after.state());
+            save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
+        }
 
         // A stale arrival prefix must force recomputation instead of reuse.
         cache.pages[0].page_bytes[24] ^= 1;
