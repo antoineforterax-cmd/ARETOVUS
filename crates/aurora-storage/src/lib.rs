@@ -1141,11 +1141,8 @@ mod tests {
             let valid_target = path.join("saved-index-page");
             fs::rename(&page_path, &valid_target).unwrap();
             symlink(&valid_target, &page_path).unwrap();
-            let before = load_latest_snapshot(
-                &path,
-                AccountLedger::new(NetworkId::Regtest),
-            )
-            .unwrap();
+            let before =
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
             assert!(matches!(
                 save_snapshot_with_page_cache(&path, &original, &mut cache),
                 Err(StorageError::InvalidFormat(
@@ -1155,11 +1152,8 @@ mod tests {
             assert!(cache.pages.is_empty());
             fs::remove_file(&page_path).unwrap();
             fs::rename(&valid_target, &page_path).unwrap();
-            let after = load_latest_snapshot(
-                &path,
-                AccountLedger::new(NetworkId::Regtest),
-            )
-            .unwrap();
+            let after =
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
             assert_eq!(before.tip_hash(), after.tip_hash());
             assert_eq!(before.state(), after.state());
             save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
