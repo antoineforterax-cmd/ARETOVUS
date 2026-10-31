@@ -1,4 +1,4 @@
-# DECISION_REGISTER.md — AURORA
+# DECISION_REGISTER.md — ARETOVUS
 
 **Statut :** registre historique des questions de conception de phase 0, conservé pour traçabilité. Les statuts du tableau ci-dessous n’ont pas tous été remis à jour après les prototypes et ne décrivent pas, à eux seuls, le protocole exécuté.  
 **Choix actifs du testnet expérimental :** [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md), [PROTOCOL.md](PROTOCOL.md) et [EMISSION_MODEL.md](EMISSION_MODEL.md).  
@@ -200,7 +200,7 @@ Chaque fiche liste : ce que l'on sait (avec source), ce que l'on ne sait pas, ce
 ### F-02 — Algorithme de PoW (POW-01)
 
 - **Ce qu'on sait :** SHA-256 est dominé par des ASIC sur Bitcoin (cahier §6.2). Une chaîne neuve a un hashrate initial faible, donc l'attaque à majorité est moins coûteuse (cahier §6.5).
-- **Ce qu'on ne sait pas :** le coût réel d'une attaque pour AURORA ; si un PoW orienté mémoire améliore l'accessibilité sans autres coûts.
+- **Ce qu'on ne sait pas :** le coût réel d'une attaque pour ARETOVUS ; si un PoW orienté mémoire améliore l'accessibilité sans autres coûts.
 - **À mesurer :** rapport comparatif (coût d'attaque, centralisation, énergie, validation sur matériel modeste) + simulation d'attaque simple (10, 25, 40, 50 %).
 - **Critère :** rapport relu ; décision écrite avec ses limites.
 - **Risques :** annoncer une accessibilité ou une sécurité non démontrée.
@@ -477,17 +477,17 @@ Ces choix existent **dans le code** pour pouvoir avancer ; ce ne sont pas des d�
 
 | ID | Hypothèse dans le code | Où | Conséquence si on la change |
 |---|---|---|---|
-| TX-06 | 8 décimales ; 1 AUR = 10^8 unités | `aurora-core/src/amount.rs` | Constantes et tous les vecteurs de test à recalculer |
+| TX-06 | 8 décimales ; 1 AUR = 10^8 unités | `aretovus-core/src/amount.rs` | Constantes et tous les vecteurs de test à recalculer |
 | TX-07 | Montants en entier non signé 64 bits, addition vérifiée, plafond de garde 105 000 000 AUR | `amount.rs` | Le plafond du type n'est pas une règle d'émission (MON-01 ouvert) |
-| TX-02 | Entiers big-endian à largeur fixe, longueurs sur 4 octets bornées, rejet des octets en trop | `aurora-core/src/codec.rs` | Changer de format change tous les identifiants et vecteurs |
-| TX-03 | SHA-256 simple (bibliothèque `sha2`) de `longueur(tag) ‖ tag ‖ données`, domaines `TxId`, `BlockHeader`, `TxList` | `aurora-core/src/hash.rs` | Double SHA-256 ou autre : identifiants et vecteurs à refaire |
-| TX-05 | Identifiant de transaction = hachage de l'encodage complet, `auth_data` inclus | `aurora-core/src/experimental.rs` | Si les signatures sortent de l'identifiant, le format change |
-| TX-04 | Engagement du bloc = hachage de `nombre ‖ identifiants`, pas un arbre de Merkle | `aurora-consensus/src/experimental.rs` | Le mode léger ne pourrait pas prouver l'appartenance d'une transaction |
-| TX-09 | Réseaux `Regtest=1`, `Testnet=2`, `Mainnet=3` (réservé), présents dans transaction et bloc | `aurora-core/src/network.rs` | Octets et vecteurs à refaire |
+| TX-02 | Entiers big-endian à largeur fixe, longueurs sur 4 octets bornées, rejet des octets en trop | `aretovus-core/src/codec.rs` | Changer de format change tous les identifiants et vecteurs |
+| TX-03 | SHA-256 simple (bibliothèque `sha2`) de `longueur(tag) ‖ tag ‖ données`, domaines `TxId`, `BlockHeader`, `TxList` | `aretovus-core/src/hash.rs` | Double SHA-256 ou autre : identifiants et vecteurs à refaire |
+| TX-05 | Identifiant de transaction = hachage de l'encodage complet, `auth_data` inclus | `aretovus-core/src/experimental.rs` | Si les signatures sortent de l'identifiant, le format change |
+| TX-04 | Engagement du bloc = hachage de `nombre ‖ identifiants`, pas un arbre de Merkle | `aretovus-consensus/src/experimental.rs` | Le mode léger ne pourrait pas prouver l'appartenance d'une transaction |
+| TX-09 | Réseaux `Regtest=1`, `Testnet=2`, `Mainnet=3` (réservé), présents dans transaction et bloc | `aretovus-core/src/network.rs` | Octets et vecteurs à refaire |
 | TX-01 | Transaction « entrées / sorties » **par commodité de test** ; ne préjuge pas du modèle | `experimental.rs` | À supprimer ou refaire après le prototype comparatif |
 | CRY-01 | Aucune signature : `auth_data` opaque, **non vérifié** | `experimental.rs` | Aucune autorisation de dépense n'est vérifiée aujourd'hui |
 | FEE-02/03 | Bornes arbitraires : 256 entrées, 256 sorties, 8 192 octets d'autorisation, 10 000 transactions par bloc | `experimental.rs` (core et consensus) | Valeurs sans justification de performance |
-| POW-03 | En-tête sans cible, sans preuve de travail ; nonce libre | `aurora-consensus` | Aucun consensus n'est implémenté |
+| POW-03 | En-tête sans cible, sans preuve de travail ; nonce libre | `aretovus-consensus` | Aucun consensus n'est implémenté |
 
 ### État des tests (honnêteté)
 

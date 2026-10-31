@@ -1,4 +1,4 @@
-# Consensus du testnet AURORA
+# Consensus du testnet ARETOVUS
 
 État du 27 octobre 2026, branche `feature/emission-schedule-v0`. Le code reste expérimental et non audité par un humain indépendant.
 
