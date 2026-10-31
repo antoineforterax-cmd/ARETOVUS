@@ -1,0 +1,30 @@
+name: storage-read-guards-cross-platform
+
+on:
+  pull_request:
+    paths:
+      - "crates/aretovus-storage/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/storage-read-guards-cross-platform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage-read-guards:
+    name: storage-regressions-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Compile and run storage corruption and recovery regressions
+        run: cargo test --locked -p aretovus-storage --lib

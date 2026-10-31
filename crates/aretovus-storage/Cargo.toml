@@ -1,6 +1,6 @@
 [package]
 name = "aretovus-storage"
-description = "ARETOVUS experimental validated chain snapshots"
+description = "AURORA experimental validated chain snapshots"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -12,3 +12,7 @@ workspace = true
 [dependencies]
 aretovus-core.workspace = true
 aretovus-consensus = { path = "../aretovus-consensus" }
+
+[target.'cfg(unix)'.dependencies]
+# Same already-vetted syscall flag dependency as aretovus-wallet: O_NOFOLLOW.
+libc = "0.2"

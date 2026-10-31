@@ -346,7 +346,7 @@ fn save_snapshot_inner(
     #[cfg(any(test, debug_assertions))]
     let profile_prune_indexes_done = profile_started.elapsed();
     if let Err(error) = prune_unreferenced_index_pages(dir) {
-        eprintln!("cannot prune old ARETOVUS index pages: {error}");
+        eprintln!("cannot prune old AURORA index pages: {error}");
     }
     #[cfg(any(test, debug_assertions))]
     if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
@@ -620,7 +620,7 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
         .iter()
         .any(|path| !index_manifest_and_pages_valid(dir, path, &mut verified_pages))
     {
-        eprintln!("postponing ARETOVUS index pruning: an older manifest or its pages are damaged");
+        eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
         return;
     }
     // The filename starts with a zero-padded height; select the lowest
@@ -636,7 +636,7 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             continue;
         }
         if let Err(error) = fs::remove_file(&path) {
-            eprintln!("cannot prune old ARETOVUS index {}: {error}", path.display());
+            eprintln!("cannot prune old AURORA index {}: {error}", path.display());
         }
     }
 }
@@ -741,7 +741,7 @@ pub fn load_latest_snapshot(
             Ok(value) => value,
             Err(error) => {
                 eprintln!(
-                    "ignoring invalid ARETOVUS snapshot {}: {error}",
+                    "ignoring invalid AURORA snapshot {}: {error}",
                     path.display()
                 );
                 if rejected_snapshot.is_none() {
@@ -777,9 +777,19 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 }
 
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
+    read_bounded_limit_with_preopen_hook(path, limit, || {})
+}
+
+// Inject the exact metadata-check/open boundary in adversarial local tests.
+// The ordinary call uses a no-op, so production never performs any mutation.
+fn read_bounded_limit_with_preopen_hook(
+    path: &Path,
+    limit: usize,
+    before_open: impl FnOnce(),
+) -> Result<Vec<u8>, StorageError> {
     // Immutable manifests, pages and blocks must be real files at their own
     // paths. Following symlinks here would contradict the write-side guard
-    // and could silently accept data outside the ARETOVUS storage tree.
+    // and could silently accept data outside the AURORA storage tree.
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.file_type().is_file() {
         return Err(StorageError::InvalidFormat(
@@ -791,7 +801,53 @@ fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError
             "storage object exceeds byte limit",
         ));
     }
-    let file = File::open(path)?;
+    before_open();
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Inode comparison alone misses an injected symlink to the SAME
+        // inode. Ask the kernel not to follow the final component at all.
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options.open(path)?;
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        let opened = file.metadata()?;
+        if !opened.file_type().is_file()
+            || opened.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        {
+            return Err(StorageError::InvalidFormat(
+                "storage object is not a regular file",
+            ));
+        }
+    }
+    // On Unix, reject a path swapped after the symlink/type preflight but
+    // before open(). The descriptor identity must match the original inode.
+    // Once open, later path swaps cannot redirect this descriptor.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let opened = file.metadata()?;
+        if !opened.file_type().is_file()
+            || opened.dev() != metadata.dev()
+            || opened.ino() != metadata.ino()
+        {
+            return Err(StorageError::InvalidFormat(
+                "storage object changed between preflight and open",
+            ));
+        }
+    }
     let mut bytes = Vec::with_capacity(metadata.len() as usize);
     file.take((limit + 1) as u64).read_to_end(&mut bytes)?;
     if bytes.len() > limit {
@@ -1301,6 +1357,68 @@ mod tests {
                 load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
             assert_eq!(restored.tip_hash(), expected);
         }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_rejects_file_swapped_for_symlink_between_metadata_and_open() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let original = root.join("original");
+        let outside = root.join("outside");
+        fs::write(&object, b"original chain bytes").unwrap();
+        fs::write(&outside, b"external substitute").unwrap();
+
+        let attempted = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            // Force a deterministic TOCTOU race instead of probabilistic
+            // parallel threads or timing sleeps.
+            fs::rename(&object, &original).unwrap();
+            symlink(&outside, &object).unwrap();
+        });
+        assert!(
+            attempted.is_err(),
+            "read followed the replacement symlink after a valid preflight"
+        );
+        fs::remove_file(&object).unwrap();
+        fs::rename(&original, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"original chain bytes"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_rejects_same_inode_symlink_swap_between_check_and_open() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let moved = root.join("moved-original.auridx");
+        fs::write(&object, b"same original inode").unwrap();
+
+        let attempted = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            // The symlink points to the EXACT inode checked before open.
+            // Comparing inode numbers alone cannot reject this substitution.
+            fs::rename(&object, &moved).unwrap();
+            symlink(&moved, &object).unwrap();
+        });
+        assert!(
+            attempted.is_err(),
+            "reader accepted a symlink swap pointing to the original inode"
+        );
+        fs::remove_file(&object).unwrap();
+        fs::rename(&moved, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"same original inode"
+        );
         fs::remove_dir_all(root).unwrap();
     }
 

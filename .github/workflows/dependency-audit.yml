@@ -2,7 +2,14 @@ name: dependency-audit
 
 on:
   push:
-    branches: [feature/emission-schedule-v0]
+    branches: [main, feature/emission-schedule-v0]
+    paths:
+      - "Cargo.lock"
+      - "deny.toml"
+      - "rust-toolchain.toml"
+      - "**/Cargo.toml"
+      - ".github/workflows/dependency-audit.yml"
+  pull_request:
     paths:
       - "Cargo.lock"
       - "deny.toml"
