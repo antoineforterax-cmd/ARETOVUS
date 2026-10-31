@@ -194,10 +194,12 @@ fn save_snapshot_inner(
             if let Some(cache) = cache.as_deref_mut() {
                 if let Some(saved) = cache.pages.get(page_number) {
                     if saved.block_ids.as_ref() == chunk {
-                        let page_path = page_dir
-                            .join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
+                        let page_path =
+                            page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
                         match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
-                            Ok(bytes) if sha256_plain(&bytes) == saved.page_id => Some(saved.page_id),
+                            Ok(bytes) if sha256_plain(&bytes) == saved.page_id => {
+                                Some(saved.page_id)
+                            }
                             Ok(_) => {
                                 return Err(StorageError::InvalidFormat(
                                     "content-addressed index page mismatch",
@@ -265,7 +267,9 @@ fn save_snapshot_inner(
         body.extend_from_slice(page_id.as_bytes());
     }
     if let Some(cache) = cache.as_deref_mut() {
-        cache.pages.truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
+        cache
+            .pages
+            .truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
     }
     #[cfg(test)]
     let profile_pages_done = profile_started.elapsed();
@@ -1084,14 +1088,9 @@ mod tests {
 
         // An appended block makes a partial second page; the complete prefix
         // is reused, but the new manifest must still commit the new block.
-        let next = AccountBlock::build(
-            NetworkId::Regtest,
-            original.tip_hash(),
-            4097,
-            0,
-            Vec::new(),
-        )
-        .unwrap();
+        let next =
+            AccountBlock::build(NetworkId::Regtest, original.tip_hash(), 4097, 0, Vec::new())
+                .unwrap();
         original.submit(next).unwrap();
         let next_manifest = save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         assert_ne!(next_manifest, first_manifest);
@@ -1116,7 +1115,10 @@ mod tests {
         let before = cache.reused_full_pages;
         save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         assert_eq!(cache.reused_full_pages, before);
-        assert_eq!(cache.pages[0].block_ids[0], *original.blocks_with_ids_by_arrival().next().unwrap().0);
+        assert_eq!(
+            cache.pages[0].block_ids[0],
+            *original.blocks_with_ids_by_arrival().next().unwrap().0
+        );
 
         // Even after cache reuse, all old block paths must still be checked.
         let genesis_id = *original.blocks_with_ids_by_arrival().next().unwrap().0;
