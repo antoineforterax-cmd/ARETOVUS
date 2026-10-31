@@ -1,0 +1,85 @@
+name: storage-block-path-ab-20261031
+
+on:
+  push:
+    branches: [perf/storage-reuse-block-path-after-profile-20261031]
+    paths:
+      - "crates/aurora-storage/**"
+      - ".github/workflows/storage-block-path-ab-20261031.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Comparer base et correction sur le même runner, en ordre ABBA
+        env:
+          BASE_SHA: "abbe73913425c4625897a0b6f6d961acc3c9a7a7"
+          AURORA_STORAGE_PROFILE: "1"
+          AURORA_STORAGE_PROFILE_BLOCKS: "32768"
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_SHA"
+          mkdir -p storage-a-b-logs
+          for ref in "$BASE_SHA" "$candidate"; do
+            git -c advice.detachedHead=false checkout --detach "$ref"
+            cargo test --locked -p aurora-storage --lib --no-run
+          done
+          for slot in base-1 candidate-1 candidate-2 base-2; do
+            case "$slot" in
+              base-*) ref="$BASE_SHA" ;;
+              candidate-*) ref="$candidate" ;;
+            esac
+            git -c advice.detachedHead=false checkout --detach "$ref"
+            test "$(git rev-parse HEAD)" = "$ref"
+            log="storage-a-b-logs/$slot.log"
+            echo "=== $slot, commit=$ref, blocks=$AURORA_STORAGE_PROFILE_BLOCKS ==="
+            /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
+            grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
+            grep -Eq 'storage volume probe: height=32768 known_blocks=32769 snapshot_calls=512([[:space:]]|$)' "$log"
+            grep -q 'storage phases: blocks=32769' "$log"
+          done
+          python3 - <<'PY' | tee storage-a-b-logs/summary.txt
+          import pathlib
+          import re
+          import statistics
+
+          measurements = {}
+          for name in ("base-1", "candidate-1", "candidate-2", "base-2"):
+              log = pathlib.Path("storage-a-b-logs", name + ".log").read_text()
+              match = re.search(
+                  r"storage volume probe: height=32768 known_blocks=32769 snapshot_calls=512 "
+                  r"build_and_save_seconds=([0-9.]+) restore_seconds=([0-9.]+)",
+                  log,
+              )
+              assert match, name
+              retentions = [
+                  float(value)
+                  for value in re.findall(r"block_objects_seconds=([0-9.]+)", log)
+              ]
+              assert len(retentions) >= 512, (name, len(retentions))
+              measurements[name] = (float(match.group(1)), sum(retentions[:512]))
+              print(f"{name}: build_and_save_seconds={measurements[name][0]:.2f} "
+                    f"block_objects_sum_seconds={measurements[name][1]:.3f}")
+          for metric, label in ((0, "build_and_save"), (1, "block_objects")):
+              baseline = statistics.mean(measurements[n][metric] for n in ("base-1", "base-2"))
+              candidate = statistics.mean(measurements[n][metric] for n in ("candidate-1", "candidate-2"))
+              print(f"{label}: baseline_mean={baseline:.3f}s "
+                    f"candidate_mean={candidate:.3f}s ratio={candidate / baseline:.3f}")
+          print("ABBA measurements are noisy and are not a guarantee of asymptotic scaling.")
+          PY
+          cat storage-a-b-logs/summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-block-path-ab-logs
+          path: storage-a-b-logs/
+          retention-days: 14
