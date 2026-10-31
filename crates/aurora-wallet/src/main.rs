@@ -663,9 +663,9 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
             println!("  aurora-wallet inspect-signed --from SIGNED_FILE");
+            println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
             println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
-            println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--yes]");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
             println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
