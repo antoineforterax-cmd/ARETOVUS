@@ -6,12 +6,12 @@ on:
     paths:
       - "scripts/testnet_reconnect.py"
       - ".github/workflows/network-reconnect.yml"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-node/**"
   pull_request:
     paths:
       - "scripts/testnet_reconnect.py"
       - ".github/workflows/network-reconnect.yml"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-node/**"
   workflow_dispatch:
 
 permissions:
@@ -26,9 +26,9 @@ jobs:
       - name: Installer Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Compiler le nœud
-        run: cargo build --locked -p aurora-node
+        run: cargo build --locked -p aretovus-node
       - name: Vérifier la reprise P2P après disparition et retour du serveur
-        run: python3 scripts/testnet_reconnect.py --binary target/debug/aurora-node --output target/network-reconnect --deadline-seconds 75
+        run: python3 scripts/testnet_reconnect.py --binary target/debug/aretovus-node --output target/network-reconnect --deadline-seconds 75
       - uses: actions/upload-artifact@v4
         if: always()
         with:

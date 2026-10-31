@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Restore >100k blocks and side branch
-        run: /usr/bin/time -v cargo test --locked -p aurora-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
+        run: /usr/bin/time -v cargo test --locked -p aretovus-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
 
   storage-profile-8192:
     runs-on: ubuntu-latest
@@ -30,14 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
-      - run: cargo test --locked -p aurora-storage --lib --no-run
+      - run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Profile 8192 blocks and verify persisted snapshot counts
         env:
-          AURORA_STORAGE_PROFILE: "1"
-          AURORA_STORAGE_PROFILE_BLOCKS: "8192"
+          ARETOVUS_STORAGE_PROFILE: "1"
+          ARETOVUS_STORAGE_PROFILE_BLOCKS: "8192"
         run: |
           set -euo pipefail
-          /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-8192.log
+          /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee storage-profile-8192.log
           grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' storage-profile-8192.log
           grep -q 'storage phases:' storage-profile-8192.log
           grep -Eq 'storage volume probe: height=8192 known_blocks=8193 snapshot_calls=128([[:space:]]|$)' storage-profile-8192.log
@@ -54,9 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
-      - run: cargo build --locked -p aurora-node
+      - run: cargo build --locked -p aretovus-node
       - name: Three partition/reconnect rounds
-        run: python3 scripts/testnet_partitions.py --binary target/debug/aurora-node --output target/massive-partitions --rounds 3
+        run: python3 scripts/testnet_partitions.py --binary target/debug/aretovus-node --output target/massive-partitions --rounds 3
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -72,9 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
-      - run: cargo build --locked -p aurora-node
+      - run: cargo build --locked -p aretovus-node
       - name: Post-handshake trickle and honest-wallet recovery
-        run: python3 scripts/testnet_admission_probe.py --binary target/debug/aurora-node --post-handshake --max-wallet-seconds 5 --report target/massive-admission.json
+        run: python3 scripts/testnet_admission_probe.py --binary target/debug/aretovus-node --post-handshake --max-wallet-seconds 5 --report target/massive-admission.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

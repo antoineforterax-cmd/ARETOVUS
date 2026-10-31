@@ -5,9 +5,9 @@ on:
     branches: [feature/emission-schedule-v0]
     paths:
       - "fuzz/**"
-      - "crates/aurora-core/**"
-      - "crates/aurora-consensus/**"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-core/**"
+      - "crates/aretovus-consensus/**"
+      - "crates/aretovus-node/**"
       - ".github/workflows/fuzz.yml"
   workflow_dispatch:
 
