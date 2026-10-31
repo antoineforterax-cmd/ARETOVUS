@@ -33,5 +33,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: testnet-soak-logs
-          path: target/aurora-soak-*/**/*.log
+          path: target/aretovus-soak-*/**/*.log
           retention-days: 7

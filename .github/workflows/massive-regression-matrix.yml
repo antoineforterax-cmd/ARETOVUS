@@ -102,5 +102,5 @@ jobs:
         if: failure()
         with:
           name: massive-soak-failure-logs
-          path: target/aurora-soak-*/**/*.log
+          path: target/aretovus-soak-*/**/*.log
           retention-days: 14

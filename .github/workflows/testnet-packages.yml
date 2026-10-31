@@ -58,7 +58,7 @@ jobs:
         run: |
           $archive = Get-ChildItem -Path dist -Filter 'aretovus-testnet-windows-*.zip' | Select-Object -First 1
           if (-not $archive) { throw 'Missing Windows archive' }
-          $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
+          $target = Join-Path $env:RUNNER_TEMP 'aretovus-two-pc-package-check'
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
           $sourceRevision = ($env:GITHUB_SHA).Substring(0, 12)
           & (Join-Path (Get-Location) 'scripts/two_pc_preflight.ps1') -PackageRoot $target -ExpectedRevision $sourceRevision -Offline
@@ -67,7 +67,7 @@ jobs:
         shell: pwsh
         timeout-minutes: 6
         run: |
-          $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
+          $target = Join-Path $env:RUNNER_TEMP 'aretovus-two-pc-package-check'
           python scripts/testnet_two_node_package_smoke.py --package-root $target
       - name: Publier l’archive comme artefact CI
         uses: actions/upload-artifact@v4

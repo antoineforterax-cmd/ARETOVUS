@@ -21,7 +21,7 @@ jobs:
         run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Produce portable backup and expected hashes
         env:
-          AURORA_CROSS_RUNNER_EXPORT_DIR: ${{ runner.temp }}/aurora-transfer
+          AURORA_CROSS_RUNNER_EXPORT_DIR: ${{ runner.temp }}/aretovus-transfer
         run: |
           set -euo pipefail
           mkdir -p "$AURORA_CROSS_RUNNER_EXPORT_DIR"
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: portable-v6-backup
-          path: ${{ runner.temp }}/aurora-transfer/
+          path: ${{ runner.temp }}/aretovus-transfer/
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@v4
@@ -50,11 +50,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: portable-v6-backup
-          path: ${{ runner.temp }}/aurora-import
+          path: ${{ runner.temp }}/aretovus-import
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Verify imported backup and reorganization
         env:
-          AURORA_CROSS_RUNNER_IMPORT_DIR: ${{ runner.temp }}/aurora-import
+          AURORA_CROSS_RUNNER_IMPORT_DIR: ${{ runner.temp }}/aretovus-import
         run: |
           set -euo pipefail
           cargo test --locked -p aretovus-storage --lib tests::cross_runner_v6_backup_consumer -- --exact --ignored --nocapture 2>&1 | tee cross-runner-import.log
