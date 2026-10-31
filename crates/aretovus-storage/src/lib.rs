@@ -804,6 +804,12 @@ fn read_bounded_limit_with_preopen_hook(
             "storage object exceeds byte limit",
         ));
     }
+    // Windows exposes no stable file-index accessor in std on the pinned
+    // toolchain. Keep a real preflight handle alive and compare the identity
+    // against the descriptor ultimately opened. A size/mtime check is not
+    // sufficient when one regular file is swapped for another.
+    #[cfg(windows)]
+    let preflight_identity = same_file::Handle::from_path(path)?;
     before_open();
     let mut options = OpenOptions::new();
     options.read(true);
@@ -831,6 +837,15 @@ fn read_bounded_limit_with_preopen_hook(
         {
             return Err(StorageError::InvalidFormat(
                 "storage object is not a regular file",
+            ));
+        }
+        // Compare live handles, not the path again: re-resolving a path
+        // would introduce a second rename race. Keep both handles open
+        // while comparing volume and file identifiers.
+        let opened_identity = same_file::Handle::from_file(file.try_clone()?)?;
+        if preflight_identity != opened_identity {
+            return Err(StorageError::InvalidFormat(
+                "storage object changed between preflight and open",
             ));
         }
     }
