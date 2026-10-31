@@ -1,5 +1,7 @@
 # Instructions pour Codex — AURORA
 
+> **Attention — inventaire historique daté.** La section « Situation et branches » ci-dessous décrit la situation **au 29 octobre 2026**, pas l'état courant de `main`. Le testnet avancé a depuis été intégré à `main` ; l'état des PR, les SHA et les CI doivent être **récupérés directement sur GitHub à chaque session**. Pour naviguer, voir [le centre documentaire](docs/README.md) et [les choix actuellement ouverts](docs/planning/DECISION_OPTIONS.md). Les règles de validation, d'autorisation et d'arrêt avant fusion du présent fichier restent impératives.
+
 Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](https://github.com/antoineforterax-cmd/AURORA/blob/docs/aurora-master-plan-2026-10/docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
 
 ## Objet
