@@ -5,27 +5,27 @@
 </p>
 
 
-> **Renommage de marque (2026-10-31).** Ancien nom : AURORA. Les identifiants consensus, le protocole `aurora://`, les noms historiques de fichiers et les releases déjà publiées conservent leurs valeurs pour assurer la compatibilité. Voir [politique de migration](docs/BRANDING_COMPATIBILITY.md).
+> **Réseau expérimental ARETOVUS (nouvelle identité de protocole).** Cette branche utilise une nouvelle genèse, de nouveaux identifiants cryptographiques, de nouveaux formats de stockage et le schéma `aretovus://`. Les anciennes sauvegardes ne sont pas migrées : **nouveau dossier de données obligatoire**. Voir [migration](docs/PROTOCOL_IDENTITY_MIGRATION.md).
 
 > Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
 
-Pour découvrir le projet et faire un premier essai : [ARETOVUS, de A à Z](docs/guide-fr/README.md). La [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) fournit les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
+Pour découvrir le projet et faire un premier essai : [ARETOVUS, de A à Z](docs/guide-fr/README.md). L'ancienne [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) archive les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
 
 ## État actuel
 
-Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v3; le consensus refuse les transactions Ed25519 v1 et hybrides v2. Les anciens formats sont conservés pour Regtest. Le changement de profil est incompatible avec l’ancien testnet: utiliser un nouveau dossier de données et garder les snapshots précédents. Cela ne rend pas SHA-256/PoW post-quantique. Voir `docs/POST_QUANTUM.md`.
+Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v3; le consensus refuse les transactions Ed25519 v1 et hybrides v2. Les anciens formats de signatures sont encore étudiés en Regtest, mais l'identité de chaîne a changé. Le changement de profil est incompatible avec l’ancien testnet: utiliser un nouveau dossier de données et garder les snapshots précédents. Cela ne rend pas SHA-256/PoW post-quantique. Voir `docs/POST_QUANTUM.md`.
 
 | Composant | Fonctionnement présent |
 |---|---|
 | `aretovus-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
 | `aretovus-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
-| `aretovus-storage` | Blocs immuables, pages d’index et manifestes checksummés `AURORIDX` v6, trois générations récentes et une ancre de reprise ancienne, toutes les branches; lecture v4/v5 et revalidation au chargement. La [CI du lot réseau/états](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Un [essai de stockage de 100 003 blocs connus](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129), avec branche secondaire et rechargement, a réussi; la synchronisation réseau de ce volume reste à démontrer. |
+| `aretovus-storage` | Blocs immuables, pages d’index et manifestes checksummés `ARETOIDX` v6, trois générations récentes et une ancre de reprise ancienne, toutes les branches; lecture v4/v5 et revalidation au chargement. La [CI du lot réseau/états](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Un [essai de stockage de 100 003 blocs connus](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129), avec branche secondaire et rechargement, a réussi; la synchronisation réseau de ce volume reste à démontrer. |
 | `aretovus-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull v4 à inventaire u64 et reprise de session, rattrapage périodique et relais validé des transactions en attente depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées avec au plus 4 par IP et handshake de 2 secondes, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
-| `aretovus-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aurora://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
+| `aretovus-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aretovus://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
 
 ## Règles économiques exécutées
 
-Le testnet utilise le plafond brut strict de **500 000 000 AUR**, avec 8 décimales et une genèse sans préminage. Pour chaque bloc, l’émission est calculée en unités minimales comme `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Le premier bloc crée 500 AUR; l’émission décroît ensuite continûment avec l’offre restante et finit par atteindre le plafond grâce au plancher d’une unité. La règle de consensus s’identifie comme `proportional-remaining-1e6-v1`.
+Le testnet utilise le plafond brut strict de **500 000 000 ARETOVUS**, avec 8 décimales et une genèse sans préminage. Pour chaque bloc, l’émission est calculée en unités minimales comme `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Le premier bloc crée 500 ARETOVUS; l’émission décroît ensuite continûment avec l’offre restante et finit par atteindre le plafond grâce au plancher d’une unité. La règle de consensus s’identifie comme `proportional-remaining-1e6-v1`.
 
 Cinq pour cent de chaque émission vont au compte testnet fixe `[0xA0; 32]`, et 95 % au mineur. La moitié des frais va au mineur, l’autre moitié est brûlée; le burn ne libère jamais du plafond. Une fois le plafond atteint, le mineur est rémunéré uniquement par les frais, selon le même partage 50/50.
 
