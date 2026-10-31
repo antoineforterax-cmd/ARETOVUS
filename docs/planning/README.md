@@ -11,7 +11,7 @@ Nous développons un **testnet de blockchain indépendant en Rust**, avec preuve
 | Ordre | But | Où en est-on ? |
 | --- | --- | --- |
 | **1. Fiabilité et autonomie** | Consensus déterministe, stockage récupérable, P2P robuste, wallet testable, contrôles et auditabilité | Base expérimentale présente ; campagnes adversariales et audit indépendants encore nécessaires |
-| **2. Utilisation simple** | Documentation accessible, installations reproductibles, explorateur en lecture seule, puis wallet graphique | Guide français et CLI présents ; explorateur et GUI non livrés |
+| **2. Utilisation simple** | Documentation accessible, installations reproductibles, explorateur en lecture seule, puis **interface graphique de nœud/minage** et wallet graphique, mobile ensuite | Guide français et CLI présents ; explorateur et interfaces graphiques non livrés |
 | **3. Différenciation** | Vie privée du réseau et des transactions ; récupération volontaire ; possibilité de participer avec du matériel courant | **Recherche à mener**, pas de confidentialité native ni de coffre consensuel aujourd'hui |
 
 **Règle de qualité :** un noyau plus petit, lisible et mesurable est préférable à beaucoup de code insuffisamment revu. Ne pas élargir le consensus pour faire une démonstration.
@@ -23,7 +23,9 @@ Nous développons un **testnet de blockchain indépendant en Rust**, avec preuve
 | Première découverte | [Guide débutant en français](../guide-fr/README.md) |
 | Pourquoi AURORA et quelles ambitions | [Cahier des charges](CAHIER_DES_CHARGES.md) |
 | Quel travail ensuite | [Feuille de route technique](ROADMAP.md) et [issue produit #123](https://github.com/antoineforterax-cmd/AURORA/issues/123) |
-| Qu'est-ce qui est choisi / encore ouvert ? | [Décisions actuelles et arbitrages](DECISIONS.md) |
+| Quelles sont toutes les options à décider ? | [Questionnaire structuré A/B/C (68 choix)](DECISION_OPTIONS.md) |
+| Où trouver les 67 documents existants ? | [Catalogue de documentation](../README.md) |
+| Qu'est-ce qui est choisi / encore ouvert ? | [Décisions actuelles et arbitrages](DECISIONS.md) · [réponses du responsable et interface de minage](RESPONSES_2026-10-31.md) |
 | Comment le code est organisé | [Architecture du dépôt](../../ARCHITECTURE.md) et [architecture cible de recherche](ARCHITECTURE_CIBLE.md) |
 | Quelles sont les **règles exécutées** | [Protocole](../PROTOCOL.md), [consensus](../CONSENSUS.md), [paramètres économiques](../TESTNET_DECISIONS.md) |
 | Qu'est-ce qui est réellement prouvé | [Rapport de validation](../TESTNET_VALIDATION_REPORT.md), [critères de finalisation](../FINALIZATION_CHECKLIST.md) |

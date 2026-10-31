@@ -1,6 +1,8 @@
 # AURORA — Instructions de développement et d'intégration pour Codex
 
-_Mise à jour : 29 octobre 2026. À utiliser avec [AGENTS.md](https://github.com/antoineforterax-cmd/AURORA/blob/feature/emission-schedule-v0/AGENTS.md) lorsqu'il est présent sur la branche de travail._
+> **Lecture obligatoire :** les listes de PR #1–#36 et la mention d'une branche avancée non fusionnée ci-dessous constituent des **archives du 29 octobre**, et non une cartographie actuelle. Avant toute opération Git, lire `../../AGENTS.md`, consulter [le centre documentaire](../README.md), relever `main` et toutes les PR ouvertes sur GitHub. Les contrôles de sécurité, la revue et l'accord avant fusion restent pleinement applicables.
+
+_Mise à jour : 29 octobre 2026. À utiliser avec [AGENTS.md](../../AGENTS.md) lorsqu'il est présent sur la branche de travail._
 
 ## 1. Mission et autorité
 

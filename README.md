@@ -16,6 +16,8 @@ Notre cap : bâtir d'abord un **noyau fiable, facile à vérifier et à mainteni
 | **Essayer le logiciel** sur Windows, Linux ou macOS | [Installation et premier démarrage](docs/guide-fr/03-installation.md) |
 | **Comprendre la direction du projet** et les fonctionnalités futures | [Vision et feuille de route](docs/planning/README.md) |
 | **Savoir ce qui est décidé, proposé ou encore à comparer** | [Tableau vivant des décisions](docs/planning/DECISIONS.md) |
+| **Retrouver tous les documents sans se perdre** | [Centre documentaire et index exhaustif](docs/README.md) |
+| **Étudier les 68 choix restant à arbitrer** | [Questionnaire A/B/C](docs/planning/DECISION_OPTIONS.md) |
 | **Vérifier les règles exactes** et les limites du testnet | [Consensus](docs/CONSENSUS.md) · [Rapport de validation](docs/TESTNET_VALIDATION_REPORT.md) |
 | **Aider, auditer ou signaler un problème** | [Contribuer](CONTRIBUTING.md) · [Sécurité](SECURITY.md) |
 
