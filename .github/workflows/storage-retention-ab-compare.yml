@@ -1,8 +1,8 @@
-name: storage-retention-ab-compare
+name: storage-block-path-ab-compare
 
 on:
   push:
-    branches: [perf/storage-dedup-retained-page-verification-20261031]
+    branches: [perf/storage-reuse-block-path-buffer-20261031]
     paths:
       - "crates/aurora-storage/**"
       - ".github/workflows/storage-retention-ab-compare.yml"
@@ -22,7 +22,7 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Comparer base et correction sur le même runner, en ordre ABBA
         env:
-          BASE_SHA: "93ea22a55f38f52438930d72adb6e91b53f6a0f5"
+          BASE_SHA: "5380b8d6b7c0d6e6987850c891e35b766a41732b"
           AURORA_STORAGE_PROFILE: "1"
           AURORA_STORAGE_PROFILE_BLOCKS: "32768"
         run: |
@@ -61,15 +61,15 @@ jobs:
                   log,
               )
               assert match, name
-              retentions = [
+              object_phases = [
                   float(value)
-                  for value in re.findall(r"retention_seconds=([0-9.]+)", log)
+                  for value in re.findall(r"block_objects_seconds=([0-9.]+)", log)
               ]
-              assert len(retentions) >= 512, (name, len(retentions))
-              measurements[name] = (float(match.group(1)), sum(retentions[:512]))
+              assert len(object_phases) >= 512, (name, len(object_phases))
+              measurements[name] = (float(match.group(1)), sum(object_phases[:512]))
               print(f"{name}: build_and_save_seconds={measurements[name][0]:.2f} "
-                    f"retention_sum_seconds={measurements[name][1]:.3f}")
-          for metric, label in ((0, "build_and_save"), (1, "retention")):
+                    f"block_objects_sum_seconds={measurements[name][1]:.3f}")
+          for metric, label in ((0, "build_and_save"), (1, "block_objects")):
               baseline = statistics.mean(measurements[n][metric] for n in ("base-1", "base-2"))
               candidate = statistics.mean(measurements[n][metric] for n in ("candidate-1", "candidate-2"))
               print(f"{label}: baseline_mean={baseline:.3f}s "
@@ -80,6 +80,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: storage-retention-ab-logs
+          name: storage-block-path-ab-logs
           path: storage-a-b-logs/
           retention-days: 14
