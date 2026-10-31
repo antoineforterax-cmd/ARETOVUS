@@ -8,7 +8,7 @@ $script:Root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $script:Node = Join-Path $script:Root 'bin/aurora-node.exe'
 $script:Port = 19444
 $script:BeaconPort = 19446
-$script:Magic = 'AURORA-LAN-TESTNET-1'
+$script:Magic = 'AURORA-LAN-TESTNET-2'
 
 function Test-PrivateIPv4([string]$value) {
     $ip = $null
@@ -17,15 +17,15 @@ function Test-PrivateIPv4([string]$value) {
     $o = $ip.GetAddressBytes()
     return ($o[0] -eq 10 -or ($o[0] -eq 172 -and $o[1] -ge 16 -and $o[1] -le 31) -or ($o[0] -eq 192 -and $o[1] -eq 168))
 }
-function New-Beacon([string]$hash) {
-    if ($hash -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid hash' }
-    return "$($script:Magic)|$($hash.ToLowerInvariant())|$($script:Port)"
+function New-Beacon([string]$revision) {
+    if ($revision -notmatch '^[a-fA-F0-9]{12}$') { throw 'Invalid source revision' }
+    return "$($script:Magic)|$($revision.ToLowerInvariant())|$($script:Port)"
 }
-function Read-Beacon([string]$message, [string]$source, [string]$myHash) {
+function Read-Beacon([string]$message, [string]$source, [string]$myRevision) {
     if ($message.Length -gt 180 -or -not (Test-PrivateIPv4 $source)) { return $null }
     $parts = $message.Split('|')
     if ($parts.Length -ne 3 -or $parts[0] -cne $script:Magic) { return $null }
-    if ($parts[1] -cnotmatch '^[a-f0-9]{64}$' -or $parts[1] -cne $myHash.ToLowerInvariant()) { return $null }
+    if ($parts[1] -cnotmatch '^[a-f0-9]{12}$' -or $parts[1] -cne $myRevision.ToLowerInvariant()) { return $null }
     if ($parts[2] -cne "$($script:Port)") { return $null }
     return $source
 }
@@ -72,7 +72,10 @@ function Test-Package {
     $sha = (Get-FileHash -LiteralPath $script:Node -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($sha -cne $matches[0].Substring(0,64)) { throw 'Binaire non conforme aux sommes de controle' }
     & (Join-Path $script:Root 'scripts/two_pc_preflight.ps1') -PackageRoot $script:Root -Offline | Out-Null
-    return $sha
+    $stamp = Get-Content -LiteralPath (Join-Path $script:Root 'EXPERIMENTAL_TESTNET.txt') -Raw
+    $matched = [regex]::Match($stamp, '(?m)^Source commit: ([0-9a-f]{12})\r?$')
+    if (-not $matched.Success) { throw 'Revision du paquet absente' }
+    return $matched.Groups[1].Value
 }
 if ($SelfTest) {
     foreach ($ip in @('10.1.2.3','172.16.0.1','172.31.255.254','192.168.1.1')) {
@@ -81,11 +84,11 @@ if ($SelfTest) {
     foreach ($ip in @('8.8.8.8','127.0.0.1','172.32.0.1','169.254.1.1','::1','evil.example','192.168.1.2;x')) {
         if (Test-PrivateIPv4 $ip) { throw "Unsafe IPv4 accepted: $ip" }
     }
-    $hash = 'a' * 64
-    if ((Read-Beacon (New-Beacon $hash) '192.168.1.2' $hash) -cne '192.168.1.2') { throw 'Beacon roundtrip failed' }
-    if ($null -ne (Read-Beacon (New-Beacon $hash) '192.168.1.2' ('b' * 64))) { throw 'Hash mismatch accepted' }
-    if ($null -ne (Read-Beacon (New-Beacon $hash) '8.8.8.8' $hash)) { throw 'Public peer accepted' }
-    if ($null -ne (Read-Beacon 'bad' '192.168.1.2' $hash)) { throw 'Bad beacon accepted' }
+    $revision = 'a' * 12
+    if ((Read-Beacon (New-Beacon $revision) '192.168.1.2' $revision) -cne '192.168.1.2') { throw 'Beacon roundtrip failed' }
+    if ($null -ne (Read-Beacon (New-Beacon $revision) '192.168.1.2' ('b' * 12))) { throw 'Revision mismatch accepted' }
+    if ($null -ne (Read-Beacon (New-Beacon $revision) '8.8.8.8' $revision)) { throw 'Public peer accepted' }
+    if ($null -ne (Read-Beacon 'bad' '192.168.1.2' $revision)) { throw 'Bad beacon accepted' }
     if ((New-NodeArgs 'A' '192.168.1.5')[-1] -cne '192.168.1.5:19444') { throw 'A arguments wrong' }
     if ((New-NodeArgs 'B' '192.168.1.2')[-1] -cne '192.168.1.2:19444') { throw 'B arguments wrong' }
     try { $null = New-NodeArgs 'B' '8.8.8.8'; throw 'Public peer accepted as B' }
@@ -137,7 +140,7 @@ $firewall = Label 'Pare-feu : TCP 19444 autorise uniquement pour PC B sur profil
 $firewall.ForeColor = [System.Drawing.Color]::DarkBlue
 $status = Label 'Verification du paquet et de la decouverte...' 18 300 615 44
 $stop = Label 'Pour arreter proprement, utilisez Ctrl+C dans la fenetre de chaque noeud.' 18 355 615 34
-$script:Hash = $null
+$script:Revision = $null
 $script:Proc = $null
 $script:Role = ''
 $script:Requested = $false
@@ -179,7 +182,7 @@ $join.Add_Click({
 })
 $manual.Add_Click({ try { Connect-B } catch { Alert $_.Exception.Message } })
 try {
-    $script:Hash = Test-Package
+    $script:Revision = Test-Package
     $status.Text='Paquet verifie. Selectionner PC A ou PC B.'
     $bind = Get-PrivateBindIp
     $script:Sender=New-Object System.Net.Sockets.UdpClient
@@ -198,7 +201,7 @@ try {
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval=850
 $timer.Add_Tick({
-    if ($null -eq $script:Listener -or $null -eq $script:Hash) { return }
+    if ($null -eq $script:Listener -or $null -eq $script:Revision) { return }
     if ($null -ne $script:Proc -and $script:Proc.HasExited) {
         $status.Text="Processus termine (code $($script:Proc.ExitCode)). Cela ne prouve pas la convergence."
         $script:Proc=$null; $script:Role=''
@@ -206,7 +209,7 @@ $timer.Add_Tick({
     }
     try {
         if ($script:Role -eq 'A' -and ([DateTime]::UtcNow-$script:LastBroadcast).TotalSeconds -gt 2) {
-            $beacon=[Text.Encoding]::ASCII.GetBytes((New-Beacon $script:Hash))
+            $beacon=[Text.Encoding]::ASCII.GetBytes((New-Beacon $script:Revision))
             $script:Sender.Send($beacon,$beacon.Length,'255.255.255.255',$script:BeaconPort) | Out-Null
             $script:LastBroadcast=[DateTime]::UtcNow
         }
@@ -214,7 +217,7 @@ $timer.Add_Tick({
             $remote=[Net.IPEndPoint]::new([Net.IPAddress]::Any,0)
             $packet=$script:Listener.Receive([ref]$remote)
             if($packet.Length -gt 180){continue}
-            $found=Read-Beacon ([Text.Encoding]::ASCII.GetString($packet)) $remote.Address.ToString() $script:Hash
+            $found=Read-Beacon ([Text.Encoding]::ASCII.GetString($packet)) $remote.Address.ToString() $script:Revision
             if(-not $found){continue}
             $script:Discovered=$found
             $ip.Text=$found
