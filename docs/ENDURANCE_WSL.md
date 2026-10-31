@@ -58,4 +58,4 @@ test -d /mnt/c/Users/PC/Desktop/ARETOVUS
 cp -r "$HOME/essai-72h" /mnt/c/Users/PC/Desktop/ARETOVUS/essai-72h-linux
 ```
 
-Choisir une nouvelle destination si elle existe déjà. Pour partager le rapport, envoyer les JSON de mesures/résumé, le commit et le résultat court; ne pas inclure les fichiers de clés `.aurkey`. Cet essai reste un réseau de processus sur une seule machine.
+Choisir une nouvelle destination si elle existe déjà. Pour partager le rapport, envoyer les JSON de mesures/résumé, le commit et le résultat court; ne pas inclure les fichiers de clés `.aretkey`. Cet essai reste un réseau de processus sur une seule machine.

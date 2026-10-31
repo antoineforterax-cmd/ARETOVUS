@@ -92,8 +92,8 @@ Passage normal : PROPOSÉ → (À COMPARER / À SIMULER / À TESTER) → VALIDÉ
 
 | ID | Décision | Statut | Point de départ / options | Condition de validation | Phase | Dépend de | Tags |
 |---|---|---|---|---|---|---|---|
-| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
-| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 ARETOVUS; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 ARETOVUS au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
 | MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
 | MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
 | MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
@@ -241,12 +241,12 @@ Clés publiques SLH-DSA : 32, 48 ou 64 octets selon le niveau.
 
 ### F-05 — Émission, plafond, unité (MON-01 à MON-04, TX-06)
 
-Calcul indicatif avec l'hypothèse 50 AUR, moitié tous les 1 050 000 blocs, 8 décimales, entiers tronqués :
+Calcul indicatif avec l'hypothèse 50 ARETOVUS, moitié tous les 1 050 000 blocs, 8 décimales, entiers tronqués :
 
 - 1 050 000 blocs × 600 s ≈ 19,96 ans par ère.
 - Part émise après 1, 2, 3, 4 ères : 50 %, 75 %, 87,5 %, 93,75 %.
 - 33 ères avant que la récompense tombe à zéro, soit environ 659 ans.
-- Total émis : 104 999 999,8845 AUR. Il manque 0,1155 AUR par rapport à 105 000 000 à cause des troncatures.
+- Total émis : 104 999 999,8845 ARETOVUS. Il manque 0,1155 ARETOVUS par rapport à 105 000 000 à cause des troncatures.
 
 Conséquences à trancher : le plafond « 105 M » est une valeur théorique ; le plafond réel dépend de l'unité minimale et de la règle d'arrondi. Les ères très tardives (au-delà de quelques décennies) n'ont aucun poids économique réel.
 
@@ -409,8 +409,8 @@ Chaque ligne du tableau maître. « Justification » explique pourquoi on part d
 | POW-11 | Checkpoints ou exceptions de consensus | PROPOSÉ | Un checkpoint centralisé est un pouvoir de décision | Aucun test ; réexamen seulement après étude |
 | POW-12 | Mesures pour un réseau naissant (hashrate initial faible) | À SIMULER | Un réseau naissant est vulnérable à une majorité de hashrate | Simulations à 10, 25, 40, 50 % ; hypothèses publiées ; aucune garantie de sécurité réelle |
 | POW-13 | Démarrage du réseau : qui mine au début, nœuds de départ | À COMPARER | Les premiers blocs concentrent la production | Plan de démarrage documenté |
-| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 AUR; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
-| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 AUR au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
+| MON-01 | Plafond brut | VALIDÉ POUR LE PROTOTYPE | 500 000 000 ARETOVUS; les frais brûlés ne réouvrent pas le plafond | Tests du plafond et du dernier bloc; outil de référence | 3 | TX-06 | C V1 |
+| MON-02 | Récompense initiale | VALIDÉ POUR LE PROTOTYPE | 500 ARETOVUS au premier bloc, décroissant ensuite selon l’offre brute restante | Tests de seuil et plafond | 3 | MON-03 | C V1 |
 | MON-03 | Calendrier de réduction | VALIDÉ POUR LE PROTOTYPE | Règle entière : un millionième de l’offre brute restante par bloc, arrondi inférieur à l’unité minimale, plancher d’une unité; identifiant `proportional-remaining-1e6-v1` | Tests de limites et comparaison de référence | 3 | POW-04 | C V1 |
 | MON-04 | Règles d’arrondi et dernière récompense | VALIDÉ POUR LE PROTOTYPE | Trésorerie `floor(R/20)` (5 %), reliquat au mineur (95 %); dernière émission tronquée au plafond strict | Tests entiers indépendants aux seuils | 3 | TX-06 | C V1 |
 | MON-05 | Distribution initiale et bloc de genèse | VALIDÉ POUR LE PROTOTYPE | Aucun préminage dans la genèse testnet | Genèse déterministe et vide | 0b | — | C V1 |
@@ -477,8 +477,8 @@ Ces choix existent **dans le code** pour pouvoir avancer ; ce ne sont pas des d�
 
 | ID | Hypothèse dans le code | Où | Conséquence si on la change |
 |---|---|---|---|
-| TX-06 | 8 décimales ; 1 AUR = 10^8 unités | `aretovus-core/src/amount.rs` | Constantes et tous les vecteurs de test à recalculer |
-| TX-07 | Montants en entier non signé 64 bits, addition vérifiée, plafond de garde 105 000 000 AUR | `amount.rs` | Le plafond du type n'est pas une règle d'émission (MON-01 ouvert) |
+| TX-06 | 8 décimales ; 1 ARETOVUS = 10^8 unités | `aretovus-core/src/amount.rs` | Constantes et tous les vecteurs de test à recalculer |
+| TX-07 | Montants en entier non signé 64 bits, addition vérifiée, plafond de garde 105 000 000 ARETOVUS | `amount.rs` | Le plafond du type n'est pas une règle d'émission (MON-01 ouvert) |
 | TX-02 | Entiers big-endian à largeur fixe, longueurs sur 4 octets bornées, rejet des octets en trop | `aretovus-core/src/codec.rs` | Changer de format change tous les identifiants et vecteurs |
 | TX-03 | SHA-256 simple (bibliothèque `sha2`) de `longueur(tag) ‖ tag ‖ données`, domaines `TxId`, `BlockHeader`, `TxList` | `aretovus-core/src/hash.rs` | Double SHA-256 ou autre : identifiants et vecteurs à refaire |
 | TX-05 | Identifiant de transaction = hachage de l'encodage complet, `auth_data` inclus | `aretovus-core/src/experimental.rs` | Si les signatures sortent de l'identifiant, le format change |

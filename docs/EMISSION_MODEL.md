@@ -4,8 +4,8 @@
 
 ## Plafond et lancement équitable
 
-- Précision : 8 décimales; 1 AUR = 100 000 000 unités.
-- Plafond strict d’émission brute : 500 000 000 AUR.
+- Précision : 8 décimales; 1 ARETOVUS = 100 000 000 unités.
+- Plafond strict d’émission brute : 500 000 000 ARETOVUS.
 - La genèse est vide et ne crée aucun solde : l’émission commence avec le premier bloc miné.
 - L’offre brute historique comprend uniquement les unités émises. Les frais brûlés ne réduisent jamais l’offre historique et ne rouvrent pas le plafond.
 
@@ -18,9 +18,9 @@ remaining = 500_000_000 * 100_000_000 - gross_issued
 issuance  = min(remaining, max(1, floor(remaining / 1_000_000)))
 ```
 
-Le taux théorique est un millionième de l’offre restante par bloc (0,0001 %), calculé uniquement avec des entiers. L’arrondi inférieur donne une baisse graduelle sans paliers ni halvings. Le plancher d’une unité (0,00000001 AUR) permet au calendrier d’atteindre exactement le plafond; l’émission du dernier bloc est toujours tronquée au reliquat. Le premier bloc émet 500 AUR. Chaque branche calcule son émission à partir de l’offre de son propre parent, y compris pendant une réorganisation.
+Le taux théorique est un millionième de l’offre restante par bloc (0,0001 %), calculé uniquement avec des entiers. L’arrondi inférieur donne une baisse graduelle sans paliers ni halvings. Le plancher d’une unité (0,00000001 ARETOVUS) permet au calendrier d’atteindre exactement le plafond; l’émission du dernier bloc est toujours tronquée au reliquat. Le premier bloc émet 500 ARETOVUS. Chaque branche calcule son émission à partir de l’offre de son propre parent, y compris pendant une réorganisation.
 
-À titre indicatif, avec la cible testnet actuelle de 60 secondes, la formule diminue jusqu’au plancher d’une unité après environ 25,2 millions de blocs; le reliquat sous 0,01 AUR demande ensuite au plus un million de blocs. Cela correspond à plusieurs décennies à la cadence cible, mais ce n’est pas une prévision de temps réel : les horodatages, forks, blocs orphelins et cadence réelle changent la durée écoulée.
+À titre indicatif, avec la cible testnet actuelle de 60 secondes, la formule diminue jusqu’au plancher d’une unité après environ 25,2 millions de blocs; le reliquat sous 0,01 ARETOVUS demande ensuite au plus un million de blocs. Cela correspond à plusieurs décennies à la cadence cible, mais ce n’est pas une prévision de temps réel : les horodatages, forks, blocs orphelins et cadence réelle changent la durée écoulée.
 
 ## Trésorerie et frais
 
@@ -61,9 +61,9 @@ bloc avant addition**, comme dans `scheduled_issuance` et
 `apply_block_reward` ; un arrondi global à 5 % serait incorrect.
 
 Selon le profil testnet `proportional-remaining-1e6-v1` actuellement codé
-(plafond **500 millions AUR**, à distinguer des **500 millions de blocs**) :
+(plafond **500 millions ARETOVUS**, à distinguer des **500 millions de blocs**) :
 
-| Hauteur simulée | Émission brute totale (AUR) | Émission restante (AUR) |
+| Hauteur simulée | Émission brute totale (ARETOVUS) | Émission restante (ARETOVUS) |
 | ---: | ---: | ---: |
 | 10 000 000 | 499 977 300,14361895 | 22 699,85638105 |
 | 100 000 000 | 500 000 000,00000000 | 0 |
@@ -83,6 +83,6 @@ paramètre de consensus n'est changé par ce simulateur.
 
 ## Vérifications et changements de protocole
 
-Les tests vérifient le démarrage à 500 AUR, la décroissance entière, l’absence de saut autour d’anciens seuils, le plancher, le plafond, le partage 5/95, les frais impairs et les réorganisations. L’identifiant `proportional-remaining-1e6-v1` est inclus dans l’empreinte P2P afin que les pairs exécutant une autre règle d’émission soient incompatibles.
+Les tests vérifient le démarrage à 500 ARETOVUS, la décroissance entière, l’absence de saut autour d’anciens seuils, le plancher, le plafond, le partage 5/95, les frais impairs et les réorganisations. L’identifiant `proportional-remaining-1e6-v1` est inclus dans l’empreinte P2P afin que les pairs exécutant une autre règle d’émission soient incompatibles.
 
 Tout changement à cette formule change le consensus et crée un réseau incompatible. Les anciens répertoires testnet contenant les blocs à paliers doivent être remplacés avant de rejoindre ce testnet; ne supprime pas de données dont tu as besoin sans en garder une copie. Cette formule n’est pas un engagement de valeur et reste expérimentale.
