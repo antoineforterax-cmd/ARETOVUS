@@ -91,11 +91,11 @@ Il faut **produire des blocs de test pendant la durée** ; sinon le test de vita
 
 - Les deux PC atteignent la même **hauteur ET le même hash de sommet** après rattrapage ; vérifier avec `testnet verify --data-dir` sur chaque PC, puis comparer les deux sorties archivées.
 - Déconnecter **seulement le réseau privé de B**, observer que A reste disponible, reconnecter B et exiger une convergence. Noter durée, hauteur, hashes avant/après et l'heure UTC.
-- Redémarrer B sans toucher aux fichiers. Recharger les index v6 et comparer son sommet avant/après. Ne jamais effacer ni forcer `.aurora.lock`.
+- Redémarrer B sans toucher aux fichiers. Recharger les index v6 et comparer son sommet avant/après. Ne jamais effacer ni forcer `.aretovus.lock`.
 - Développer des branches concurrentes avec **des répertoires de minage distincts** et documenter le travail cumulé, la réorganisation, les transactions rejetées et l'état du mempool après reconnexion.
 - Sur une **copie hors ligne**, interrompre une sauvegarde, simuler une panne de disque ou tronquer un fichier de test. Ne pas corrompre les dossiers de production de l'essai. Conserver l'ancien point de reprise et revérifier hauteur/hash après restauration.
 - Tester une transaction **ML-DSA-65 de valeur nulle économiquement** entre deux wallets de test chiffrés ; comparer présence au mempool, confirmation et preuve SPV. Ne publier ni clés ni mots de passe.
-- Hors période de test, effectuer une copie complète arrêtée vers un second PC : `snapshot-*.auridx`, `blocks-v5/` et `index-pages-v6/`. Exécuter `testnet verify` sur la copie.
+- Hors période de test, effectuer une copie complète arrêtée vers un second PC : `snapshot-*.aretidx`, `blocks-v5/` et `index-pages-v6/`. Exécuter `testnet verify` sur la copie.
 
 ## Critères de décision
 
