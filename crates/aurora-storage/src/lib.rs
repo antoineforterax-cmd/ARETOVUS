@@ -795,7 +795,35 @@ fn read_bounded_limit_with_preopen_hook(
         ));
     }
     before_open();
-    let file = File::open(path)?;
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Inode comparison alone misses an injected symlink to the SAME
+        // inode. Ask the kernel not to follow the final component at all.
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options.open(path)?;
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        let opened = file.metadata()?;
+        if !opened.file_type().is_file()
+            || opened.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        {
+            return Err(StorageError::InvalidFormat(
+                "storage object is not a regular file",
+            ));
+        }
+    }
     // On Unix, reject a path swapped after the symlink/type preflight but
     // before open(). The descriptor identity must match the original inode.
     // Once open, later path swaps cannot redirect this descriptor.
