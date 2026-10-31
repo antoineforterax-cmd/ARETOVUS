@@ -24,8 +24,8 @@ pub const TESTNET_DIFFICULTY: DifficultyParams = DifficultyParams {
 };
 pub const TESTNET_TREASURY: AccountId = AccountId([0xA0; 32]);
 pub const TESTNET_GENESIS_HASH: Hash256 = Hash256::from_bytes([
-    0x00, 0x52, 0x60, 0x5a, 0xb0, 0xf6, 0x85, 0x34, 0x27, 0x78, 0xfc, 0x74, 0x49, 0xee, 0xcd, 0x87,
-    0x8e, 0xc0, 0x06, 0xe3, 0x99, 0x44, 0x3e, 0x90, 0x80, 0xf2, 0xd8, 0xb1, 0x6c, 0xe5, 0x3a, 0x76,
+    0x00, 0x28, 0x97, 0xe9, 0x8f, 0xc5, 0xf7, 0x6e, 0xa6, 0xb9, 0xa9, 0xe0, 0x6e, 0xec, 0x41, 0x4c,
+    0x6b, 0xca, 0xfd, 0x71, 0x71, 0xf7, 0x3b, 0x64, 0x49, 0x71, 0xa6, 0xb0, 0xae, 0xfb, 0xcf, 0xe3,
 ]);
 
 fn fingerprint_parts(
@@ -38,7 +38,7 @@ fn fingerprint_parts(
     let mut bytes = Vec::with_capacity(128);
     bytes.push(network.to_byte());
     bytes.extend_from_slice(EMISSION_SCHEDULE_ID);
-    bytes.extend_from_slice(b"AURORA/testnet/native-ml-dsa-65-merkle-header/v4");
+    bytes.extend_from_slice(b"ARETOVUS/testnet/native-ml-dsa-65-merkle-header/v4");
     bytes.extend_from_slice(genesis_hash.as_bytes());
     bytes.extend_from_slice(&initial_bits.to_be_bytes());
     bytes.extend_from_slice(&difficulty.target_block_seconds.to_be_bytes());
@@ -76,7 +76,7 @@ pub fn testnet_protocol_fingerprint() -> Hash256 {
 
 /// Deterministic empty testnet genesis, including its fixed 8-bit proof of work.
 pub fn testnet_genesis_block() -> AccountBlock {
-    AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 189, Vec::new())
+    AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 45, Vec::new())
         .expect("fixed testnet genesis encodes")
 }
 
