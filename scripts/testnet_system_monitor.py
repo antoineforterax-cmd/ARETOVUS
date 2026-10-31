@@ -121,6 +121,7 @@ class ResourceMonitor:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._handle = None
+        self._completed = False
 
     def _write(self, event: str, **values: object) -> None:
         assert self._handle is not None
@@ -134,7 +135,7 @@ class ResourceMonitor:
     def __enter__(self) -> "ResourceMonitor":
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._handle = self.path.open("a", encoding="utf-8")
-        self._write("start", interval_seconds=self.interval, version=1)
+        self._write("start", interval_seconds=self.interval, version=1, platform=sys.platform)
         self._start_time = time.monotonic()
         self._thread = threading.Thread(target=self._loop, name="aurora-resource-probe",
                                         daemon=True)
@@ -148,7 +149,7 @@ class ResourceMonitor:
             try:
                 values, previous = snapshot(self.data_dir, previous)
                 self._write("sample", status="ok", elapsed_seconds=elapsed, **values)
-            except (OSError, ValueError, KeyError) as exc:
+            except Exception as exc:  # Unexpected metric failures must fail endurance gate
                 self.errors += 1
                 self._write("sample", status="error", elapsed_seconds=elapsed,
                             error=type(exc).__name__)
@@ -156,14 +157,15 @@ class ResourceMonitor:
             self._stop.wait(self.interval)
         self._write("finish", samples=self.samples, errors=self.errors,
                     elapsed_seconds=round(time.monotonic() - self._start_time, 3))
+        self._completed = True
 
     def stop(self) -> int:
         if self._thread is None:
             return self.errors
         self._stop.set()
         self._thread.join(timeout=15)
-        if self._thread.is_alive():
-            raise RuntimeError("Resource monitor did not stop cleanly")
+        if self._thread.is_alive() or not self._completed:
+            raise RuntimeError("Resource monitor did not finish cleanly")
         assert self._handle is not None
         self._handle.close()
         self._handle = None
