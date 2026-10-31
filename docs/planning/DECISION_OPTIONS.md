@@ -3,6 +3,8 @@
 
 **État : questionnaire d'orientation, pas un vote déjà validé.** Référence de la situation : `main` au SHA `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f` (31 octobre 2026). La documentation d'accueil en [PR #125](https://github.com/antoineforterax-cmd/AURORA/pull/125) distingue les règles expérimentales déjà implémentées des choix futurs.
 
+> **Décisions effectivement exprimées le 31 octobre 2026 :** [relevé des 12 réponses du responsable](RESPONSES_2026-10-31.md). Ce document conserve les autres options encore ouvertes.
+
 ## Comment répondre
 
 Chaque ligne présente **trois options A / B / C**, puis une **préférence technique proposée (non validée)** et une priorité :
