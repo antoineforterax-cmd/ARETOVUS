@@ -14,21 +14,21 @@ Installer Rust depuis les instructions officielles de https://rustup.rs, charger
 
 ```sh
 cd ~
-git clone https://github.com/antoineforterax-cmd/AURORA.git
-cd AURORA
+git clone https://github.com/antoineforterax-cmd/ARETOVUS.git
+cd ARETOVUS
 git switch feature/emission-schedule-v0
 git rev-parse HEAD
 cargo build --release --locked
-ls target/release/aurora-node target/release/aurora-wallet
+ls target/release/aretovus-node target/release/aretovus-wallet
 python3 scripts/testnet_endurance.py --help
 ```
 
-Conserver le commit affiché et vérifier que sa CI est verte avant la campagne. Si `AURORA` existe déjà, inspecter son état Git avant de le mettre à jour; ne pas écraser des modifications. L'aide du lanceur révisé doit proposer `--wallet`; la Release expérimentale.1 contient un lanceur plus ancien.
+Conserver le commit affiché et vérifier que sa CI est verte avant la campagne. Si `ARETOVUS` existe déjà, inspecter son état Git avant de le mettre à jour; ne pas écraser des modifications. L'aide du lanceur révisé doit proposer `--wallet`; la Release expérimentale.1 contient un lanceur plus ancien.
 
 Essai court, dans un dossier inexistant :
 
 ```sh
-python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aurora-node" --wallet "$HOME/AURORA/target/release/aurora-wallet" --output "$HOME/essai-court" --max-rounds 6 --restart-every 3 --interval-seconds 0
+python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aretovus-node" --wallet "$HOME/AURORA/target/release/aretovus-wallet" --output "$HOME/essai-court" --max-rounds 6 --restart-every 3 --interval-seconds 0
 cat "$HOME/essai-court/summary.json"
 ```
 
@@ -38,7 +38,7 @@ Garder le PC branché et éveillé. Vérifier les redémarrages Windows planifi�
 
 ```sh
 tmux new -s aurora-essai
-python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aurora-node" --wallet "$HOME/AURORA/target/release/aurora-wallet" --output "$HOME/essai-72h" --hours 72
+python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aretovus-node" --wallet "$HOME/AURORA/target/release/aretovus-wallet" --output "$HOME/essai-72h" --hours 72
 ```
 
 Détacher avec Ctrl+B puis D; revenir avec `tmux attach -t aurora-essai`. Dans un autre terminal Ubuntu :
@@ -54,7 +54,7 @@ Un arrêt anticipé n'est pas un succès de 72 heures. À la fin, conserver `sum
 Sur le poste du porteur, le chemin Windows est explicitement `PC`, pas nécessairement le nom d'utilisateur Ubuntu :
 
 ```sh
-test -d /mnt/c/Users/PC/Desktop/AURORA
+test -d /mnt/c/Users/PC/Desktop/ARETOVUS
 cp -r "$HOME/essai-72h" /mnt/c/Users/PC/Desktop/AURORA/essai-72h-linux
 ```
 

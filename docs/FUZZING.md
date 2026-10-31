@@ -1,4 +1,4 @@
-# Fuzzing AURORA
+# Fuzzing ARETOVUS
 
 The main CI runs a deterministic malformed-input smoke test against transaction, block, header, block-inventory and peer-list decoders. It is a quick regression check, not a substitute for coverage-guided fuzzing.
 

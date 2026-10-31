@@ -1,4 +1,4 @@
-# AURORA — émission proportionnelle `proportional-remaining-1e6-v1`
+# ARETOVUS — émission proportionnelle `proportional-remaining-1e6-v1`
 
 **État : implémentée pour la testnet expérimentale** sur `feature/emission-schedule-v0`. La formule est une règle de consensus du prototype; la politique économique reste à valider par le porteur du projet et par une revue indépendante avant tout usage public.
 
