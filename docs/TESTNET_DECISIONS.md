@@ -1,4 +1,4 @@
-# Décisions du testnet expérimental AURORA
+# Décisions du testnet expérimental ARETOVUS
 
 **Date :** 26 octobre 2026. **Portée :** branche `feature/emission-schedule-v0`, réseau de test supervisé. Ce document décrit les règles exécutées et les choix de périmètre; il ne valide ni mainnet ni usage de fonds réels.
 

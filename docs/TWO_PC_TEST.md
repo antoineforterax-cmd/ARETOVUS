@@ -1,4 +1,4 @@
-# AURORA — protocole d'essai sur deux PC Windows (réseau local privé)
+# ARETOVUS — protocole d'essai sur deux PC Windows (réseau local privé)
 
 **Statut : préparation d'un essai réel, pas une preuve d'essai déjà effectué.**
 Aucun fonds réel, aucun port redirigé sur la box, aucun Internet public.
@@ -7,8 +7,8 @@ Ce document concerne le testnet natif ML-DSA-65 et son protocole P2P v4.
 ## 0. Prérequis bloquants
 
 - Deux PC Windows **64 bits x86-64**, chacun relié au **même réseau privé de confiance**. Si un PC est 32 bits ou ARM, les archives Windows x86-64 ne sont pas utilisables telles quelles. Le Wi-Fi invité peut isoler les appareils.
-- Les **deux mêmes binaires** (node et wallet) construits depuis le **même commit** de `main`. Pour la version de test la plus récente, prendre l'artefact Windows du [workflow `testnet-packages`](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml) sur le **commit `main` vert**, et **non** l'ancienne release 421d443. Ces artefacts expirent après 14 jours et contiennent parfois une ZIP imbriquée. La CI du workflow doit être **verte** (Windows, Linux, macOS) avant de les utiliser.
-- Dans chaque dossier extrait, on doit trouver `bin/aurora-node.exe`, `bin/aurora-wallet.exe`, `EXPERIMENTAL_TESTNET.txt` (SHA source), `SHA256SUMS.txt`, `scripts/two_pc_preflight.ps1`. Vérifier le SHA-256 de l'archive téléchargée avec une valeur fournie par le workflow ou une source contrôlée; le fichier interne vérifie les fichiers extraits, mais **n'authentifie pas à lui seul l'éditeur**.
+- Les **deux mêmes binaires** (node et wallet) construits depuis le **même commit** de `main`. Pour la version de test la plus récente, prendre l'artefact Windows du [workflow `testnet-packages`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/workflows/testnet-packages.yml) sur le **commit `main` vert**, et **non** l'ancienne release 421d443. Ces artefacts expirent après 14 jours et contiennent parfois une ZIP imbriquée. La CI du workflow doit être **verte** (Windows, Linux, macOS) avant de les utiliser.
+- Dans chaque dossier extrait, on doit trouver `bin/aretovus-node.exe`, `bin/aretovus-wallet.exe`, `EXPERIMENTAL_TESTNET.txt` (SHA source), `SHA256SUMS.txt`, `scripts/two_pc_preflight.ps1`. Vérifier le SHA-256 de l'archive téléchargée avec une valeur fournie par le workflow ou une source contrôlée; le fichier interne vérifie les fichiers extraits, mais **n'authentifie pas à lui seul l'éditeur**.
 - Deux dossiers de données **neufs et indépendants** par machine ; ne réutiliser aucun dossier de vieux testnet. Lancer tous les exemples depuis la racine extraite (le dossier où se trouvent `bin` et `scripts`). Ne jamais partager fichiers `.aurkey`, mots de passe ou graines.
 - Noter le SHA complet du workflow, l'heure/date et les versions Windows. Ne pas désactiver Microsoft Defender/SmartScreen ni le pare-feu pour lancer un exécutable non signé.
 
@@ -23,8 +23,8 @@ Sur chaque PC, depuis la racine de l'archive extraite :
 ```powershell
 Get-Content .\EXPERIMENTAL_TESTNET.txt
 .\scripts\two_pc_preflight.ps1 -PackageRoot . -Offline
-Get-FileHash .\bin\aurora-node.exe -Algorithm SHA256
-Get-FileHash .\bin\aurora-wallet.exe -Algorithm SHA256
+Get-FileHash .\bin\aretovus-node.exe -Algorithm SHA256
+Get-FileHash .\bin\aretovus-wallet.exe -Algorithm SHA256
 ```
 
 Les deux PC doivent afficher le **même commit** dans `EXPERIMENTAL_TESTNET.txt`, et pour chaque binaire les **mêmes SHA-256**. Le script recalcule chaque somme interne et vérifie le démarrage des deux exécutables avec `--help`. Si une vérification échoue : **stop**, ne pas essayer de connecter les machines.
@@ -36,7 +36,7 @@ La règle de pare-feu éventuelle doit autoriser **uniquement TCP 19444 entrant 
 ## 2. PC A — lancer le serveur (terminal laissé ouvert)
 
 ```powershell
-.\bin\aurora-node.exe testnet serve --data-dir .\two-pc\server-a --listen 0.0.0.0:19444
+.\bin\aretovus-node.exe testnet serve --data-dir .\two-pc\server-a --listen 0.0.0.0:19444
 ```
 
 Ne pas utiliser `server-a` dans une autre commande `mine` ou `sync` pendant que ce serveur tourne : le verrou de dossier protège ses écritures.
@@ -53,7 +53,7 @@ Attendu : `TcpTestSucceeded : True`. S'il est `False`, vérifier adresse, Wi-Fi 
 ## 3. PC B — lancer un pair indépendant (terminal laissé ouvert)
 
 ```powershell
-.\bin\aurora-node.exe testnet serve --data-dir .\two-pc\server-b --listen 127.0.0.1:19445 --peer 192.168.1.20:19444
+.\bin\aretovus-node.exe testnet serve --data-dir .\two-pc\server-b --listen 127.0.0.1:19445 --peer 192.168.1.20:19444
 ```
 
 Cette configuration suffit à tester le **rattrapage B vers A**. Elle n'est pas un maillage bidirectionnel : seule B interroge périodiquement A et récupère les transactions du mempool de A. Pour tester les deux directions plus tard, prévoir un second port privé 19445, lancer B sur son IPv4 LAN et configurer A avec `--peer IP_B:19445` après un redémarrage propre. Ne pas activer cette étape tant que le test de base n'est pas vert.
@@ -64,9 +64,9 @@ Sur **PC A**, créer une clé Alice chiffrée. Conserver uniquement l'adresse pu
 
 ```powershell
 New-Item -ItemType Directory -Path .\two-pc\cles -Force
-.\bin\aurora-wallet.exe keygen --out .\two-pc\cles\alice.aurkey
-$alice = .\bin\aurora-wallet.exe address --key-file .\two-pc\cles\alice.aurkey
-.\bin\aurora-node.exe testnet mine --data-dir .\two-pc\miner-a --miner $alice --count 1 --peer 127.0.0.1:19444
+.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\alice.aurkey
+$alice = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\alice.aurkey
+.\bin\aretovus-node.exe testnet mine --data-dir .\two-pc\miner-a --miner $alice --count 1 --peer 127.0.0.1:19444
 ```
 
 Le mineur a son **propre** dossier `miner-a`, séparé de `server-a`. Un bloc testnet neuf sans transaction émet une récompense testnet ; le portefeuille est uniquement un outil de test.
@@ -75,14 +75,14 @@ Sur **PC B**, créer Bob et noter **son adresse publique** :
 
 ```powershell
 New-Item -ItemType Directory -Path .\two-pc\cles -Force
-.\bin\aurora-wallet.exe keygen --out .\two-pc\cles\bob.aurkey
-$bob = .\bin\aurora-wallet.exe address --key-file .\two-pc\cles\bob.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\bob.aurkey
+$bob = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\bob.aurkey
 ```
 
 Transmettre **uniquement la chaîne publique `$bob`** à PC A, sans copier le fichier de clé. PC B peut consulter son propre pair :
 
 ```powershell
-.\bin\aurora-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
+.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
 ```
 
 ## 5. Paiement inter-PC et confirmation
@@ -91,22 +91,22 @@ Sur PC A, remplacer la valeur de `$bob` par l'adresse publique exacte donnée pa
 
 ```powershell
 $bob = 'COLLER_ICI_L_ADRESSE_PUBLIQUE_DE_BOB_64_HEX'
-.\bin\aurora-wallet.exe send --key-file .\two-pc\cles\alice.aurkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
+.\bin\aretovus-wallet.exe send --key-file .\two-pc\cles\alice.aurkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
 ```
 
 Copier le `transaction_id` renvoyé (public), puis sur PC A miner un bloc afin de confirmer le transfert :
 
 ```powershell
-.\bin\aurora-node.exe testnet mine --data-dir .\two-pc\miner-a --miner $alice --count 1 --peer 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet mine --data-dir .\two-pc\miner-a --miner $alice --count 1 --peer 127.0.0.1:19444
 $txid = 'COLLER_ICI_LE_TRANSACTION_ID_64_HEX'
-.\bin\aurora-wallet.exe verify --node 127.0.0.1:19444 --txid $txid --confirmations 1
+.\bin\aretovus-wallet.exe verify --node 127.0.0.1:19444 --txid $txid --confirmations 1
 ```
 
 Sur PC B, après rattrapage (le poll se fait périodiquement, pas instantanément) :
 
 ```powershell
-.\bin\aurora-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
-.\bin\aurora-wallet.exe verify --node 127.0.0.1:19445 --txid $txid --confirmations 1
+.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
+.\bin\aretovus-wallet.exe verify --node 127.0.0.1:19445 --txid $txid --confirmations 1
 ```
 
 Pour la seconde commande, **recopier seulement** l'identifiant public `$txid` sur PC B. Il faut constater la même inclusion et preuve, pas seulement un solde projeté contenant un paiement en attente.
@@ -118,8 +118,8 @@ Pour la seconde commande, **recopier seulement** l'identifiant public `$txid` su
 3. Arrêter proprement les deux serveurs avec `Ctrl+C` avant les contrôles suivants. Après que tous les écrivains sont terminés, dans un terminal sur **chaque PC** :
 
 ```powershell
-.\bin\aurora-node.exe testnet verify --data-dir .\two-pc\server-a  # PC A uniquement
-.\bin\aurora-node.exe testnet verify --data-dir .\two-pc\server-b  # PC B uniquement
+.\bin\aretovus-node.exe testnet verify --data-dir .\two-pc\server-a  # PC A uniquement
+.\bin\aretovus-node.exe testnet verify --data-dir .\two-pc\server-b  # PC B uniquement
 ```
 
 Les sorties doivent afficher des valeurs identiques de `height`, `tip` **et** `work`. Comparer aussi `known_blocks` si aucune branche latérale n'a été créée. Une même hauteur avec un hash différent est un **échec de convergence**.

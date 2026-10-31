@@ -1,4 +1,4 @@
-# Exploitation et reprise du testnet expérimental AURORA
+# Exploitation et reprise du testnet expérimental ARETOVUS
 
 **Profil :** transactions testnet v3 ML-DSA-65, stockage par blocs immuables, pages d’index et manifeste `AURORIDX` v6 (CI P2P v4 et états passée; campagnes prolongées en cours). Un serveur lancé avec `--peer IP:PORT` réinterroge périodiquement ces adresses; les transactions en attente sont récupérées périodiquement depuis les pairs configurés et revalidées localement; il n’existe pas d’annonce spontanée aux pairs non configurés. Le chargeur accepte les snapshots `AURORSNP` v4 et les index v5; les prochaines sauvegardes sont écrites en v6. Utiliser des pairs connus sur un réseau contrôlé; aucun déploiement public multi-hôtes n’est déclaré stable.
 
@@ -19,7 +19,7 @@ python3 scripts/testnet_smoke.py
 La commande suivante **ne crée pas** de genèse et ne modifie pas le dossier. Elle relit les index/snapshots, vérifie les blocs et paramètres de consensus, puis imprime hauteur, sommet et travail cumulé :
 
 ```sh
-cargo run --locked -p aurora-node -- testnet verify --data-dir ./aurora-seed
+cargo run --locked -p aretovus-node -- testnet verify --data-dir ./aurora-seed
 ```
 
 Une erreur ou un sommet inattendu interdit de traiter la copie comme une restauration réussie. Comparer la hauteur **et** le hash du sommet avec l’état relevé avant la copie; la hauteur seule ne distingue pas deux branches.
@@ -34,7 +34,7 @@ Exemple PowerShell, nœud arrêté :
 
 ```powershell
 Copy-Item -LiteralPath .\aurora-seed -Destination .\backup-aurora-seed -Recurse
-cargo run --locked -p aurora-node -- testnet verify --data-dir .\backup-aurora-seed
+cargo run --locked -p aretovus-node -- testnet verify --data-dir .\backup-aurora-seed
 ```
 
 ### Contrôle automatisé de copie hors processus

@@ -1,4 +1,4 @@
-# Rapport d’essais du testnet AURORA
+# Rapport d’essais du testnet ARETOVUS
 
 ## Relevé des vérifications au 29 octobre 2026
 
@@ -6,13 +6,13 @@ Ce rapport garde les résultats de chaque campagne avec leur date et leur commit
 
 | PR | Vérification annoncée | Limite |
 | --- | --- | --- |
-| [#13](https://github.com/antoineforterax-cmd/AURORA/pull/13) | Rejet atomique des auto-transferts ML-DSA-65, tests Rust et smoke réussis | Branche non fusionnée |
-| [#14](https://github.com/antoineforterax-cmd/AURORA/pull/14) | Simulateur indépendant du retarget, 323 vecteurs et sept traces de 30 blocs ; CI réussie | Pas d'essai réseau avec horloges divergentes |
-| [#16](https://github.com/antoineforterax-cmd/AURORA/pull/16) | Mesures de préfaces P2P lentes, tests de synchronisation et de reprise ; CI réussie | Attaques après handshake et NAT encore à tester |
-| [#17](https://github.com/antoineforterax-cmd/AURORA/pull/17) et [#18](https://github.com/antoineforterax-cmd/AURORA/pull/18) | Benchmark de signatures et cache borné, avec CI réussie | Gain cryptographique ciblé, pas débit global du réseau |
-| [#19](https://github.com/antoineforterax-cmd/AURORA/pull/19) | 339 455 exécutions de fuzzing en 301 s, sans divergence rapportée ; rejeu du corpus | Campagne courte, profil Regtest Ed25519 |
-| [#20](https://github.com/antoineforterax-cmd/AURORA/pull/20) et [#21](https://github.com/antoineforterax-cmd/AURORA/pull/21) | Tests de réorganisation avec cache et réinsertion des paiements orphelins ; CI réussie | Mempool non persistant ; PR non fusionnées |
-| [#22](https://github.com/antoineforterax-cmd/AURORA/pull/22) | Parseur hexadécimal strict ; CI du dernier commit réussie | Revue et intégration à terminer |
+| [#13](https://github.com/antoineforterax-cmd/ARETOVUS/pull/13) | Rejet atomique des auto-transferts ML-DSA-65, tests Rust et smoke réussis | Branche non fusionnée |
+| [#14](https://github.com/antoineforterax-cmd/ARETOVUS/pull/14) | Simulateur indépendant du retarget, 323 vecteurs et sept traces de 30 blocs ; CI réussie | Pas d'essai réseau avec horloges divergentes |
+| [#16](https://github.com/antoineforterax-cmd/ARETOVUS/pull/16) | Mesures de préfaces P2P lentes, tests de synchronisation et de reprise ; CI réussie | Attaques après handshake et NAT encore à tester |
+| [#17](https://github.com/antoineforterax-cmd/ARETOVUS/pull/17) et [#18](https://github.com/antoineforterax-cmd/ARETOVUS/pull/18) | Benchmark de signatures et cache borné, avec CI réussie | Gain cryptographique ciblé, pas débit global du réseau |
+| [#19](https://github.com/antoineforterax-cmd/ARETOVUS/pull/19) | 339 455 exécutions de fuzzing en 301 s, sans divergence rapportée ; rejeu du corpus | Campagne courte, profil Regtest Ed25519 |
+| [#20](https://github.com/antoineforterax-cmd/ARETOVUS/pull/20) et [#21](https://github.com/antoineforterax-cmd/ARETOVUS/pull/21) | Tests de réorganisation avec cache et réinsertion des paiements orphelins ; CI réussie | Mempool non persistant ; PR non fusionnées |
+| [#22](https://github.com/antoineforterax-cmd/ARETOVUS/pull/22) | Parseur hexadécimal strict ; CI du dernier commit réussie | Revue et intégration à terminer |
 
 Ces résultats proviennent des descriptions des PR et des workflows associés. Ils n'ont pas été reproduits indépendamment dans cette mise à jour. Toutes ces PR restent en brouillon. Leur réussite séparée ne prouve pas que leur intégration commune passera.
 
@@ -23,7 +23,7 @@ La campagne de 72 h démarrée le 28 octobre à 13:23:40 UTC était encore noté
 
 ## Campagne Ubuntu en cours — 28 octobre 2026
 
-La [CI de `6e6aaa0`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40695381103) a réussi, y compris les tests NIST, les nouveaux scénarios TCP, le smoke et le lanceur avec paiements. Les quatre tests NIST ont également réussi localement dans Ubuntu. Le test court Ubuntu a confirmé six blocs, cinq paiements, deux redémarrages et la restauration de sauvegarde en 124,21 s (`short_run_passed`).
+La [CI de `6e6aaa0`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40695381103) a réussi, y compris les tests NIST, les nouveaux scénarios TCP, le smoke et le lanceur avec paiements. Les quatre tests NIST ont également réussi localement dans Ubuntu. Le test court Ubuntu a confirmé six blocs, cinq paiements, deux redémarrages et la restauration de sauvegarde en 124,21 s (`short_run_passed`).
 
 La campagne de 72 h a démarré le **28 octobre 2026 à 13:23:40 UTC** dans Ubuntu/WSL2, session tmux `aurora-essai`, avec trois nœuds, un mineur et deux comptes jetables. Le premier bloc a convergé. Il s'agit d'un essai **en cours**, pas d'un succès de 72 h. Les résultats finaux devront confirmer la durée, les paiements, les redémarrages et la restauration. Le lancement Linux n'a modifié aucune protection Windows.
 
@@ -31,9 +31,9 @@ Provenance : binaires compilés depuis `f6afc7f38df50b2f7cd9a027096fedec48be3822
 
 ## Mise à jour du 28 octobre 2026
 
-La [Release expérimentale.1](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) publie les binaires de `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` pour Windows x86-64, Linux x86-64 et macOS arm64, avec SHA256SUMS. Le [workflow de publication](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40528021813) a réussi, comme la CI, le soak et le fuzzing de cette source. Ces binaires sont non signés et non audités par un humain.
+La [Release expérimentale.1](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) publie les binaires de `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` pour Windows x86-64, Linux x86-64 et macOS arm64, avec SHA256SUMS. Le [workflow de publication](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40528021813) a réussi, comme la CI, le soak et le fuzzing de cette source. Ces binaires sont non signés et non audités par un humain.
 
-Le [test de volume](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40527921129) a réussi : hauteur 100 001, 100 003 blocs connus avec genèse et branche secondaire, sauvegarde puis rechargement v6. Construction 7,7 s, sauvegarde 69,9 s, contrôle de restauration à 87,0 s; test complet avec nettoyage 100,72 s. La commande, compilation comprise, a atteint 408 240 Kio de RSS maximal. Ce sont des blocs Regtest vides sans difficulté, pas une preuve de synchronisation P2P de 100 000 blocs ni une charge de nombreux comptes.
+Le [test de volume](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129) a réussi : hauteur 100 001, 100 003 blocs connus avec genèse et branche secondaire, sauvegarde puis rechargement v6. Construction 7,7 s, sauvegarde 69,9 s, contrôle de restauration à 87,0 s; test complet avec nettoyage 100,72 s. La commande, compilation comprise, a atteint 408 240 Kio de RSS maximal. Ce sont des blocs Regtest vides sans difficulté, pas une preuve de synchronisation P2P de 100 000 blocs ni une charge de nombreux comptes.
 
 Le lanceur avec paiements a passé un essai local distinct sur les binaires `421d443` : 6 blocs, 5 paiements confirmés, 2 redémarrages du pair B, sauvegarde restaurée, 82,49 secondes. Le résultat est `short_run_passed`, jamais un succès de 72 h. Le lancement long sur le Bureau a échoué avant le premier bloc le 28 octobre avec Windows 4551; le porteur a confirmé le refus Device Guard dans son terminal. Aucune protection Windows n'a été modifiée. Une procédure Ubuntu/WSL est préparée; la campagne longue reste à réaliser.
 
@@ -46,11 +46,11 @@ Les sections ci-dessous sont l'historique des campagnes antérieures et gardent 
 
 ## Contrôles de compilation et tests
 
-- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40402865286) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
+- [CI du verrou de dossier et du smoke test séparant mineur et serveur](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40402865286) : formatage, Clippy avec avertissements refusés, compilation workspace, tests et smoke test testnet — succès.
 - Le correctif de lecture réseau indexe les transactions confirmées, suit les réorganisations et sert les pages de blocs sans trier toute la chaîne sous le verrou; le smoke couvre toujours statut, preuve Merkle et synchronisation. Une mesure sous charge hostile reste à faire.
-- [Contrôle RustSec des dépendances](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40402139677) : 78 dépendances verrouillées inspectées, aucune vulnérabilité signalée par la base chargée lors de l’exécution. Ce contrôle ne vérifie pas la logique du protocole.
-- [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
-- [Campagne libFuzzer sur le nœud avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895495), commit `31b016e931624785508cf82b464efa19557c31bf` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Le changement suivant adapte seulement le smoke test au verrou et est couvert par la CI courante.
+- [Contrôle RustSec des dépendances](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40402139677) : 78 dépendances verrouillées inspectées, aucune vulnérabilité signalée par la base chargée lors de l’exécution. Ce contrôle ne vérifie pas la logique du protocole.
+- [CI de l’ajout du rattrapage automatique](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40333338987) : mêmes contrôles, y compris le scénario d’un pair en fonctionnement qui rejoint les hauteurs 21 puis 22 — succès.
+- [Campagne libFuzzer sur le nœud avec verrou de dossier](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40361895495), commit `31b016e931624785508cf82b464efa19557c31bf` : trois cibles exécutées 301 secondes chacune — succès, sans crash rapporté. Le changement suivant adapte seulement le smoke test au verrou et est couvert par la CI courante.
 
 ## Scénario multi-nœuds
 
@@ -70,8 +70,8 @@ Le journal CI résume les assertions : « wallet, SPV, 20-block soak, heavier-br
 
 ## Essai prolongé et archives testnet
 
-- [Essai à trois nœuds avec verrou de dossier](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895189) : 36 blocs propagés et vérifiés sur trois processus en **490,2 secondes**; le pair intermédiaire a été arrêté puis redémarré quatre fois, et une copie complète de son dossier a été restaurée et vérifiée au même sommet — succès. Cet essai est local au runner CI; il ne prouve pas un fonctionnement continu sur plusieurs hôtes ou pendant des jours.
-- [Construction des archives et essai du verrou sur les trois systèmes](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40400631436) : compilation Rust release et empaquetage du nœud et du wallet réussis sur Windows, Linux et macOS. Sur chaque système, un test lance le serveur, vérifie qu’un second écrivain est refusé, arrête le serveur, puis mine et vérifie un bloc avec le dossier libéré. Chaque archive contient les binaires, la documentation et `SHA256SUMS.txt`, vérifié pendant l’empaquetage. Ces artefacts CI non signés expirent après 14 jours; le dépôt est public depuis le 27 octobre 2026, mais aucun installateur ni publication GitHub Release n’existe encore.
+- [Essai à trois nœuds avec verrou de dossier](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40361895189) : 36 blocs propagés et vérifiés sur trois processus en **490,2 secondes**; le pair intermédiaire a été arrêté puis redémarré quatre fois, et une copie complète de son dossier a été restaurée et vérifiée au même sommet — succès. Cet essai est local au runner CI; il ne prouve pas un fonctionnement continu sur plusieurs hôtes ou pendant des jours.
+- [Construction des archives et essai du verrou sur les trois systèmes](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40400631436) : compilation Rust release et empaquetage du nœud et du wallet réussis sur Windows, Linux et macOS. Sur chaque système, un test lance le serveur, vérifie qu’un second écrivain est refusé, arrête le serveur, puis mine et vérifie un bloc avec le dossier libéré. Chaque archive contient les binaires, la documentation et `SHA256SUMS.txt`, vérifié pendant l’empaquetage. Ces artefacts CI non signés expirent après 14 jours; le dépôt est public depuis le 27 octobre 2026, mais aucun installateur ni publication GitHub Release n’existe encore.
 
 ## Essai manuel fourni par le porteur
 
@@ -89,9 +89,9 @@ Aucun crash n’a été rapporté pendant ces campagnes. Les journaux de campagn
 
 ## État des changements v6 au 27 octobre 2026
 
-La branche a ajouté l’ordre d’arrivée stable pour les pages P2P, un index de stockage v6 paginé et sa lecture avec compatibilité v4/v5. La [CI du commit `21a24c7`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614) a réussi : formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Les journaux des tests Rust incluent les cas de migration v5→v6, corruption d’une page, rétention de pages et compte malformé. Les [archives Windows, Linux et macOS](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261646) ont aussi été construites avec succès. La [CI de la révision documentaire `21e5fe0`](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485399202) est également verte.
+La branche a ajouté l’ordre d’arrivée stable pour les pages P2P, un index de stockage v6 paginé et sa lecture avec compatibilité v4/v5. La [CI du commit `21a24c7`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485261614) a réussi : formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Les journaux des tests Rust incluent les cas de migration v5→v6, corruption d’une page, rétention de pages et compte malformé. Les [archives Windows, Linux et macOS](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485261646) ont aussi été construites avec succès. La [CI de la révision documentaire `21e5fe0`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485399202) est également verte.
 
-Le contrôle local `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous Windows. Le contrôle local `cargo clippy`/compilation n’a pas abouti : la cible MSVC manque de `link.exe`, et le contrôle d’applications Windows refuse l’exécution des scripts de construction de la cible GNU (erreur 4551). La CI Linux fournit ici la preuve de compilation et de tests. Sur le code P2P u64 et reprise de session (`8fa3415`), la [CI](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40486263902), les [archives trois systèmes](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40486264176) et l’[essai prolongé trois nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40486263916) sont verts. Ce dernier a propagé 36 blocs en 481,9 secondes avec redémarrages. Le [fuzzing de cette révision](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40486263920) a aussi réussi sur les trois cibles bornées. Le lot suivant ajoute des tests de pair incohérent, des points de contrôle d’état, la borne d’horodatage SPV et des tests de reprise v6; sa [CI](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Les journaux confirment les six nouveaux tests; les [archives trois systèmes](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607543) ont aussi été construites. Le soak et le fuzzing de cette révision ont également terminé avec succès (liens ci-dessous). Aucun essai de volume supérieur à 100 000 blocs ne peut être revendiqué, et la copie de chaîne par page de sync reste coûteuse.
+Le contrôle local `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous Windows. Le contrôle local `cargo clippy`/compilation n’a pas abouti : la cible MSVC manque de `link.exe`, et le contrôle d’applications Windows refuse l’exécution des scripts de construction de la cible GNU (erreur 4551). La CI Linux fournit ici la preuve de compilation et de tests. Sur le code P2P u64 et reprise de session (`8fa3415`), la [CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40486263902), les [archives trois systèmes](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40486264176) et l’[essai prolongé trois nœuds](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40486263916) sont verts. Ce dernier a propagé 36 blocs en 481,9 secondes avec redémarrages. Le [fuzzing de cette révision](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40486263920) a aussi réussi sur les trois cibles bornées. Le lot suivant ajoute des tests de pair incohérent, des points de contrôle d’état, la borne d’horodatage SPV et des tests de reprise v6; sa [CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Les journaux confirment les six nouveaux tests; les [archives trois systèmes](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607543) ont aussi été construites. Le soak et le fuzzing de cette révision ont également terminé avec succès (liens ci-dessous). Aucun essai de volume supérieur à 100 000 blocs ne peut être revendiqué, et la copie de chaîne par page de sync reste coûteuse.
 
 ## Ce que ces essais ne valident pas
 
@@ -117,7 +117,7 @@ Résultat : **code de sortie 0, aucune fuite signalée**, rapport JSON vide. Le 
 
 ## Dernières campagnes et limites
 
-Sur `7d0f1ee598235b7194f92081424c008c4c628ceb`, la [CI](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607637), les [archives](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607543), le [soak](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607558) et le [fuzzing](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607519) sont terminés avec succès. Une contre-revue IA supplémentaire a échoué à démarrer en raison d’une limite d’usage; aucun résultat de revue ne peut lui être attribué.
+Sur `7d0f1ee598235b7194f92081424c008c4c628ceb`, la [CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637), les [archives](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607543), le [soak](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607558) et le [fuzzing](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607519) sont terminés avec succès. Une contre-revue IA supplémentaire a échoué à démarrer en raison d’une limite d’usage; aucun résultat de revue ne peut lui être attribué.
 
 L’essai de 72 heures n’a pas encore été exécuté. Le porteur a proposé son PC pour un essai local; plusieurs processus sur ce PC ne prouvent pas un fonctionnement sur deux ou trois machines. L’essai de volume supérieur à 100 000 blocs est également une preuve distincte, avec son workflow dédié.
 

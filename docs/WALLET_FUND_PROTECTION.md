@@ -6,7 +6,7 @@ relecture des paiements avant signature et plafonds volontaires.
 
 ## Paiement relu avant signature
 
-`aurora-wallet send` affiche le réseau AURORA Testnet, le compte source,
+`aretovus-wallet send` affiche le réseau ARETOVUS Testnet, le compte source,
 l'adresse complète du destinataire, le montant, les frais, le débit total,
 le nœud RPC et le nonce. Par défaut, il faut saisir exactement
 `SEND ADRESSE_COMPLETE`, puis Entrée. Une entrée vide, différente, tronquée ou
@@ -14,8 +14,8 @@ une fin d'entrée annule avant signature. Un montant nul et un paiement vers
 le compte source sont refusés par ce parcours de paiement.
 
 ```sh
-aurora-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --dry-run
-aurora-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --max-amount 1 --max-fee 0.00000003
+aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --dry-run
+aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000 --max-amount 1 --max-fee 0.00000003
 ```
 
 Remplacer l'adresse et le port par ceux du testnet utilisé. L'aperçu
@@ -36,9 +36,9 @@ et la seconde lecture du compte. Il ne peut pas être combiné à `--dry-run`.
 ## Vérifier une sauvegarde avant d'en avoir besoin
 
 ```sh
-aurora-wallet backup --key-file wallet.aurkey --out backup.aurkey
-aurora-wallet verify-backup --from backup.aurkey --expected-account ADRESSE_HEX
-aurora-wallet restore --from backup.aurkey --out restored.aurkey
+aretovus-wallet backup --key-file wallet.aurkey --out backup.aurkey
+aretovus-wallet verify-backup --from backup.aurkey --expected-account ADRESSE_HEX
+aretovus-wallet restore --from backup.aurkey --out restored.aurkey
 ```
 
 Le mot de passe est demandé dans le terminal, jamais comme argument.
