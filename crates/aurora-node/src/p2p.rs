@@ -26,7 +26,7 @@ use aurora_core::{
     merkle::merkle_proof,
     network::NetworkId,
 };
-use aurora_storage::save_snapshot;
+use aurora_storage::{save_snapshot, save_snapshot_with_page_cache, SnapshotPageCache};
 
 const MAX_FRAME: usize = 4 * 1024 * 1024;
 const PAGE_BLOCKS: usize = 64;
@@ -1711,6 +1711,9 @@ fn sync_from_peer_with_admission(
     // An arrival inventory contains each block once, even when it is already
     // known locally. Keep this across session rollover: otherwise a peer can
     // repeat one valid block forever while inventing new cursor positions.
+    // One bounded cache per sync invocation, including session reconnects.
+    // It is discarded on error; no cross-run or cross-directory reuse.
+    let mut snapshot_pages = SnapshotPageCache::default();
     let mut inventory_hashes = HashSet::new();
     inventory_hashes.insert(
         chain
@@ -1830,7 +1833,7 @@ fn sync_from_peer_with_admission(
             #[cfg(test)]
             let phase_started = Instant::now();
             if persist {
-                save_snapshot(data_dir, &candidate)?;
+                save_snapshot_with_page_cache(data_dir, &candidate, &mut snapshot_pages)?;
             }
             #[cfg(test)]
             {
