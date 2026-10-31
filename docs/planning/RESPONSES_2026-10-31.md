@@ -46,6 +46,37 @@ Un vote communautaire peut désigner l'intention politique, mais l'exécution do
 
 **Statut : orientation produit exprimée + hypothèses techniques à comparer ; pas de décision de consensus ni de changement de droits de propriété.**
 
+## Proposition de mécanisme de vote G01-VOTE (étude non validée)
+
+**Origine :** approfondissement demandé par le responsable le 31 octobre 2026 afin de résoudre le problème des votes multipliés par plusieurs portefeuilles. **Ce texte n'implémente aucune règle et n'autorise pas de dépense.**
+
+### Solution candidate A — vote linéaire des AUR, sans identité externe
+
+- À un bloc de référence `H` **finalisé pour le scrutin selon une politique de réorganisations explicite**, extraire la répartition des soldes en unités minimales. Exclure les montants brûlés, la trésorerie non dépensable, les adresses inadmissibles définies par la politique et toute délégation déjà comptée ailleurs ; définir le dénominateur du quorum à partir de cet état.
+- Un participant est éligible si son solde en AUR à `H` satisfait un **minimum T(H)**. **Son poids est linéaire en AUR**, sans arrondi par portefeuille donnant davantage de voix : répartir 1 000 AUR sur dix comptes éligibles conserve 1 000 AUR de poids total, pas dix votes indépendants.
+- Chaque vote signe `network_id || proposal_id || snapshot_height || choice || nonce` avec séparation de domaines. Vérifier la signature et l'identité de compte, puis **n'accepter qu'une contribution par compte et proposition** ; une modification du choix suit une règle explicite avant clôture. Ne jamais réutiliser la même unité de poids via délégation/copie/transfert.
+- Si le wallet délègue son pouvoir, l'enregistrer **avant le snapshot** ; interdire les délégations cycliques, les cumuls de pouvoir et le double vote direct/délégué. Les conditions d'éligibilité et les fonds de référence sont **immuables pendant le scrutin**.
+- Avantage : le fractionnement de portefeuilles n'augmente pas artificiellement le poids total. **Limite majeure : l'inégalité liée à la concentration d'AUR demeure** ; ne jamais annoncer « une personne = une voix ».
+- Cette solution peut être simulée par un outil externe sur des données de test, sans modifier le consensus ; elle ne peut **pas** autoriser une dépense sur le compte fixe actuel.
+
+### Solution candidate B — un humain, une voix, éligibilité par AUR
+
+- Garder un minimum d'AUR pour voter, mais ajouter un **titre d'unicité par personne** robuste aux identités fabriquées, idéalement prouvable sans dévoiler l'identité, avec un identifiant à usage unique (`nullifier`) par scrutin.
+- Les données d'identité et d'éligibilité doivent rester confidentielles ; les preuves d'unicité, la délivrance/révocation des titres, les comptes multiples, les utilisateurs exclus et la compromission des émetteurs doivent être spécifiés et audités.
+- **Aucune preuve d'identité décentralisée fiable, privée et universelle n'est intégrée à AURORA**. Un simple « un portefeuille = un vote », des badges locaux, ou le seul montant minimal AUR ne résolvent pas les faux comptes. Tout registre humain ou fournisseur d'attestation impose de nouvelles frontières de confiance, voire des risques de surveillance.
+- Statut : **R&D**, pas une promesse immédiate ; des attestations anonymes peuvent réduire des divulgations, mais ne garantissent pas à elles seules l'unicité réelle.
+
+### Règles complémentaires à comparer, communes aux deux
+
+1. **Conseil élu** : au moins trois membres compétents en technique et finances ; avis, analyse et transparence, mais **aucun pouvoir d'exécuter une dépense**. Mandat, révocation, conflits d'intérêts et éventuels remplaçants à fixer.
+2. **Seuil d'éligibilité dégressif** : `T(H)` est un barème explicite fondé sur l'émission brute cumulée ou des jalons de hauteur, avec **plancher minimum**, publié avant les scrutins et immuable pendant chaque vote. **Ne pas utiliser la difficulté de minage** : elle augmente ou diminue selon le hashrate.
+3. **Protection contre les prises de contrôle** : seuil de participation mesuré sur le pouvoir éligible, majorité qualifiée plus exigeante pour les gros budgets, durée de débat/vote suffisante, délais avant décaissement, budgets plafonnés et approbation de dépenses distincte des modifications de consensus. Les valeurs des seuils de vote, taux de quorum et durées sont **à simuler**, pas décidées.
+4. **Paiement gouverné par une règle de validité** : le résultat du vote doit lier immuablement **destinataire, montant, référence de proposition et conditions**, et être vérifié lors de l'exécution. Un simple serveur web affichant « approuvé » n'a aucun droit de dépenser les fonds. L'autorisation cryptographique du compte actuel **n'existe pas**.
+5. **Tests adversariaux obligatoires** : fractionnement en milliers de portefeuilles, transferts et prêts avant/pendant les snapshots, achats de voix, forte concentration du capital, votes contradictoires, délégation cyclique, manipulations de quorum, réorganisations, replay inter-réseau, absence de participation et capture du conseil.
+6. **Références techniques de comparaison** : [OpenZeppelin Governor / snapshot et timelock](https://docs.openzeppelin.com/contracts/5.x/governance), [Polkadot OpenGov / tracks et validation](https://docs.polkadot.com/reference/governance/), [Gitcoin / résistance Sybil et identité](https://gitcoin.co/research/identity-infrastructure-binding-constraint). AURORA **n'utilise pas** ces contrats EVM : il faudrait concevoir ses propres règles et preuves.
+
+**Position de travail non approuvée :** prototyper **A** uniquement pour étudier les scrutins sur un testnet sans fonds réels ; garder **B** comme recherche si « une personne = une voix » devient une exigence produit. Le responsable doit trancher la finalité du vote avant toute spécification normative.
+
 ## Suite pratique
 
 1. Conserver les choix de périmètre et de méthode ; continuer le testnet actuel sans rupture.
