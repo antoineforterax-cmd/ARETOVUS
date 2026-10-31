@@ -57,7 +57,7 @@ jobs:
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -q 'storage phases:' "$log"
             expected_saves=$(((blocks + 63) / 64))
-            grep -q "storage volume probe: height=${blocks} known_blocks=$((blocks + 1)) snapshot_calls=${expected_saves} " "$log"
+            grep -Eq "storage volume probe: height=${blocks} known_blocks=$((blocks + 1)) snapshot_calls=${expected_saves}([[:space:]]|$)" "$log"
           done
           {
             echo '## Storage phase measurements (single runner, same commit)'
