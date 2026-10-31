@@ -1,27 +1,41 @@
-# AURORA — Documentation du projet (mise à jour le 29 octobre 2026)
+# AURORA — vision, orientation et documentation
 
-**Statut : proposition documentaire pour revue.** Référence : branche expérimentale `feature/emission-schedule-v0`. Aucune modification de consensus ou de code n'est incluse.
+**État documentaire au 31 octobre 2026**, à partir de `main` au commit `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f`. Cette page est une **navigation**, pas une nouvelle règle de consensus. Toujours vérifier le SHA consulté : le dépôt continue d'évoluer.
 
-Le [README public de `main`](https://github.com/antoineforterax-cmd/AURORA) présente désormais l'état général du projet. Le testnet avancé reste sur `feature/emission-schedule-v0`, et les améliorations des PR #13 à #22 ne sont pas encore fusionnées. Les comptes rendus techniques et les résultats de CI se trouvent sur ces PR ; les tests réussis sur une branche ne prouvent pas que `main` contient la fonctionnalité.
+## En quelques mots
 
-## Ordre de lecture
-1. [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) — finalité, exigences, limites.
-2. [DECISIONS.md](DECISIONS.md) — décisions historiques, profil implémenté, propositions.
-3. [ARCHITECTURE_CIBLE.md](ARCHITECTURE_CIBLE.md) — composants, dépendances, options de confidentialité.
-4. [ROADMAP.md](ROADMAP.md) — séquence, critères de sortie, blocages.
-5. [IMPLEMENTATION_POLICY.md](IMPLEMENTATION_POLICY.md) — méthode de modification contrôlée.
+Nous développons un **testnet de blockchain indépendant en Rust**, avec preuve de travail, transactions signées, stockage persistant, réseau P2P et portefeuille en ligne de commande. Le testnet avancé est **déjà intégré à `main`** ; les anciennes présentations le décrivant comme uniquement présent sur `feature/emission-schedule-v0` sont datées. Ce n'est pas un mainnet sûr pour des fonds réels.
 
-## Hiérarchie documentaire
-- **Comportement réellement exécuté** : code et tests sur un commit identifié ; `docs/PROTOCOL.md` décrit ce comportement, sans le remplacer.
-- **Paramètres testnet** : `docs/TESTNET_DECISIONS.md`, `docs/EMISSION_MODEL.md`.
-- **Historique** : `docs/DECISION_REGISTER.md`, non à effacer.
-- **Programme et propositions** : présent dossier. Il ne rend aucune proposition normative par sa seule existence.
-- **Opérations et preuves** : `docs/TESTNET_OPERATIONS.md`, `docs/TESTNET_VALIDATION_REPORT.md`, CI et tickets.
+## Notre direction : trois objectifs dans l'ordre
 
-En cas de divergence, ouvrir une tâche de réconciliation : ne jamais réécrire l'histoire ni faire passer une aspiration mainnet pour une règle du testnet. Le document Word historique évoqué dans les échanges n'a pas été retrouvé ; la comparaison mot à mot reste donc **à faire**, sans inventer son contenu.
+| Ordre | But | Où en est-on ? |
+| --- | --- | --- |
+| **1. Fiabilité et autonomie** | Consensus déterministe, stockage récupérable, P2P robuste, wallet testable, contrôles et auditabilité | Base expérimentale présente ; campagnes adversariales et audit indépendants encore nécessaires |
+| **2. Utilisation simple** | Documentation accessible, installations reproductibles, explorateur en lecture seule, puis wallet graphique | Guide français et CLI présents ; explorateur et GUI non livrés |
+| **3. Différenciation** | Vie privée du réseau et des transactions ; récupération volontaire ; possibilité de participer avec du matériel courant | **Recherche à mener**, pas de confidentialité native ni de coffre consensuel aujourd'hui |
 
-## Situation des branches
-`main` est un prototype plus ancien ; PR #1 est un brouillon vers `main` ; PR #2 (`feature/emission-schedule-v0`) est un brouillon vers la branche de PR #1. Le contenu de PR #2 ne doit pas être présenté comme déjà fusionné à `main`.
+**Règle de qualité :** un noyau plus petit, lisible et mesurable est préférable à beaucoup de code insuffisamment revu. Ne pas élargir le consensus pour faire une démonstration.
 
-## Limites
-Testnet expérimental uniquement, sans fonds réels, sans audit humain indépendant. Les essais locaux, CI et simulations ne démontrent ni sécurité mainnet ni anonymat absolu.
+## Quel document lire ?
+
+| Besoin | Source de référence |
+| --- | --- |
+| Première découverte | [Guide débutant en français](../guide-fr/README.md) |
+| Pourquoi AURORA et quelles ambitions | [Cahier des charges](CAHIER_DES_CHARGES.md) |
+| Quel travail ensuite | [Feuille de route technique](ROADMAP.md) et [issue produit #123](https://github.com/antoineforterax-cmd/AURORA/issues/123) |
+| Qu'est-ce qui est choisi / encore ouvert ? | [Décisions actuelles et arbitrages](DECISIONS.md) |
+| Comment le code est organisé | [Architecture du dépôt](../../ARCHITECTURE.md) et [architecture cible de recherche](ARCHITECTURE_CIBLE.md) |
+| Quelles sont les **règles exécutées** | [Protocole](../PROTOCOL.md), [consensus](../CONSENSUS.md), [paramètres économiques](../TESTNET_DECISIONS.md) |
+| Qu'est-ce qui est réellement prouvé | [Rapport de validation](../TESTNET_VALIDATION_REPORT.md), [critères de finalisation](../FINALIZATION_CHECKLIST.md) |
+| Comment contribuer sans casser le projet | [CONTRIBUTING](../../CONTRIBUTING.md), [AGENTS](../../AGENTS.md), [politique d'implémentation](IMPLEMENTATION_POLICY.md) |
+| Historique des propositions | [Registre historique](../DECISION_REGISTER.md) et [anciennes hypothèses](../DECISION_BASELINE.md) |
+
+## Comment lire les décisions et les preuves ?
+
+**Une idée** n'est pas une fonction, **une fonction codée** n'est pas nécessairement testée, **une CI verte** n'est pas un audit, et **un choix de testnet** n'est pas une décision de mainnet. Les anciens documents datés sont conservés comme archives : leurs sections évoquant les PR #1/#2 et la branche `feature/emission-schedule-v0` ne représentent plus à elles seules l'état de `main`.
+
+Pour tout changement au consensus, à l'émission, à l'identité des comptes ou à la propriété des fonds : fiche motivée, tests et simulations, compatibilité/migration, revue, puis **accord explicite du responsable**. Pas de décision implicite à partir d'une documentation.
+
+## Ce qu'on ne promet pas
+
+Pas d'anonymat absolu, de résistance totale aux attaques, de minage rentable garanti, de fonds récupérables après n'importe quel vol, ni de date garantie de mainnet. L'audit humain indépendant et les preuves en conditions hostiles restent essentiels.
