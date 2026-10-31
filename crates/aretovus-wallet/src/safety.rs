@@ -244,7 +244,10 @@ mod tests {
         }
         let alternatives = [
             phrase.clone(),
-            format!("{}\n", phrase.replace("ARETOVUS-TESTNET", "ARETOVUS-MAINNET")),
+            format!(
+                "{}\n",
+                phrase.replace("ARETOVUS-TESTNET", "ARETOVUS-MAINNET")
+            ),
             format!(
                 "{}\n",
                 payment_intent_confirmation_phrase(&"ac".repeat(32), amount, fee, nonce)
