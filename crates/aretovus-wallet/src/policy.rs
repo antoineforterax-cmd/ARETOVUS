@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use aurora_core::accounts::AccountId;
+use aretovus_core::accounts::AccountId;
 
 use crate::{account_id_hex, parse_amount, safety::PaymentLimits};
 

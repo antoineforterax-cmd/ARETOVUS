@@ -1,7 +1,7 @@
 //! Strict experimental aurora://testnet payment request encoding.
 use std::error::Error;
 
-use aurora_core::{accounts::AccountId, amount::Amount};
+use aretovus_core::{accounts::AccountId, amount::Amount};
 
 use crate::builder::{account_id_hex, parse_account_id, parse_amount};
 

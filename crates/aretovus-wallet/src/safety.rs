@@ -1,7 +1,7 @@
 //! Local payment review and voluntary limits, independent of consensus.
 use std::io::{self, BufRead, Read};
 
-use aurora_core::{accounts::AccountId, amount::Amount};
+use aretovus_core::{accounts::AccountId, amount::Amount};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PaymentLimits {
@@ -80,14 +80,14 @@ pub fn payment_intent_confirmation_phrase(
 /// This catches accidental field substitution or signing a different payload.
 /// It cannot detect a malicious executable that controls both sides of the check.
 pub fn verify_signed_payment_intent(
-    transaction: &aurora_core::accounts::AccountTransaction,
+    transaction: &aretovus_core::accounts::AccountTransaction,
     sender: AccountId,
     recipient: AccountId,
     amount: Amount,
     fee: Amount,
     nonce: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use aurora_core::{accounts::POST_QUANTUM_ACCOUNT_TX_VERSION, network::NetworkId};
+    use aretovus_core::{accounts::POST_QUANTUM_ACCOUNT_TX_VERSION, network::NetworkId};
     if transaction.version != POST_QUANTUM_ACCOUNT_TX_VERSION
         || transaction.network != NetworkId::Testnet
         || transaction.sender != sender

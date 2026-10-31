@@ -2,7 +2,7 @@
 //! This is a secret backup encoding, not encryption or key rotation.
 use zeroize::Zeroizing;
 
-use aurora_core::hash::sha256_plain;
+use aretovus_core::hash::sha256_plain;
 
 const PREFIX: &str = "aurora-testnet-recovery-v1:";
 const CODE_LEN: usize = PREFIX.len() + 64 + 1 + 64;

@@ -8,8 +8,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use aurora_core::hash::Hash256;
-use aurora_wallet::{
+use aretovus_core::hash::Hash256;
+use aretovus_wallet::{
     account_id_hex, build_signed_transaction, parse_account_id, parse_amount, rpc, WalletKey,
 };
 use zeroize::Zeroizing;
@@ -98,7 +98,7 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
         "status" => (&["--node", "--txid"], &[]),
         "wait" => (&["--node", "--txid", "--timeout-seconds"], &[]),
         "help" | "-h" | "--help" => (&[], &[]),
-        _ => return Err("unknown command; use aurora-wallet --help".into()),
+        _ => return Err("unknown command; use aretovus-wallet --help".into()),
     };
     validate_options(args, values, flags)?;
     if flag(args, "--yes") && flag(args, "--dry-run") {
@@ -161,7 +161,7 @@ fn copy_encrypted_key(source: &Path, destination: &Path) -> Result<(), Box<dyn E
 
 fn run() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
-    let command = args.next().ok_or("Use aurora-wallet --help")?;
+    let command = args.next().ok_or("Use aretovus-wallet --help")?;
     let args = args.collect::<Vec<_>>();
 
     validate_command_options(&command, &args)?;
@@ -173,7 +173,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             if flag(&args, "--plain-testnet") {
                 key.save_plain_testnet_file(path)?;
                 println!(
-                    "AURORA TESTNET ONLY: unencrypted key saved at {}",
+                    "ARETOVUS TESTNET ONLY: unencrypted key saved at {}",
                     path.display()
                 );
             } else {
@@ -284,22 +284,22 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         "limits-create" => {
             let key = load_key(&args)?;
-            let limits = aurora_wallet::safety::PaymentLimits {
+            let limits = aretovus_wallet::safety::PaymentLimits {
                 max_amount: Some(parse_amount(option(&args, "--max-amount")?)?),
                 max_fee: Some(parse_amount(option(&args, "--max-fee")?)?),
             };
             let path = Path::new(option(&args, "--key-file")?);
-            aurora_wallet::policy::create(path, key.account_id(), limits)?;
+            aretovus_wallet::policy::create(path, key.account_id(), limits)?;
             println!(
                 "limits_created={} account={}",
-                aurora_wallet::policy::policy_path(path).display(),
+                aretovus_wallet::policy::policy_path(path).display(),
                 account_id_hex(key.account_id())
             );
         }
         "limits-show" => {
             let key = load_key(&args)?;
             let path = Path::new(option(&args, "--key-file")?);
-            match aurora_wallet::policy::load(path, key.account_id())? {
+            match aretovus_wallet::policy::load(path, key.account_id())? {
                 Some(limits) => {
                     println!("limits=active");
                     if let Some(maximum) = limits.max_amount {
@@ -326,8 +326,8 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err("nonce is exhausted".into());
             }
             let key_path = Path::new(option(&args, "--key-file")?);
-            let stored = aurora_wallet::policy::load(key_path, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, PaymentLimits};
+            let stored = aretovus_wallet::policy::load(key_path, key.account_id())?;
+            use aretovus_wallet::safety::{check_payment, PaymentLimits};
             let requested = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -346,11 +346,11 @@ fn run() -> Result<(), Box<dyn Error>> {
                 recipient,
                 amount,
                 fee,
-                aurora_core::amount::Amount::MAX,
+                aretovus_core::amount::Amount::MAX,
                 limits,
             )?;
             let destination = account_id_hex(recipient);
-            println!("Review OFFLINE payment on AURORA Testnet");
+            println!("Review OFFLINE payment on ARETOVUS Testnet");
             println!(
                 "sender={} recipient={destination}",
                 account_id_hex(key.account_id())
@@ -369,7 +369,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             println!("The signed file authorizes spending. Anyone holding it can broadcast; deleting it cannot revoke a copy.");
             if !flag(&args, "--yes") {
-                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                let phrase = aretovus_wallet::safety::payment_intent_confirmation_phrase(
                     &destination,
                     amount,
                     fee,
@@ -377,7 +377,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 );
                 print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                if !aretovus_wallet::safety::read_payment_intent_confirmation(
                     &mut io::stdin().lock(),
                     &destination,
                     amount,
@@ -387,11 +387,11 @@ fn run() -> Result<(), Box<dyn Error>> {
                     return Err("offline payment cancelled before signing".into());
                 }
             }
-            if aurora_wallet::policy::load(key_path, key.account_id())? != stored {
+            if aretovus_wallet::policy::load(key_path, key.account_id())? != stored {
                 return Err("wallet limits changed during review; review the payment again".into());
             }
             let transaction = build_signed_transaction(&key, recipient, amount, fee, nonce)?;
-            aurora_wallet::safety::verify_signed_payment_intent(
+            aretovus_wallet::safety::verify_signed_payment_intent(
                 &transaction,
                 key.account_id(),
                 recipient,
@@ -399,7 +399,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 fee,
                 nonce,
             )?;
-            aurora_wallet::signed_payment::save(destination_file, &transaction)?;
+            aretovus_wallet::signed_payment::save(destination_file, &transaction)?;
             println!(
                 "signed_file={} prepared_txid={}",
                 destination_file.display(),
@@ -409,7 +409,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         "inspect-signed" => {
             let transaction =
-                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+                aretovus_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             // load validates canonical encoding, testnet domain and signature.
             println!("verified_signed_transaction=true");
             println!("network=AURORA-TESTNET version={}", transaction.version);
@@ -428,13 +428,13 @@ fn run() -> Result<(), Box<dyn Error>> {
             // independently by the reviewer on a separate trusted machine.
             // A mismatched field is a hard failure, even for a valid signature.
             let transaction =
-                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+                aretovus_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let sender = parse_account_id(option(&args, "--sender")?)?;
             let recipient = parse_account_id(option(&args, "--to")?)?;
             let amount = parse_amount(option(&args, "--amount")?)?;
             let fee = parse_amount(option(&args, "--fee")?)?;
             let nonce: u64 = option(&args, "--nonce")?.parse()?;
-            aurora_wallet::safety::verify_signed_payment_intent(
+            aretovus_wallet::safety::verify_signed_payment_intent(
                 &transaction,
                 sender,
                 recipient,
@@ -448,7 +448,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         "broadcast" => {
             let transaction =
-                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+                aretovus_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             let node = node_address(&args)?;
             let id = transaction.txid()?;
             if flag(&args, "--expected-txid") {
@@ -464,7 +464,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 println!("external_txid_pin_verified=true");
             }
             let destination = account_id_hex(transaction.recipient);
-            println!("Review SIGNED payment on AURORA Testnet txid={id}");
+            println!("Review SIGNED payment on ARETOVUS Testnet txid={id}");
             println!(
                 "sender={} recipient={destination}",
                 account_id_hex(transaction.sender)
@@ -474,7 +474,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 transaction.amount, transaction.fee, transaction.nonce
             );
             if !flag(&args, "--yes") {
-                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                let phrase = aretovus_wallet::safety::payment_intent_confirmation_phrase(
                     &destination,
                     transaction.amount,
                     transaction.fee,
@@ -482,7 +482,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 );
                 print!("Type {phrase} to broadcast: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                if !aretovus_wallet::safety::read_payment_intent_confirmation(
                     &mut io::stdin().lock(),
                     &destination,
                     transaction.amount,
@@ -496,13 +496,13 @@ fn run() -> Result<(), Box<dyn Error>> {
             if account.next_nonce != transaction.nonce {
                 return Err("signed nonce differs from the node's next nonce; check transaction status before signing another payment".into());
             }
-            aurora_wallet::safety::check_payment(
+            aretovus_wallet::safety::check_payment(
                 transaction.sender,
                 transaction.recipient,
                 transaction.amount,
                 transaction.fee,
                 account.balance,
-                aurora_wallet::safety::PaymentLimits::default(),
+                aretovus_wallet::safety::PaymentLimits::default(),
             )?;
             let (accepted, pending) = rpc::submit_transaction(node, &transaction)?;
             if accepted != id {
@@ -521,9 +521,9 @@ fn run() -> Result<(), Box<dyn Error>> {
             let fee = parse_amount(option(&args, "--fee")?)?;
             let node = node_address(&args)?;
             let key_path = Path::new(option(&args, "--key-file")?);
-            let stored_limits = aurora_wallet::policy::load(key_path, key.account_id())?;
+            let stored_limits = aretovus_wallet::policy::load(key_path, key.account_id())?;
             let account = rpc::get_account(node, key.account_id())?;
-            use aurora_wallet::safety::{check_payment, PaymentLimits};
+            use aretovus_wallet::safety::{check_payment, PaymentLimits};
             let limits = PaymentLimits {
                 max_amount: if flag(&args, "--max-amount") {
                     Some(parse_amount(option(&args, "--max-amount")?)?)
@@ -549,7 +549,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 return Err("--yes and --dry-run cannot be combined".into());
             }
             let destination = account_id_hex(recipient);
-            println!("Review payment on AURORA Testnet");
+            println!("Review payment on ARETOVUS Testnet");
             if let Some(maximum) = limits.max_amount {
                 println!("effective_max_amount={maximum}");
             }
@@ -569,7 +569,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
             if !flag(&args, "--yes") {
                 println!("A confirmed payment is irreversible. Check the full recipient address.");
-                let phrase = aurora_wallet::safety::payment_intent_confirmation_phrase(
+                let phrase = aretovus_wallet::safety::payment_intent_confirmation_phrase(
                     &destination,
                     amount,
                     fee,
@@ -577,7 +577,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 );
                 print!("Type {phrase} to authorize: ");
                 io::stdout().flush()?;
-                if !aurora_wallet::safety::read_payment_intent_confirmation(
+                if !aretovus_wallet::safety::read_payment_intent_confirmation(
                     &mut io::stdin().lock(),
                     &destination,
                     amount,
@@ -591,12 +591,12 @@ fn run() -> Result<(), Box<dyn Error>> {
             if refreshed.next_nonce != account.next_nonce || refreshed.balance != account.balance {
                 return Err("account changed during review; review the payment again".into());
             }
-            if aurora_wallet::policy::load(key_path, key.account_id())? != stored_limits {
+            if aretovus_wallet::policy::load(key_path, key.account_id())? != stored_limits {
                 return Err("wallet limits changed during review; review the payment again".into());
             }
             let transaction =
                 build_signed_transaction(&key, recipient, amount, fee, account.next_nonce)?;
-            aurora_wallet::safety::verify_signed_payment_intent(
+            aretovus_wallet::safety::verify_signed_payment_intent(
                 &transaction,
                 key.account_id(),
                 recipient,
@@ -608,14 +608,14 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("transaction_id={id}");
             println!("mempool=pending transactions={pending}");
             println!(
-                "Use aurora-wallet status --node {} --txid {id} to check confirmation.",
+                "Use aretovus-wallet status --node {} --txid {id} to check confirmation.",
                 node
             );
         }
         "verify" => {
             let id = txid(option(&args, "--txid")?)?;
             let confirmations = option(&args, "--confirmations")?.parse::<u64>()?;
-            let result = aurora_wallet::spv::verify_transaction_inclusion(
+            let result = aretovus_wallet::spv::verify_transaction_inclusion(
                 node_address(&args)?,
                 id,
                 confirmations,
@@ -653,47 +653,47 @@ fn run() -> Result<(), Box<dyn Error>> {
             }
         }
         "--help" | "-h" | "help" => {
-            println!("AURORA ML-DSA-65 testnet wallet (experimental)");
-            println!("  aurora-wallet keygen --out FILE [--plain-testnet]");
-            println!("  aurora-wallet recovery-export --key-file FILE --out SECRET_FILE --acknowledge-secret");
-            println!("  aurora-wallet recovery-verify --expected-account ACCOUNT_HEX [--from SECRET_FILE]");
-            println!("  aurora-wallet recovery-restore --out NEW_FILE --expected-account ACCOUNT_HEX [--from SECRET_FILE] [--plain-testnet]");
+            println!("ARETOVUS ML-DSA-65 testnet wallet (experimental)");
+            println!("  aretovus-wallet keygen --out FILE [--plain-testnet]");
+            println!("  aretovus-wallet recovery-export --key-file FILE --out SECRET_FILE --acknowledge-secret");
+            println!("  aretovus-wallet recovery-verify --expected-account ACCOUNT_HEX [--from SECRET_FILE]");
+            println!("  aretovus-wallet recovery-restore --out NEW_FILE --expected-account ACCOUNT_HEX [--from SECRET_FILE] [--plain-testnet]");
             println!("    Recovery requires a secret saved BEFORE loss. Without --from, the code is entered with hidden input.");
-            println!("  aurora-wallet backup --key-file FILE --out BACKUP_FILE");
-            println!("  aurora-wallet restore --from BACKUP_FILE --out NEW_FILE");
-            println!("  aurora-wallet verify-backup --from FILE --expected-account ACCOUNT_HEX");
-            println!("  aurora-wallet address --key-file FILE");
-            println!("  aurora-wallet account --address ACCOUNT_HEX --node IP:PORT");
+            println!("  aretovus-wallet backup --key-file FILE --out BACKUP_FILE");
+            println!("  aretovus-wallet restore --from BACKUP_FILE --out NEW_FILE");
+            println!("  aretovus-wallet verify-backup --from FILE --expected-account ACCOUNT_HEX");
+            println!("  aretovus-wallet address --key-file FILE");
+            println!("  aretovus-wallet account --address ACCOUNT_HEX --node IP:PORT");
             println!("    Query the public balance and next nonce without loading a key file.");
-            println!("  aurora-wallet balance --key-file FILE --node IP:PORT");
+            println!("  aretovus-wallet balance --key-file FILE --node IP:PORT");
             println!("    Balance and next_nonce include this node's pending transactions; they are not proof of confirmed state.");
             println!(
-                "  aurora-wallet limits-create --key-file FILE --max-amount AUR --max-fee AUR"
+                "  aretovus-wallet limits-create --key-file FILE --max-amount AUR --max-fee AUR"
             );
-            println!("  aurora-wallet limits-show --key-file FILE");
+            println!("  aretovus-wallet limits-show --key-file FILE");
             println!("    A FILE.limits policy is applied automatically to send, including --yes; one-shot limits only tighten it.");
-            println!("  aurora-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
+            println!("  aretovus-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
-            println!("  aurora-wallet inspect-signed --from SIGNED_FILE");
+            println!("  aretovus-wallet inspect-signed --from SIGNED_FILE");
             println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
-            println!("  aurora-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
+            println!("  aretovus-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
             println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
-            println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--expected-txid VERIFIED_TXID] [--yes]");
+            println!("  aretovus-wallet broadcast --from SIGNED_FILE --node IP:PORT [--expected-txid VERIFIED_TXID] [--yes]");
             println!("    Pin a txid from independent review to block swapped signed-file authorization before RPC.");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
-            println!("  aurora-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
-            println!("  aurora-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
-            println!("  aurora-wallet status --node IP:PORT --txid TXID_HEX");
-            println!("  aurora-wallet wait --node IP:PORT --txid TXID_HEX --timeout-seconds N");
+            println!("  aretovus-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
+            println!("  aretovus-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
+            println!("  aretovus-wallet status --node IP:PORT --txid TXID_HEX");
+            println!("  aretovus-wallet wait --node IP:PORT --txid TXID_HEX --timeout-seconds N");
         }
-        _ => return Err("unknown command; use aurora-wallet --help".into()),
+        _ => return Err("unknown command; use aretovus-wallet --help".into()),
     }
     Ok(())
 }
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("aurora-wallet: {error}");
+        eprintln!("aretovus-wallet: {error}");
         std::process::exit(1);
     }
 }

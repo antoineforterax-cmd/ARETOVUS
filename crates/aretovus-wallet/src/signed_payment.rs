@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use aurora_core::{
+use aretovus_core::{
     accounts::{AccountTransaction, POST_QUANTUM_ACCOUNT_TX_VERSION},
     codec::{CanonicalDecode, CanonicalEncode},
     network::NetworkId,
@@ -70,7 +70,7 @@ pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
 mod tests {
     use super::*;
     use crate::{build_signed_transaction, WalletKey};
-    use aurora_core::{accounts::AccountId, amount::Amount};
+    use aretovus_core::{accounts::AccountId, amount::Amount};
     use std::{
         fs,
         path::PathBuf,

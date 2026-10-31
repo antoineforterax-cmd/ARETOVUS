@@ -5,14 +5,14 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use aurora_consensus::{
+use aretovus_consensus::{
     light_header_chain::LightHeaderChain,
     testnet::{
         testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS,
         TESTNET_MAX_FUTURE_BLOCK_SECS,
     },
 };
-use aurora_core::{hash::Hash256, merkle::verify_merkle_proof};
+use aretovus_core::{hash::Hash256, merkle::verify_merkle_proof};
 
 use crate::rpc;
 
