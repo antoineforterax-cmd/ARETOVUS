@@ -191,7 +191,10 @@ def self_test() -> None:
             ({"ram_load_percent": 73, "cpu_percent": 25.0}, (2, 20)),
         ]):
             with ResourceMonitor(path, root, "host-test", interval_seconds=1) as m:
-                time.sleep(0.025)
+                for _ in range(40):
+                    if m.samples >= 1:
+                        break
+                    time.sleep(0.025)
                 assert m.samples >= 1
                 assert m.errors == 0
         events = [json.loads(line) for line in path.read_text().splitlines()]
@@ -201,7 +204,10 @@ def self_test() -> None:
         assert events[1]["ram_load_percent"] == 90
         with patch(__name__ + ".snapshot", side_effect=OSError("private path")):
             with ResourceMonitor(path, root, "host-test", interval_seconds=1) as m:
-                time.sleep(0.025)
+                for _ in range(40):
+                    if m.errors >= 1:
+                        break
+                    time.sleep(0.025)
                 assert m.errors >= 1
         assert "private path" not in path.read_text(encoding="utf-8")
     print("resource_monitor_selftest=ok")
