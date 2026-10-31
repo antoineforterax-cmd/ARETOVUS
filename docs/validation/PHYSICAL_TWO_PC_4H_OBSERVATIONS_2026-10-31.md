@@ -6,6 +6,8 @@
 - Topologie annoncée : deux ordinateurs Windows physiques, serveurs `server-a` et `server-b`, mineur séparé, prélèvements avec `scripts/testnet_operational_probe.py` environ toutes les 300 secondes.
 - Provenance : sorties PowerShell et extraits `Get-Content ... -Tail 1`, `Select-String` et `testnet verify` **transmis par l'opérateur** le 31 octobre 2026. Les deux journaux complets ne sont **pas** intégrés dans cette PR. Aucune adresse IP, nom Windows, donnée de wallet ou clé privée publiée.
 
+> **Observation matérielle importante signalée par l'opérateur : après le test de 4 heures, PC B était au repos du point de vue d'AURORA (pas de campagne de test active) et utilisait pourtant environ 90 à 93 % de sa RAM, avec une capture du Gestionnaire des tâches affichant 90 %. Après fermeture du navigateur, de ChatGPT et des autres applications, la RAM affichée est descendue à 73 %.** Il s'agit de mesures **postérieures** à la campagne : elles documentent une pression mémoire déjà importante hors test, sans prouver son niveau au moment précis de l'incident ni sa causalité.
+
 ## Résultat du palier de quatre heures
 
 | Mesure rapportée | PC A | PC B |
@@ -34,7 +36,7 @@ Après arrêt, `aurora-node testnet verify` a été exécuté sur chacun des deu
 
 - PC B décrit comme un HP Laptop 17 avec AMD Ryzen 3 3200U, 8 Go de RAM installés mais **5,92 Go utilisables** ; GPU Vega 3 intégré.
 - Stockage des données AURORA sur le lecteur C:, **SSD SATA LITEON CV8-8E128-HP** 128 Go déclaré `Healthy/OK`. Un second disque dur HDD Seagate 1 To est présent ; aucune preuve qu'il héberge les données testées.
-- Mesures **postérieures** à la campagne : **90 %** de RAM utilisée avec navigateur/ChatGPT/autres applications ouverts, puis **73 %** après fermeture. Elles rendent plausible une pression mémoire / pagination, **mais aucune télémétrie de RAM n'a été prélevée au moment du timeout**.
+- **RAM très chargée même hors essai AURORA : environ 90–93 % après la campagne, PC B au repos par rapport au test** (capture : 90 %, applications usuelles encore ouvertes), puis **73 % après fermeture du navigateur, de ChatGPT et d'autres applications**. Ces observations rendent plausible une forte pression mémoire et de la pagination durant l'essai, **sans établir la charge exacte ni la cause du `TimeoutExpired`** : aucune télémétrie RAM n'a été relevée au moment du timeout.
 - L'opérateur signale une chute passée de PC B, une charnière et un châssis endommagés, ainsi que des arrêts/redémarrages anormaux ; ces symptômes doivent être examinés séparément. Les contrôles `Healthy` et une recherche de journaux Windows sans événement correspondant ne permettent pas d'exclure une panne matérielle. Éviter de pousser ce portable tant qu'il n'a pas été sauvegardé et contrôlé.
 - **Cause racine : INCONNUE**. Hypothèses à tester : contention CPU/RAM/disque, problèmes matériels intermittents, antivirus/OS, charge de synchronisation ou défaut de performance du chargeur de stockage AURORA. Ne pas attribuer l'incident à Windows ni à AURORA sans reproduction instrumentée.
 
