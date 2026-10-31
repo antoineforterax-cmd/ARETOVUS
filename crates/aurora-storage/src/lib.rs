@@ -337,7 +337,11 @@ fn sync_directory(_dir: &Path) -> io::Result<()> {
 /// Before discarding an old recovery index, validate both its manifest
 /// and its immutable v6 index pages. A checksummed manifest whose pages
 /// disappeared is not itself a usable recovery point.
-fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
+fn index_manifest_and_pages_valid(
+    dir: &Path,
+    path: &Path,
+    verified_pages: &mut HashSet<(Hash256, usize)>,
+) -> bool {
     let Ok(bytes) = read_bounded(path) else {
         return false;
     };
@@ -378,18 +382,25 @@ fn index_manifest_and_pages_valid(dir: &Path, path: &Path) -> bool {
     }
     for (page_number, digest) in body[81..].as_chunks::<32>().0.iter().enumerate() {
         let page_id = Hash256::from_bytes(*digest);
+        let Some(start) = page_number.checked_mul(INDEX_PAGE_BLOCKS) else {
+            return false;
+        };
+        // Different retained manifests commonly reference the same immutable
+        // full page. Validate it once within this prune attempt, never across
+        // save_snapshot calls: a later call must detect on-disk corruption.
+        if verified_pages.contains(&(page_id, start)) {
+            continue;
+        }
         let page_path = dir
             .join(INDEX_PAGE_DIRECTORY)
             .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         let Ok(page) = read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) else {
             return false;
         };
-        let Some(start) = page_number.checked_mul(INDEX_PAGE_BLOCKS) else {
-            return false;
-        };
         if sha256_plain(&page) != page_id || decode_index_page(&page, start).is_err() {
             return false;
         }
+        verified_pages.insert((page_id, start));
     }
     true
 }
@@ -410,9 +421,10 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             path != current && path.extension().is_some_and(|ext| ext == INDEX_EXTENSION)
         })
         .collect::<Vec<_>>();
+    let mut verified_pages = HashSet::new();
     if older
         .iter()
-        .any(|path| !index_manifest_and_pages_valid(dir, path))
+        .any(|path| !index_manifest_and_pages_valid(dir, path, &mut verified_pages))
     {
         eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
         return;
@@ -1444,6 +1456,49 @@ mod tests {
         assert_eq!(blocks, chain.known_block_count());
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), chain.tip_hash());
+        fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn shared_retained_page_cache_never_survives_a_prune_pass() {
+        let path = dir();
+        let original = chain();
+        let manifest = save_snapshot(&path, &original).unwrap();
+        // Simulate two retained generations pointing to the same immutable
+        // page. They may reuse its verified digest only in this invocation.
+        let second_manifest = path.join("second-retained.auridx");
+        fs::copy(&manifest, &second_manifest).unwrap();
+        let mut verified_pages = HashSet::new();
+        assert!(index_manifest_and_pages_valid(
+            &path,
+            &manifest,
+            &mut verified_pages
+        ));
+        assert_eq!(verified_pages.len(), 1);
+        assert!(index_manifest_and_pages_valid(
+            &path,
+            &second_manifest,
+            &mut verified_pages
+        ));
+        assert_eq!(verified_pages.len(), 1);
+
+        // After a later on-disk corruption, a new pruning pass must perform
+        // the complete check again, not trust an earlier successful pass.
+        let manifest_bytes = fs::read(&manifest).unwrap();
+        let page_id = Hash256::from_bytes(manifest_bytes[81..113].try_into().unwrap());
+        let page_path = path
+            .join(INDEX_PAGE_DIRECTORY)
+            .join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
+        let mut damaged = fs::read(&page_path).unwrap();
+        damaged[24] ^= 1;
+        fs::write(&page_path, damaged).unwrap();
+        let mut next_pass = HashSet::new();
+        assert!(!index_manifest_and_pages_valid(
+            &path,
+            &manifest,
+            &mut next_pass
+        ));
+        assert!(next_pass.is_empty());
         fs::remove_dir_all(path).unwrap();
     }
 
