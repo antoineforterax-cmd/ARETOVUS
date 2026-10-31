@@ -10,6 +10,8 @@ on:
       - "scripts/package_testnet.py"
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
+      - "scripts/lan_assistant.ps1"
+      - "AURORA-LAN.cmd"
       - "scripts/testnet_two_node_package_smoke.py"
       - "docs/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
@@ -46,6 +48,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Test de l'assistant LAN sans interface (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & powershell.exe -NoProfile -NonInteractive -File scripts/lan_assistant.ps1 -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw 'LAN assistant self-test failed' }
       - name: Construire les binaires du testnet
         run: cargo build --workspace --release --locked
       - name: Vérifier le verrou de dossier entre processus
@@ -60,6 +68,9 @@ jobs:
           if (-not $archive) { throw 'Missing Windows archive' }
           $target = Join-Path $env:RUNNER_TEMP 'aurora-two-pc-package-check'
           Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target
+          foreach ($relative in @('AURORA-LAN.cmd', 'scripts/lan_assistant.ps1')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $target $relative))) { throw "Assistant LAN missing from package: $relative" }
+          }
           $sourceRevision = ($env:GITHUB_SHA).Substring(0, 12)
           & (Join-Path (Get-Location) 'scripts/two_pc_preflight.ps1') -PackageRoot $target -ExpectedRevision $sourceRevision -Offline
       - name: Exercicer deux noeuds Windows extraits et leur redemarrage
