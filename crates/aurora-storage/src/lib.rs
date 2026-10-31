@@ -5,6 +5,7 @@
 //! a backup strategy; incomplete and corrupt snapshots are rejected.
 use std::{
     collections::HashSet,
+    fmt::Write as _,
     error::Error,
     fmt,
     fs::{self, File, OpenOptions},
@@ -101,8 +102,15 @@ pub fn save_snapshot(
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
+    // Retain filename and PathBuf allocations across all block objects. Never
+    // cache file existence or type: every object still gets symlink_metadata.
+    let mut block_name = String::with_capacity(64 + 1 + BLOCK_EXTENSION.len());
+    let mut block_path = block_dir.join("block.aurblk");
     for (block_id, block) in blocks {
-        let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        block_name.clear();
+        write!(&mut block_name, "{block_id}.{BLOCK_EXTENSION}")
+            .expect("formatting into a String cannot fail");
+        block_path.set_file_name(&block_name);
         // Do not follow symlinks at content-addressed paths: an immutable
         // block must be a regular file owned by the storage directory.
         match fs::symlink_metadata(&block_path) {
