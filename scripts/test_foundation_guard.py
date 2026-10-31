@@ -77,9 +77,9 @@ class IdentityTests(unittest.TestCase):
     def setUp(self):
         self.expected = {
             "Cargo.toml": ("100644", "1" * 40),
-            "crates/aurora-core/Cargo.toml": ("100644", "2" * 40),
-            "crates/aurora-core/src/lib.rs": ("100644", "3" * 40),
-            "crates/aurora-consensus/src/lib.rs": ("100644", "4" * 40),
+            "crates/aretovus-core/Cargo.toml": ("100644", "2" * 40),
+            "crates/aretovus-core/src/lib.rs": ("100644", "3" * 40),
+            "crates/aretovus-consensus/src/lib.rs": ("100644", "4" * 40),
             "README.md": ("100644", "5" * 40),
         }
 
@@ -98,19 +98,19 @@ class IdentityTests(unittest.TestCase):
 
     def test_deletion(self):
         actual = dict(self.expected)
-        del actual["crates/aurora-consensus/src/lib.rs"]
+        del actual["crates/aretovus-consensus/src/lib.rs"]
         with self.assertRaises(ValueError):
             assert_source_identity(self.expected, actual)
 
     def test_addition(self):
         actual = dict(self.expected)
-        actual["crates/aurora-core/src/extra.rs"] = ("100644", "7" * 40)
+        actual["crates/aretovus-core/src/extra.rs"] = ("100644", "7" * 40)
         with self.assertRaises(ValueError):
             assert_source_identity(self.expected, actual)
 
     def test_mode(self):
         actual = dict(self.expected)
-        actual["crates/aurora-core/src/lib.rs"] = ("100755", "3" * 40)
+        actual["crates/aretovus-core/src/lib.rs"] = ("100755", "3" * 40)
         with self.assertRaises(ValueError):
             assert_source_identity(self.expected, actual)
 

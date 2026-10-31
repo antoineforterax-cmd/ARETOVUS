@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Implémentation de référence INDÉPENDANTE (Python, hashlib + struct) des encodages et condensats
-du prototype AURORA. Sert à produire les valeurs attendues des tests de vecteurs Rust.
+du prototype ARETOVUS. Sert à produire les valeurs attendues des tests de vecteurs Rust.
 
 Usage : python3 scripts/reference_vectors.py
 

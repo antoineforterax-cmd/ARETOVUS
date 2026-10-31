@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package reproducible, unsigned AURORA experimental testnet binaries."""
+"""Package reproducible, unsigned ARETOVUS experimental testnet binaries."""
 from __future__ import annotations
 
 import hashlib
@@ -25,8 +25,8 @@ def main() -> int:
     architecture = platform.machine().lower().replace("amd64", "x86_64")
     suffix = ".exe" if os.name == "nt" else ""
     files = [
-        (BIN_DIR / f"aurora-node{suffix}", f"bin/aurora-node{suffix}"),
-        (BIN_DIR / f"aurora-wallet{suffix}", f"bin/aurora-wallet{suffix}"),
+        (BIN_DIR / f"aretovus-node{suffix}", f"bin/aretovus-node{suffix}"),
+        (BIN_DIR / f"aretovus-wallet{suffix}", f"bin/aretovus-wallet{suffix}"),
         (ROOT / "README.md", "README.md"),
         (ROOT / "docs" / "TESTNET_GUIDE.md", "docs/TESTNET_GUIDE.md"),
         (ROOT / "docs" / "TESTNET_OPERATIONS.md", "docs/TESTNET_OPERATIONS.md"),
@@ -43,7 +43,7 @@ def main() -> int:
         if not source.is_file():
             raise FileNotFoundError(source)
     DIST.mkdir(exist_ok=True)
-    package = DIST / f"aurora-testnet-{operating_system}-{architecture}-{revision}.zip"
+    package = DIST / f"aretovus-testnet-{operating_system}-{architecture}-{revision}.zip"
     checksums = []
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for source, destination in files:
@@ -55,7 +55,7 @@ def main() -> int:
         )
         archive.writestr(
             "EXPERIMENTAL_TESTNET.txt",
-            "AURORA experimental testnet build.\n"
+            "ARETOVUS experimental testnet build.\n"
             f"Source commit: {revision}\n"
             "Unsigned CI artifact. No mainnet or real-funds security claim.\n"
             "Read docs/TESTNET_GUIDE.md before starting a node.\n",

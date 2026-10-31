@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NODE = ROOT / "target" / "release" / ("aurora-node.exe" if os.name == "nt" else "aurora-node")
+NODE = ROOT / "target" / "release" / ("aretovus-node.exe" if os.name == "nt" else "aretovus-node")
 MINER = "42" * 32
 
 
