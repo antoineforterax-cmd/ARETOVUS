@@ -89,6 +89,10 @@ fn validate_command_options(command: &str, args: &[String]) -> Result<(), Box<dy
             &["--yes", "--dry-run"],
         ),
         "inspect-signed" => (&["--from"], &[]),
+        "verify-signed-intent" => (
+            &["--from", "--sender", "--to", "--amount", "--fee", "--nonce"],
+            &[],
+        ),
         "broadcast" => (&["--from", "--node"], &["--yes"]),
         "verify" => (&["--node", "--txid", "--confirmations"], &[]),
         "status" => (&["--node", "--txid"], &[]),
@@ -419,6 +423,32 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("read_only=true private_key_loaded=false network_requests=none");
             println!("Compare every field on a trusted independent device before broadcasting.");
         }
+        "verify-signed-intent" => {
+            // Compare the signed, canonical transaction against values supplied
+            // independently by the reviewer on a separate trusted machine.
+            // A mismatched field is a hard failure, even for a valid signature.
+            let transaction =
+                aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
+            let sender = parse_account_id(option(&args, "--sender")?)?;
+            let recipient = parse_account_id(option(&args, "--to")?)?;
+            let amount = parse_amount(option(&args, "--amount")?)?;
+            let fee = parse_amount(option(&args, "--fee")?)?;
+            let nonce: u64 = option(&args, "--nonce")?.parse()?;
+            aurora_wallet::safety::verify_signed_payment_intent(
+                &transaction,
+                sender,
+                recipient,
+                amount,
+                fee,
+                nonce,
+            )?;
+            println!(
+                "verified_signed_intent=true txid={}",
+                transaction.txid()?
+            );
+            println!("network=AURORA-TESTNET");
+            println!("private_key_loaded=false network_requests=none");
+        }
         "broadcast" => {
             let transaction =
                 aurora_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
@@ -636,6 +666,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aurora-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
             println!("  aurora-wallet inspect-signed --from SIGNED_FILE");
+            println!("  aurora-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
+            println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
             println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
             println!("  aurora-wallet broadcast --from SIGNED_FILE --node IP:PORT [--yes]");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
