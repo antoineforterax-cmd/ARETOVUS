@@ -28,6 +28,16 @@ Terminal 2, **dossier différent** réservé au mineur, avec adresse de mineur j
 .\target\debug\aurora-node.exe testnet serve --data-dir .\pc-b-data --listen 0.0.0.0:18444 --peer 192.168.1.10:18444
 ```
 
+### Comparer automatiquement les deux journaux terminés
+
+Après **arrêt du minage**, attendre la convergence et exporter les deux fichiers de preuves, sans clés. Placer les deux JSONL sur une machine d'analyse et exécuter :
+
+```powershell
+python scripts/compare_testnet_evidence.py --left .\\evidence-pc-a.jsonl --right .\\evidence-pc-b.jsonl
+```
+
+Ce contrôleur refuse une campagne interrompue, un SHA non enregistré, deux appareils portant le même label, une durée inférieure à 72 h, des erreurs de lecture et une discordance hauteur/hash. Il ne peut pas attester tout seul que deux machines physiques différentes existaient ni que les journaux n'ont pas été falsifiés. Conserver les journaux originaux des serveurs et les caractéristiques des hôtes.
+
 **Remarque importante :** l'option `--peer` n'implique pas une découverte automatique de tout le réseau. Si la commande sur votre version ne peut pas se connecter, consigner le message d'erreur et vérifier la syntaxe depuis `--help`, sans modifier la sécurité de l'OS. Les répertoires de serveur et mineur ne doivent jamais être écrits par deux processus en même temps.
 
 ## Journal d'endurance en lecture seule
