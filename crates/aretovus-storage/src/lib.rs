@@ -346,7 +346,7 @@ fn save_snapshot_inner(
     #[cfg(any(test, debug_assertions))]
     let profile_prune_indexes_done = profile_started.elapsed();
     if let Err(error) = prune_unreferenced_index_pages(dir) {
-        eprintln!("cannot prune old AURORA index pages: {error}");
+        eprintln!("cannot prune old ARETOVUS index pages: {error}");
     }
     #[cfg(any(test, debug_assertions))]
     if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
@@ -444,7 +444,14 @@ fn write_manifest_with_directory_sync(
                 "content-addressed file mismatch",
             ));
         }
-        File::open(path)?.sync_all()?;
+        // Windows requires a handle with write access to FlushFileBuffers.
+        // A read-only File::open fails with ERROR_ACCESS_DENIED even when
+        // this existing immutable manifest is otherwise valid.
+        #[cfg(windows)]
+        let manifest = OpenOptions::new().write(true).open(path)?;
+        #[cfg(not(windows))]
+        let manifest = File::open(path)?;
+        manifest.sync_all()?;
         sync_existing_parent(path.parent().expect("file has a parent"))?;
         return Ok(());
     }
@@ -613,7 +620,7 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
         .iter()
         .any(|path| !index_manifest_and_pages_valid(dir, path, &mut verified_pages))
     {
-        eprintln!("postponing AURORA index pruning: an older manifest or its pages are damaged");
+        eprintln!("postponing ARETOVUS index pruning: an older manifest or its pages are damaged");
         return;
     }
     // The filename starts with a zero-padded height; select the lowest
@@ -629,7 +636,7 @@ fn prune_old_indexes(dir: &Path, current: &Path) {
             continue;
         }
         if let Err(error) = fs::remove_file(&path) {
-            eprintln!("cannot prune old AURORA index {}: {error}", path.display());
+            eprintln!("cannot prune old ARETOVUS index {}: {error}", path.display());
         }
     }
 }
@@ -734,7 +741,7 @@ pub fn load_latest_snapshot(
             Ok(value) => value,
             Err(error) => {
                 eprintln!(
-                    "ignoring invalid AURORA snapshot {}: {error}",
+                    "ignoring invalid ARETOVUS snapshot {}: {error}",
                     path.display()
                 );
                 if rejected_snapshot.is_none() {
@@ -772,7 +779,7 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
     // Immutable manifests, pages and blocks must be real files at their own
     // paths. Following symlinks here would contradict the write-side guard
-    // and could silently accept data outside the AURORA storage tree.
+    // and could silently accept data outside the ARETOVUS storage tree.
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.file_type().is_file() {
         return Err(StorageError::InvalidFormat(

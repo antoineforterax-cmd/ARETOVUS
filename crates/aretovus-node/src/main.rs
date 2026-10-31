@@ -49,6 +49,26 @@ fn testnet_chain() -> Result<AccountForkChain, Box<dyn Error>> {
     )?)
 }
 
+/// Refuse an otherwise valid foreign testnet chain before mining or serving it.
+/// Identity validation is shared by operational commands and read-only verify.
+fn require_expected_testnet_identity(chain: &AccountForkChain) -> Result<(), Box<dyn Error>> {
+    let expected_genesis = testnet_genesis_block().header.hash()?;
+    let stored_genesis = chain
+        .blocks()
+        .next()
+        .ok_or("stored chain has no genesis")?
+        .header
+        .hash()?;
+    if stored_genesis != expected_genesis
+        || chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
+        || chain.difficulty_params() != TESTNET_DIFFICULTY
+        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
+    {
+        return Err("stored chain uses different testnet consensus parameters or genesis".into());
+    }
+    Ok(())
+}
+
 fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn Error>> {
     fs::create_dir_all(dir)?;
     let chain = match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Testnet)) {
@@ -60,12 +80,7 @@ fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn
         }
         Err(error) => return Err(error.into()),
     };
-    if chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
-        || chain.difficulty_params() != TESTNET_DIFFICULTY
-        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
-    {
-        return Err("stored chain uses different testnet consensus parameters".into());
-    }
+    require_expected_testnet_identity(&chain)?;
     for block in chain.all_blocks_by_height() {
         p2p::reject_future_block_timestamp(block.header.timestamp)?;
     }
@@ -104,20 +119,7 @@ fn run_testnet_verify(args: impl Iterator<Item = String>) -> Result<(), Box<dyn 
     }
     let dir = data_dir.ok_or("testnet verify requires --data-dir PATH")?;
     let chain = load_latest_snapshot(&dir, AccountLedger::new(NetworkId::Testnet))?;
-    let expected_genesis = testnet_genesis_block().header.hash()?;
-    let stored_genesis = chain
-        .blocks()
-        .next()
-        .ok_or("stored chain has no genesis")?
-        .header
-        .hash()?;
-    if stored_genesis != expected_genesis
-        || chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
-        || chain.difficulty_params() != TESTNET_DIFFICULTY
-        || chain.reward_params() != RewardParams::experimental_testnet(TESTNET_TREASURY)
-    {
-        return Err("stored chain uses different testnet consensus parameters".into());
-    }
+    require_expected_testnet_identity(&chain)?;
     println!(
         "verified testnet data: height={} tip={} known_blocks={} work={:?}",
         chain.height(),
@@ -418,6 +420,43 @@ mod tests {
         let chain = testnet_chain().unwrap();
         save_snapshot(&dir, &chain).unwrap();
         assert!(run_testnet_verify(args()).is_ok());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn testnet_commands_reject_valid_snapshot_with_wrong_genesis() {
+        let dir = std::env::temp_dir().join(format!(
+            "aretovus-node-alternate-genesis-{}-{}",
+            process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        // Construct a valid proof-of-work genesis with the SAME network,
+        // emission and difficulty parameters, but a different identity.
+        let mut alien_genesis = testnet_genesis_block();
+        alien_genesis.header.timestamp = 2;
+        alien_genesis.header.nonce =
+            mine_nonce(&alien_genesis.header, TESTNET_INITIAL_BITS, 0, u64::MAX).unwrap();
+        assert_ne!(
+            alien_genesis.header.hash().unwrap(),
+            testnet_genesis_block().header.hash().unwrap()
+        );
+        let alien_chain = AccountForkChain::new_with_protocol_params(
+            alien_genesis,
+            TESTNET_INITIAL_BITS,
+            TESTNET_DIFFICULTY,
+            RewardParams::experimental_testnet(TESTNET_TREASURY),
+            AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+        save_snapshot(&dir, &alien_chain).unwrap();
+        let args = || ["--data-dir".to_string(), dir.display().to_string()].into_iter();
+        // Verify already rejects an alien genesis; every operational entry
+        // point using load_testnet_chain must apply the same identity check.
+        assert!(run_testnet_verify(args()).is_err());
+        assert!(
+            load_testnet_chain(&dir).is_err(),
+            "operational loader accepted a snapshot from another genesis"
+        );
         fs::remove_dir_all(dir).unwrap();
     }
 
