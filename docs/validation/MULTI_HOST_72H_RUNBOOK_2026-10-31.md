@@ -67,7 +67,7 @@ Terminal 2, **dossier différent** réservé au mineur, avec adresse de mineur j
 Après **arrêt du minage**, attendre la convergence et exporter les deux fichiers de preuves, sans clés. Cette section décrit le mode **72 h** ; pour 4 h, utiliser la commande du début du guide. Placer les deux JSONL sur une machine d'analyse et exécuter :
 
 ```powershell
-python scripts/compare_testnet_evidence.py --left .\\evidence-pc-a.jsonl --right .\\evidence-pc-b.jsonl
+python scripts/compare_testnet_evidence.py --left .\evidence-pc-a.jsonl --right .\evidence-pc-b.jsonl --minimum-hours 72
 ```
 
 Ce contrôleur refuse une campagne interrompue, un SHA non enregistré, deux appareils portant le même label, une durée inférieure à 72 h, des erreurs de lecture et une discordance hauteur/hash. Il ne peut pas attester tout seul que deux machines physiques différentes existaient ni que les journaux n'ont pas été falsifiés. Conserver les journaux originaux des serveurs et les caractéristiques des hôtes.
@@ -79,7 +79,8 @@ Ce contrôleur refuse une campagne interrompue, un SHA non enregistré, deux app
 Sur **chacune** des deux machines, pendant que son serveur tourne :
 
 ```powershell
-python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 72 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit SHA_EXACT
+$sha = (git rev-parse HEAD).Trim()
+python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 72 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit $sha
 ```
 
 Pour B, remplacer `pc-a-data` / `pc-a` / nom du fichier. Le programme échantillonne `testnet verify` sans modification de données, conserve UTC, hauteur, hash du sommet, espace disque, durée de chaque lecture et empreinte SHA-256 du binaire. Un journal `finish` est écrit uniquement à la fin. Une interruption prématurée ne produit **pas** de succès; `counts_as_72h` n'est vrai que si les 72 heures ont été parcourues, que le binaire est inchangé, qu'aucune lecture n'a échoué et que la hauteur a évolué.
