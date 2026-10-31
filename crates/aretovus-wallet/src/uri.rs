@@ -1,11 +1,11 @@
-//! Strict experimental aurora://testnet payment request encoding.
+//! Strict experimental aretovus://testnet payment request encoding.
 use std::error::Error;
 
 use aretovus_core::{accounts::AccountId, amount::Amount};
 
 use crate::builder::{account_id_hex, parse_account_id, parse_amount};
 
-const PREFIX: &str = "aurora://testnet/";
+const PREFIX: &str = "aretovus://testnet/";
 const MAX_MEMO_BYTES: usize = 128;
 const MAX_URI_BYTES: usize = 1024;
 
@@ -184,7 +184,7 @@ mod tests {
             memo: Some("café & thé".to_owned()),
         };
         let uri = encode_payment_uri(&request).unwrap();
-        assert!(uri.starts_with("aurora://testnet/"));
+        assert!(uri.starts_with("aretovus://testnet/"));
         assert!(uri.contains("amount=12.3405"));
         assert!(uri.contains("caf%C3%A9%20%26%20th%C3%A9"));
         assert_eq!(parse_payment_uri(&uri).unwrap(), request);
@@ -193,23 +193,23 @@ mod tests {
     #[test]
     fn payment_uri_rejects_network_confusion_duplicates_and_bad_escapes() {
         let address = "ab".repeat(32);
-        assert!(parse_payment_uri(&format!("aurora://mainnet/{address}")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://mainnet/{address}")).is_err());
         assert!(
-            parse_payment_uri(&format!("aurora://testnet/{address}?amount=1&amount=2")).is_err()
+            parse_payment_uri(&format!("aretovus://testnet/{address}?amount=1&amount=2")).is_err()
         );
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?memo=%Q0")).is_err());
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?unexpected=1")).is_err());
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}#fragment")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://testnet/{address}?memo=%Q0")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://testnet/{address}?unexpected=1")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://testnet/{address}#fragment")).is_err());
     }
 
     #[test]
     fn payment_uri_rejects_zero_or_overprecision_and_control_memos() {
         let address = "ab".repeat(32);
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?amount=0")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://testnet/{address}?amount=0")).is_err());
         assert!(
-            parse_payment_uri(&format!("aurora://testnet/{address}?amount=1.000000001")).is_err()
+            parse_payment_uri(&format!("aretovus://testnet/{address}?amount=1.000000001")).is_err()
         );
-        assert!(parse_payment_uri(&format!("aurora://testnet/{address}?memo=%0A")).is_err());
+        assert!(parse_payment_uri(&format!("aretovus://testnet/{address}?memo=%0A")).is_err());
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod resource_and_display_tests {
         assert!(uri.len() <= MAX_URI_BYTES);
         assert_eq!(parse_payment_uri(&uri).unwrap(), request);
         assert!(parse_payment_uri(&format!(
-            "aurora://testnet/{}?memo={}",
+            "aretovus://testnet/{}?memo={}",
             "03".repeat(32),
             "%20".repeat(129)
         ))
@@ -261,7 +261,7 @@ mod resource_and_display_tests {
             };
             assert!(encode_payment_uri(&request).is_err());
             let uri = format!(
-                "aurora://testnet/{}?memo={}",
+                "aretovus://testnet/{}?memo={}",
                 "03".repeat(32),
                 percent_encode(request.memo.as_ref().unwrap().as_bytes())
             );

@@ -54,7 +54,7 @@ fn send_rejects_ambiguity_before_trying_to_open_a_key() {
         &[
             "send",
             "--key-file",
-            "absent.aurkey",
+            "absent.aretkey",
             "--amount",
             "1",
             "--amount",
@@ -64,7 +64,7 @@ fn send_rejects_ambiguity_before_trying_to_open_a_key() {
     );
     rejected(&["send", "--yes", "--yes"], "duplicate command option");
     rejected(
-        &["send", "--key-file", "absent.aurkey", "--amount"],
+        &["send", "--key-file", "absent.aretkey", "--amount"],
         "missing option value",
     );
     rejected(&["send", "--key-file", "--to"], "missing option value");
