@@ -15,9 +15,9 @@ use chacha20poly1305::{
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
 use zeroize::{Zeroize, Zeroizing};
 
-const KEY_MAGIC: &[u8; 8] = b"AURKEY3\0";
+const KEY_MAGIC: &[u8; 8] = b"ARETOVK3";
 const KEY_FILE_BYTES: usize = 8 + 32 + 32;
-const ENCRYPTED_MAGIC: &[u8; 8] = b"AURKEY4\0";
+const ENCRYPTED_MAGIC: &[u8; 8] = b"ARETOVK4";
 const ARGON_MEMORY_KIB: u32 = 64 * 1024;
 const ARGON_PASSES: u32 = 3;
 const ARGON_LANES: u32 = 1;
@@ -82,7 +82,7 @@ impl WalletKey {
         key
     }
 
-    /// Whether a key file uses the authenticated encrypted AURKEY4 format.
+    /// Whether a key file uses the authenticated encrypted ARETOVK4 format.
     pub fn file_is_encrypted(path: &Path) -> Result<bool, Box<dyn Error>> {
         let mut file = open_regular_wallet_file(path)?;
         let mut magic = [0u8; 8];
@@ -148,18 +148,18 @@ impl WalletKey {
     ) -> Result<Self, Box<dyn Error>> {
         let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != ENCRYPTED_FILE_BYTES as u64 {
-            return Err("invalid AURKEY4 file length".into());
+            return Err("invalid ARETOVK4 file length".into());
         }
         let mut payload = [0u8; ENCRYPTED_FILE_BYTES];
         file.read_exact(&mut payload)?;
         if &payload[..8] != ENCRYPTED_MAGIC {
-            return Err("invalid AURKEY4 file header".into());
+            return Err("invalid ARETOVK4 file header".into());
         }
         let memory = u32::from_be_bytes(payload[8..12].try_into()?);
         let passes = u32::from_be_bytes(payload[12..16].try_into()?);
         let lanes = u32::from_be_bytes(payload[16..20].try_into()?);
         if (memory, passes, lanes) != (ARGON_MEMORY_KIB, ARGON_PASSES, ARGON_LANES) {
-            return Err("unsupported AURKEY4 derivation parameters".into());
+            return Err("unsupported ARETOVK4 derivation parameters".into());
         }
         let salt: [u8; 16] = payload[20..36].try_into()?;
         let nonce: [u8; 24] = payload[36..60].try_into()?;
@@ -214,7 +214,7 @@ impl WalletKey {
         password: &str,
     ) -> Result<AccountId, Box<dyn Error>> {
         if !Self::file_is_encrypted(source)? {
-            return Err("backup and restore require an encrypted AURKEY4 source".into());
+            return Err("backup and restore require an encrypted ARETOVK4 source".into());
         }
         let key = Self::load_encrypted_testnet_file(source, password)?;
         key.save_encrypted_testnet_file(destination, password)?;
@@ -270,16 +270,16 @@ impl WalletKey {
     pub fn load_plain_testnet_file(path: &Path) -> Result<Self, Box<dyn Error>> {
         let mut file = open_regular_wallet_file(path)?;
         if file.metadata()?.len() != KEY_FILE_BYTES as u64 {
-            return Err("invalid AURKEY3 file length".into());
+            return Err("invalid ARETOVK3 file length".into());
         }
         let mut payload = Zeroizing::new([0u8; KEY_FILE_BYTES]);
         file.read_exact(&mut *payload)?;
         if &payload[..8] != KEY_MAGIC {
-            return Err("invalid AURKEY3 file header".into());
+            return Err("invalid ARETOVK3 file header".into());
         }
         let expected = sha256_plain(&payload[..40]);
         if expected.as_bytes() != &payload[40..72] {
-            return Err("AURKEY3 checksum mismatch".into());
+            return Err("ARETOVK3 checksum mismatch".into());
         }
         let seed = Zeroizing::new(<[u8; 32]>::try_from(&payload[8..40])?);
         Ok(Self::from_seed(*seed))
@@ -493,9 +493,9 @@ mod tests {
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir(&base).unwrap();
-        let original = base.join("original.aurkey");
+        let original = base.join("original.aretkey");
         let secret = base.join("recovery.txt");
-        let replacement = base.join("replacement.aurkey");
+        let replacement = base.join("replacement.aretkey");
         let key = WalletKey::from_seed_bytes([73; 32]);
         let expected = key.account_id();
         key.save_encrypted_testnet_file(&original, "old password forgotten later")
@@ -569,8 +569,8 @@ mod tests {
         ));
         fs::create_dir(&root).unwrap();
         let key = WalletKey::from_seed_bytes([0x68; 32]);
-        let encrypted = root.join("encrypted.aurkey");
-        let plain = root.join("plain.aurkey");
+        let encrypted = root.join("encrypted.aretkey");
+        let plain = root.join("plain.aretkey");
         let recovery = root.join("recovery.txt");
         let password = "test-only long wallet password";
         key.save_encrypted_testnet_file(&encrypted, password)
@@ -578,8 +578,8 @@ mod tests {
         key.save_plain_testnet_file(&plain).unwrap();
         key.save_recovery_file(&recovery).unwrap();
 
-        let encrypted_link = root.join("encrypted-link.aurkey");
-        let plain_link = root.join("plain-link.aurkey");
+        let encrypted_link = root.join("encrypted-link.aretkey");
+        let plain_link = root.join("plain-link.aretkey");
         let recovery_link = root.join("recovery-link.txt");
         symlink(&encrypted, &encrypted_link).unwrap();
         symlink(&plain, &plain_link).unwrap();
@@ -630,8 +630,8 @@ mod tests {
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir(&root).unwrap();
-        let requested = root.join("wallet.aurkey");
-        let moved = root.join("original.aurkey");
+        let requested = root.join("wallet.aretkey");
+        let moved = root.join("original.aretkey");
         fs::write(&requested, b"same-inode symlink race test").unwrap();
         // Simulate the precise point where a hostile local actor replaces
         // the checked path before the open syscall. The target inode is the
