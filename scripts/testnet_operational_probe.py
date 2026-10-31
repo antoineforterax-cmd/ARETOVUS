@@ -35,6 +35,62 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def windows_memory_stats(phase: str) -> dict[str, int]:
+    """Best-effort physical RAM snapshot; no admin rights or extra dependencies.
+
+    Samples are instantaneous and cannot establish peak usage between checks.
+    They do not expose process names, accounts, paths, or IP addresses.
+    """
+    if sys.platform != "win32":
+        return {}
+    try:
+        import ctypes
+
+        class MemoryStatus(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        data = MemoryStatus()
+        data.dwLength = ctypes.sizeof(data)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(data)):
+            return {}
+        return {
+            f"windows_memory_load_percent_{phase}": int(data.dwMemoryLoad),
+            f"windows_available_ram_bytes_{phase}": int(data.ullAvailPhys),
+        }
+    except (OSError, AttributeError):
+        return {}
+
+
+def run_verify_once(binary: Path, data_dir: Path, timeout: float) -> dict[str, object]:
+    """Preserve duration and configured timeout on success AND failure."""
+    started = time.monotonic()
+    fields: dict[str, object] = {"command_timeout_seconds": timeout}
+    try:
+        result = subprocess.run(
+            [str(binary), "testnet", "verify", "--data-dir", str(data_dir)],
+            capture_output=True, text=True, timeout=timeout, check=False,
+        )
+        if result.returncode != 0:
+            raise ValueError(f"verify returned {result.returncode}")
+        height, tip = parse_tip(result.stdout)
+        fields.update(status="ok", height=height, tip=tip)
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        fields.update(status="error", error=type(exc).__name__)
+    finally:
+        fields["verify_seconds"] = round(time.monotonic() - started, 3)
+    return fields
+
+
 def classify_completion(
     requested_seconds: float,
     elapsed_seconds: float,
@@ -80,7 +136,37 @@ def self_test() -> None:
     assert classify_completion(4 * 3600, 4 * 3600, 0, True, 1) == (
         False, False, False
     )
-    print("operational probe parsing and honest 4h/72h classification tests passed")
+    from unittest.mock import patch
+
+    valid = "verified testnet data: height=42 tip=" + "ab" * 32
+    with patch("subprocess.run", return_value=subprocess.CompletedProcess(
+        args=[], returncode=0, stdout=valid)):
+        result = run_verify_once(Path("node"), Path("data"), 300)
+        assert result["status"] == "ok"
+        assert result["height"] == 42
+        assert result["command_timeout_seconds"] == 300
+        assert result["verify_seconds"] >= 0
+
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("verify", 3)):
+        result = run_verify_once(Path("node"), Path("data"), 3)
+        assert result["status"] == "error"
+        assert result["error"] == "TimeoutExpired"
+        assert result["command_timeout_seconds"] == 3
+        assert result["verify_seconds"] >= 0
+
+    with patch("subprocess.run", return_value=subprocess.CompletedProcess(
+        args=[], returncode=1, stdout="", stderr="invalid storage")):
+        result = run_verify_once(Path("node"), Path("data"), 300)
+        assert result["status"] == "error"
+        assert result["error"] == "ValueError"
+        assert "invalid storage" not in str(result)  # no private diagnostic text leaked
+    if sys.platform == "win32":
+        stats = windows_memory_stats("before")
+        assert not stats or (0 <= stats["windows_memory_load_percent_before"] <= 100
+                             and stats["windows_available_ram_bytes_before"] >= 0)
+    else:
+        assert windows_memory_stats("before") == {}
+    print("operational probe parsing, honest 4h/72h gates, timeout timing, RAM snapshot tests passed")
 
 
 def main() -> int:
@@ -142,21 +228,16 @@ def main() -> int:
                 "elapsed_seconds": round(started_sample - started, 3),
                 "free_disk_bytes": shutil.disk_usage(data_dir).free,
             }
-            try:
-                result = subprocess.run(
-                    [str(executable), "testnet", "verify", "--data-dir", str(data_dir)],
-                    capture_output=True, text=True, timeout=args.command_timeout, check=False
-                )
-                if result.returncode != 0:
-                    raise ValueError(f"verify returned {result.returncode}")
-                height, tip = parse_tip(result.stdout)
+            sample.update(windows_memory_stats("before"))
+            sample.update(run_verify_once(executable, data_dir, args.command_timeout))
+            sample.update(windows_memory_stats("after"))
+            if sample["status"] == "ok":
+                height = int(sample["height"])
+                tip = str(sample["tip"])
                 heights.add(height)
                 last_tip = (height, tip)
-                sample.update(status="ok", height=height, tip=tip,
-                              verify_seconds=round(time.monotonic() - started_sample, 3))
-            except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            else:
                 failures += 1
-                sample.update(status="error", error=type(exc).__name__)
             samples += 1
             record(evidence, "sample", **sample)
             remaining = deadline - time.monotonic()
