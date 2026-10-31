@@ -1,0 +1,75 @@
+name: storage-v6-page-cache-ab
+
+on:
+  push:
+    branches: [perf/storage-incremental-v6-pages-20261031]
+    paths:
+      - "crates/aurora-node/**"
+      - "crates/aurora-storage/**"
+      - ".github/workflows/storage-v6-page-cache-ab.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  p2p-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Comparer 8192 blocs TCP sur le même runner ABBA
+        env:
+          BASE_SHA: "e147629f7deb430ac193052de1a4864f8fa6ac40"
+          AURORA_P2P_VOLUME_BLOCKS: "8192"
+          AURORA_P2P_PROFILE: "1"
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_SHA"
+          mkdir -p p2p-page-cache-ab
+          for ref in "$BASE_SHA" "$candidate"; do
+            git -c advice.detachedHead=false checkout --detach "$ref"
+            cargo test --locked -p aurora-node --lib --no-run
+          done
+          for slot in base-1 candidate-1 candidate-2 base-2; do
+            case "$slot" in
+              base-*) ref="$BASE_SHA" ;;
+              candidate-*) ref="$candidate" ;;
+            esac
+            git -c advice.detachedHead=false checkout --detach "$ref"
+            test "$(git rev-parse HEAD)" = "$ref"
+            echo "=== $slot commit=$ref blocks=$AURORA_P2P_VOLUME_BLOCKS ==="
+            /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee "p2p-page-cache-ab/$slot.log"
+            grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "p2p-page-cache-ab/$slot.log"
+            grep -q 'p2p sync phases:' "p2p-page-cache-ab/$slot.log"
+            grep -Eq 'network volume probe: network=regtest blocks=8194 height=8192([[:space:]]|$)' "p2p-page-cache-ab/$slot.log"
+          done
+          python3 - <<'PY' | tee p2p-page-cache-ab/summary.txt
+          from pathlib import Path
+          import re
+          import statistics
+
+          metrics = {}
+          for slot in ("base-1", "candidate-1", "candidate-2", "base-2"):
+              log = (Path("p2p-page-cache-ab") / (slot + ".log")).read_text()
+              probe = re.search(r"network volume probe: [^\n]*tcp_sync_and_page_persist_seconds=([0-9.]+) restore_seconds=([0-9.]+)", log)
+              save = re.search(r"p2p sync phases: [^\n]*save_seconds=([0-9.]+)", log)
+              assert probe and save, slot
+              metrics[slot] = (float(probe.group(1)), float(save.group(1)))
+              print(f"{slot}: tcp_persist_seconds={metrics[slot][0]:.3f} save_seconds={metrics[slot][1]:.3f}")
+          for i, name in ((0, "tcp_persist"), (1, "save")):
+              baseline = statistics.mean(metrics[z][i] for z in ("base-1", "base-2"))
+              candidate = statistics.mean(metrics[z][i] for z in ("candidate-1", "candidate-2"))
+              print(f"{name}: baseline_mean={baseline:.3f}s candidate_mean={candidate:.3f}s ratio={candidate/baseline:.3f}")
+          print("Loopback Regtest only, no physical two-PC result; results are noisy.")
+          PY
+          cat p2p-page-cache-ab/summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-page-cache-ab-logs
+          path: p2p-page-cache-ab/
+          retention-days: 14
