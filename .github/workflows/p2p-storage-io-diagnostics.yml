@@ -1,0 +1,88 @@
+name: p2p-storage-io-diagnostics
+
+on:
+  push:
+    branches: [perf/storage-p2p-io-accounting-20261031]
+    paths:
+      - "crates/aurora-storage/**"
+      - "crates/aurora-node/**"
+      - ".github/workflows/p2p-storage-io-diagnostics.yml"
+  pull_request:
+    paths:
+      - "crates/aurora-storage/**"
+      - "crates/aurora-node/**"
+      - ".github/workflows/p2p-storage-io-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  io-diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Precompiler les tests P2P
+        run: cargo test --locked -p aurora-node --lib --no-run
+      - name: Mesurer TCP et operations de persistance a 8192 et 32768 blocs
+        env:
+          AURORA_P2P_PROFILE: "1"
+          AURORA_STORAGE_PROFILE: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p p2p-storage-io
+          for blocks in 8192 32768; do
+            export AURORA_P2P_VOLUME_BLOCKS="$blocks"
+            log="p2p-storage-io/${blocks}.log"
+            echo "Running TCP with $blocks blocks after genesis on SHA $GITHUB_SHA"
+            /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture > "$log" 2>&1
+            grep -Eq 'test result: ok\\. 1 passed; 0 failed; 0 ignored;' "$log"
+            grep -Eq "network volume probe: network=regtest blocks=$((blocks + 2)) height=${blocks}([[:space:]]|$)" "$log"
+            grep -q 'p2p sync phases:' "$log"
+            grep -q 'storage phases:' "$log"
+            grep -q 'existing_block_metadata_checks=' "$log"
+            grep -q 'cache_page_hits=' "$log"
+            grep -q 'prune_page_seconds=' "$log"
+          done
+          python3 - <<'PY' | tee p2p-storage-io/summary.txt
+          import re
+          from pathlib import Path
+          for blocks in (8192, 32768):
+              data = (Path("p2p-storage-io") / f"{blocks}.log").read_text(errors="replace")
+              lines = [line for line in data.splitlines() if "storage phases:" in line]
+              assert len(lines) > 2, (blocks, len(lines))
+              def total(key):
+                  matches = [re.search(rf"{key}=([0-9.]+)", line) for line in lines]
+                  assert all(matches), (blocks, key)
+                  return sum(float(m.group(1)) for m in matches)
+              stats = {key: total(key) for key in (
+                  "existing_block_metadata_checks",
+                  "new_block_objects",
+                  "cache_page_hits",
+                  "uncached_page_checks",
+                  "block_objects_seconds",
+                  "index_pages_seconds",
+                  "prune_manifest_seconds",
+                  "prune_page_seconds",
+              )}
+              assert stats["existing_block_metadata_checks"] > blocks
+              assert stats["cache_page_hits"] > 0
+              sync = re.findall(r"p2p sync phases: [^\\n]+", data)
+              assert sync
+              print(f"{blocks} TCP blocks, snapshots={len(lines)}")
+              for key, value in stats.items():
+                  print(f"  {key}={value:.3f}")
+              print(sync[-1])
+              print("Command RSS (Cargo + subprocesses, not isolated node RSS):")
+              print(re.search(r"Maximum resident set size \\(kbytes\\):\\s*[0-9]+", data).group(0))
+          print("Loopback Regtest only; profiling instrumentation is a debug/test dependency, not an audit.")
+          PY
+          cat p2p-storage-io/summary.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2p-storage-io-diagnostics
+          path: p2p-storage-io/
+          retention-days: 14
