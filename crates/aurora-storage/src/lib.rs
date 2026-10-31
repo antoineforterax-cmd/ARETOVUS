@@ -1246,6 +1246,40 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn internal_storage_directory_links_cannot_be_used_for_restore_or_save() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        let original = chain();
+        let expected = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        // The leaf objects remain valid regular files. A symlink in a named
+        // storage directory must still not relocate reads or future writes.
+        for dirname in [BLOCK_DIRECTORY, INDEX_PAGE_DIRECTORY] {
+            let path = root.join(dirname);
+            let moved = root.join(format!("relocated-{dirname}"));
+            fs::rename(&path, &moved).unwrap();
+            symlink(&moved, &path).unwrap();
+            assert!(
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).is_err(),
+                "storage loader followed symlinked directory {dirname}"
+            );
+            assert!(
+                save_snapshot(&root, &original).is_err(),
+                "storage writer followed symlinked directory {dirname}"
+            );
+            fs::remove_file(&path).unwrap();
+            fs::rename(&moved, &path).unwrap();
+            let restored =
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert_eq!(restored.tip_hash(), expected);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn corrupt_or_torn_newest_storage_objects_fall_back_without_silent_replay() {
         let root = dir();
