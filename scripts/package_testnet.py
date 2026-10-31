@@ -32,11 +32,12 @@ def main() -> int:
         (ROOT / "docs" / "TESTNET_OPERATIONS.md", "docs/TESTNET_OPERATIONS.md"),
         (ROOT / "docs" / "PROTOCOL.md", "docs/PROTOCOL.md"),
     ]
+    files.append((ROOT / "AURORA-LAN.cmd", "AURORA-LAN.cmd"))
     for name in ("TWO_PC_TEST.md", "INTEGRATION_TWO_PC.md"):
         files.append((ROOT / "docs" / name, f"docs/{name}"))
     for name in ("LICENSE", "LICENSE-MIT", "LICENSE-APACHE", "PROVENANCE.md", "SECURITY.md"):
         files.append((ROOT / name, name))
-    for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py", "two_pc_preflight.ps1"):
+    for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py", "two_pc_preflight.ps1", "lan_assistant.ps1"):
         files.append((ROOT / "scripts" / name, f"scripts/{name}"))
     files.append((ROOT / "docs" / "ENDURANCE_RUN.md", "docs/ENDURANCE_RUN.md"))
     for source, _ in files:
