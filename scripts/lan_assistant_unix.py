@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import stat
 import socket
 import subprocess
 import sys
@@ -64,6 +65,15 @@ def read_package(root: Path = ROOT) -> tuple[str, str]:
     if "bin/aurora-node" not in seen or "bin/aurora-wallet" not in seen:
         raise ValueError("Binaires AURORA absents du manifeste")
     return match.group(1), hashlib.sha256((root / "bin/aurora-node").read_bytes()).hexdigest()
+
+
+def restore_local_executable_bits(root: Path = ROOT) -> None:
+    """ZIP extractors may strip +x; restore only after checksum verification."""
+    for name in ("aurora-node", "aurora-wallet"):
+        executable = root / "bin" / name
+        mode = executable.stat().st_mode
+        if not (mode & stat.S_IXUSR):
+            executable.chmod(mode | stat.S_IXUSR)
 
 
 def discover_interfaces() -> list[str]:
@@ -481,6 +491,7 @@ def main() -> int:
         print(f"package_verified=yes source_revision={revision} node_sha256={sha}")
         if args.verify_package:
             return 0
+        restore_local_executable_bits()
         controller = Controller(ROOT, revision, sha, sole_lan_ip())
         if not args.terminal:
             try:
