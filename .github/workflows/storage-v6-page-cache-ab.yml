@@ -24,8 +24,8 @@ jobs:
       - name: Comparer 8192 blocs TCP sur le même runner ABBA
         env:
           BASE_SHA: "e147629f7deb430ac193052de1a4864f8fa6ac40"
-          ARETOVUS_P2P_VOLUME_BLOCKS: "8192"
-          ARETOVUS_P2P_PROFILE: "1"
+          AURORA_P2P_VOLUME_BLOCKS: "8192"
+          AURORA_P2P_PROFILE: "1"
         run: |
           set -euo pipefail
           candidate="$GITHUB_SHA"
@@ -41,7 +41,7 @@ jobs:
             esac
             git -c advice.detachedHead=false checkout --detach "$ref"
             test "$(git rev-parse HEAD)" = "$ref"
-            echo "=== $slot commit=$ref blocks=$ARETOVUS_P2P_VOLUME_BLOCKS ==="
+            echo "=== $slot commit=$ref blocks=$AURORA_P2P_VOLUME_BLOCKS ==="
             /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee "p2p-page-cache-ab/$slot.log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "p2p-page-cache-ab/$slot.log"
             grep -q 'p2p sync phases:' "p2p-page-cache-ab/$slot.log"

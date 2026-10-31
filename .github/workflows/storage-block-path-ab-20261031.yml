@@ -23,8 +23,8 @@ jobs:
       - name: Comparer base et correction sur le même runner, en ordre ABBA
         env:
           BASE_SHA: "abbe73913425c4625897a0b6f6d961acc3c9a7a7"
-          ARETOVUS_STORAGE_PROFILE: "1"
-          ARETOVUS_STORAGE_PROFILE_BLOCKS: "32768"
+          AURORA_STORAGE_PROFILE: "1"
+          AURORA_STORAGE_PROFILE_BLOCKS: "32768"
         run: |
           set -euo pipefail
           candidate="$GITHUB_SHA"
@@ -41,7 +41,7 @@ jobs:
             git -c advice.detachedHead=false checkout --detach "$ref"
             test "$(git rev-parse HEAD)" = "$ref"
             log="storage-a-b-logs/$slot.log"
-            echo "=== $slot, commit=$ref, blocks=$ARETOVUS_STORAGE_PROFILE_BLOCKS ==="
+            echo "=== $slot, commit=$ref, blocks=$AURORA_STORAGE_PROFILE_BLOCKS ==="
             /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -Eq 'storage volume probe: height=32768 known_blocks=32769 snapshot_calls=512([[:space:]]|$)' "$log"
