@@ -2162,6 +2162,89 @@ mod tests {
         fs::remove_dir_all(backup).unwrap();
     }
 
+    /// The producer and consumer run on separate GitHub-hosted machines.
+    /// Only the v6 storage files and expected hashes travel in the artifact.
+    #[test]
+    #[ignore = "run only in the cross-runner backup workflow"]
+    fn cross_runner_v6_backup_producer() {
+        let output = PathBuf::from(
+            std::env::var_os("AURORA_CROSS_RUNNER_EXPORT_DIR")
+                .expect("missing dedicated export directory"),
+        );
+        let snapshot = output.join("snapshot");
+        let mut original = chain();
+        let genesis = original.tip_hash();
+        let a = AccountBlock::build(NetworkId::Regtest, genesis, 2, 0, Vec::new()).unwrap();
+        let b = AccountBlock::build(NetworkId::Regtest, genesis, 3, 0, Vec::new()).unwrap();
+        let a_hash = a.header.hash().unwrap();
+        let b_hash = b.header.hash().unwrap();
+        original.submit(a).unwrap();
+        original.submit(b).unwrap();
+        save_snapshot(&snapshot, &original).unwrap();
+        fs::write(
+            output.join("expected.txt"),
+            format!(
+                "{}\n{}\n{}\n{}\n{}\n",
+                original.height(),
+                original.known_block_count(),
+                original.tip_hash(),
+                a_hash,
+                b_hash
+            ),
+        )
+        .unwrap();
+        eprintln!("cross-runner producer: two retained sibling branches and v6 snapshot");
+    }
+
+    #[test]
+    #[ignore = "run only in the cross-runner backup workflow"]
+    fn cross_runner_v6_backup_consumer() {
+        let input = PathBuf::from(
+            std::env::var_os("AURORA_CROSS_RUNNER_IMPORT_DIR")
+                .expect("missing imported backup directory"),
+        );
+        let metadata = fs::read_to_string(input.join("expected.txt")).unwrap();
+        let expected: Vec<&str> = metadata.lines().collect();
+        assert_eq!(expected.len(), 5, "incomplete backup metadata");
+        let snapshot = input.join("snapshot");
+        let mut restored =
+            load_latest_snapshot(&snapshot, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.height().to_string(), expected[0]);
+        assert_eq!(restored.known_block_count().to_string(), expected[1]);
+        assert_eq!(restored.tip_hash().to_string(), expected[2]);
+        let retained: Vec<String> = restored
+            .blocks_with_ids_by_arrival()
+            .map(|(hash, _)| hash.to_string())
+            .collect();
+        assert!(retained.iter().any(|hash| hash == expected[3]));
+        assert!(retained.iter().any(|hash| hash == expected[4]));
+
+        // Prove a previously losing fork remains extendable after transfer.
+        let losing_hash = if expected[2] == expected[3] {
+            expected[4]
+        } else {
+            expected[3]
+        };
+        let parent = restored
+            .blocks_with_ids_by_arrival()
+            .find(|(hash, _)| hash.to_string() == losing_hash)
+            .map(|(_, block)| block.header.hash().unwrap())
+            .expect("missing sibling branch");
+        let successor = AccountBlock::build(NetworkId::Regtest, parent, 4, 0, Vec::new()).unwrap();
+        let expected_reorg_tip = successor.header.hash().unwrap();
+        restored.submit(successor).unwrap();
+        assert_eq!(restored.height(), 2);
+        assert_eq!(restored.tip_hash(), expected_reorg_tip);
+        save_snapshot(&snapshot, &restored).unwrap();
+        let reloaded =
+            load_latest_snapshot(&snapshot, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(reloaded.tip_hash(), expected_reorg_tip);
+        assert_eq!(reloaded.known_block_count(), 4);
+        eprintln!(
+            "cross-runner consumer: snapshot restored, side branch reorg and resave verified"
+        );
+    }
+
     #[test]
     fn legacy_v5_index_can_be_migrated_to_v6() {
         let path = dir();
