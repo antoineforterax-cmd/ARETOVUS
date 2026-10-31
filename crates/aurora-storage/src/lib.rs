@@ -136,13 +136,15 @@ fn save_snapshot_inner(
     fs::create_dir_all(&block_dir)?;
     let page_dir = dir.join(INDEX_PAGE_DIRECTORY);
     fs::create_dir_all(&page_dir)?;
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     let profile_started = std::time::Instant::now();
     let blocks = chain.blocks_with_ids_by_arrival();
     if blocks.len() == 0 {
         return Err(StorageError::InvalidFormat("invalid block count"));
     }
     let mut block_ids = Vec::with_capacity(blocks.len());
+    #[cfg(any(test, debug_assertions))]
+    let mut new_block_objects = 0usize;
     for (block_id, block) in blocks {
         let block_path = block_dir.join(format!("{block_id}.{BLOCK_EXTENSION}"));
         // Do not follow symlinks at content-addressed paths: an immutable
@@ -155,12 +157,16 @@ fn save_snapshot_inner(
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 let encoded = block.to_canonical_bytes()?;
                 write_immutable(&block_path, &encoded, MAX_ACCOUNT_BLOCK_BYTES)?;
+                #[cfg(any(test, debug_assertions))]
+                {
+                    new_block_objects += 1;
+                }
             }
             Err(error) => return Err(error.into()),
         }
         block_ids.push(*block_id);
     }
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     let profile_blocks_done = profile_started.elapsed();
 
     let page_count = block_ids.len().div_ceil(INDEX_PAGE_BLOCKS);
@@ -187,6 +193,10 @@ fn save_snapshot_inner(
             .map_err(|_| StorageError::InvalidFormat("page count exceeds u32"))?
             .to_be_bytes(),
     );
+    #[cfg(any(test, debug_assertions))]
+    let mut cache_page_hits = 0usize;
+    #[cfg(any(test, debug_assertions))]
+    let mut uncached_page_checks = 0usize;
     for (page_number, chunk) in block_ids.chunks(INDEX_PAGE_BLOCKS).enumerate() {
         // An append-only arrival prefix may be reused only if every block ID
         // still matches the earlier complete page. Crucially, the page's disk
@@ -249,6 +259,10 @@ fn save_snapshot_inner(
             None
         };
         if let Some(page_id) = cached_id {
+            #[cfg(any(test, debug_assertions))]
+            {
+                cache_page_hits += 1;
+            }
             #[cfg(test)]
             if let Some(cache) = cache.as_deref_mut() {
                 cache.reused_full_pages += 1;
@@ -276,6 +290,10 @@ fn save_snapshot_inner(
         let page_id = sha256_plain(&page);
         let page_path = page_dir.join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
+        #[cfg(any(test, debug_assertions))]
+        {
+            uncached_page_checks += 1;
+        }
         if chunk.len() == INDEX_PAGE_BLOCKS {
             if let Some(cache) = cache.as_deref_mut() {
                 if page_number < MAX_CACHED_FULL_INDEX_PAGES {
@@ -294,7 +312,7 @@ fn save_snapshot_inner(
             .pages
             .truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
     }
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     let profile_pages_done = profile_started.elapsed();
     // An earlier save may have renamed an immutable object but failed to sync
     // its parent directory. Re-sync both object directories before publishing
@@ -312,24 +330,32 @@ fn save_snapshot_inner(
         INDEX_EXTENSION
     ));
     write_manifest_with_directory_sync(&destination, &body, sync_directory)?;
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     let profile_manifest_done = profile_started.elapsed();
     prune_old_indexes(dir, &destination);
+    #[cfg(any(test, debug_assertions))]
+    let profile_prune_indexes_done = profile_started.elapsed();
     if let Err(error) = prune_unreferenced_index_pages(dir) {
         eprintln!("cannot prune old AURORA index pages: {error}");
     }
-    #[cfg(test)]
+    #[cfg(any(test, debug_assertions))]
     if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
         let total = profile_started.elapsed();
         eprintln!(
-            "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3}",
+            "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3} existing_block_metadata_checks={} new_block_objects={} cache_page_hits={} uncached_page_checks={} prune_manifest_seconds={:.3} prune_page_seconds={:.3}",
             block_ids.len(),
             page_count,
             profile_blocks_done.as_secs_f64(),
             (profile_pages_done - profile_blocks_done).as_secs_f64(),
             (profile_manifest_done - profile_pages_done).as_secs_f64(),
             (total - profile_manifest_done).as_secs_f64(),
-            total.as_secs_f64()
+            total.as_secs_f64(),
+            block_ids.len() - new_block_objects,
+            new_block_objects,
+            cache_page_hits,
+            uncached_page_checks,
+            (profile_prune_indexes_done - profile_manifest_done).as_secs_f64(),
+            (total - profile_prune_indexes_done).as_secs_f64()
         );
     }
     Ok(destination)
