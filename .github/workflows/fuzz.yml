@@ -2,14 +2,36 @@ name: fuzz
 
 on:
   push:
-    branches: [feature/emission-schedule-v0]
+    branches: [main, feature/emission-schedule-v0]
     paths:
       - "fuzz/**"
       - "crates/aurora-core/**"
       - "crates/aurora-consensus/**"
       - "crates/aurora-node/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "rust-toolchain.toml"
+      - ".github/workflows/fuzz.yml"
+  pull_request:
+    paths:
+      - "fuzz/**"
+      - "crates/aurora-core/**"
+      - "crates/aurora-consensus/**"
+      - "crates/aurora-node/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "rust-toolchain.toml"
       - ".github/workflows/fuzz.yml"
   workflow_dispatch:
+    inputs:
+      fuzz_seconds:
+        description: "Time budget per target (300 / 900 / 1800 seconds)"
+        type: choice
+        options: ["300", "900", "1800"]
+        default: "1800"
+        required: true
 
 concurrency:
   group: fuzz-${{ github.ref }}
@@ -21,6 +43,9 @@ permissions:
 jobs:
   decoder-fuzz:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FUZZ_SECONDS: ${{ github.event_name == 'workflow_dispatch' && inputs.fuzz_seconds || '300' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust 1.99.1 and cargo-fuzz
@@ -30,9 +55,9 @@ jobs:
       - name: Install nightly Rust
         run: rustup toolchain install nightly --profile minimal
       - name: Fuzz canonical decoders
-        run: cargo +nightly fuzz run canonical_decode -- -max_total_time=300 -print_final_stats=1
+        run: cargo +nightly fuzz run canonical_decode -- -max_total_time="$FUZZ_SECONDS" -print_final_stats=1
       - name: Fuzz Merkle proofs
-        run: cargo +nightly fuzz run merkle_proofs -- -max_total_time=300 -print_final_stats=1
+        run: cargo +nightly fuzz run merkle_proofs -- -max_total_time="$FUZZ_SECONDS" -print_final_stats=1
 
       - name: Fuzz P2P payload decoders
-        run: cargo +nightly fuzz run network_payloads -- -max_total_time=300 -print_final_stats=1
+        run: cargo +nightly fuzz run network_payloads -- -max_total_time="$FUZZ_SECONDS" -print_final_stats=1
