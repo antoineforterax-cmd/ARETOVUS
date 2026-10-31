@@ -88,7 +88,17 @@ jobs:
               ok = subprocess.run([sys.executable, str(script), '--verify-package'],
                                   capture_output=True, text=True, timeout=30)
               assert ok.returncode == 0, ok.stderr
-              with (pathlib.Path(temp) / 'bin' / 'aurora-node').open('ab') as node:
+              import importlib.util, os
+              spec = importlib.util.spec_from_file_location('lan_helper', script)
+              helper = importlib.util.module_from_spec(spec)
+              spec.loader.exec_module(helper)
+              helper.restore_local_executable_bits(pathlib.Path(temp))
+              node_path = pathlib.Path(temp) / 'bin' / 'aurora-node'
+              assert os.access(node_path, os.X_OK), 'Unix executable permission missing'
+              test = subprocess.run([str(node_path), '--help'], capture_output=True,
+                                    text=True, timeout=10)
+              assert test.returncode == 0, test.stderr
+              with node_path.open('ab') as node:
                   node.write(b'INTENTIONAL-CORRUPTION')
               bad = subprocess.run([sys.executable, str(script), '--verify-package'],
                                    capture_output=True, text=True, timeout=30)
