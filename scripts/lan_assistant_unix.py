@@ -443,7 +443,7 @@ def main() -> int:
         if not args.terminal:
             try:
                 return launch_gui(controller)
-            except (ImportError, OSError, RuntimeError) as exc:
+            except Exception as exc:  # Tkinter missing, no display, or unavailable display server
                 print(f"Interface graphique indisponible ({exc}); mode terminal.", file=sys.stderr)
         return launch_cli(controller)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
