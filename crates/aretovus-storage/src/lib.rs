@@ -1425,6 +1425,41 @@ mod tests {
         fs::remove_dir_all(root).unwrap();
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn read_rejects_regular_file_swapped_between_metadata_and_open() {
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let original = root.join("original.auridx");
+        let replacement = root.join("replacement.auridx");
+        fs::write(&object, b"original payload").unwrap();
+        fs::write(&replacement, b"forged__ payload").unwrap();
+        assert_eq!(
+            fs::metadata(&object).unwrap().len(),
+            fs::metadata(&replacement).unwrap().len()
+        );
+
+        // Windows reparse-point guards do not detect swapping one ordinary
+        // file for another after the preflight. No sleeps or timing races.
+        let result = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            fs::rename(&object, &original).unwrap();
+            fs::rename(&replacement, &object).unwrap();
+        });
+        assert!(
+            result.is_err(),
+            "Windows reader accepted another regular file with the same size"
+        );
+
+        fs::remove_file(&object).unwrap();
+        fs::rename(&original, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"original payload"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn corrupt_or_torn_newest_storage_objects_fall_back_without_silent_replay() {
         let root = dir();
