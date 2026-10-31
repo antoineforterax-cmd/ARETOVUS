@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check two completed AURORA physical-host logs; never attest hardware identity."""
+"""Check two completed ARETOVUS physical-host logs; never attest hardware identity."""
 from __future__ import annotations
 
 import argparse
@@ -83,7 +83,7 @@ def compare(left: Path, right: Path, minimum_hours: int = 4) -> tuple[int, str]:
     if a[0] == b[0]:
         raise ValueError("host labels must differ")
     if a[1] != b[1]:
-        raise ValueError("hosts ran different AURORA commits")
+        raise ValueError("hosts ran different ARETOVUS commits")
     if a[2:4] != b[2:4]:
         raise ValueError("host height or tip differs; stop mining and resync")
     overlap = (min(a[5], b[5]) - max(a[4], b[4])).total_seconds()

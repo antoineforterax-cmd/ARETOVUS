@@ -1,6 +1,6 @@
 #![no_main]
 
-use aurora_core::{
+use aretovus_core::{
     hash::Hash256,
     merkle::{verify_merkle_proof, MerkleProof},
 };

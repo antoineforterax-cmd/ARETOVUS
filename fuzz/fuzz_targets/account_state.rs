@@ -1,5 +1,5 @@
 #![no_main]
-use aurora_core::{
+use aretovus_core::{
     accounts::{AccountId, AccountTransaction, ACCOUNT_TX_VERSION},
     amount::Amount,
     network::NetworkId,
