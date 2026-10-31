@@ -422,6 +422,43 @@ mod tests {
     }
 
     #[test]
+    fn testnet_commands_reject_valid_snapshot_with_wrong_genesis() {
+        let dir = std::env::temp_dir().join(format!(
+            "aurora-node-alternate-genesis-{}-{}",
+            process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        // Construct a valid proof-of-work genesis with the SAME network,
+        // emission and difficulty parameters, but a different identity.
+        let mut alien_genesis = testnet_genesis_block();
+        alien_genesis.header.timestamp = 2;
+        alien_genesis.header.nonce =
+            mine_nonce(&alien_genesis.header, TESTNET_INITIAL_BITS, 0, u64::MAX).unwrap();
+        assert_ne!(
+            alien_genesis.header.hash().unwrap(),
+            testnet_genesis_block().header.hash().unwrap()
+        );
+        let alien_chain = AccountForkChain::new_with_protocol_params(
+            alien_genesis,
+            TESTNET_INITIAL_BITS,
+            TESTNET_DIFFICULTY,
+            RewardParams::experimental_testnet(TESTNET_TREASURY),
+            AccountLedger::new(NetworkId::Testnet),
+        )
+        .unwrap();
+        save_snapshot(&dir, &alien_chain).unwrap();
+        let args = || ["--data-dir".to_string(), dir.display().to_string()].into_iter();
+        // Verify already rejects an alien genesis; every operational entry
+        // point using load_testnet_chain must apply the same identity check.
+        assert!(run_testnet_verify(args()).is_err());
+        assert!(
+            load_testnet_chain(&dir).is_err(),
+            "operational loader accepted a snapshot from another genesis"
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn testnet_miner_identity_parser_is_strict() {
         assert_eq!(
             parse_account(&"ab".repeat(32)).unwrap(),
