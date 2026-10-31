@@ -442,10 +442,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 fee,
                 nonce,
             )?;
-            println!(
-                "verified_signed_intent=true txid={}",
-                transaction.txid()?
-            );
+            println!("verified_signed_intent=true txid={}", transaction.txid()?);
             println!("network=AURORA-TESTNET");
             println!("private_key_loaded=false network_requests=none");
         }
