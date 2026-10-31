@@ -174,6 +174,7 @@ class Controller:
         self.role = ""
         self.peer = ""
         self.log_stream = None
+        self.last_verified = ""
 
     def start(self, role: str, peer: str = "") -> None:
         if self.proc is not None and self.proc.poll() is None:
@@ -210,6 +211,31 @@ class Controller:
                 self.log_stream = None
         return True
 
+    def verify(self, role: str = "") -> str:
+        """Read-only node validation after stopping its writer."""
+        if self.proc is not None and self.proc.poll() is None:
+            raise RuntimeError("Arretez le noeud avant la verification du stockage")
+        role = role or self.role
+        if role not in ("A", "B"):
+            raise ValueError("Choisir d'abord quel noeud verifier : A ou B")
+        source = self.root / "two-pc" / ("assistant-a" if role == "A" else "assistant-b")
+        if not source.is_dir():
+            raise FileNotFoundError("Aucun dossier de noeud encore cree")
+        result = subprocess.run(
+            [str(self.root / "bin/aurora-node"), "testnet", "verify", "--data-dir", str(source)],
+            cwd=self.root, capture_output=True, text=True, timeout=120, check=False,
+        )
+        if result.returncode:
+            raise RuntimeError("Verification echouee. Inspecter les donnees locales avant de poursuivre")
+        match = re.search(
+            r"verified testnet data: height=\d+ tip=[a-f0-9]{64} known_blocks=\d+ work=[^\r\n]+",
+            result.stdout,
+        )
+        if not match:
+            raise RuntimeError("Sortie de verification inattendue ; ne pas conclure au succes")
+        self.last_verified = match.group(0)
+        return self.last_verified
+
     def diagnostic(self) -> Path:
         destination = self.root / "two-pc" / "assistant-report.txt"
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -224,6 +250,7 @@ class Controller:
             "private_addresses=redacted",
             "status=experimental; no real funds",
             "final_validation=run testnet verify on each stopped node and compare height/tip/work",
+            "verified_snapshot=" + (self.last_verified or "not_run"),
         ]
         destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return destination
@@ -250,9 +277,14 @@ def wait_discovery(revision: str, own: str, seconds: int = 12) -> str | None:
 def launch_cli(controller: Controller) -> int:
     print("AURORA - Assistant LAN macOS/Linux, testnet uniquement.")
     print("Paquet verifie localement. Decouverte UDP non authentifiee.")
-    print("[1] PC A (serveur)  [2] PC B (rejoindre A)  [3] Rapport  [0] Quitter")
+    print("[1] PC A (serveur)  [2] PC B (rejoindre A)  [3] Rapport  [4] Verifier noeud A/B arrete  [0] Quitter")
     choice = input("Choix : ").strip()
     if choice == "3":
+        print("Rapport : ", controller.diagnostic())
+        return 0
+    if choice == "4":
+        role = input("Noeud a verifier (A/B, a l'arret) : ").strip().upper()
+        print(controller.verify(role))
         print("Rapport : ", controller.diagnostic())
         return 0
     if choice not in ("1", "2"):
@@ -291,7 +323,7 @@ def launch_gui(controller: Controller) -> int:
     from tkinter import messagebox
     app = tk.Tk()
     app.title("AURORA - Centre local de test (experimental)")
-    app.geometry("680x435")
+    app.geometry("680x485")
     app.resizable(False, False)
     state = tk.StringVar(value=f"Paquet verifie, revision {controller.revision} ; LAN {controller.local}")
     peer = tk.StringVar(value="")
@@ -354,6 +386,17 @@ def launch_gui(controller: Controller) -> int:
         except Exception as err:
             warn(err)
     tk.Button(root_frame, text="Exporter un diagnostic local", command=report).pack(anchor="w", pady=5)
+    def verify_node():
+        try:
+            role = controller.role or ("A" if messagebox.askyesno(
+                "Verification du noeud", "Verifier le dossier de PC A ? (Non = PC B)"
+            ) else "B")
+            result = controller.verify(role)
+            state.set(result)
+            messagebox.showinfo("Verification locale", result)
+        except Exception as err:
+            warn(err)
+    tk.Button(root_frame, text="Verifier le stockage (noeud arrete)", command=verify_node).pack(anchor="w")
     tk.Label(root_frame, text="PREVU (non implemente) : minage continu · sauvegardes guidees · "
              "wallet GUI · performances · rapports inter-PC", wraplength=640,
              fg="#666666", justify="left").pack(anchor="w", pady=9)
@@ -381,7 +424,6 @@ def launch_gui(controller: Controller) -> int:
                     state.set(f"PC A detecte : {candidate}. Confirmer via Connecter PC B.")
         if controller.proc and controller.proc.poll() is not None and controller.role:
             state.set(f"Noeud termine (code {controller.proc.returncode}). Verifier les logs.")
-            controller.role = ""
         app.after(800, tick)
 
     def close():
