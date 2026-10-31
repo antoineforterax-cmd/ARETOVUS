@@ -1360,8 +1360,14 @@ mod tests {
             let valid_target = path.join("saved-index-page");
             fs::rename(&page_path, &valid_target).unwrap();
             symlink(&valid_target, &page_path).unwrap();
-            let before =
-                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            // Both retained manifests reference this complete page; read
+            // validation must reject the symlink rather than trust its bytes.
+            assert!(matches!(
+                load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)),
+                Err(StorageError::InvalidFormat(
+                    "storage object is not a regular file"
+                ))
+            ));
             assert!(matches!(
                 save_snapshot_with_page_cache(&path, &original, &mut cache),
                 Err(StorageError::InvalidFormat(
@@ -1373,8 +1379,8 @@ mod tests {
             fs::rename(&valid_target, &page_path).unwrap();
             let after =
                 load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
-            assert_eq!(before.tip_hash(), after.tip_hash());
-            assert_eq!(before.state(), after.state());
+            assert_eq!(after.tip_hash(), original.tip_hash());
+            assert_eq!(after.state(), original.state());
             save_snapshot_with_page_cache(&path, &original, &mut cache).unwrap();
         }
 
