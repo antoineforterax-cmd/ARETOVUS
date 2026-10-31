@@ -1,8 +1,8 @@
 //! Montants monétaires : entiers uniquement.
 //!
 //! Hypothèses du prototype (non validées, voir `docs/DECISION_REGISTER.md`) :
-//! - unité minimale : 10^-8 AUR, soit 8 décimales (TX-06) ;
-//! - plafond de sécurité du type : 500 000 000 AUR (plafond de garde-fou du prototype,
+//! - unité minimale : 10^-8 ARETOVUS, soit 8 décimales (TX-06) ;
+//! - plafond de sécurité du type : 500 000 000 ARETOVUS (plafond de garde-fou du prototype,
 //!   pas une règle d'émission).
 
 use std::fmt;
@@ -11,9 +11,9 @@ use crate::codec::{CanonicalDecode, CanonicalEncode, DecodeError, Decoder, Encod
 
 /// Nombre de décimales (hypothèse TX-06).
 pub const DECIMALS: usize = 8;
-/// Nombre d'unités minimales dans 1 AUR (10^8).
+/// Nombre d'unités minimales dans 1 ARETOVUS (10^8).
 pub const UNITS_PER_COIN: u64 = 100_000_000;
-/// Plafond de garde-fou en AUR (proposition de travail).
+/// Plafond de garde-fou en ARETOVUS (proposition de travail).
 pub const MAX_COINS: u64 = 500_000_000;
 /// Plafond hypothétique en unités minimales.
 pub const MAX_UNITS: u64 = MAX_COINS * UNITS_PER_COIN;
