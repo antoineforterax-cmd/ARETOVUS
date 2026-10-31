@@ -2,7 +2,7 @@ name: storage-phase-profile
 
 on:
   push:
-    branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci, test/storage-phase-profile-32768-20261031]
+    branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci, test/storage-phase-profile-32768-20261031, perf/storage-dedup-retained-page-verification-20261031]
     paths:
       - "crates/aurora-storage/**"
       - ".github/workflows/storage-phase-profile.yml"
@@ -46,7 +46,7 @@ jobs:
             fi
             block_counts="$REQUESTED_BLOCKS"
           else
-            if [ "$GITHUB_REF" = "refs/heads/test/storage-phase-profile-32768-20261031" ]; then
+            if [ "$GITHUB_REF" = "refs/heads/test/storage-phase-profile-32768-20261031" ] || [ "$GITHUB_REF" = "refs/heads/perf/storage-dedup-retained-page-verification-20261031" ]; then
               block_counts="8192 32768"
             else
               block_counts="2048 8192"
