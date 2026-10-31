@@ -1,6 +1,6 @@
 # Instructions pour Codex — ARETOVUS
 
-Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](https://github.com/antoineforterax-cmd/AURORA/blob/docs/aurora-master-plan-2026-10/docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
+Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](https://github.com/antoineforterax-cmd/ARETOVUS/blob/docs/aurora-master-plan-2026-10/docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
 
 ## Objet
 

@@ -19,7 +19,7 @@ python3 scripts/testnet_smoke.py
 La commande suivante **ne crée pas** de genèse et ne modifie pas le dossier. Elle relit les index/snapshots, vérifie les blocs et paramètres de consensus, puis imprime hauteur, sommet et travail cumulé :
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet verify --data-dir ./aurora-seed
+cargo run --locked -p aretovus-node -- testnet verify --data-dir ./aretovus-seed
 ```
 
 Une erreur ou un sommet inattendu interdit de traiter la copie comme une restauration réussie. Comparer la hauteur **et** le hash du sommet avec l’état relevé avant la copie; la hauteur seule ne distingue pas deux branches.
@@ -33,8 +33,8 @@ Une erreur ou un sommet inattendu interdit de traiter la copie comme une restaur
 Exemple PowerShell, nœud arrêté :
 
 ```powershell
-Copy-Item -LiteralPath .\aurora-seed -Destination .\backup-aurora-seed -Recurse
-cargo run --locked -p aretovus-node -- testnet verify --data-dir .\backup-aurora-seed
+Copy-Item -LiteralPath .\aretovus-seed -Destination .\backup-aretovus-seed -Recurse
+cargo run --locked -p aretovus-node -- testnet verify --data-dir .\backup-aretovus-seed
 ```
 
 ### Contrôle automatisé de copie hors processus

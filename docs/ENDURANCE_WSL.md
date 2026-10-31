@@ -28,7 +28,7 @@ Conserver le commit affiché et vérifier que sa CI est verte avant la campagne.
 Essai court, dans un dossier inexistant :
 
 ```sh
-python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aretovus-node" --wallet "$HOME/AURORA/target/release/aretovus-wallet" --output "$HOME/essai-court" --max-rounds 6 --restart-every 3 --interval-seconds 0
+python3 scripts/testnet_endurance.py --binary "$HOME/ARETOVUS/target/release/aretovus-node" --wallet "$HOME/ARETOVUS/target/release/aretovus-wallet" --output "$HOME/essai-court" --max-rounds 6 --restart-every 3 --interval-seconds 0
 cat "$HOME/essai-court/summary.json"
 ```
 
@@ -37,11 +37,11 @@ Exiger `short_run_passed`, `payments_confirmed: 5`, `final_height: 6` et `backup
 Garder le PC branché et éveillé. Vérifier les redémarrages Windows planifiés; `tmux` ne survit ni à un arrêt de WSL ni à un redémarrage de Windows. Ne pas modifier la politique de sécurité du PC pour cet essai.
 
 ```sh
-tmux new -s aurora-essai
-python3 scripts/testnet_endurance.py --binary "$HOME/AURORA/target/release/aretovus-node" --wallet "$HOME/AURORA/target/release/aretovus-wallet" --output "$HOME/essai-72h" --hours 72
+tmux new -s aretovus-essai
+python3 scripts/testnet_endurance.py --binary "$HOME/ARETOVUS/target/release/aretovus-node" --wallet "$HOME/ARETOVUS/target/release/aretovus-wallet" --output "$HOME/essai-72h" --hours 72
 ```
 
-Détacher avec Ctrl+B puis D; revenir avec `tmux attach -t aurora-essai`. Dans un autre terminal Ubuntu :
+Détacher avec Ctrl+B puis D; revenir avec `tmux attach -t aretovus-essai`. Dans un autre terminal Ubuntu :
 
 ```sh
 tail -n 3 "$HOME/essai-72h/measurements.jsonl"
@@ -55,7 +55,7 @@ Sur le poste du porteur, le chemin Windows est explicitement `PC`, pas nécessai
 
 ```sh
 test -d /mnt/c/Users/PC/Desktop/ARETOVUS
-cp -r "$HOME/essai-72h" /mnt/c/Users/PC/Desktop/AURORA/essai-72h-linux
+cp -r "$HOME/essai-72h" /mnt/c/Users/PC/Desktop/ARETOVUS/essai-72h-linux
 ```
 
 Choisir une nouvelle destination si elle existe déjà. Pour partager le rapport, envoyer les JSON de mesures/résumé, le commit et le résultat court; ne pas inclure les fichiers de clés `.aurkey`. Cet essai reste un réseau de processus sur une seule machine.

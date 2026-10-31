@@ -2,7 +2,7 @@
 
 ARETOVUS est expérimental. Aucun commit n’a reçu d’audit humain externe indépendant et aucune version n’est destinée à des fonds réels.
 
-Utiliser le bouton **Report a vulnerability** dans l’onglet **Security** du dépôt, lorsqu’il est disponible : https://github.com/antoineforterax-cmd/AURORA/security/advisories/new.
+Utiliser le bouton **Report a vulnerability** dans l’onglet **Security** du dépôt, lorsqu’il est disponible : https://github.com/antoineforterax-cmd/ARETOVUS/security/advisories/new.
 
 L’activation du signalement privé doit encore être confirmée par le propriétaire. Si le bouton n’est pas disponible, ne publiez pas de preuve d’exploitation, de secret ou de données privées. Ouvrez seulement une demande générique de canal confidentiel dans le dépôt, sans détail technique sensible, puis attendez un moyen privé convenu avec le mainteneur. Aucune adresse de contact privée n’est inventée dans ce document.
 

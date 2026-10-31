@@ -60,19 +60,19 @@ L’exemple mine quelques blocs de départ, lance un pair semence, puis synchron
 **Terminal 1 — créer une chaîne et miner trois blocs :**
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet mine --data-dir ./aurora-seed --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 3
+cargo run --locked -p aretovus-node -- testnet mine --data-dir ./aretovus-seed --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 3
 ```
 
 **Terminal 2 — servir le pair semence sur l’interface locale :**
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet serve --data-dir ./aurora-seed --listen 127.0.0.1:18444
+cargo run --locked -p aretovus-node -- testnet serve --data-dir ./aretovus-seed --listen 127.0.0.1:18444
 ```
 
 **Terminal 3 — synchroniser un répertoire vide :**
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet sync --data-dir ./aurora-peer-b --peer 127.0.0.1:18444
+cargo run --locked -p aretovus-node -- testnet sync --data-dir ./aretovus-peer-b --peer 127.0.0.1:18444
 ```
 
 La sortie doit indiquer trois blocs acceptés, hauteur 3 et un sommet identique à celui imprimé lors du minage.
@@ -84,7 +84,7 @@ Pour écouter sur une interface LAN, remplace `127.0.0.1` par l’adresse privé
 Un mineur peut créer une série de blocs puis les pousser vers un serveur joignable :
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet mine --data-dir ./aurora-miner --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10 --peer 192.168.1.20:18444
+cargo run --locked -p aretovus-node -- testnet mine --data-dir ./aretovus-miner --miner 4242424242424242424242424242424242424242424242424242424242424242 --count 10 --peer 192.168.1.20:18444
 ```
 
 Pour configurer un nœud supplémentaire, synchronise d’abord son dossier avec `testnet sync`, puis lance `testnet serve` avec ce dossier et ses `--peer` statiques. Le serveur réinterroge ces pairs en arrière-plan après son démarrage. Le serveur et les commandes `mine`/`sync` utilisent un verrou exclusif de dossier et ne peuvent pas fonctionner simultanément sur le même dossier : chaque commande charge son état au démarrage. Arrête `serve` avant de miner ou synchroniser ce dossier, puis redémarre le serveur pour qu’il recharge le snapshot mis à jour.
@@ -143,7 +143,7 @@ Le scénario démarre des processus séparés, crée un wallet, soumet une trans
 Le stockage courant écrit les blocs une seule fois dans `blocks-v5/`, les pages d’index dans `index-pages-v6/` et conserve trois manifestes `snapshot-*.auridx`. Cette version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485261614). Un [essai de 100 003 blocs connus](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129) a aussi réussi avec branche secondaire, sauvegarde et rechargement. Il ne prouve pas la synchronisation réseau de ce volume ni la reprise après panne matérielle. Après avoir arrêté les commandes qui utilisent le dossier, vérifie les données sans les modifier :
 
 ```sh
-cargo run --locked -p aretovus-node -- testnet verify --data-dir ./aurora-seed
+cargo run --locked -p aretovus-node -- testnet verify --data-dir ./aretovus-seed
 ```
 
 Copie ensuite **tout** le dossier vers un autre emplacement et exécute la même commande sur cette copie; compare la hauteur et le hash du sommet. Un manifeste sans `blocks-v5/` et `index-pages-v6/` ne suffit pas. La procédure complète de sauvegarde, restauration, mise à jour et incident est dans [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).

@@ -9,7 +9,7 @@ Le testnet expérimental est désormais intégré à `main`. Les branches histor
 Installer Rust stable, Cargo et Python 3.12 ou plus récent. Sous Windows, compiler avec la cible MSVC demande Visual C++ Build Tools et le Windows SDK; les binaires publiés n’exigent pas cet environnement de compilation.
 
 ```sh
-git clone https://github.com/antoineforterax-cmd/AURORA.git
+git clone https://github.com/antoineforterax-cmd/ARETOVUS.git
 cd ARETOVUS
 git switch main
 cargo fmt --all -- --check
