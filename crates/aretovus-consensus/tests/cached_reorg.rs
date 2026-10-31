@@ -1,6 +1,6 @@
 //! Real branch selection with native ML-DSA-65 transactions and a warm cache.
-use aurora_consensus::{account_block::AccountBlock, account_fork_chain::AccountForkChain};
-use aurora_core::{
+use aretovus_consensus::{account_block::AccountBlock, account_fork_chain::AccountForkChain};
+use aretovus_core::{
     accounts::{
         AccountId, AccountTransaction, ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION,
         POST_QUANTUM_AUTH_BYTES,

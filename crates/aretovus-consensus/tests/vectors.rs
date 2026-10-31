@@ -1,16 +1,16 @@
-//! Vecteurs de test d'aurora-consensus.
+//! Vecteurs de test d'aretovus-consensus.
 //!
 //! Valeurs attendues calculées par `scripts/reference_vectors.py` (implémentation indépendante).
 //! Statut : écrits ; leur exécution doit être faite avec `cargo test` (voir README).
 
-use aurora_consensus::experimental::{compute_tx_commitment, Block};
-use aurora_core::amount::Amount;
-use aurora_core::codec::CanonicalEncode;
-use aurora_core::experimental::{
+use aretovus_consensus::experimental::{compute_tx_commitment, Block};
+use aretovus_core::amount::Amount;
+use aretovus_core::codec::CanonicalEncode;
+use aretovus_core::experimental::{
     OutPoint, Transaction, TxInput, TxOutput, RECIPIENT_LEN, TX_VERSION,
 };
-use aurora_core::hash::Hash256;
-use aurora_core::network::NetworkId;
+use aretovus_core::hash::Hash256;
+use aretovus_core::network::NetworkId;
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()

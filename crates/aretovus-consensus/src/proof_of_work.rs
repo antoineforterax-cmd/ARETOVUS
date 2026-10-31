@@ -8,8 +8,8 @@
 //! méthode simple pour tester le cycle nonce/hash, pas une décision définitive sur le PoW AURORA.
 
 use crate::experimental::BlockHeader;
-use aurora_core::codec::EncodeError;
-use aurora_core::hash::Hash256;
+use aretovus_core::codec::EncodeError;
+use aretovus_core::hash::Hash256;
 
 /// Difficulté maximale supportée par ce helper (un hash de 256 bits ne peut pas garantir 256 bits à zéro).
 pub const MAX_LEADING_ZERO_BITS: u16 = 255;
@@ -93,8 +93,8 @@ pub fn mine_nonce(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aurora_core::hash::Hash256;
-    use aurora_core::network::NetworkId;
+    use aretovus_core::hash::Hash256;
+    use aretovus_core::network::NetworkId;
 
     fn header() -> BlockHeader {
         BlockHeader {

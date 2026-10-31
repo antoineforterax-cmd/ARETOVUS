@@ -1,7 +1,7 @@
 //! Differential checks against the standalone Python integer model.
 use std::collections::{BTreeMap, HashSet};
 
-use aurora_consensus::{
+use aretovus_consensus::{
     account_block::{AccountBlock, AccountBlockValidationError},
     account_fork_chain::{AccountForkChain, AccountForkChainError},
     difficulty::ChainWork,
@@ -11,7 +11,7 @@ use aurora_consensus::{
         testnet_genesis_block, TESTNET_DIFFICULTY, TESTNET_GENESIS_HASH, TESTNET_INITIAL_BITS,
     },
 };
-use aurora_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
+use aretovus_core::{hash::Hash256, network::NetworkId, state::AccountLedger};
 
 #[derive(Clone, Debug)]
 struct Row {

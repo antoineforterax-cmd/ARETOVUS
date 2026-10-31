@@ -1,5 +1,5 @@
 //! Canonical parameters shared by testnet nodes and lightweight clients.
-use aurora_core::{
+use aretovus_core::{
     accounts::AccountId,
     hash::{sha256_plain, Hash256},
     network::NetworkId,
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn wallet_fingerprint_matches_the_canonical_testnet_chain() {
-        use aurora_core::state::AccountLedger;
+        use aretovus_core::state::AccountLedger;
 
         let chain = AccountForkChain::new_with_protocol_params(
             testnet_genesis_block(),
