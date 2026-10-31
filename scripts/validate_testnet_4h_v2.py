@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,6 +20,11 @@ from compare_testnet_evidence import compare, latest_run
 def validate_timeline(node_evidence: Path, resource_evidence: Path,
                       minimum_hours: int) -> tuple[int, float]:
     node_start, _, node_finish = latest_run(node_evidence)
+    run_id = node_start.get("run_id")
+    if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
+        raise ValueError("Node evidence is missing a valid run ID")
+    if node_finish.get("run_id") != run_id:
+        raise ValueError("Node start/finish run IDs differ")
     expected_hash = node_finish.get("resource_log_sha256")
     if not isinstance(expected_hash, str) or len(expected_hash) != 64 or any(
         x not in "0123456789abcdef" for x in expected_hash
@@ -30,6 +36,17 @@ def validate_timeline(node_evidence: Path, resource_evidence: Path,
     begin, samples, finish = latest_run(resource_evidence)
     if begin.get("host_label") != node_start["host_label"]:
         raise ValueError("Resource trace belongs to a different host label")
+    if begin.get("run_id") != run_id or finish.get("run_id") != run_id:
+        raise ValueError("Resource trace belongs to a different run")
+    # Compare clocks within the same host. This is not proof of source authenticity.
+    node_begin_utc = datetime.fromisoformat(node_start["utc"]).timestamp()
+    node_finish_utc = datetime.fromisoformat(node_finish["utc"]).timestamp()
+    for observed_utc, expected_utc in ((begin.get("unix_utc"), node_begin_utc),
+                                       (finish.get("unix_utc"), node_finish_utc)):
+        if not isinstance(observed_utc, (int, float)) or not math.isfinite(observed_utc):
+            raise ValueError("Resource trace lacks valid UTC timestamps")
+        if abs(observed_utc - expected_utc) > 120:
+            raise ValueError("Resource trace timestamps outside node run window")
     interval = begin.get("interval_seconds")
     if not isinstance(interval, (int, float)) or not 1 <= interval <= 300:
         raise ValueError("Invalid resource sample interval")
@@ -43,6 +60,8 @@ def validate_timeline(node_evidence: Path, resource_evidence: Path,
             raise ValueError("Resource sample failed")
         if sample.get("host_label") != node_start["host_label"]:
             raise ValueError("Resource sample host mismatch")
+        if sample.get("run_id") != run_id:
+            raise ValueError("Resource sample run ID mismatch")
         sec = sample.get("elapsed_seconds")
         if not isinstance(sec, (int, float)) or not math.isfinite(sec) or sec < 0:
             raise ValueError("Malformed resource sample time")
@@ -90,6 +109,7 @@ def self_test() -> None:
         tip = "d" * 64
         commit = "b" * 40
         for label in ("pc-a", "pc-b"):
+            run_id = ("a" if label == "pc-a" else "e") * 32
             telemetry = root / f"{label}.resources.jsonl"
             events = [{"event": "start", "host_label": label, "interval_seconds": 100,
                        "version": 1, "platform": "win32"}]
@@ -102,6 +122,10 @@ def self_test() -> None:
                 })
             events.append({"event": "finish", "host_label": label,
                            "elapsed_seconds": 14401, "errors": 0, "samples": 145})
+            events[0]["unix_utc"] = begin.timestamp()
+            events[-1]["unix_utc"] = (begin + timedelta(seconds=14401)).timestamp()
+            for event in events:
+                event["run_id"] = run_id
             record(telemetry, events)
             digest = hashlib.sha256(telemetry.read_bytes()).hexdigest()
             raw = root / f"{label}.jsonl"
@@ -123,10 +147,41 @@ def self_test() -> None:
                  "counts_as_4h": True, "counts_as_72h": False,
                  "resource_log_sha256": digest},
             ]
+            for event in items:
+                event["run_id"] = run_id
             record(raw, items)
         assert compare(root / "pc-a.jsonl", root / "pc-b.jsonl", 4)[0] == 2002
         assert validate_timeline(root / "pc-a.jsonl", root / "pc-a.resources.jsonl", 4)[0] == 145
         assert validate_timeline(root / "pc-b.jsonl", root / "pc-b.resources.jsonl", 4)[0] == 145
+
+        # Changing only the resource run ID and rehashing must still fail.
+        telemetry_b = root / "pc-b.resources.jsonl"
+        node_b = root / "pc-b.jsonl"
+        initial_resources = telemetry_b.read_text(encoding="utf-8")
+        initial_node = node_b.read_text(encoding="utf-8")
+
+        def reject_modified_resource(mutator) -> None:
+            events = [json.loads(line) for line in initial_resources.splitlines()]
+            mutator(events)
+            record(telemetry_b, events)
+            node_events = [json.loads(line) for line in initial_node.splitlines()]
+            node_events[-1]["resource_log_sha256"] = hashlib.sha256(
+                telemetry_b.read_bytes()).hexdigest()
+            record(node_b, node_events)
+            try:
+                validate_timeline(node_b, telemetry_b, 4)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Malformed resource trace was accepted")
+
+        reject_modified_resource(lambda events: events[0].update(run_id="f" * 32))
+        reject_modified_resource(lambda events: events[1].update(run_id="f" * 32))
+        reject_modified_resource(lambda events: events[0].update(
+            unix_utc=begin.timestamp() - 3600))
+        reject_modified_resource(lambda events: events.__delitem__(40))
+        node_b.write_text(initial_node, encoding="utf-8")
+        telemetry_b.write_text(initial_resources, encoding="utf-8")
 
         with (root / "pc-b.resources.jsonl").open("a", encoding="utf-8") as out:
             out.write("tampered\n")
