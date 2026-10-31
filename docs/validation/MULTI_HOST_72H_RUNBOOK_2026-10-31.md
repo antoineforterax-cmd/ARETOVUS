@@ -1,0 +1,63 @@
+# AURORA — validation sur deux machines et endurance de 72 h (plan opératoire)
+
+**Statut : prêt à exécuter, PAS exécuté.** Ceci n'est ni un audit ni une certification de sécurité. N'utiliser que des clés, comptes et fonds **Regtest/Testnet jetables**, aucun fonds réel. Ne jamais exposer le port P2P sur Internet pour ce test.
+
+## Préparation — deux PC vraiment distincts
+
+1. Réserver deux PC physiques (A et B), sous Windows ou Linux, sur un **réseau privé/VPN contrôlé**. Noter les IP privées A et B, versions de système, CPU, RAM, disque, fuseau, décalage d'horloge et SHA du commit AURORA testé. Tester la connectivité IP; vérifier les pare-feux. Un serveur et deux dossiers dans une seule VM **ne comptent pas**.
+2. Installer exactement le même commit testé, vérifier `SHA256SUMS` et les versions, et démarrer avec des **répertoires de données indépendants et vides**. Le profil Testnet ML-DSA-65 v3 n'est pas interchangeable avec les anciens réseaux. Aucun déplacement de clés sensibles.
+3. Depuis la racine du dépôt, lancer `cargo build --locked -p aurora-node`, puis utiliser le binaire produit. Pour deux machines sur LAN de confiance, remplacer les adresses privées ci-dessous par vos IP. Si le pare-feu exige une règle, la limiter à l'autre hôte et à la durée de l'essai.
+
+### Sur PC A
+
+Terminal 1, dossier `pc-a-data` réservé au serveur :
+
+```powershell
+.\target\debug\aurora-node.exe testnet serve --data-dir .\pc-a-data --listen 0.0.0.0:18444 --peer 192.168.1.11:18444
+```
+
+Terminal 2, **dossier différent** réservé au mineur, avec adresse de mineur jetable au format hexadécimal :
+
+```powershell
+.\target\debug\aurora-node.exe testnet mine --data-dir .\pc-a-miner --miner 4141414141414141414141414141414141414141414141414141414141414141 --count 1 --peer 192.168.1.10:18444
+```
+
+### Sur PC B
+
+```powershell
+.\target\debug\aurora-node.exe testnet serve --data-dir .\pc-b-data --listen 0.0.0.0:18444 --peer 192.168.1.10:18444
+```
+
+**Remarque importante :** l'option `--peer` n'implique pas une découverte automatique de tout le réseau. Si la commande sur votre version ne peut pas se connecter, consigner le message d'erreur et vérifier la syntaxe depuis `--help`, sans modifier la sécurité de l'OS. Les répertoires de serveur et mineur ne doivent jamais être écrits par deux processus en même temps.
+
+## Journal d'endurance en lecture seule
+
+Sur **chacune** des deux machines, pendant que son serveur tourne :
+
+```powershell
+python scripts/testnet_operational_probe.py --binary .\target\debug\aurora-node.exe --data-dir .\pc-a-data --host-label pc-a --hours 72 --interval-seconds 300 --output .\evidence-pc-a.jsonl --commit SHA_EXACT
+```
+
+Pour B, remplacer `pc-a-data` / `pc-a` / nom du fichier. Le programme échantillonne `testnet verify` sans modification de données, conserve UTC, hauteur, hash du sommet, espace disque, durée de chaque lecture et empreinte SHA-256 du binaire. Un journal `finish` est écrit uniquement à la fin. Une interruption prématurée ne produit **pas** de succès; `counts_as_72h` n'est vrai que si les 72 heures ont été parcourues, que le binaire est inchangé, qu'aucune lecture n'a échoué et que la hauteur a évolué.
+
+Il faut **produire des blocs de test pendant la durée** ; sinon le test de vitalité échoue logiquement. Contrôler manuellement les journaux et la charge CPU/RAM, conserver les sorties des serveurs, l'espace disque, les transactions de test et toute sortie anormale. Le logger vérifie un nœud local; **il ne mesure pas à lui seul les échanges réseau ni les transactions**.
+
+## Scénarios à réaliser et consigner
+
+- Les deux PC atteignent la même **hauteur ET le même hash de sommet** après rattrapage ; vérifier avec `testnet verify --data-dir` sur chaque PC, puis comparer les deux sorties archivées.
+- Déconnecter **seulement le réseau privé de B**, observer que A reste disponible, reconnecter B et exiger une convergence. Noter durée, hauteur, hashes avant/après et l'heure UTC.
+- Redémarrer B sans toucher aux fichiers. Recharger les index v6 et comparer son sommet avant/après. Ne jamais effacer ni forcer `.aurora.lock`.
+- Développer des branches concurrentes avec **des répertoires de minage distincts** et documenter le travail cumulé, la réorganisation, les transactions rejetées et l'état du mempool après reconnexion.
+- Sur une **copie hors ligne**, interrompre une sauvegarde, simuler une panne de disque ou tronquer un fichier de test. Ne pas corrompre les dossiers de production de l'essai. Conserver l'ancien point de reprise et revérifier hauteur/hash après restauration.
+- Tester une transaction **ML-DSA-65 de valeur nulle économiquement** entre deux wallets de test chiffrés ; comparer présence au mempool, confirmation et preuve SPV. Ne publier ni clés ni mots de passe.
+- Hors période de test, effectuer une copie complète arrêtée vers un second PC : `snapshot-*.auridx`, `blocks-v5/` et `index-pages-v6/`. Exécuter `testnet verify` sur la copie.
+
+## Critères de décision
+
+Aucun « essai 72 h réussi » sans **72 heures réelles sur un SHA épinglé**, un journal final pour **chaque** hôte, traces de disponibilité, activité de blocs/transactions, absence de divergence persistante, tests de coupure/rattrapage, vérification finale des copies et tableau d'incidents. Le contrôle Linux GitHub de quelques minutes/heure ne remplace pas cet essai.
+
+La collecte actuelle ne chiffre pas les logs : les conserver dans un dossier privé d'opérateur, vérifier qu'ils ne contiennent pas de données personnelles avant un partage dans GitHub. **Aucun appareil distant n'est accessible depuis le connecteur GitHub** ; l'exécution physique exige les opérateurs des PC.
+
+## Périmètre après validation
+
+Le noyau (consensus, réseau, stockage, wallet CLI) est stabilisé **avant** le prochain palier. Un explorateur **en lecture seule** peut être développé sur un testnet stabilisé, avant le mainnet, à condition de ne jamais autoriser via son API des écritures critiques ou de bloquer le moteur de consensus. GUI et mobile seulement après cette séparation d'architecture; confidentialité native et récupération des fonds nécessitent leurs propres propositions, compatibilités et audits.
