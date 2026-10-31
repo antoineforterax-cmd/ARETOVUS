@@ -195,13 +195,13 @@ fn save_snapshot_inner(
         let cached_id = if chunk.len() == INDEX_PAGE_BLOCKS {
             if let Some(cache) = cache.as_deref_mut() {
                 if let Some(saved) = cache.pages.get(page_number) {
-                    if saved.page_bytes[24..24 + INDEX_PAGE_BLOCKS * 32]
-                        .as_chunks::<32>()
-                        .0
+                    let cached_body = &saved.page_bytes[24..24 + INDEX_PAGE_BLOCKS * 32];
+                    let cached_ids = cached_body.as_chunks::<32>().0;
+                    let same_prefix = cached_ids
                         .iter()
                         .zip(chunk.iter())
-                        .all(|(bytes, id)| bytes == id.as_bytes())
-                    {
+                        .all(|(bytes, id)| bytes == id.as_bytes());
+                    if same_prefix {
                         let page_path =
                             page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
                         match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
