@@ -23,6 +23,8 @@ Nous développons un **testnet de blockchain indépendant en Rust**, avec preuve
 | Première découverte | [Guide débutant en français](../guide-fr/README.md) |
 | Pourquoi AURORA et quelles ambitions | [Cahier des charges](CAHIER_DES_CHARGES.md) |
 | Quel travail ensuite | [Feuille de route technique](ROADMAP.md) et [issue produit #123](https://github.com/antoineforterax-cmd/AURORA/issues/123) |
+| Quelles sont toutes les options à décider ? | [Questionnaire structuré A/B/C (68 choix)](DECISION_OPTIONS.md) |
+| Où trouver les 67 documents existants ? | [Catalogue de documentation](../README.md) |
 | Qu'est-ce qui est choisi / encore ouvert ? | [Décisions actuelles et arbitrages](DECISIONS.md) |
 | Comment le code est organisé | [Architecture du dépôt](../../ARCHITECTURE.md) et [architecture cible de recherche](ARCHITECTURE_CIBLE.md) |
 | Quelles sont les **règles exécutées** | [Protocole](../PROTOCOL.md), [consensus](../CONSENSUS.md), [paramètres économiques](../TESTNET_DECISIONS.md) |
