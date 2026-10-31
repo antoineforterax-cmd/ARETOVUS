@@ -1,5 +1,10 @@
 # ARETOVUS — blockchain expérimentale
 
+<p align="center">
+  <img src="assets/aretovus-logo.svg" alt="Emblème officiel ARETOVUS : temple stylisé et lettre A" width="320">
+</p>
+
+
 > **Renommage de marque (2026-10-31).** Ancien nom : AURORA. Les identifiants consensus, le protocole `aurora://`, les noms historiques de fichiers et les releases déjà publiées conservent leurs valeurs pour assurer la compatibilité. Voir [politique de migration](docs/BRANDING_COMPATIBILITY.md).
 
 > Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
