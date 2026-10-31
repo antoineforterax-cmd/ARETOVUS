@@ -33,6 +33,14 @@ def main() -> None:
         source = read(path)
         assert "github.com/antoineforterax-cmd/AURORA" not in source, path
     assert read("README.md").startswith("# ARETOVUS")
+    assert 'src="assets/aretovus-logo.svg"' in read("README.md")
+    assert 'src="../../assets/aretovus-logo.svg"' in read("docs/guide-fr/README.md")
+    logo = read("assets/aretovus-logo.svg")
+    assert logo.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert 'viewBox="0 0 1371 1536"' in logo
+    assert 'ARETOVUS' in logo
+    assert 'fill="#08090b"' in logo and 'fill="#f4f0e7"' in logo
+    assert "<script" not in logo.lower() and "http://" not in logo.replace("http://www.w3.org/2000/svg", "")
     assert "git clone https://github.com/antoineforterax-cmd/ARETOVUS.git" in read("CONTRIBUTING.md")
     assert "aretovus-node" in read("scripts/package_testnet.py")
     assert "aretovus-wallet" in read("scripts/package_testnet.py")
