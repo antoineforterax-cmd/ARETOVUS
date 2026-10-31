@@ -11,6 +11,10 @@ on:
       - ".github/workflows/fuzz.yml"
   pull_request:
     paths:
+      - "fuzz/**"
+      - "crates/aurora-core/**"
+      - "crates/aurora-consensus/**"
+      - "crates/aurora-node/**"
       - ".github/workflows/fuzz.yml"
   workflow_dispatch:
     inputs:
