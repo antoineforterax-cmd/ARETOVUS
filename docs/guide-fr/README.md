@@ -1,27 +1,41 @@
-# AURORA, de A à Z
+# AURORA, de A à Z — guide pour débutants
 
-Ce guide explique le projet et permet de faire un premier essai sans compiler le code. Sa version de référence est **`testnet-v0.0.1-experimental.1`**, issue du commit **`421d443370e83a9ffa0c128da9f09d6f99b0ef8f`**, publiée le 27 octobre 2026. Le développement peut avancer après cette version : les paramètres d’un essai doivent rester rattachés au binaire utilisé.
+Bienvenue ! **Pas besoin de savoir coder** pour comprendre l'objectif d'AURORA ou lancer un premier essai. Il s'agit d'une **blockchain expérimentale** : les AUR de test n'ont pas de valeur garantie, aucun réseau public stable ni audit humain indépendant n'est annoncé, et il ne faut pas utiliser de vrais fonds.
 
-AURORA est une blockchain expérimentale. Ses unités de test servent à éprouver le logiciel; elles ne doivent pas être traitées comme des fonds réels. Le projet n’a reçu aucun audit humain indépendant.
+## AURORA expliqué simplement
 
-## Parcours de lecture
+Un **wallet** (portefeuille) garde les clés permettant de signer un paiement. Un **nœud** vérifie les transactions et conserve sa copie de la chaîne. Un **mineur** cherche un bloc valide. Si deux nœuds affichent le même sommet (`tip`) et la même hauteur, ils ont convergé **à cet instant** ; cela ne suffit pas à prouver leur sécurité à long terme.
 
-| Pour… | Lire… |
+Le logiciel actuel permet des essais de minage, de transfert, de sauvegarde et de synchronisation. La protection avancée de la vie privée, le coffre de récupération, les applications mobiles et l'explorateur graphique **ne sont pas encore livrés**.
+
+## Choisissez votre parcours
+
+| Votre profil | Parcours conseillé |
 | --- | --- |
-| Comprendre le but, les mots et les composants | [1. Comprendre AURORA](01-comprendre.md) |
-| Retrouver les règles monétaires exécutées | [2. Économie](02-economie.md) |
-| Télécharger et vérifier les programmes | [3. Installation](03-installation.md) |
-| Lancer des nœuds et miner sur un PC | [4. Premier réseau local](04-reseau-et-minage.md) |
-| Envoyer un paiement et sauvegarder les clés | [5. Portefeuille et paiements](05-portefeuille.md) |
-| Vérifier, sauvegarder, restaurer et dépanner | [6. Exploitation](06-exploitation.md) |
-| Comprendre les choix techniques et la suite | [7. Technologie et limites](07-technologie-et-suite.md) |
+| **Je découvre la blockchain** | [1. Comprendre](01-comprendre.md) → [2. Économie](02-economie.md) → [7. Technologie et limites](07-technologie-et-suite.md) |
+| **Je veux essayer AURORA sans compiler** | [3. Installation](03-installation.md) → [4. Démarrer un réseau](04-reseau-et-minage.md) → [5. Portefeuille](05-portefeuille.md) → [6. Exploitation](06-exploitation.md) |
+| **Je veux comprendre l'avenir du projet** | [Vision et priorités](../planning/README.md) → [Décisions à prendre](../planning/DECISIONS.md) → [Cahier des charges](../planning/CAHIER_DES_CHARGES.md) |
+| **Je suis développeur ou reviewer** | [Architecture](../../ARCHITECTURE.md) → [Contribuer](../../CONTRIBUTING.md) → [Dossier de revue](../INDEPENDENT_REVIEW.md) |
+| **Je veux vérifier une affirmation** | [Règles du consensus](../CONSENSUS.md) → [Tests et limites](../TESTNET_VALIDATION_REPORT.md) |
 
-Les exemples principaux utilisent PowerShell sous Windows. Ils fonctionnent avec le contenu d’une archive extraite : `bin/aurora-node.exe` et `bin/aurora-wallet.exe`. Pour Linux et macOS, utiliser les mêmes arguments, des chemins avec `/` et les binaires sans `.exe`.
+## Sommaire des sept chapitres
 
-Le logiciel peut tourner entièrement sur un PC : des processus distincts possèdent chacun leur dossier et leur port. Deux fenêtres ne suffisent pas, à elles seules, à créer deux nœuds indépendants; il faut aussi deux dossiers de données. Un essai local ne démontre pas le comportement entre machines ou sur Internet.
+1. [Comprendre AURORA et les mots essentiels](01-comprendre.md)
+2. [Économie : émission, mineurs, frais et burn](02-economie.md)
+3. [Installation de la version expérimentale](03-installation.md)
+4. [Démarrer un nœud et miner](04-reseau-et-minage.md)
+5. [Portefeuille, paiements et sauvegardes](05-portefeuille.md)
+6. [Vérification, restauration et dépannage](06-exploitation.md)
+7. [Technologie, risques et prochaines étapes](07-technologie-et-suite.md)
 
-## Sources et état du guide
+## Quelle version ce guide utilise-t-il ?
 
-Rédaction vérifiée le 28 octobre 2026. Les commandes ont été rapprochées des interfaces du [nœud](../../crates/aurora-node/src/main.rs) et du [wallet](../../crates/aurora-wallet/src/main.rs). Les références techniques sont la [spécification](../PROTOCOL.md), les [décisions testnet](../TESTNET_DECISIONS.md) et le [rapport d’essais](../TESTNET_VALIDATION_REPORT.md). Les pages de ce guide résument ces sources; elles ne remplacent pas le code de consensus.
+Les exemples de téléchargement sont liés à la release **`testnet-v0.0.1-experimental.1`**, publiée le 27 octobre 2026 à partir de **`421d443370e83a9ffa0c128da9f09d6f99b0ef8f`**. **Ce n'est pas nécessairement la dernière révision du développement.** Pour les essais de deux ordinateurs sous Windows avec une archive GitHub Actions récente, suivre [TWO_PC_TEST.md](../TWO_PC_TEST.md) et noter le SHA exact du binaire.
 
-L'architecture, les objectifs et les priorités sont définis par le porteur d'AURORA. Des outils d'IA l'assistent pour accélérer le développement, les tests et les revues techniques. Pour le détail des contributions et des vérifications, consulter [PROVENANCE.md](../../PROVENANCE.md). Les règles de contribution figurent dans [CONTRIBUTING.md](../../CONTRIBUTING.md) et le signalement des failles dans [SECURITY.md](../../SECURITY.md).
+Les commandes principales emploient PowerShell : `bin/aurora-node.exe` et `bin/aurora-wallet.exe`. Sur Linux ou macOS, les arguments sont similaires mais les chemins changent et il n'y a pas de `.exe`. Chaque nœud utilise son propre répertoire `--data-dir` : ouvrir deux fenêtres sur un seul dossier ne crée pas deux nœuds autonomes.
+
+## Documentation et transparence
+
+Le code et la spécification au **commit examiné** font foi sur le comportement. Les paramètres expérimentaux sont dans les [décisions testnet](../TESTNET_DECISIONS.md), les limites dans le [rapport d'essais](../TESTNET_VALIDATION_REPORT.md), et l'historique de développement assisté par IA dans [PROVENANCE.md](../../PROVENANCE.md). Les licences sont [MIT OR Apache-2.0](../../LICENSE) ; une faille potentielle se signale selon [SECURITY.md](../../SECURITY.md).
+
+Ce guide explique le projet au public ; il ne remplace ni les validations techniques ni une revue humaine indépendante.
