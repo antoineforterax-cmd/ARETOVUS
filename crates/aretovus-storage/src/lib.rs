@@ -35,7 +35,7 @@ const LEGACY_INDEX_VERSION: u32 = 5;
 const INDEX_PAGE_MAGIC: &[u8; 8] = b"ARETOPAG";
 const INDEX_PAGE_VERSION: u32 = 1;
 const INDEX_PAGE_DIRECTORY: &str = "index-pages-v6";
-const INDEX_PAGE_EXTENSION: &str = "aurpage";
+const INDEX_PAGE_EXTENSION: &str = "aretpage";
 const INDEX_PAGE_BLOCKS: usize = 4_096;
 /// At most 4 MiB of verified arrival-order IDs may be kept across P2P pages.
 const MAX_CACHED_FULL_INDEX_PAGES: usize = 32;
