@@ -150,3 +150,38 @@ Les nouvelles archives du testnet construites avec cette fonctionnalité incluen
 **Sécurité :** une annonce UDP n'est pas authentifiée ; un autre appareil du LAN pourrait mentir sur sa version ou son hash. N'utiliser l'assistant que sur un réseau privé fiable et comparer les deux packages par une source de confiance. Les dossiers two-pc/assistant-a et two-pc/assistant-b sont distincts et respectent les verrous de stockage. Ni clés privées, ni mots de passe, ni fonds réels ne sont utilisés par le guide automatique.
 
 **Limites :** le lanceur ne mine pas en continu, ne crée pas de wallet, ne confirme pas automatiquement les transactions et ne prouve pas, à lui seul, la convergence de deux PC physiques. Les assistants GUI plus avancés restent un chantier séparé.
+
+
+## Centre local AURORA sur macOS et Linux (développement expérimental)
+
+Une future archive construite depuis **la même branche et le même commit** contient désormais :
+
+- **macOS :** `AURORA-LAN.command` ; lancer depuis un Terminal via `sh AURORA-LAN.command` si le système ne traite pas directement le fichier comme exécutable.
+- **Linux :** `AURORA-LAN.sh` ; lancer avec `sh AURORA-LAN.sh`.
+- **Windows :** `AURORA-LAN.cmd` ; lancer dans un dossier Windows extrait comme décrit précédemment.
+
+Sur macOS et Linux, il faut **Python 3.10 ou supérieur**. L'assistant utilise la bibliothèque standard Python, et **Tkinter quand il est disponible** pour une fenêtre graphique ; sinon, il passe en **mode terminal**. La présence de Python/Tkinter ne découle pas du paquet AURORA : vérifier cette dépendance séparément. Sur macOS, un fichier téléchargé non signé peut déclencher les protections de Gatekeeper ; ne pas les désactiver globalement. Sous Linux, ne pas désactiver les protections du système ni lancer l'assistant en root.
+
+### Parcours à deux machines
+
+1. Télécharger depuis le **même commit Git**, utiliser sur chaque ordinateur la **bonne archive pour son OS et son architecture**, et comparer le commit source avec une source de confiance. Ne jamais distribuer de clés privées ou de mots de passe.
+2. Relier les PC au **même LAN privé de confiance**. L'assistant identifie une seule IPv4 privée active ; en présence de plusieurs interfaces ambiguës, il refuse de lancer le nœud. Les réseaux VPN, isolés, invités ou les pare-feu peuvent bloquer la découverte.
+3. Choisir **PC A : serveur**, puis sur l'autre ordinateur **PC B : rechercher et se connecter**. Les assistants partagent une annonce UDP **19446** portant le **commit source**, qui permet désormais de rechercher un pair même entre **Windows, macOS et Linux**. La vérification TCP du port **19444** précède le lancement de B.
+4. Si la découverte est bloquée, saisir **l'IPv4 privée** de PC A. Ne jamais ouvrir de port sur le routeur ou désactiver le pare-feu. Une autorisation locale TCP 19444, limitée à l'adresse privée de PC B, peut être requise.
+5. Pour arrêter sur macOS/Linux, utiliser **Arrêter mon nœud** (interruption progressive) ou **Ctrl+C** en mode terminal. Comparer ensuite les sorties `testnet verify` des dossiers `two-pc/assistant-a` et `two-pc/assistant-b` **à l'arrêt** : même `height`, `tip`, `work`. Continuer les transferts, restaurations et redémarrages décrits dans le protocole ci-dessus.
+
+### Outils utiles dès maintenant et capacités futures
+
+| Fonction | État sur cette branche |
+| --- | --- |
+| Vérification des hashes SHA-256 de **tous les fichiers** du package sous macOS/Linux | **Implémentée** (checksum local, pas signature d'éditeur) |
+| Détection d'un pair A et lancement d'un nœud B par son IPv4 privée | **Implémentés** (annonce non authentifiée ; pas de preuve de convergence) |
+| Arrêt progressif du processus lancé par l'assistant Unix | **Implémenté** (ne supprime aucun verrou) |
+| Export d'un diagnostic sans IPv4 privée, nom de compte ou secret | **Implémenté** (`two-pc/assistant-report.txt`) |
+| Minage continu, allocation CPU, rendement, suivi temps réel et dashboard | **Prévu, non disponible** |
+| Portefeuille graphique, sauvegarde/restauration guidée, état multi-hôte | **Prévu, non disponible** |
+| Rapport final de convergence à deux machines et essai 72 heures | **Tests séparés à effectuer**, aucune preuve déduite du lanceur |
+
+Le **protocole d'annonces v2** indique uniquement une révision source commune. Il **n'authentifie pas le pair distant** : un attaquant du LAN peut copier une annonce ou un commit. Les exécutables sur chaque ordinateur doivent être obtenus et vérifiés depuis une source indépendante et fiable ; le protocole P2P continue de valider la chaîne. Ne pas utiliser un réseau Wi-Fi public. Toute ouverture de port pour des machines distantes ou Internet est hors périmètre.
+
+Les assistants restent des outils de **testnet expérimental**. Ils ne sont pas des services de minage public, des wallets sécurisés pour fonds réels, ni des nœuds mainnet validés.
