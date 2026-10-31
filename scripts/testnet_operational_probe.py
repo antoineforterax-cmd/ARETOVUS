@@ -35,6 +35,27 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def classify_completion(
+    requested_seconds: float,
+    elapsed_seconds: float,
+    failures: int,
+    binary_unchanged: bool,
+    distinct_heights: int,
+) -> tuple[bool, bool, bool]:
+    # Read-only evidence classification, not a statement about network attacks.
+    passed = (
+        elapsed_seconds >= requested_seconds
+        and failures == 0
+        and binary_unchanged
+        and distinct_heights >= 2
+    )
+    four_hours = passed and requested_seconds >= 4 * 3600 and elapsed_seconds >= 4 * 3600
+    seventy_two_hours = (
+        passed and requested_seconds >= 72 * 3600 and elapsed_seconds >= 72 * 3600
+    )
+    return passed, four_hours, seventy_two_hours
+
+
 def self_test() -> None:
     assert parse_tip("height=42 tip=" + "ab" * 32) == (42, "ab" * 32)
     for bad in ("height=42", "height=42 tip=" + "X" * 64, "height=-1 tip=" + "a" * 64):
@@ -44,7 +65,22 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError(f"invalid tip accepted: {bad}")
-    print("operational probe parsing self-test passed")
+    assert classify_completion(4 * 3600, 4 * 3600, 0, True, 2) == (
+        True, True, False
+    )
+    assert classify_completion(72 * 3600, 4 * 3600, 0, True, 2) == (
+        False, False, False
+    )
+    assert classify_completion(72 * 3600, 72 * 3600, 0, True, 2) == (
+        True, True, True
+    )
+    assert classify_completion(4 * 3600, 4 * 3600, 1, True, 2) == (
+        False, False, False
+    )
+    assert classify_completion(4 * 3600, 4 * 3600, 0, True, 1) == (
+        False, False, False
+    )
+    print("operational probe parsing and honest 4h/72h classification tests passed")
 
 
 def main() -> int:
@@ -131,17 +167,18 @@ def main() -> int:
         unchanged = binary_sha256(executable) == digest
         duration_reached = elapsed >= duration
         # 72-hour evidence must contain actual change over time, not just a frozen node.
-        successful = duration_reached and failures == 0 and unchanged and len(heights) >= 2
+        successful, counts_as_4h, counts_as_72h = classify_completion(
+            duration, elapsed, failures, unchanged, len(heights)
+        )
         record(evidence, "finish", elapsed_seconds=round(elapsed, 3), samples=samples,
                errors=failures, binary_unchanged=unchanged, distinct_heights=len(heights),
                last_height=last_tip[0] if last_tip else None,
                last_tip=last_tip[1] if last_tip else None,
                duration_reached=duration_reached, local_probe_passed=successful,
-               counts_as_4h=successful and duration >= 4 * 3600,
-               counts_as_72h=successful and duration >= 72 * 3600)
+               counts_as_4h=counts_as_4h, counts_as_72h=counts_as_72h)
     print(f"Evidence: {output}; local probe passed={successful}; "
-          f"4h threshold={successful and duration >= 4 * 3600}; "
-          f"72h threshold={successful and duration >= 72 * 3600}")
+          f"4h threshold={counts_as_4h}; "
+          f"72h threshold={counts_as_72h}")
     return 0 if successful else 1
 
 
