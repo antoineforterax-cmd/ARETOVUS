@@ -242,10 +242,6 @@ fn write_immutable_with_io(
     })
 }
 
-/// A manifest may already be visible after a failed parent-directory fsync.
-/// A retry must durably commit that existing entry before returning success
-/// or pruning older recovery points. Do not perform this on each existing
-/// block object: snapshots can reference hundreds of thousands of blocks.
 // Do not follow symlinks when reusing immutable storage objects.
 // A broken symlink also occupies a path and must not be treated as absent.
 fn immutable_regular_file_exists(path: &Path) -> Result<bool, StorageError> {
@@ -259,6 +255,10 @@ fn immutable_regular_file_exists(path: &Path) -> Result<bool, StorageError> {
     }
 }
 
+/// A manifest may already be visible after a failed parent-directory fsync.
+/// A retry must durably commit that existing entry before returning success
+/// or pruning older recovery points. Do not perform this on each existing
+/// block object: snapshots can reference hundreds of thousands of blocks.
 fn write_manifest_with_directory_sync(
     path: &Path,
     bytes: &[u8],
