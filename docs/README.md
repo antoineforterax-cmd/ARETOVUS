@@ -9,6 +9,7 @@
 | Découvrir ce qu'est AURORA et essayer un wallet | [Le guide pour débutants](guide-fr/README.md) |
 | Comprendre la **vision et l'ordre de développement** | [Vision et navigation de projet](planning/README.md) |
 | Comparer **tous les arbitrages restants avec A / B / C** | [Questionnaire complet (68 décisions)](planning/DECISION_OPTIONS.md) |
+| Voir **les réponses déjà données** par le responsable | [Décisions consignées le 31 octobre 2026](planning/RESPONSES_2026-10-31.md) |
 | Connaître les règles **actives** | [Consensus](CONSENSUS.md), [paramètres testnet](TESTNET_DECISIONS.md) |
 | Suivre les preuves, risques et tâches | [Rapport d'essais](TESTNET_VALIDATION_REPORT.md), [critères de finalisation](FINALIZATION_CHECKLIST.md) |
 | Relire, contribuer ou signaler une faille | [CONTRIBUTING](../CONTRIBUTING.md), [SECURITY](../SECURITY.md) |
@@ -27,7 +28,7 @@
 
 ## Principe de rangement
 
-Les **67 fichiers de documentation existants** ne sont pas 67 documents à lire pour démarrer : on les classe ci-dessous selon leur *fonction*. Tous les originaux restent accessibles et l'historique Git est préservé. Le nombre de fichiers n'est pas en lui-même un défaut : **les doublons normatifs, les contradictions non datées et l'absence de navigation le sont**.
+Les **67 fichiers de documentation présents lors de l'inventaire initial** ne sont pas 67 documents à lire pour démarrer : on les classe ci-dessous selon leur *fonction*. Tous les originaux restent accessibles et l'historique Git est préservé. Le nombre de fichiers n'est pas en lui-même un défaut : **les doublons normatifs, les contradictions non datées et l'absence de navigation le sont**.
 
 1. **Une seule source normative par sujet.** Un guide débutant renvoie aux règles ; il ne les recopie pas dans une nouvelle « spécification ».
 2. **Tests et archives sont conservés.** Les comptes rendus de sessions ne doivent pas être écrasés par un résumé marketing.
@@ -35,7 +36,9 @@ Les **67 fichiers de documentation existants** ne sont pas 67 documents à lire 
 4. **Les anciennes PR et anciens statuts ne sont pas l'état présent.** Ne jamais confondre ancien prototype, PR ouverte, `main`, binaires publiés et mainnet.
 5. **Pas de déplacement massif aveugle.** La première phase crée une carte vérifiable en conservant **tous les chemins existants**. Les déplacements éventuels se feront par lots, avec mise à jour de tous les liens (y compris liens externes et scripts) et redirections de compatibilité si nécessaire.
 
-## Catalogue complet (inventaire du 31 octobre 2026)
+## Catalogue complet (inventaire initial du 31 octobre 2026)
+
+Le [relevé des décisions du responsable du 31 octobre](planning/RESPONSES_2026-10-31.md) a été ajouté ensuite : c'est le **68e fichier** de documentation, référencé ici séparément pour ne pas modifier rétroactivement l'inventaire initial.
 
 Chaque document apparaît dans **une seule catégorie**. Déplier un thème pour voir ses fichiers, sans perdre les détails des travaux de recherche et des tests.
 
