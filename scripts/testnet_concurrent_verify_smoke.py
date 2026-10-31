@@ -195,6 +195,10 @@ def main() -> int:
     if not 1 <= args.min_distinct_heights <= 10:
         p.error("--min-distinct-heights must be 1..10")
     report = exercise(args.node, args.blocks, args.max_seconds, args.probe_timeout)
+    # Preserve evidence even if a stricter coverage gate rejects the run.
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if not report["during_mining_checks"]:
         raise AssertionError("no verifier exercised while miner was active")
     if not report["overlapping_checks"]:
@@ -205,9 +209,6 @@ def main() -> int:
             f"observed {report['distinct_overlapping_heights']} distinct heights, "
             f"required {args.min_distinct_heights}"
         )
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(
         f"concurrent_verify=ok blocks={report['blocks']} "
         f"overlaps={report['overlapping_checks']} "
