@@ -135,8 +135,10 @@ fn save_snapshot_inner(
     fs::create_dir_all(dir)?;
     let block_dir = dir.join(BLOCK_DIRECTORY);
     fs::create_dir_all(&block_dir)?;
+    require_real_storage_directory(&block_dir)?;
     let page_dir = dir.join(INDEX_PAGE_DIRECTORY);
     fs::create_dir_all(&page_dir)?;
+    require_real_storage_directory(&page_dir)?;
     #[cfg(any(test, debug_assertions))]
     let profile_started = std::time::Instant::now();
     let blocks = chain.blocks_with_ids_by_arrival();
@@ -415,6 +417,18 @@ fn immutable_regular_file_exists(path: &Path) -> Result<bool, StorageError> {
     }
 }
 
+/// Named internal storage directories must not alias external locations.
+/// This is a static symlink check, not an atomic defense against local races.
+fn require_real_storage_directory(path: &Path) -> Result<(), StorageError> {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_dir() {
+        return Err(StorageError::InvalidFormat(
+            "storage subdirectory is not a real directory",
+        ));
+    }
+    Ok(())
+}
+
 /// A manifest may already be visible after a failed parent-directory fsync.
 /// A retry must durably commit that existing entry before returning success
 /// or pruning older recovery points. Do not perform this on each existing
@@ -666,6 +680,7 @@ fn prune_unreferenced_index_pages(dir: &Path) -> Result<(), StorageError> {
     if !page_dir.exists() {
         return Ok(());
     }
+    require_real_storage_directory(&page_dir)?;
     for entry in fs::read_dir(page_dir)? {
         let path = entry?.path();
         if path
@@ -847,6 +862,7 @@ fn decode_index(
         {
             return Err(StorageError::InvalidFormat("invalid v6 page count"));
         }
+        require_real_storage_directory(&dir.join(INDEX_PAGE_DIRECTORY))?;
         let mut ids = Vec::new();
         for (page_number, digest) in body[81..].as_chunks::<32>().0.iter().enumerate() {
             let page_id = Hash256::from_bytes(*digest);
@@ -918,6 +934,7 @@ fn replay_index_blocks(
     rewards: RewardParams,
     initial_state: AccountLedger,
 ) -> Result<AccountForkChain, StorageError> {
+    require_real_storage_directory(&dir.join(BLOCK_DIRECTORY))?;
     let mut chain = None;
     for block_id in ids {
         let block_path = dir
@@ -1242,6 +1259,40 @@ mod tests {
             fs::remove_file(target).unwrap();
             fs::rename(&backup, target).unwrap();
             assert_eq!(load_tip(), newest_tip);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn internal_storage_directory_links_cannot_be_used_for_restore_or_save() {
+        use std::os::unix::fs::symlink;
+
+        let root = dir();
+        let original = chain();
+        let expected = original.tip_hash();
+        save_snapshot(&root, &original).unwrap();
+
+        // The leaf objects remain valid regular files. A symlink in a named
+        // storage directory must still not relocate reads or future writes.
+        for dirname in [BLOCK_DIRECTORY, INDEX_PAGE_DIRECTORY] {
+            let path = root.join(dirname);
+            let moved = root.join(format!("relocated-{dirname}"));
+            fs::rename(&path, &moved).unwrap();
+            symlink(&moved, &path).unwrap();
+            assert!(
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).is_err(),
+                "storage loader followed symlinked directory {dirname}"
+            );
+            assert!(
+                save_snapshot(&root, &original).is_err(),
+                "storage writer followed symlinked directory {dirname}"
+            );
+            fs::remove_file(&path).unwrap();
+            fs::rename(&moved, &path).unwrap();
+            let restored =
+                load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+            assert_eq!(restored.tip_hash(), expected);
         }
         fs::remove_dir_all(root).unwrap();
     }
