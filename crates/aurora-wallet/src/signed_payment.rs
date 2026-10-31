@@ -1,7 +1,7 @@
 //! Bounded transfer of a signed v3 testnet transaction between offline and online machines.
 use std::{
     error::Error,
-    fs::{self, File, OpenOptions},
+    fs::OpenOptions,
     io::{Read, Write},
     path::Path,
 };
@@ -49,24 +49,10 @@ pub fn save(path: &Path, transaction: &AccountTransaction) -> Result<(), Box<dyn
 }
 
 pub fn load(path: &Path) -> Result<AccountTransaction, Box<dyn Error>> {
-    // A signed payment carries authorization to spend. Do not silently follow
-    // a last-component symlink to a different payment selected by an attacker.
-    let expected = fs::symlink_metadata(path)?;
-    if !expected.file_type().is_file() {
-        return Err("signed payment must be a regular file, not a symlink".into());
-    }
-    let file = File::open(path)?;
-    let opened = file.metadata()?;
-    if !opened.file_type().is_file() {
-        return Err("signed payment is not a regular file".into());
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        if opened.dev() != expected.dev() || opened.ino() != expected.ino() {
-            return Err("signed payment path changed during open".into());
-        }
-    }
+    // A signed payment is itself a spending authorization. Use the same
+    // atomic no-follow opening rules as private keys and wallet policies:
+    // a path can be swapped *after* symlink_metadata but before open.
+    let file = crate::keys::open_regular_wallet_file(path)?;
     let mut bytes = Vec::new();
     file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_FILE_BYTES {
@@ -86,6 +72,7 @@ mod tests {
     use crate::{build_signed_transaction, WalletKey};
     use aurora_core::{accounts::AccountId, amount::Amount};
     use std::{
+        fs,
         path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
     };
