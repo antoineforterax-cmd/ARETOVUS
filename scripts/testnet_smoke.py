@@ -504,6 +504,43 @@ def main() -> int:
             ]:
                 if expected not in inspected:
                     raise AssertionError(f"offline inspection omitted {expected}: {inspected}")
+            # Verify the exact externally supplied intent without loading any key or node.
+            expected_intent_args = [
+                "--from", str(signed_file),
+                "--sender", miner,
+                "--to", RECIPIENT,
+                "--amount", "1.00000000",
+                "--fee", "0.00000003",
+                "--nonce", nonce_match.group(1),
+            ]
+            approved_intent = run_wallet(wallet, "verify-signed-intent", *expected_intent_args)
+            if (f"verified_signed_intent=true txid={prepared_match.group(1)}" not in approved_intent
+                    or "private_key_loaded=false network_requests=none" not in approved_intent):
+                raise AssertionError(f"verifier did not bind the exact expected intent: {approved_intent}")
+            for option_name, changed_value in [
+                ("--sender", "33" * 32),
+                ("--to", "44" * 32),
+                ("--amount", "1.00000001"),
+                ("--fee", "0.00000004"),
+                ("--nonce", str(int(nonce_match.group(1)) + 1)),
+            ]:
+                substituted = list(expected_intent_args)
+                substituted[substituted.index(option_name) + 1] = changed_value
+                refused = subprocess.run(
+                    [str(wallet), "verify-signed-intent", *substituted],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if (refused.returncode == 0 or "verified_signed_intent=true" in refused.stdout
+                        or "reviewed payment intent" not in refused.stderr):
+                    raise AssertionError(f"verifier allowed changed {option_name}: {refused.stdout} {refused.stderr}")
+            for forbidden in ["--yes", "--node", "127.0.0.1:1"]:
+                refused = subprocess.run(
+                    [str(wallet), "verify-signed-intent", *expected_intent_args, forbidden],
+                    cwd=ROOT, text=True, input="", capture_output=True, timeout=20,
+                )
+                if refused.returncode == 0 or "verified_signed_intent=true" in refused.stdout:
+                    raise AssertionError("signed-intent verifier accepted an unsupported option")
+
             invalid_inspect = subprocess.run(
                 [str(wallet), "inspect-signed", "--from", str(signed_file),
                  "--node", "127.0.0.1:1"],
