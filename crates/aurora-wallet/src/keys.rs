@@ -303,13 +303,46 @@ pub(crate) fn open_regular_wallet_file(path: &Path) -> io::Result<File> {
             "wallet secret must be a regular file, not a symlink",
         ));
     }
-    let file = File::open(path)?;
+    open_verified_wallet_file(path, &expected)
+}
+
+/// Open a prechecked path without following a final-component symlink.
+/// The Unix O_NOFOLLOW flag closes the preflight/open race, even if an
+/// attacker substitutes a symlink pointing to the *same inode*.
+/// Keep the original inode check for regular-file replacement.
+fn open_verified_wallet_file(path: &Path, expected: &std::fs::Metadata) -> io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // Ask Windows to open the reparse point itself, not its target.
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options.open(path)?;
     let opened = file.metadata()?;
     if !opened.file_type().is_file() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "wallet secret is not a regular file",
         ));
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        if opened.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "wallet secret must not be a reparse point",
+            ));
+        }
     }
     #[cfg(unix)]
     {
@@ -583,6 +616,31 @@ mod tests {
         assert!(WalletKey::load_encrypted_testnet_file(&root, password).is_err());
         assert!(WalletKey::load_plain_testnet_file(&root).is_err());
         assert!(WalletKey::load_recovery_file(&root, key.account_id()).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn wallet_file_swap_to_symlink_of_same_inode_fails_after_preflight() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "aurora-wallet-swap-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&root).unwrap();
+        let requested = root.join("wallet.aurkey");
+        let moved = root.join("original.aurkey");
+        fs::write(&requested, b"same-inode symlink race test").unwrap();
+        // Simulate the precise point where a hostile local actor replaces
+        // the checked path before the open syscall. The target inode is the
+        // *same* as before, defeating a post-open dev/ino comparison alone.
+        let before = fs::symlink_metadata(&requested).unwrap();
+        fs::rename(&requested, &moved).unwrap();
+        symlink(&moved, &requested).unwrap();
+        assert!(open_verified_wallet_file(&requested, &before).is_err());
+        assert!(open_regular_wallet_file(&moved).is_ok());
         fs::remove_dir_all(root).unwrap();
     }
 
