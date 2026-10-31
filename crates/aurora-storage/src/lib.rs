@@ -755,7 +755,15 @@ fn read_bounded(path: &Path) -> Result<Vec<u8>, StorageError> {
 }
 
 fn read_bounded_limit(path: &Path, limit: usize) -> Result<Vec<u8>, StorageError> {
-    let metadata = fs::metadata(path)?;
+    // Immutable manifests, pages and blocks must be real files at their own
+    // paths. Following symlinks here would contradict the write-side guard
+    // and could silently accept data outside the AURORA storage tree.
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_file() {
+        return Err(StorageError::InvalidFormat(
+            "storage object is not a regular file",
+        ));
+    }
     if metadata.len() > limit as u64 {
         return Err(StorageError::InvalidFormat(
             "storage object exceeds byte limit",
