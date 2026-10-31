@@ -16,6 +16,10 @@ La PR #129 conserve ce premier constat ; cette v2 ajoute un échantillonnage **i
 - Les serveurs de testnet et le mineur utilisent **des dossiers distincts** et sont déjà connectés selon `docs/TWO_PC_TEST.md`. Le collecteur de preuves est en lecture seule, pas un serveur : il ne mine, ne connecte et n'arrête aucun nœud.
 - Utiliser un **nom de dossier de preuves neuf** pour l'essai v2 ; les fichiers JSONL sont append-only et peuvent conserver d'anciennes exécutions.
 
+### Protection contre les doubles collecteurs
+
+Les deux fichiers de preuves d'un même PC sont protégés par un **verrou système non bloquant**. Un second collecteur lancé sur les mêmes fichiers refuse immédiatement de démarrer au lieu de mélanger les événements de deux campagnes. Les petits fichiers auxiliaires `*.jsonl.lock` **restent sur disque** ; le verrou réel est tenu par le système d'exploitation et relâché à la fermeture du processus, même après un crash. Ne pas supprimer ces fichiers pour contourner le refus : vérifier d'abord le processus actif et utiliser un nouveau nom de fichier si nécessaire.
+
 ## Démarrer la collecte (un terminal par PC)
 
 Depuis la racine contenant `scripts` et `bin/aurora-node.exe`, récupérer le SHA complet du **commit exact ayant produit le binaire** depuis la provenance GitHub vérifiée. Ne pas recopier aveuglément un SHA partiel ou celui d'une autre version. Dans un checkout construit localement, `$sha = (git rev-parse HEAD).Trim()`.
