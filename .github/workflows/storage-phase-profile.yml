@@ -2,7 +2,7 @@ name: storage-phase-profile
 
 on:
   push:
-    branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci, test/storage-phase-profile-32768-20261031, perf/storage-dedup-retained-page-verification-20261031]
+    branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci, test/storage-phase-profile-32768-20261031, perf/storage-dedup-retained-page-verification-20261031, perf/storage-p2p-io-accounting-20261031]
     paths:
       - "crates/aurora-storage/**"
       - ".github/workflows/storage-phase-profile.yml"
@@ -46,7 +46,7 @@ jobs:
             fi
             block_counts="$REQUESTED_BLOCKS"
           else
-            if [ "$GITHUB_REF" = "refs/heads/test/storage-phase-profile-32768-20261031" ] || [ "$GITHUB_REF" = "refs/heads/perf/storage-dedup-retained-page-verification-20261031" ]; then
+            if [ "$GITHUB_REF" = "refs/heads/test/storage-phase-profile-32768-20261031" ] || [ "$GITHUB_REF" = "refs/heads/perf/storage-dedup-retained-page-verification-20261031" ] || [ "$GITHUB_REF" = "refs/heads/perf/storage-p2p-io-accounting-20261031" ]; then
               block_counts="8192 32768"
             else
               block_counts="2048 8192"
@@ -60,6 +60,11 @@ jobs:
             /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -q 'storage phases:' "$log"
+            if [ "$GITHUB_REF" = refs/heads/perf/storage-p2p-io-accounting-20261031 ]; then
+              grep -q 'existing_block_metadata_checks=' "$log"
+              grep -q 'cache_page_hits=' "$log"
+              grep -q 'prune_page_seconds=' "$log"
+            fi
             expected_saves=$(((blocks + 63) / 64))
             grep -Eq "storage volume probe: height=${blocks} known_blocks=$((blocks + 1)) snapshot_calls=${expected_saves}([[:space:]]|$)" "$log"
           done
