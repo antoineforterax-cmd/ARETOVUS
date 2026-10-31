@@ -41,6 +41,23 @@ Ces huit réponses complètent la première série. **Les orientations sont cons
 Le **halving** agit sur la *quantité d'AUR créée par bloc* à des hauteurs déterminées. La **difficulté PoW** ajuste l'effort pour trouver un bloc et peut augmenter ou diminuer. Aucun de ces mécanismes ne se substitue à l'autre. L'émission actuelle d'AURORA dépend du reliquat d'émission, non du hashrate : le changement éventuel serait une **rupture de consensus** exigeant nouveau profil/réseau, vecteurs indépendants et analyse de migration.
 
 
+## Orientation supplémentaire du responsable — interface de minage (31 octobre 2026)
+
+**Demande explicite :** à terme, **le minage doit pouvoir être lancé, arrêté et surveillé depuis une interface simple**, sans imposer des commandes de terminal à l'utilisateur. Cette orientation UX complète V01 (explorateur, wallet graphique et mobile) ; **elle ne représente pas une 69e décision de consensus**.
+
+**État vérifié sur `main` au SHA `b76e0cff6d7e2ee6527cac2506ad005d7360ec4f` :** `crates/aurora-node/src/main.rs` propose `aurora-node testnet mine --miner ... --data-dir ... --count ... [--peer ...]` : un minage borné par nombre de blocs, **pas encore un service continu ni un tableau de bord**. La [démonstration actuelle](../guide-fr/04-reseau-et-minage.md) utilise des commandes PowerShell et des répertoires distincts pour nœud/mineur.
+
+### Fonctionnalités à concevoir, non livrées
+
+1. **Application locale sur ordinateur** : sélectionner le réseau (testnet clairement identifiable), le nœud, l'adresse publique recevant la récompense ; démarrer/arrêter les opérations ; afficher leur état réel et les erreurs, sans promettre des revenus.
+2. **Panneau de contrôle** : hauteur/tip, synchronisation, pairs, tentatives et blocs minés, récompenses en unités AUR, difficulté et débit de hachage **uniquement après instrumentation**, CPU/RAM et éventuellement température/consommation **si mesurables**.
+3. **Budget de ressources** : préférences CPU/charge, comportement sur batterie/surchauffe, arrêt explicite et confirmé ; aucune activité clandestine ni démarrage automatique sans consentement.
+4. **Sécurité** : ne jamais exposer la clé privée au module de minage ; adresse de récompense seulement ; exécution locale avec permissions minimales, commandes et arguments validés, séparation des dossiers de données et respect de `.aurora.lock` ; interface distante pour Raspberry Pi seulement avec authentification et périmètre réduit.
+5. **Ordre réaliste** : fiabiliser le noyau et le nœud → API de contrôle local authentifiée et bornée si réellement nécessaire → démarrage/arrêt sûr et métriques → application graphique PC → surveillance d'un nœud Raspberry Pi et éventuellement mobile en lecture seule. Le CLI reste disponible pour tester et dépanner.
+6. **Ne pas confondre** l'interface de minage avec une nouvelle méthode de minage, la preuve d'une rentabilité, ou la preuve que Raspberry Pi est matériellement compétitif face à d'autres mineurs SHA-256.
+
+**Statut : orientation produit exprimée, différée ; architecture, OS supportés, objectifs de performance et sécurité de l'API encore à spécifier. Aucun code Rust, consensus, émission ni règle de bloc n'est modifié par cette orientation.**
+
 ## Distinctions importantes
 
 **Choix d'orientation consignés (sans activation du consensus)** : V01, E01, E04, E05, C01, K06, W06, G06. **Orientation à deux phases, mécanique non définie** : G01. **Études explicitement demandées, sans choix final** : C02, C03 et K04.
