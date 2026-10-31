@@ -26,6 +26,8 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts -p 'test_emission_sim.py'
           python3 scripts/emission_sim.py --heights 10000000 100000000 500000000
+      - name: Contrôler le renommage et les identifiants de protocole historiques
+        run: python3 scripts/test_branding_compatibility.py
       - name: Tests
         run: cargo test --workspace --locked
       - name: Testnet multi-nœuds
