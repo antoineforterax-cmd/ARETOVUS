@@ -31,7 +31,7 @@ jobs:
           fi
       - name: Real one-million-block persistence and restart (opt-in only)
         env:
-          AURORA_MILLION_BLOCK_PROBE: "1"
+          ARETOVUS_MILLION_BLOCK_PROBE: "1"
         run: |
           set -euo pipefail
           /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::million_block_persistence_and_restart_probe -- --exact --ignored --nocapture 2>&1 | tee million-block-probe.log
