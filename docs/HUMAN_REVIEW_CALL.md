@@ -1,32 +1,32 @@
-# Draft for users.rust-lang.org and GitHub Discussions
+# Appel à revue Rust externe — modèle à personnaliser
 
-Status: prepared, not posted. Replace the review commit only after the corresponding CI checks have finished, and retain the exact commit in both posts.
+**Statut : brouillon non publié.** Ce texte est un modèle d'invitation, **pas** une annonce de revue réussie. Avant publication, relever `git rev-parse HEAD` sur la branche exacte, conserver le SHA complet, vérifier la CI du **même** SHA et actualiser les risques à partir du rapport d'essais. Ne pas réutiliser les anciennes références à la PR #2 et au commit `7d0f1ee` comme s'ils décrivaient `main`.
 
 ## Title
 
-Seeking a Rust code review of an experimental blockchain: consensus, storage and bounded TCP peers
+Seeking an independent Rust code review for AURORA, an experimental blockchain testnet
 
 ## Post
 
-I'm working on AURORA, a small experimental blockchain in Rust. The repository is public, and I'd like help finding design and implementation mistakes before extending it further.
+I'm maintaining [AURORA](https://github.com/antoineforterax-cmd/AURORA), an experimental Rust blockchain testnet. I am seeking focused, reproducible reviews of its implementation before extending its capabilities or considering any deployment involving real funds.
 
-Repository: https://github.com/antoineforterax-cmd/AURORA
+**Exact code revision to review:** `<REPLACE_WITH_40_CHAR_COMMIT_SHA>` — **replace before posting**. The linked [review brief](https://github.com/antoineforterax-cmd/AURORA/blob/main/docs/INDEPENDENT_REVIEW.md) and [validation report](https://github.com/antoineforterax-cmd/AURORA/blob/main/docs/TESTNET_VALIDATION_REPORT.md) should be read with their historical dates in mind.
 
-Work in progress: https://github.com/antoineforterax-cmd/AURORA/pull/2
+The workspace has five crates covering account/transaction primitives, consensus and PoW, persistent storage, a bounded TCP P2P node, and a CLI wallet. Native ML-DSA-65 testnet signatures are implemented. The node and wallet remain **experimental and unaudited by an independent human reviewer**; please do not use real funds.
 
-The review baseline is commit `7d0f1ee598235b7194f92081424c008c4c628ceb`. Later documentation and test-harness changes are outside this baseline until explicitly added to the review. The review brief is `docs/INDEPENDENT_REVIEW.md` at that revision.
+The project has used AI-assisted implementation and code review. We document this in [PROVENANCE.md](https://github.com/antoineforterax-cmd/AURORA/blob/main/PROVENANCE.md). Automated CI and tests support specific claims but are not substitutes for a professional or volunteer independent audit.
 
-Most of the code was generated and revised with AI assistance over a very short period. It has automated tests and some manual testnet runs, and I've also personally reviewed and corrected code, including Python work. What is still missing is a documented independent security review by someone with relevant skills. I am not presenting it as suitable for real funds, and this is not a token sale announcement.
+I'd value focused reviews of:
+- Deterministic encoding, signatures, money conservation and state changes.
+- Difficulty, timestamps, cumulative-work fork choice, reorgs and emission.
+- Storage corruption, write interruption, recovery and migrations.
+- P2P/RPC parsing, resource limits, sync and availability.
+- Wallet secret management, recovery, SPV trust assumptions and transaction intent.
 
-The workspace has five crates: transaction/account primitives, consensus, storage, a TCP node, and a CLI wallet. It uses native ML-DSA-65 transaction signatures, a simple SHA-256 proof of work, cumulative-work fork choice and paginated persistent block storage.
+A minimal reproducible bug, an executable negative test or a careful code review of one subsystem would be highly appreciated. Please include the source SHA, commands, conditions, expected/actual outcome, and remaining uncertainties. References to old PRs or tests must be clearly dated.
 
-I would especially welcome a review of:
+For a potentially exploitable security defect, use [SECURITY.md](https://github.com/antoineforterax-cmd/AURORA/blob/main/SECURITY.md) and request a confidential route; do not publish working exploits or secrets in a public issue. No bounty or paid engagement is promised.
 
-- Validation boundaries, deterministic encoding and transaction state changes.
-- Difficulty adjustment, timestamps, cumulative work and reorganisation accounting.
-- Crash recovery, corrupt storage handling and migration between storage formats.
-- Resource limits and denial-of-service risks in peer synchronisation.
+Contributors are welcome under the project's [MIT OR Apache-2.0 dual licensing terms](https://github.com/antoineforterax-cmd/AURORA/blob/main/CONTRIBUTING.md). The three license files are intentionally present; they do not indicate three different licensing schemes.
 
-There are known limitations, including replay and cloning costs, unfinished operational rules for the treasury, and no demonstrated multi-host endurance run. The test reports and previous AI counter-review are in `docs/`. The repository's `PROVENANCE.md` on the feature branch explains how the code was produced and checked.
-
-Students, independent developers and skilled hobbyists are welcome; you do not need to work for a security firm. A focused review of one module, a reproducible failure or a test exposing a mistake would already help. Please include the commit and commands you used. For a potentially exploitable issue, please use the confidential reporting route in `SECURITY.md`; if private reporting is unavailable, ask for a confidential contact without posting exploit details publicly.
+Thank you for taking a rigorous look at the code!
