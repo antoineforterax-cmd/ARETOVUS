@@ -36,6 +36,8 @@ const INDEX_PAGE_VERSION: u32 = 1;
 const INDEX_PAGE_DIRECTORY: &str = "index-pages-v6";
 const INDEX_PAGE_EXTENSION: &str = "aurpage";
 const INDEX_PAGE_BLOCKS: usize = 4_096;
+/// At most 4 MiB of verified arrival-order IDs may be kept across P2P pages.
+const MAX_CACHED_FULL_INDEX_PAGES: usize = 32;
 const MAX_INDEX_PAGE_BYTES: usize = 24 + INDEX_PAGE_BLOCKS * 32 + 32;
 const BLOCK_DIRECTORY: &str = "blocks-v5";
 const INDEX_EXTENSION: &str = "auridx";
@@ -82,13 +84,49 @@ impl From<AccountForkChainError> for StorageError {
     }
 }
 
+/// Full index pages already committed within one P2P synchronization.
+/// This is never serialized or shared across processes, and is invalidated
+/// after any failed save. Every block path and cached page is rechecked on disk
+/// before the next manifest is published.
+#[derive(Default)]
+pub struct SnapshotPageCache {
+    pages: Vec<CachedIndexPage>,
+}
+
+struct CachedIndexPage {
+    block_ids: Box<[Hash256]>,
+    page_id: Hash256,
+}
+
 /// Persist content-addressed blocks, immutable v6 pages and a checksummed manifest.
 /// The v4 snapshot and v5 index readers remain available for recovery and migration.
 pub fn save_snapshot(
     dir: impl AsRef<Path>,
     chain: &AccountForkChain,
 ) -> Result<PathBuf, StorageError> {
-    let dir = dir.as_ref();
+    save_snapshot_inner(dir.as_ref(), chain, None)
+}
+
+/// Opt-in cache for repeated saves during a single accepted peer inventory.
+/// It keeps only complete, exactly matched index pages, not block-file status.
+/// Errors discard the cache; normal save_snapshot remains the cold reference.
+pub fn save_snapshot_with_page_cache(
+    dir: impl AsRef<Path>,
+    chain: &AccountForkChain,
+    cache: &mut SnapshotPageCache,
+) -> Result<PathBuf, StorageError> {
+    let result = save_snapshot_inner(dir.as_ref(), chain, Some(cache));
+    if result.is_err() {
+        cache.pages.clear();
+    }
+    result
+}
+
+fn save_snapshot_inner(
+    dir: &Path,
+    chain: &AccountForkChain,
+    mut cache: Option<&mut SnapshotPageCache>,
+) -> Result<PathBuf, StorageError> {
     fs::create_dir_all(dir)?;
     let block_dir = dir.join(BLOCK_DIRECTORY);
     fs::create_dir_all(&block_dir)?;
@@ -146,6 +184,47 @@ pub fn save_snapshot(
             .to_be_bytes(),
     );
     for (page_number, chunk) in block_ids.chunks(INDEX_PAGE_BLOCKS).enumerate() {
+        // An append-only arrival prefix may be reused only if every block ID
+        // still matches the earlier complete page. Crucially, the page's disk
+        // contents are read and checked *again on each save*. The memory cache
+        // is never evidence that an object survived an external mutation.
+        let cached_id = if chunk.len() == INDEX_PAGE_BLOCKS {
+            if let Some(cache) = cache.as_deref_mut() {
+                if let Some(saved) = cache.pages.get(page_number) {
+                    if saved.block_ids.as_ref() == chunk {
+                        let page_path = page_dir
+                            .join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
+                        match read_bounded_limit(&page_path, MAX_INDEX_PAGE_BYTES) {
+                            Ok(bytes) if sha256_plain(&bytes) == saved.page_id => Some(saved.page_id),
+                            Ok(_) => {
+                                return Err(StorageError::InvalidFormat(
+                                    "content-addressed index page mismatch",
+                                ));
+                            }
+                            Err(StorageError::Io(error))
+                                if error.kind() == io::ErrorKind::NotFound =>
+                            {
+                                None
+                            }
+                            Err(error) => return Err(error),
+                        }
+                    } else {
+                        cache.pages.truncate(page_number);
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        if let Some(page_id) = cached_id {
+            body.extend_from_slice(page_id.as_bytes());
+            continue;
+        }
         let mut page = Vec::with_capacity(24 + chunk.len() * 32 + CHECKSUM_LEN);
         page.extend_from_slice(INDEX_PAGE_MAGIC);
         page.extend_from_slice(&INDEX_PAGE_VERSION.to_be_bytes());
@@ -166,7 +245,21 @@ pub fn save_snapshot(
         let page_id = sha256_plain(&page);
         let page_path = page_dir.join(format!("{page_id}.{INDEX_PAGE_EXTENSION}"));
         write_immutable(&page_path, &page, MAX_INDEX_PAGE_BYTES)?;
+        if chunk.len() == INDEX_PAGE_BLOCKS {
+            if let Some(cache) = cache.as_deref_mut() {
+                if page_number < MAX_CACHED_FULL_INDEX_PAGES {
+                    cache.pages.truncate(page_number);
+                    cache.pages.push(CachedIndexPage {
+                        block_ids: chunk.to_vec().into_boxed_slice(),
+                        page_id,
+                    });
+                }
+            }
+        }
         body.extend_from_slice(page_id.as_bytes());
+    }
+    if let Some(cache) = cache.as_deref_mut() {
+        cache.pages.truncate(page_count.min(MAX_CACHED_FULL_INDEX_PAGES));
     }
     #[cfg(test)]
     let profile_pages_done = profile_started.elapsed();
