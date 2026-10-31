@@ -196,9 +196,11 @@ fn save_snapshot_inner(
             if let Some(cache) = cache.as_deref_mut() {
                 if let Some(saved) = cache.pages.get(page_number) {
                     if saved.page_bytes[24..24 + INDEX_PAGE_BLOCKS * 32]
-                        .chunks_exact(32)
+                        .as_chunks::<32>()
+                        .0
+                        .iter()
                         .zip(chunk.iter())
-                        .all(|(bytes, id)| bytes == id.as_bytes().as_slice())
+                        .all(|(bytes, id)| bytes == id.as_bytes())
                     {
                         let page_path =
                             page_dir.join(format!("{}.{INDEX_PAGE_EXTENSION}", saved.page_id));
