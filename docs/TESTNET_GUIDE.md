@@ -187,6 +187,8 @@ Le fichier produit par `aurora-wallet sign-offline` peut être copié sur un **a
 cargo run --locked -p aurora-wallet -- inspect-signed --from ./payment.aurtx
 ```
 
+Cette commande effectue seulement la lecture bornée du fichier, le décodage canonique et la vérification de la signature Testnet v3 ; elle affiche le réseau, le txid, l’émetteur, le destinataire complet, le montant, les frais et le nonce. **Elle ne charge aucune clé privée, ne se connecte à aucun nœud et ne diffuse rien.** Comparer indépendamment les champs affichés aux instructions attendues. Le fichier signé peut être diffusé par toute personne qui le possède : ne pas le confondre avec une sauvegarde de clé. Un logiciel d’inspection compromis peut mentir, et ce dispositif n’est pas un signataire matériel indépendant. Aucun fonds réel.
+
 Sur le **second ordinateur**, à partir d'un ordre de paiement recueilli indépendamment (pas copié depuis un écran ou serveur suspect), vérifie également l'égalité de tous les champs avant d'envisager l'envoi :
 
 ```sh
@@ -194,8 +196,6 @@ cargo run --locked -p aurora-wallet -- verify-signed-intent --from ./payment.aur
 ```
 
 L'outil refuse tout décalage sur l'émetteur, le destinataire, le montant, les frais ou le nonce, même lorsque la transaction comporte une signature cryptographique valable. Il ne possède aucun mode `--yes` ni accès RPC. Il **ne prouve pas** que la personne qui a préparé l'ordre était autorisée ni que l'ordinateur de vérification est sain. Les valeurs attendues doivent venir d'un **canal de confiance indépendant**, autrement un attaquant pourrait fournir une fausse transaction *et* une fausse référence cohérente.
-
-Cette commande effectue seulement la lecture bornée du fichier, le décodage canonique et la vérification de la signature Testnet v3 ; elle affiche le réseau, le txid, l’émetteur, le destinataire complet, le montant, les frais et le nonce. **Elle ne charge aucune clé privée, ne se connecte à aucun nœud et ne diffuse rien.** Comparer indépendamment les champs affichés aux instructions attendues. Le fichier signé peut être diffusé par toute personne qui le possède : ne pas le confondre avec une sauvegarde de clé. Un logiciel d’inspection compromis peut mentir, et ce dispositif n’est pas un signataire matériel indépendant. Aucun fonds réel.
 
 Après l’inclusion d’une transaction, vérifie sa preuve Merkle et ses confirmations avec :
 
