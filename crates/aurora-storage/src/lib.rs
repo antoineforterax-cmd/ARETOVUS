@@ -444,7 +444,14 @@ fn write_manifest_with_directory_sync(
                 "content-addressed file mismatch",
             ));
         }
-        File::open(path)?.sync_all()?;
+        // Windows requires a handle with write access to FlushFileBuffers.
+        // A read-only File::open fails with ERROR_ACCESS_DENIED even when
+        // this existing immutable manifest is otherwise valid.
+        #[cfg(windows)]
+        let manifest = OpenOptions::new().write(true).open(path)?;
+        #[cfg(not(windows))]
+        let manifest = File::open(path)?;
+        manifest.sync_all()?;
         sync_existing_parent(path.parent().expect("file has a parent"))?;
         return Ok(());
     }
