@@ -8,6 +8,10 @@ on:
       - "crates/aurora-core/**"
       - "crates/aurora-consensus/**"
       - "crates/aurora-node/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "rust-toolchain.toml"
       - ".github/workflows/fuzz.yml"
   pull_request:
     paths:
@@ -15,6 +19,10 @@ on:
       - "crates/aurora-core/**"
       - "crates/aurora-consensus/**"
       - "crates/aurora-node/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "rust-toolchain.toml"
       - ".github/workflows/fuzz.yml"
   workflow_dispatch:
     inputs:
