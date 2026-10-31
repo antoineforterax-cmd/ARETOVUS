@@ -795,8 +795,7 @@ mod tests {
             let before_tip = chain.tip_hash();
             let before_work = chain.chain_work();
             let mut candidate = block(before_tip, timestamp, vec![]);
-            candidate.header.nonce =
-                mine_nonce(&candidate.header, required, 0, 100_000).unwrap();
+            candidate.header.nonce = mine_nonce(&candidate.header, required, 0, 100_000).unwrap();
             chain.submit(candidate).unwrap();
             assert_eq!(chain.height(), before_height + 1);
             assert_ne!(chain.tip_hash(), before_tip);
