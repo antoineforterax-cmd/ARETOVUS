@@ -3924,7 +3924,9 @@ mod handshake_admission_tests {
         active.swap_remove(2);
         assert_eq!(active.len(), MAX_ACTIVE_SESSIONS - 1);
         assert!(active.iter().any(|peer| peer.id == 0 && peer.in_flight));
-        assert!(active.iter().any(|peer| peer.id == 1 && !peer.output.is_empty()));
+        assert!(active
+            .iter()
+            .any(|peer| peer.id == 1 && !peer.output.is_empty()));
         assert!(active.iter().all(|peer| peer.id != 2));
         // No more session is eligible when the remaining peers are recent,
         // busy, or have an in-progress response.
