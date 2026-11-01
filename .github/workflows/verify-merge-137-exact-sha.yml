@@ -1,0 +1,81 @@
+# Disposable validation harness. This file is never merged into main.
+# Each job explicitly checks out the unchanged post-merge ARETOVUS commit.
+name: verify-merge-137-exact-sha
+
+on:
+  push:
+    branches: [test/verify-merge-137-exact-sha-20261101]
+  pull_request:
+    paths:
+      - ".github/workflows/verify-merge-137-exact-sha.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  main-core:
+    name: core-on-exact-merge-sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 464b51e30cdfa2b57c58ca785f451e58c95a9c98
+          persist-credentials: false
+      - name: Assert exact merge commit is checked out
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "464b51e30cdfa2b57c58ca785f451e58c95a9c98"
+      - name: Install pinned Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Locked workspace build
+        run: cargo build --workspace --locked
+      - name: Independent retarget vectors
+        run: python3 scripts/retarget_sim.py --check
+      - name: Independent emission simulation
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_emission_sim.py'
+          python3 scripts/emission_sim.py --heights 10000000 100000000 500000000
+      - name: Branding and historical-protocol guards
+        run: python3 scripts/test_branding_compatibility.py
+      - name: Workspace tests
+        run: cargo test --workspace --locked
+      - name: Multi-node smoke
+        run: python3 scripts/testnet_smoke.py
+      - name: Short endurance launcher
+        run: python3 scripts/testnet_endurance.py --binary target/debug/aretovus-node --wallet target/debug/aretovus-wallet --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0
+
+  cross-platform:
+    name: storage-wallet-packages-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 464b51e30cdfa2b57c58ca785f451e58c95a9c98
+          persist-credentials: false
+      - name: Assert exact merge commit is checked out
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "464b51e30cdfa2b57c58ca785f451e58c95a9c98"
+      - name: Install pinned Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Storage recovery and corruption regression tests
+        run: cargo test --locked -p aretovus-storage --lib
+      - name: Wallet file and recovery regression tests
+        run: cargo test --locked -p aretovus-wallet --lib
+      - name: Build release artifacts with locked dependencies
+        run: cargo build --workspace --release --locked
+      - name: Test cross-platform package and checksums
+        run: python scripts/package_testnet.py
