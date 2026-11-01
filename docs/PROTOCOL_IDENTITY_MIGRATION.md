@@ -2,6 +2,18 @@
 
 Cette branche expérimente un **nouveau réseau** : le nom de la blockchain, son espace cryptographique, ses identifiants de stockage, ses clés locales, ses adresses URI, les messages du portefeuille et la genèse sont désormais ARETOVUS.
 
+## Orientations conservées — décision A3 du 1er novembre 2026
+
+La décision [ARETOVUS #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142#issuecomment-6557027057) est de **repartir sur un réseau natif indépendant**, tout en conservant les directions de développement et les protections acquises.
+
+**Nous conservons les règles numériques du testnet historique sur `main` au commit `7eb3924e508e80307a221b23b322da62ff08d814` :** plafond expérimental de 500 000 000 unités (8 décimales), calcul d'émission `R = min(reliquat, max(1, floor(reliquat / 1_000_000)))`, trésorerie de `floor(R/20)` et partage des frais `floor(F/2)` au mineur, reliquat brûlé. La nouvelle **identité cryptographique** n'autorise aucun changement implicite d'émission, de difficulté, de frais, de propriété ou de règles de réorganisation. Le plafond final envisagé pour un éventuel mainnet, les symboles monétaires et leur disponibilité restent **des décisions distinctes, non prises ici**.
+
+**Nous conservons tous les correctifs récents de `main`, en particulier la [PR #140](https://github.com/antoineforterax-cmd/ARETOVUS/pull/140) :** comparaison de l'identité des handles Windows, rejet des substitutions, contrôle `O_NOFOLLOW` sur Unix et protections de sauvegarde. Ils doivent être présents dans la version native et dans ses tests de régression. Les tests historiques, les logs et les anciens artefacts restent inchangés et archivés, mais ne sont pas importés dans le nouveau réseau.
+
+**Nous conservons la trajectoire du projet :** fiabilité et audit adversarial avant nouveaux modules ; synchronisation longue et résistance P2P ; nœud praticable sur matériel modeste ; maîtrise de la dépense de stockage et de calcul ; décentralisation ; puis recherche sur confidentialité, récupération facultative et clients mobiles. Ces dernières fonctions **ne sont pas encore activées par cette migration**.
+
+**Verrou de fusion :** les CI réussies sur l'ancienne base de la PR ne prouvent pas l'intégration avec `main`. Reconcilier explicitement les deux historiques, relancer Rust et Windows/Linux/macOS sur le SHA combiné, exiger une validation de fusion séparée ; **aucune publication ni argent réel**.
+
 ## Ruptures volontaires
 
 - Les hachages de domaine utilisent désormais `ARETOVUS/exp/...` ; les identifiants de transactions et de comptes, les racines Merkle et les signatures en dépendent.
