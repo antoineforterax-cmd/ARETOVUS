@@ -114,7 +114,6 @@ mod tests {
         assert_eq!(p.retarget(20, 10_000), 18);
     }
 
-
     #[test]
     fn retarget_extreme_elapsed_time_remains_bounded_and_deterministic() {
         let params = DifficultyParams {
