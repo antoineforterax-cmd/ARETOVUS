@@ -484,6 +484,84 @@ mod tests {
     }
 
     #[test]
+    fn encrypted_wallet_adversarial_headers_and_lengths_never_restore_foreign_bytes() {
+        let root = std::env::temp_dir().join(format!(
+            "aretovus-wallet-header-negative-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&root).unwrap();
+        let source = root.join("source.aretkey");
+        let destination = root.join("restore.aretkey");
+        let key = WalletKey::from_seed_bytes([0x53; 32]);
+        let expected = key.account_id();
+        let password = "test-only synthetic passphrase";
+        key.save_encrypted_testnet_file(&source, password).unwrap();
+        let valid = fs::read(&source).unwrap();
+        assert_eq!(valid.len(), ENCRYPTED_FILE_BYTES);
+
+        // Invalid magic, unsupported Argon2id parameters and altered
+        // authenticated salt, nonce, ciphertext or tag all fail closed.
+        for offset in [
+            0usize,
+            8,
+            12,
+            16,
+            20,
+            36,
+            ENCRYPTED_HEADER_BYTES,
+            ENCRYPTED_FILE_BYTES - 1,
+        ] {
+            let mut damaged = valid.clone();
+            damaged[offset] ^= 1;
+            fs::write(&source, &damaged).unwrap();
+            assert!(
+                WalletKey::load_encrypted_testnet_file(&source, password).is_err(),
+                "tampered encrypted offset {offset} was accepted"
+            );
+            assert_eq!(fs::read(&source).unwrap(), damaged);
+        }
+
+        // Framing must be exact: a prefix or an extra byte cannot become
+        // a differently interpreted key even with a valid password.
+        for damaged in [
+            valid[..valid.len() - 1].to_vec(),
+            [valid.as_slice(), &[0x7e]].concat(),
+        ] {
+            fs::write(&source, &damaged).unwrap();
+            assert!(WalletKey::load_encrypted_testnet_file(&source, password).is_err());
+            assert_eq!(fs::read(&source).unwrap(), damaged);
+        }
+
+        // An untrusted backup cannot create a replacement file. The loader
+        // must authenticate the source before any destination is written.
+        let mut malicious = valid.clone();
+        malicious[20] ^= 1;
+        fs::write(&source, &malicious).unwrap();
+        assert!(WalletKey::copy_encrypted_testnet_file(&source, &destination, password).is_err());
+        assert!(!destination.exists());
+        assert_eq!(fs::read(&source).unwrap(), malicious);
+
+        fs::write(&source, &valid).unwrap();
+        WalletKey::verify_encrypted_backup(&source, password, expected).unwrap();
+        assert_eq!(
+            WalletKey::load_encrypted_testnet_file(&source, password)
+                .unwrap()
+                .account_id(),
+            expected
+        );
+
+        // With valid data, create_new must still refuse to overwrite an
+        // existing destination containing someone else's bytes.
+        let sentinel = b"unrelated pre-existing key file";
+        fs::write(&destination, sentinel).unwrap();
+        assert!(WalletKey::copy_encrypted_testnet_file(&source, &destination, password).is_err());
+        assert_eq!(fs::read(&destination).unwrap(), sentinel);
+        assert_eq!(fs::read(&source).unwrap(), valid);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn encrypted_backup_restores_identity_without_reusing_ciphertext() {
         let unique = NEXT.fetch_add(1, Ordering::Relaxed);
         let source = std::env::temp_dir().join(format!(
