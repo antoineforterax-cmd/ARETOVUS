@@ -1,0 +1,123 @@
+# Disposable proof harness: NEVER merge this file into main.
+# Every job tests the already-merged SHA, never this PR's code.
+name: verify-merge-140-exact-sha
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/verify-merge-140-exact-sha.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7eb3924e508e80307a221b23b322da62ff08d814
+          persist-credentials: false
+      - name: Assert the exact main merge commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "7eb3924e508e80307a221b23b322da62ff08d814"
+      - name: Rust 1.99.1 and lint tools
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Workspace build
+        run: cargo build --workspace --locked
+      - name: Workspace regression tests
+        run: cargo test --workspace --locked
+      - name: ARETOVUS brand and consensus compatibility
+        run: python3 scripts/test_branding_compatibility.py
+      - name: Two-process testnet smoke
+        run: python3 scripts/testnet_smoke.py
+
+  storage-and-wallet:
+    name: storage-wallet-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7eb3924e508e80307a221b23b322da62ff08d814
+          persist-credentials: false
+      - name: Assert the exact main merge commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "7eb3924e508e80307a221b23b322da62ff08d814"
+      - name: Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Storage corruption, restart and recovery tests
+        run: cargo test --locked -p aretovus-storage --lib
+      - name: Windows regular-file substitution regression
+        if: runner.os == 'Windows'
+        run: cargo test --locked -p aretovus-storage --lib read_rejects_regular_file_swapped_between_metadata_and_open -- --nocapture
+      - name: Wallet file and key regression tests
+        run: cargo test --locked -p aretovus-wallet --lib
+
+  export-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7eb3924e508e80307a221b23b322da62ff08d814
+          persist-credentials: false
+      - name: Assert exact main merge commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "7eb3924e508e80307a221b23b322da62ff08d814"
+      - name: Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Produce portable backup
+        shell: bash
+        env:
+          AURORA_CROSS_RUNNER_EXPORT_DIR: ${{ runner.temp }}/aretovus-transfer
+        run: |
+          set -euo pipefail
+          mkdir -p "$AURORA_CROSS_RUNNER_EXPORT_DIR"
+          cargo test --locked -p aretovus-storage --lib tests::cross_runner_v6_backup_producer -- --exact --ignored --nocapture 2>&1 | tee export.log
+          grep -Fq 'test result: ok. 1 passed; 0 failed;' export.log
+          test -f "$AURORA_CROSS_RUNNER_EXPORT_DIR/expected.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-a2-portable-backup
+          path: ${{ runner.temp }}/aretovus-transfer/
+          retention-days: 7
+          if-no-files-found: error
+
+  import-backup:
+    needs: export-backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7eb3924e508e80307a221b23b322da62ff08d814
+          persist-credentials: false
+      - name: Assert exact main merge commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "7eb3924e508e80307a221b23b322da62ff08d814"
+      - uses: actions/download-artifact@v4
+        with:
+          name: validation-a2-portable-backup
+          path: ${{ runner.temp }}/aretovus-import
+      - name: Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Restore on independent runner and check reorganization
+        shell: bash
+        env:
+          AURORA_CROSS_RUNNER_IMPORT_DIR: ${{ runner.temp }}/aretovus-import
+        run: |
+          set -euo pipefail
+          cargo test --locked -p aretovus-storage --lib tests::cross_runner_v6_backup_consumer -- --exact --ignored --nocapture 2>&1 | tee import.log
+          grep -Fq 'test result: ok. 1 passed; 0 failed;' import.log
+          grep -Fq 'cross-runner consumer: snapshot restored, side branch reorg and resave verified' import.log
