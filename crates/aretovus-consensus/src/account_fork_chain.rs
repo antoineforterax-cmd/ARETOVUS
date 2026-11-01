@@ -1148,6 +1148,138 @@ mod tests {
     }
 
     #[test]
+    fn native_testnet_competing_nonce_spends_reorg_without_double_payout() {
+        use aretovus_core::accounts::{
+            ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
+        };
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+
+        let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = signing_key.verifying_key().encode();
+        let sender = aretovus_core::signature::post_quantum_account_id(public_key.as_slice());
+        let mut initial = AccountLedger::new(NetworkId::Testnet);
+        initial
+            .credit_issuance(sender, Amount::from_units(1_000).unwrap())
+            .unwrap();
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(account(64)),
+            initial,
+        )
+        .unwrap();
+        let genesis_tip = chain.tip_hash();
+        let signed = |recipient: u8, amount: u64| {
+            let mut tx = AccountTransaction {
+                version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+                network: NetworkId::Testnet,
+                sender,
+                nonce: 0,
+                recipient: account(recipient),
+                amount: Amount::from_units(amount).unwrap(),
+                fee: Amount::from_units(1).unwrap(),
+                auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+            };
+            tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key.as_slice());
+            let signature = signing_key
+                .sign(tx.signing_digest().unwrap().as_bytes())
+                .encode();
+            tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..]
+                .copy_from_slice(signature.as_slice());
+            tx
+        };
+        let spend_a = signed(70, 10);
+        let spend_b = signed(71, 20);
+        let txid_a = spend_a.txid().unwrap();
+        let txid_b = spend_b.txid().unwrap();
+        let branch_a = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            genesis_tip,
+            2,
+            0,
+            Some(account(61)),
+            vec![spend_a],
+        )
+        .unwrap();
+        let hash_a = branch_a.header.hash().unwrap();
+        let branch_b = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            genesis_tip,
+            3,
+            0,
+            Some(account(62)),
+            vec![spend_b],
+        )
+        .unwrap();
+        let hash_b = branch_b.header.hash().unwrap();
+
+        chain.submit(branch_a).unwrap();
+        chain.submit(branch_b).unwrap();
+        assert_eq!(chain.height(), 1);
+        assert_eq!(chain.known_block_count(), 3);
+
+        // The branch with *less* cumulative work becomes non-canonical after
+        // extending it, regardless of the tie-break winner at height one.
+        let losing_hash = if chain.tip_hash() == hash_a {
+            hash_b
+        } else {
+            hash_a
+        };
+        let branch_b_wins = losing_hash == hash_b;
+        let child = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            losing_hash,
+            4,
+            0,
+            Some(account(63)),
+            vec![],
+        )
+        .unwrap();
+        let child_hash = child.header.hash().unwrap();
+        assert!(chain.submit(child).unwrap().became_best);
+        assert_eq!(chain.tip_hash(), child_hash);
+        assert_eq!(chain.height(), 2);
+        assert_eq!(chain.known_block_count(), 4);
+        assert_eq!(chain.state().account(sender).next_nonce, 1);
+        assert_eq!(
+            chain.state().account(sender).balance.to_units(),
+            if branch_b_wins { 979 } else { 989 }
+        );
+        assert_eq!(
+            chain.state().account(account(70)).balance.to_units(),
+            if branch_b_wins { 0 } else { 10 }
+        );
+        assert_eq!(
+            chain.state().account(account(71)).balance.to_units(),
+            if branch_b_wins { 20 } else { 0 }
+        );
+        assert_eq!(
+            chain.canonical_transaction(txid_a).is_some(),
+            !branch_b_wins
+        );
+        assert_eq!(
+            chain.canonical_transaction(txid_b).is_some(),
+            branch_b_wins
+        );
+        let first_reward = crate::reward::scheduled_issuance(Amount::from_units(1_000).unwrap());
+        let second_reward = crate::reward::scheduled_issuance(
+            Amount::from_units(1_000 + first_reward.to_units()).unwrap(),
+        );
+        assert_eq!(
+            chain.state().total_issued().to_units(),
+            1_000 + first_reward.to_units() + second_reward.to_units()
+        );
+        assert_eq!(
+            chain.state().account(if branch_b_wins { account(61) } else { account(62) })
+                .balance.to_units(),
+            0,
+            "orphan miner reward must be removed after a reorg"
+        );
+    }
+
+    #[test]
     fn child_state_rejects_nonce_replay_against_its_parent() {
         let genesis = block(Hash256::ZERO, 1, vec![]);
         let mut chain = AccountForkChain::new(genesis, 0, initial_state()).unwrap();
