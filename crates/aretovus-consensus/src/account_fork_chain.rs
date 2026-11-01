@@ -1023,6 +1023,134 @@ mod tests {
         assert_eq!(chain.state().total_issued().to_units(), 1_000);
     }
 
+
+    #[test]
+    fn native_testnet_double_spend_and_bad_signature_reject_atomically() {
+        use aretovus_core::accounts::{
+            ML_DSA_65_PUBLIC_KEY_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
+        };
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+
+        let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = signing_key.verifying_key().encode();
+        let sender = aretovus_core::signature::post_quantum_account_id(public_key.as_slice());
+        let mut initial = AccountLedger::new(NetworkId::Testnet);
+        initial
+            .credit_issuance(sender, Amount::from_units(1_000).unwrap())
+            .unwrap();
+
+        let genesis = AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, vec![]).unwrap();
+        let miner = account(90);
+        let treasury = account(91);
+        let mut chain = AccountForkChain::new_with_protocol_params(
+            genesis,
+            0,
+            DifficultyParams::fixed(0),
+            RewardParams::experimental_testnet(treasury),
+            initial,
+        )
+        .unwrap();
+        let signed = |recipient: u8| {
+            let mut transaction = AccountTransaction {
+                version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+                network: NetworkId::Testnet,
+                sender,
+                nonce: 0,
+                recipient: account(recipient),
+                amount: Amount::from_units(10).unwrap(),
+                fee: Amount::from_units(3).unwrap(),
+                auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+            };
+            transaction.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES]
+                .copy_from_slice(public_key.as_slice());
+            let signature = signing_key
+                .sign(transaction.signing_digest().unwrap().as_bytes())
+                .encode();
+            transaction.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..]
+                .copy_from_slice(signature.as_slice());
+            transaction
+        };
+
+        let first = signed(92);
+        let second = signed(93);
+        let before = chain.state().clone();
+        let tip = chain.tip_hash();
+        let count = chain.known_block_count();
+        let bad = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            tip,
+            2,
+            0,
+            Some(miner),
+            vec![first.clone(), second],
+        )
+        .unwrap();
+        let bad_hash = bad.header.hash().unwrap();
+        assert!(matches!(
+            chain.submit(bad),
+            Err(AccountForkChainError::Validation(
+                AccountBlockValidationError::State(_)
+            ))
+        ));
+        assert_eq!(chain.state(), &before);
+        assert_eq!(chain.tip_hash(), tip);
+        assert_eq!(chain.height(), 0);
+        assert_eq!(chain.known_block_count(), count);
+        assert!(!chain.contains_block(bad_hash));
+        assert_eq!(chain.state().account(miner).balance.to_units(), 0);
+        assert_eq!(chain.state().account(treasury).balance.to_units(), 0);
+
+        // Keep a valid canonical block commitment while invalidating the signature.
+        let mut tampered = signed(94);
+        tampered.amount = Amount::from_units(11).unwrap();
+        let bad_signature = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            tip,
+            2,
+            0,
+            Some(miner),
+            vec![tampered],
+        )
+        .unwrap();
+        let bad_signature_hash = bad_signature.header.hash().unwrap();
+        assert!(matches!(
+            chain.submit(bad_signature),
+            Err(AccountForkChainError::Validation(
+                AccountBlockValidationError::State(_)
+            ))
+        ));
+        assert_eq!(chain.state(), &before);
+        assert_eq!(chain.tip_hash(), tip);
+        assert_eq!(chain.known_block_count(), count);
+        assert!(!chain.contains_block(bad_signature_hash));
+
+        // The legitimate transaction must still be accepted after both rejects.
+        let valid = AccountBlock::build_with_miner(
+            NetworkId::Testnet,
+            tip,
+            2,
+            0,
+            Some(miner),
+            vec![first],
+        )
+        .unwrap();
+        let issuance = crate::reward::scheduled_issuance(before.total_issued()).to_units();
+        assert!(chain.submit(valid).unwrap().became_best);
+        assert_eq!(chain.height(), 1);
+        assert_eq!(chain.known_block_count(), count + 1);
+        assert_eq!(chain.state().account(sender).balance.to_units(), 987);
+        assert_eq!(chain.state().account(sender).next_nonce, 1);
+        assert_eq!(chain.state().account(account(92)).balance.to_units(), 10);
+        assert_eq!(chain.state().account(account(93)).balance.to_units(), 0);
+        assert_eq!(chain.state().account(account(94)).balance.to_units(), 0);
+        assert_eq!(
+            chain.state().account(miner).balance.to_units(),
+            issuance - issuance / 20 + 1
+        );
+        assert_eq!(chain.state().account(treasury).balance.to_units(), issuance / 20);
+        assert_eq!(chain.state().total_issued().to_units(), 1_000 + issuance);
+    }
+
     #[test]
     fn child_state_rejects_nonce_replay_against_its_parent() {
         let genesis = block(Hash256::ZERO, 1, vec![]);
