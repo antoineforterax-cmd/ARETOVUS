@@ -242,6 +242,61 @@ mod tests {
     }
 
     #[test]
+    fn old_network_domain_signature_is_rejected_for_native_mldsa_testnet() {
+        use crate::codec::{CanonicalEncode, Encoder};
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+        use sha2::{Digest, Sha256};
+
+        let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = signing_key.verifying_key().encode();
+        let mut tx = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender: post_quantum_account_id(public_key.as_slice()),
+            nonce: 4,
+            recipient: AccountId([0x45; 32]),
+            amount: Amount::from_units(11).unwrap(),
+            fee: Amount::from_units(1).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key.as_slice());
+
+        // Reconstruct the old signing-domain digest using a byte-only
+        // historical fixture. The active source never accepts that domain.
+        // This is the domain used before the ARETOVUS network separation.
+        let old_tag: &[u8] = &[ 0x41, 0x55, 0x52, 0x4f, 0x52, 0x41, 0x2f, 0x65, 0x78, 0x70, 0x2f, 0x76, 0x30, 0x2f, 0x74, 0x78, 0x2d, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e, 0x67 ];
+        let mut enc = Encoder::new();
+        enc.put_u32(tx.version);
+        tx.network.encode(&mut enc).unwrap();
+        tx.sender.encode(&mut enc).unwrap();
+        enc.put_u64(tx.nonce);
+        tx.recipient.encode(&mut enc).unwrap();
+        tx.amount.encode(&mut enc).unwrap();
+        tx.fee.encode(&mut enc).unwrap();
+        let payload = enc.into_bytes();
+        let mut sha = Sha256::new();
+        sha.update([old_tag.len() as u8]);
+        sha.update(old_tag);
+        sha.update(payload);
+        let old_digest = sha.finalize();
+
+        let old_signature = signing_key.sign(old_digest.as_slice()).encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(old_signature.as_slice());
+        assert_eq!(
+            verify_account_transaction(&tx),
+            Err(SignatureError::InvalidSignature)
+        );
+
+        // A correctly signed native transaction with exactly the same
+        // fields and key remains valid; only the network domain changes.
+        let native_signature = signing_key
+            .sign(tx.signing_digest().unwrap().as_bytes())
+            .encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(native_signature.as_slice());
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
+    }
+
+    #[test]
     fn native_post_quantum_v3_uses_only_ml_dsa_65() {
         use crate::accounts::{POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES};
         use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
