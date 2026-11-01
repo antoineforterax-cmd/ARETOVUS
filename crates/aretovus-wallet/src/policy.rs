@@ -10,7 +10,7 @@ use aretovus_core::accounts::AccountId;
 
 use crate::{account_id_hex, parse_amount, safety::PaymentLimits};
 
-const HEADER: &str = "AURORA-TESTNET-LIMITS-v1";
+const HEADER: &str = "ARETOVUS-TESTNET-LIMITS-v1";
 const MAX_BYTES: u64 = 1024;
 
 pub fn policy_path(key_file: &Path) -> PathBuf {
@@ -151,7 +151,7 @@ mod tests {
             account_id_hex(a)
         );
         for bad in [
-            valid.replace(HEADER, "AURORA-MAINNET-LIMITS-v1"),
+            valid.replace(HEADER, "ARETOVUS-MAINNET-LIMITS-v1"),
             valid.replace("max_fee=", "unknown="),
             valid.replace("max_amount=1", "max_amount=0"),
             valid.replace("max_fee=0.00000003", "max_fee=-1"),

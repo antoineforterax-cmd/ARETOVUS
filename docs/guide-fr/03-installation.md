@@ -59,7 +59,7 @@ Les commandes de ce guide gardent les mêmes options. Par exemple, `--data-dir .
 | `scripts/` | Lanceur d’endurance et aides de test; Python est nécessaire pour les exécuter. |
 | `SHA256SUMS.txt` dans l’archive | Empreintes des fichiers empaquetés. Il est distinct du fichier externe qui vérifie les archives. |
 | Dossier passé à `--data-dir` | Données locales créées au lancement du nœud. |
-| Fichier `.aurkey` créé par le wallet | Clé du portefeuille, à sauvegarder séparément des données du nœud. |
+| Fichier `.aretkey` créé par le wallet | Clé du portefeuille, à sauvegarder séparément des données du nœud. |
 
 Les exécutables du nœud et du wallet ne demandent pas Python pour leurs commandes ordinaires. Le lanceur d’endurance en Python est un outil distinct.
 

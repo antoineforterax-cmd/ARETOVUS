@@ -27,22 +27,22 @@ use aretovus_core::{
     state::AccountLedger,
 };
 
-const MAGIC: &[u8; 8] = b"AURORSNP";
+const MAGIC: &[u8; 8] = b"ARETOSNP";
 const FORMAT_VERSION: u32 = 4;
-const INDEX_MAGIC: &[u8; 8] = b"AURORIDX";
+const INDEX_MAGIC: &[u8; 8] = b"ARETOIDX";
 const INDEX_VERSION: u32 = 6;
 const LEGACY_INDEX_VERSION: u32 = 5;
-const INDEX_PAGE_MAGIC: &[u8; 8] = b"AURORPAG";
+const INDEX_PAGE_MAGIC: &[u8; 8] = b"ARETOPAG";
 const INDEX_PAGE_VERSION: u32 = 1;
 const INDEX_PAGE_DIRECTORY: &str = "index-pages-v6";
-const INDEX_PAGE_EXTENSION: &str = "aurpage";
+const INDEX_PAGE_EXTENSION: &str = "aretpage";
 const INDEX_PAGE_BLOCKS: usize = 4_096;
 /// At most 4 MiB of verified arrival-order IDs may be kept across P2P pages.
 const MAX_CACHED_FULL_INDEX_PAGES: usize = 32;
 const MAX_INDEX_PAGE_BYTES: usize = 24 + INDEX_PAGE_BLOCKS * 32 + 32;
 const BLOCK_DIRECTORY: &str = "blocks-v5";
-const INDEX_EXTENSION: &str = "auridx";
-const BLOCK_EXTENSION: &str = "aurblk";
+const INDEX_EXTENSION: &str = "aretidx";
+const BLOCK_EXTENSION: &str = "aretblk";
 const CHECKSUM_LEN: usize = 32;
 const MAX_SNAPSHOT_BYTES: usize = 64 * 1024 * 1024;
 const MAX_LEGACY_BLOCKS: usize = 100_000;
@@ -149,7 +149,7 @@ fn save_snapshot_inner(
     // Reuse the filename and PathBuf buffers without caching any path metadata.
     // Every block still goes through the existing symlink_metadata guard.
     let mut block_name = String::with_capacity(64 + 1 + BLOCK_EXTENSION.len());
-    let mut block_path = block_dir.join("block.aurblk");
+    let mut block_path = block_dir.join("block.aretblk");
     #[cfg(any(test, debug_assertions))]
     let mut new_block_objects = 0usize;
     for (block_id, block) in blocks {
@@ -349,7 +349,7 @@ fn save_snapshot_inner(
         eprintln!("cannot prune old ARETOVUS index pages: {error}");
     }
     #[cfg(any(test, debug_assertions))]
-    if std::env::var_os("AURORA_STORAGE_PROFILE").is_some() {
+    if std::env::var_os("ARETOVUS_STORAGE_PROFILE").is_some() {
         let total = profile_started.elapsed();
         eprintln!(
             "storage phases: blocks={} pages={} block_objects_seconds={:.3} index_pages_seconds={:.3} sync_and_manifest_seconds={:.3} retention_seconds={:.3} total_seconds={:.3} existing_block_metadata_checks={} new_block_objects={} cache_page_hits={} uncached_page_checks={} prune_manifest_seconds={:.3} prune_page_seconds={:.3}",
@@ -500,7 +500,7 @@ fn write_immutable_with_directory_sync(
         ));
     }
     let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let temporary = path.with_file_name(format!(".aurora-{}-{sequence}.tmp", std::process::id()));
+    let temporary = path.with_file_name(format!(".aretovus-{}-{sequence}.tmp", std::process::id()));
     let mut file = OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -718,7 +718,7 @@ pub fn load_latest_snapshot(
         .map(|entry| entry.path())
         .filter(|path| {
             path.extension()
-                .is_some_and(|ext| ext == "aurora" || ext == INDEX_EXTENSION)
+                .is_some_and(|ext| ext == "aretovus" || ext == INDEX_EXTENSION)
         })
         .collect::<Vec<_>>();
     paths.sort();
@@ -1385,7 +1385,7 @@ mod tests {
 
         let root = dir();
         fs::create_dir_all(&root).unwrap();
-        let object = root.join("immutable.auridx");
+        let object = root.join("immutable.aretidx");
         let original = root.join("original");
         let outside = root.join("outside");
         fs::write(&object, b"original chain bytes").unwrap();
@@ -1417,8 +1417,8 @@ mod tests {
 
         let root = dir();
         fs::create_dir_all(&root).unwrap();
-        let object = root.join("immutable.auridx");
-        let moved = root.join("moved-original.auridx");
+        let object = root.join("immutable.aretidx");
+        let moved = root.join("moved-original.aretidx");
         fs::write(&object, b"same original inode").unwrap();
 
         let attempted = read_bounded_limit_with_preopen_hook(&object, 4096, || {
@@ -1445,9 +1445,9 @@ mod tests {
     fn read_rejects_regular_file_swapped_between_metadata_and_open() {
         let root = dir();
         fs::create_dir_all(&root).unwrap();
-        let object = root.join("immutable.auridx");
-        let original = root.join("original.auridx");
-        let replacement = root.join("replacement.auridx");
+        let object = root.join("immutable.aretidx");
+        let original = root.join("original.aretidx");
+        let replacement = root.join("replacement.aretidx");
         fs::write(&object, b"original payload").unwrap();
         fs::write(&replacement, b"forged__ payload").unwrap();
         assert_eq!(
@@ -1794,8 +1794,8 @@ mod tests {
         let manifest = save_snapshot(&path, &original).unwrap();
         // Unrelated artifacts cannot satisfy a block ID or block a save.
         let block_dir = path.join(BLOCK_DIRECTORY);
-        fs::write(block_dir.join("unrelated.aurblk"), b"not a block").unwrap();
-        fs::create_dir(block_dir.join("junk.aurblk")).unwrap();
+        fs::write(block_dir.join("unrelated.aretblk"), b"not a block").unwrap();
+        fs::create_dir(block_dir.join("junk.aretblk")).unwrap();
         assert_eq!(save_snapshot(&path, &original).unwrap(), manifest);
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), original.tip_hash());
@@ -1875,7 +1875,7 @@ mod tests {
         }
         let checksum = sha256_plain(&legacy);
         legacy.extend_from_slice(checksum.as_bytes());
-        fs::write(path.join("legacy.auridx"), legacy).unwrap();
+        fs::write(path.join("legacy.aretidx"), legacy).unwrap();
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         let actual: Vec<_> = restored
             .arrival_block_page(0, 4)
@@ -2011,7 +2011,7 @@ mod tests {
         // Reproduce a crash just before the atomic rename makes the new index
         // visible: its temporary file contains an incomplete write.
         fs::remove_file(&new_manifest).unwrap();
-        let interrupted = path.join(".aurora-interrupted-index.tmp");
+        let interrupted = path.join(".aretovus-interrupted-index.tmp");
         fs::write(&interrupted, &manifest_bytes[..manifest_bytes.len() / 2]).unwrap();
 
         let recovered =
@@ -2268,7 +2268,7 @@ mod tests {
         let manifest = save_snapshot(&path, &original).unwrap();
         // Simulate two retained generations pointing to the same immutable
         // page. They may reuse its verified digest only in this invocation.
-        let second_manifest = path.join("second-retained.auridx");
+        let second_manifest = path.join("second-retained.aretidx");
         fs::copy(&manifest, &second_manifest).unwrap();
         let mut verified_pages = HashSet::new();
         assert!(index_manifest_and_pages_valid(
@@ -2732,13 +2732,13 @@ mod tests {
     #[ignore = "requires an isolated 32 MiB tmpfs and explicit opt-in"]
     fn genuine_enospc_tmpfs_preserves_recovery_and_retry() {
         assert_eq!(
-            std::env::var("AURORA_ENOSPC_PROBE").as_deref(),
+            std::env::var("ARETOVUS_ENOSPC_PROBE").as_deref(),
             Ok("1"),
             "run only in the dedicated tmpfs workflow"
         );
         let root = PathBuf::from(
-            std::env::var_os("AURORA_ENOSPC_TEST_ROOT")
-                .expect("set AURORA_ENOSPC_TEST_ROOT to a private tmpfs mount"),
+            std::env::var_os("ARETOVUS_ENOSPC_TEST_ROOT")
+                .expect("set ARETOVUS_ENOSPC_TEST_ROOT to a private tmpfs mount"),
         );
         let path = root.join("storage-under-test");
         let mut original = chain();
@@ -3025,7 +3025,7 @@ mod tests {
     #[ignore = "run only in the cross-runner backup workflow"]
     fn cross_runner_v6_backup_producer() {
         let output = PathBuf::from(
-            std::env::var_os("AURORA_CROSS_RUNNER_EXPORT_DIR")
+            std::env::var_os("ARETOVUS_CROSS_RUNNER_EXPORT_DIR")
                 .expect("missing dedicated export directory"),
         );
         let snapshot = output.join("snapshot");
@@ -3057,7 +3057,7 @@ mod tests {
     #[ignore = "run only in the cross-runner backup workflow"]
     fn cross_runner_v6_backup_consumer() {
         let input = PathBuf::from(
-            std::env::var_os("AURORA_CROSS_RUNNER_IMPORT_DIR")
+            std::env::var_os("ARETOVUS_CROSS_RUNNER_IMPORT_DIR")
                 .expect("missing imported backup directory"),
         );
         let metadata = fs::read_to_string(input.join("expected.txt")).unwrap();
@@ -3122,13 +3122,13 @@ mod tests {
         let checksum = sha256_plain(&legacy);
         legacy.extend_from_slice(checksum.as_bytes());
         fs::remove_file(v6_index).unwrap();
-        fs::write(path.join("legacy.auridx"), legacy).unwrap();
+        fs::write(path.join("legacy.aretidx"), legacy).unwrap();
 
         let restored = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.known_block_count(), original.known_block_count());
         assert_eq!(restored.tip_hash(), original.tip_hash());
         save_snapshot(&path, &restored).unwrap();
-        fs::remove_file(path.join("legacy.auridx")).unwrap();
+        fs::remove_file(path.join("legacy.aretidx")).unwrap();
         let migrated = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(migrated.known_block_count(), original.known_block_count());
         assert_eq!(migrated.tip_hash(), original.tip_hash());
@@ -3250,7 +3250,7 @@ mod tests {
         fs::create_dir_all(&path).unwrap();
         let original = chain();
         fs::write(
-            path.join("legacy.aurora"),
+            path.join("legacy.aretovus"),
             encode_snapshot(&original).unwrap(),
         )
         .unwrap();
@@ -3260,7 +3260,7 @@ mod tests {
             index.extension().and_then(|ext| ext.to_str()),
             Some(INDEX_EXTENSION)
         );
-        fs::remove_file(path.join("legacy.aurora")).unwrap();
+        fs::remove_file(path.join("legacy.aretovus")).unwrap();
         let migrated = load_latest_snapshot(&path, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(migrated.tip_hash(), original.tip_hash());
         fs::remove_dir_all(path).unwrap();
@@ -3289,7 +3289,7 @@ mod tests {
     #[test]
     #[ignore = "run through the opt-in storage-phase-profile workflow"]
     fn repeated_snapshot_phase_profile_with_restart() {
-        let count = std::env::var("AURORA_STORAGE_PROFILE_BLOCKS")
+        let count = std::env::var("ARETOVUS_STORAGE_PROFILE_BLOCKS")
             .ok()
             .map(|value| value.parse::<u64>().expect("block count must be u64"))
             .unwrap_or(2_048);
@@ -3456,12 +3456,12 @@ mod tests {
 
     /// Real million-block storage/restart, deliberately excluded from routine CI.
     #[test]
-    #[ignore = "explicit opt-in: AURORA_MILLION_BLOCK_PROBE=1"]
+    #[ignore = "explicit opt-in: ARETOVUS_MILLION_BLOCK_PROBE=1"]
     fn million_block_persistence_and_restart_probe() {
         assert_eq!(
-            std::env::var("AURORA_MILLION_BLOCK_PROBE").as_deref(),
+            std::env::var("ARETOVUS_MILLION_BLOCK_PROBE").as_deref(),
             Ok("1"),
-            "set AURORA_MILLION_BLOCK_PROBE=1 to run the expensive probe"
+            "set ARETOVUS_MILLION_BLOCK_PROBE=1 to run the expensive probe"
         );
         assert_storage_probe_round_trip(1_000_000);
     }

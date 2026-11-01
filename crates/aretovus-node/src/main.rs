@@ -74,6 +74,14 @@ fn load_testnet_chain(dir: &std::path::Path) -> Result<AccountForkChain, Box<dyn
     let chain = match load_latest_snapshot(dir, AccountLedger::new(NetworkId::Testnet)) {
         Ok(chain) => chain,
         Err(StorageError::NoSnapshot) => {
+            // Never silently initialize a fresh network over data from another
+            // protocol or an incomplete / unrecognized snapshot set.
+            if fs::read_dir(dir)?
+                .filter_map(Result::ok)
+                .any(|entry| entry.file_name() != std::ffi::OsStr::new(".aretovus.lock"))
+            {
+                return Err("nonempty data directory without an ARETOVUS snapshot; use a fresh --data-dir and preserve existing files".into());
+            }
             let chain = testnet_chain()?;
             save_snapshot(dir, &chain)?;
             chain
@@ -96,7 +104,7 @@ fn lock_data_dir(dir: &Path) -> Result<fs::File, Box<dyn Error>> {
         .write(true)
         .create(true)
         .truncate(false)
-        .open(dir.join(".aurora.lock"))?;
+        .open(dir.join(".aretovus.lock"))?;
     lock.try_lock().map_err(|error| {
         format!(
             "data directory {} is already in use or cannot be locked: {error}",
@@ -358,7 +366,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }?,
         Some("--help") | Some("-h") => {
             println!("Usage:\n  aretovus-node regtest [--data-dir PATH]\n  aretovus-node testnet mine --data-dir PATH --miner <64 hex chars> [--count N] [--peer IP:PORT]\n  aretovus-node testnet serve --data-dir PATH --listen IP:PORT [--peer IP:PORT ...]\n  aretovus-node testnet sync --data-dir PATH --peer IP:PORT [--peer IP:PORT ...] [--discover]\n  aretovus-node testnet verify --data-dir PATH");
-            println!("Experimental testnet: bounded TCP push/pull and opt-in one-hop peer discovery; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M AUR cap.");
+            println!("Experimental testnet: bounded TCP push/pull and opt-in one-hop peer discovery; 8 initial leading-zero bits, 60-second target, 10-block retarget, 500M ARETOVUS cap.");
         }
         _ => return Err("Run aretovus-node --help for available commands".into()),
     }
@@ -458,6 +466,21 @@ mod tests {
             "operational loader accepted a snapshot from another genesis"
         );
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn rejects_foreign_or_unrecognized_data_without_overwriting() {
+        let dir = std::env::temp_dir().join(format!(
+            "aretovus-foreign-data-{}-{}",
+            process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let foreign = dir.join("unrecognized-snapshot.dat");
+        fs::write(&foreign, b"foreign chain data").unwrap();
+        assert!(load_testnet_chain(&dir).is_err());
+        assert_eq!(fs::read(&foreign).unwrap(), b"foreign chain data");
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

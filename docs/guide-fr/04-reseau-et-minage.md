@@ -10,7 +10,7 @@ Dans un premier terminal :
 
 ```powershell
 New-Item -ItemType Directory -Path .\demo\cles
-.\bin\aretovus-wallet.exe keygen --out .\demo\cles\alice.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\demo\cles\alice.aretkey
 ```
 
 Choisissez un mot de passe d’au moins douze caractères et confirmez-le. La saisie est masquée. Conservez l’adresse affichée après `address=`; elle est publique. Le fichier de clé et le mot de passe sont privés.
@@ -18,7 +18,7 @@ Choisissez un mot de passe d’au moins douze caractères et confirmez-le. La sa
 La commande suivante permet de retrouver l’adresse et de la mettre dans une variable PowerShell pour ce terminal :
 
 ```powershell
-$alice = .\bin\aretovus-wallet.exe address --key-file .\demo\cles\alice.aurkey
+$alice = .\bin\aretovus-wallet.exe address --key-file .\demo\cles\alice.aretkey
 ```
 
 Chaque nouvelle fenêtre possède ses propres variables. Si vous changez de fenêtre, refaites cette commande ou recopiez l’adresse publique.
@@ -43,9 +43,9 @@ Revenez dans le premier terminal, où `$alice` contient l’adresse :
 
 Le mineur synchronise sa copie depuis le serveur, récupère ses transactions en attente, construit un bloc puis l’envoie au serveur. Ici `--count 1` demande un seul bloc et la commande se termine ensuite. Elle ne lance pas un service de minage permanent.
 
-La sortie inclut `height`, `tip`, `difficulty_bits`, `transactions`, `issued_units` et `miner_balance_units`. Les deux derniers nombres sont en unités minimales : diviser par 100 000 000 pour obtenir des AUR. Sur cette chaîne neuve, le premier bloc sans transaction donne 475 AUR au compte d’Alice.
+La sortie inclut `height`, `tip`, `difficulty_bits`, `transactions`, `issued_units` et `miner_balance_units`. Les deux derniers nombres sont en unités minimales : diviser par 100 000 000 pour obtenir des ARETOVUS. Sur cette chaîne neuve, le premier bloc sans transaction donne 475 ARETOVUS au compte d’Alice.
 
-Le dossier `demo\mineur` est différent de `demo\noeud-a`. Un serveur et un mineur ne peuvent pas écrire simultanément dans le même dossier : le nœud impose un verrou. Ne supprimez jamais `.aurora.lock` pour contourner ce verrou.
+Le dossier `demo\mineur` est différent de `demo\noeud-a`. Un serveur et un mineur ne peuvent pas écrire simultanément dans le même dossier : le nœud impose un verrou. Ne supprimez jamais `.aretovus.lock` pour contourner ce verrou.
 
 ## 4. Ajouter le nœud B
 

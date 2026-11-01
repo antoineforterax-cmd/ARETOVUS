@@ -26,7 +26,9 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts -p 'test_emission_sim.py'
           python3 scripts/emission_sim.py --heights 10000000 100000000 500000000
-      - name: Contrôler le renommage et les identifiants de protocole historiques
+      - name: Vérifier indépendamment la genèse native ARETOVUS
+        run: python3 scripts/test_protocol_identity_vectors.py
+      - name: Contrôler l'identité native ARETOVUS et ses nouveaux formats
         run: python3 scripts/test_branding_compatibility.py
       - name: Tests
         run: cargo test --workspace --locked

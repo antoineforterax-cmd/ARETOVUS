@@ -51,7 +51,7 @@ Le 26 octobre 2026, le porteur a choisi de continuer le développement expérime
 
 ## 3. Décisions de protocole et économie
 
-Les paramètres économiques demandés par le porteur sont codés : plafond brut de 500 millions AUR, aucune préémission, émission proportionnelle décroissante, 5 % crédités à l’adresse de trésorerie de test, 95 % au mineur, frais partagés 50/50 et burn non réutilisable sous le plafond.
+Les paramètres économiques demandés par le porteur sont codés : plafond brut de 500 millions ARETOVUS, aucune préémission, émission proportionnelle décroissante, 5 % crédités à l’adresse de trésorerie de test, 95 % au mineur, frais partagés 50/50 et burn non réutilisable sous le plafond.
 
 Les décisions de périmètre sont détaillées dans [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md) :
 

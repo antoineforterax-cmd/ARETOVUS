@@ -23,7 +23,7 @@ Le nœud n’a pas besoin d’un compte auprès d’un fournisseur d’API pour 
 
 | Mot | Sens dans ARETOVUS |
 | --- | --- |
-| AUR | Unité monétaire du protocole; un AUR est divisé en 100 000 000 unités minimales. |
+| ARETOVUS | Unité monétaire du protocole; un ARETOVUS est divisé en 100 000 000 unités minimales. |
 | Adresse | Identifiant public du compte, affiché actuellement comme 64 caractères hexadécimaux. Ce n’est pas la clé privée. |
 | Clé privée | Secret permettant de signer. Le fichier de portefeuille la protège par chiffrement lorsqu’il est créé sans l’option de test en clair. |
 | Transaction | Ordre signé de transférer un montant, avec des frais et un numéro de séquence. |

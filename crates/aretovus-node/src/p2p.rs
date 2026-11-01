@@ -1688,7 +1688,7 @@ fn sync_from_peer_with_admission(
     check_timestamp: impl Fn(u64) -> Result<(), P2pError>,
 ) -> Result<usize, P2pError> {
     #[cfg(test)]
-    let profile_enabled = std::env::var_os("AURORA_P2P_PROFILE").is_some();
+    let profile_enabled = std::env::var_os("ARETOVUS_P2P_PROFILE").is_some();
     #[cfg(test)]
     let profile_started = Instant::now();
     #[cfg(test)]
@@ -2652,11 +2652,11 @@ mod tests {
 
     /// Opt-in full TCP transfer with page-level persistence and independent
     /// disk replay. 2048 Regtest blocks is the CI baseline; use
-    /// AURORA_P2P_VOLUME_BLOCKS=100001 for the large campaign.
+    /// ARETOVUS_P2P_VOLUME_BLOCKS=100001 for the large campaign.
     #[test]
     #[ignore = "network volume probe is intentionally opt-in"]
     fn network_volume_tcp_sync_with_side_branch_and_disk_replay() {
-        let count = std::env::var("AURORA_P2P_VOLUME_BLOCKS")
+        let count = std::env::var("ARETOVUS_P2P_VOLUME_BLOCKS")
             .ok()
             .map(|value| value.parse::<u64>().expect("block count must be u64"))
             .unwrap_or(2_048);
