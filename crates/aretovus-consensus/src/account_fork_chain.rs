@@ -1023,7 +1023,6 @@ mod tests {
         assert_eq!(chain.state().total_issued().to_units(), 1_000);
     }
 
-
     #[test]
     fn native_testnet_double_spend_and_bad_signature_reject_atomically() {
         use aretovus_core::accounts::{
@@ -1125,15 +1124,9 @@ mod tests {
         assert!(!chain.contains_block(bad_signature_hash));
 
         // The legitimate transaction must still be accepted after both rejects.
-        let valid = AccountBlock::build_with_miner(
-            NetworkId::Testnet,
-            tip,
-            2,
-            0,
-            Some(miner),
-            vec![first],
-        )
-        .unwrap();
+        let valid =
+            AccountBlock::build_with_miner(NetworkId::Testnet, tip, 2, 0, Some(miner), vec![first])
+                .unwrap();
         let issuance = crate::reward::scheduled_issuance(before.total_issued()).to_units();
         assert!(chain.submit(valid).unwrap().became_best);
         assert_eq!(chain.height(), 1);
@@ -1147,7 +1140,10 @@ mod tests {
             chain.state().account(miner).balance.to_units(),
             issuance - issuance / 20 + 1
         );
-        assert_eq!(chain.state().account(treasury).balance.to_units(), issuance / 20);
+        assert_eq!(
+            chain.state().account(treasury).balance.to_units(),
+            issuance / 20
+        );
         assert_eq!(chain.state().total_issued().to_units(), 1_000 + issuance);
     }
 
