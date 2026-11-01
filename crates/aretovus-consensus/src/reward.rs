@@ -64,7 +64,7 @@ impl From<StateError> for RewardError {
 /// Returns block issuance proportional to the gross supply still unissued.
 /// The recurrence is deterministic integer arithmetic:
 /// max(1 atomic unit, floor((cap - issued) / 1,000,000)), clipped to the exact remainder.
-/// This starts at 500 AUR, decays smoothly with remaining supply, and eventually reaches the cap.
+/// This starts at 500 ARETOVUS, decays smoothly with remaining supply, and eventually reaches the cap.
 pub fn scheduled_issuance(issued: Amount) -> Amount {
     let remaining = CAP_UNITS.saturating_sub(issued.to_units());
     if remaining == 0 {

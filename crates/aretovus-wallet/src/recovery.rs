@@ -4,7 +4,7 @@ use zeroize::Zeroizing;
 
 use aretovus_core::hash::sha256_plain;
 
-const PREFIX: &str = "aurora-testnet-recovery-v1:";
+const PREFIX: &str = "aretovus-testnet-recovery-v1:";
 const CODE_LEN: usize = PREFIX.len() + 64 + 1 + 64;
 const HEX: &[u8; 16] = b"0123456789abcdef";
 
@@ -75,7 +75,7 @@ mod tests {
             assert!(decode_seed(std::str::from_utf8(&corrupt).unwrap()).is_err());
             assert!(decode_seed(&code[..index]).is_err());
         }
-        for text in ["", "é", "aurora-mainnet-recovery-v1:", "+f"] {
+        for text in ["", "é", "aretovus-mainnet-recovery-v1:", "+f"] {
             assert!(decode_seed(text).is_err());
         }
         let mut trailing = Zeroizing::new(code.to_string());

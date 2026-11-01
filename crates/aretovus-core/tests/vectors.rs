@@ -70,15 +70,15 @@ fn sha256_matches_public_vectors() {
 fn tagged_hash_of_empty_data_matches_reference() {
     assert_eq!(
         tagged_hash(Domain::TxId, b"").to_hex(),
-        "c8af3d0f5a1e8e357e188f31742362196cefa94157300fcc1377f1cc13f8c5a7"
+        "efbc63de5a9bb42d1a17d2176cb374431a00d0f709e12a8aca22889624e08839"
     );
     assert_eq!(
         tagged_hash(Domain::BlockHeader, b"").to_hex(),
-        "88f1cdcca2dd6e583f249d5764203952a21f9181d80de4ca63ee0b06083e06b8"
+        "74435e734173833e888ecf6563179afbb984570049a2748f07e0586d19a598ea"
     );
     assert_eq!(
         tagged_hash(Domain::TxList, b"").to_hex(),
-        "70ac7aa3e093b0ba1c2c2076afc9a7d4d23e91c4d88860258ecf87a1a9daaae1"
+        "7c4c17849e31cc98e71ea3e7a76056f6679bc7d2d385205c42f296566dfeea9b"
     );
 }
 
@@ -101,7 +101,7 @@ fn transaction_one_encoding_and_id_match_reference() {
     );
     assert_eq!(
         tx.txid().unwrap().to_hex(),
-        "48b93d8400fb94ef233c23d9f94fc09e14714de2129ef781b2ef70ac06de578b"
+        "96838aa57e50df880a40fe87f15ef0c4250e3ad216273106089189ea7d739074"
     );
     assert_eq!(Transaction::from_canonical_bytes(&bytes).unwrap(), tx);
 }
@@ -112,10 +112,10 @@ fn transaction_two_encoding_and_id_match_reference() {
     let bytes = tx.to_canonical_bytes().unwrap();
     assert_eq!(
         hex(&bytes),
-        "00000000010000000148b93d8400fb94ef233c23d9f94fc09e14714de2129ef781b2ef70ac06de578b0000000000000001000000012a05caf03333333333333333333333333333333333333333333333333333333333333333000000000000271000000000"
+        "00000000010000000196838aa57e50df880a40fe87f15ef0c4250e3ad216273106089189ea7d7390740000000000000001000000012a05caf03333333333333333333333333333333333333333333333333333333333333333000000000000271000000000"
     );
     assert_eq!(
         tx.txid().unwrap().to_hex(),
-        "06ceef76cbe28135768625998a3973b2fc09011edd19c2b58f4e74fca8b8fb55"
+        "6a28eb863f7eefed622fe2b62beecd4500e4ebb95cd55381716ca64101b6070c"
     );
 }

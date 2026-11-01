@@ -9,7 +9,7 @@ Ce document concerne le testnet natif ML-DSA-65 et son protocole P2P v4.
 - Deux PC Windows **64 bits x86-64**, chacun relié au **même réseau privé de confiance**. Si un PC est 32 bits ou ARM, les archives Windows x86-64 ne sont pas utilisables telles quelles. Le Wi-Fi invité peut isoler les appareils.
 - Les **deux mêmes binaires** (node et wallet) construits depuis le **même commit** de `main`. Pour la version de test la plus récente, prendre l'artefact Windows du [workflow `testnet-packages`](https://github.com/antoineforterax-cmd/ARETOVUS/actions/workflows/testnet-packages.yml) sur le **commit `main` vert**, et **non** l'ancienne release 421d443. Ces artefacts expirent après 14 jours et contiennent parfois une ZIP imbriquée. La CI du workflow doit être **verte** (Windows, Linux, macOS) avant de les utiliser.
 - Dans chaque dossier extrait, on doit trouver `bin/aretovus-node.exe`, `bin/aretovus-wallet.exe`, `EXPERIMENTAL_TESTNET.txt` (SHA source), `SHA256SUMS.txt`, `scripts/two_pc_preflight.ps1`. Vérifier le SHA-256 de l'archive téléchargée avec une valeur fournie par le workflow ou une source contrôlée; le fichier interne vérifie les fichiers extraits, mais **n'authentifie pas à lui seul l'éditeur**.
-- Deux dossiers de données **neufs et indépendants** par machine ; ne réutiliser aucun dossier de vieux testnet. Lancer tous les exemples depuis la racine extraite (le dossier où se trouvent `bin` et `scripts`). Ne jamais partager fichiers `.aurkey`, mots de passe ou graines.
+- Deux dossiers de données **neufs et indépendants** par machine ; ne réutiliser aucun dossier de vieux testnet. Lancer tous les exemples depuis la racine extraite (le dossier où se trouvent `bin` et `scripts`). Ne jamais partager fichiers `.aretkey`, mots de passe ou graines.
 - Noter le SHA complet du workflow, l'heure/date et les versions Windows. Ne pas désactiver Microsoft Defender/SmartScreen ni le pare-feu pour lancer un exécutable non signé.
 
 **PC A** = ordinateur principal, serveur TCP 19444, mineur séparé, portefeuille Alice.
@@ -64,8 +64,8 @@ Sur **PC A**, créer une clé Alice chiffrée. Conserver uniquement l'adresse pu
 
 ```powershell
 New-Item -ItemType Directory -Path .\two-pc\cles -Force
-.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\alice.aurkey
-$alice = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\alice.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\alice.aretkey
+$alice = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\alice.aretkey
 .\bin\aretovus-node.exe testnet mine --data-dir .\two-pc\miner-a --miner $alice --count 1 --peer 127.0.0.1:19444
 ```
 
@@ -75,14 +75,14 @@ Sur **PC B**, créer Bob et noter **son adresse publique** :
 
 ```powershell
 New-Item -ItemType Directory -Path .\two-pc\cles -Force
-.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\bob.aurkey
-$bob = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\bob.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\two-pc\cles\bob.aretkey
+$bob = .\bin\aretovus-wallet.exe address --key-file .\two-pc\cles\bob.aretkey
 ```
 
 Transmettre **uniquement la chaîne publique `$bob`** à PC A, sans copier le fichier de clé. PC B peut consulter son propre pair :
 
 ```powershell
-.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
+.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aretkey --node 127.0.0.1:19445
 ```
 
 ## 5. Paiement inter-PC et confirmation
@@ -91,7 +91,7 @@ Sur PC A, remplacer la valeur de `$bob` par l'adresse publique exacte donnée pa
 
 ```powershell
 $bob = 'COLLER_ICI_L_ADRESSE_PUBLIQUE_DE_BOB_64_HEX'
-.\bin\aretovus-wallet.exe send --key-file .\two-pc\cles\alice.aurkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
+.\bin\aretovus-wallet.exe send --key-file .\two-pc\cles\alice.aretkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
 ```
 
 Copier le `transaction_id` renvoyé (public), puis sur PC A miner un bloc afin de confirmer le transfert :
@@ -105,7 +105,7 @@ $txid = 'COLLER_ICI_LE_TRANSACTION_ID_64_HEX'
 Sur PC B, après rattrapage (le poll se fait périodiquement, pas instantanément) :
 
 ```powershell
-.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aurkey --node 127.0.0.1:19445
+.\bin\aretovus-wallet.exe balance --key-file .\two-pc\cles\bob.aretkey --node 127.0.0.1:19445
 .\bin\aretovus-wallet.exe verify --node 127.0.0.1:19445 --txid $txid --confirmations 1
 ```
 

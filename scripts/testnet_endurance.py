@@ -152,7 +152,7 @@ def main() -> int:
     balances = [0, 0]
     nonces = [0, 0]
     accounts = []
-    keys = [base / "disposable-a.aurkey", base / "disposable-b.aurkey"]
+    keys = [base / "disposable-a.aretkey", base / "disposable-b.aretkey"]
     miner = "41" * 32
     result = {"status": "failed", "duration_completed": False}
     try:

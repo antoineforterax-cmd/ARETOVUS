@@ -412,7 +412,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 aretovus_wallet::signed_payment::load(Path::new(option(&args, "--from")?))?;
             // load validates canonical encoding, testnet domain and signature.
             println!("verified_signed_transaction=true");
-            println!("network=AURORA-TESTNET version={}", transaction.version);
+            println!("network=ARETOVUS-TESTNET version={}", transaction.version);
             println!("txid={}", transaction.txid()?);
             println!("sender={}", account_id_hex(transaction.sender));
             println!("recipient={}", account_id_hex(transaction.recipient));
@@ -443,7 +443,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 nonce,
             )?;
             println!("verified_signed_intent=true txid={}", transaction.txid()?);
-            println!("network=AURORA-TESTNET");
+            println!("network=ARETOVUS-TESTNET");
             println!("private_key_loaded=false network_requests=none");
         }
         "broadcast" => {
@@ -668,20 +668,20 @@ fn run() -> Result<(), Box<dyn Error>> {
             println!("  aretovus-wallet balance --key-file FILE --node IP:PORT");
             println!("    Balance and next_nonce include this node's pending transactions; they are not proof of confirmed state.");
             println!(
-                "  aretovus-wallet limits-create --key-file FILE --max-amount AUR --max-fee AUR"
+                "  aretovus-wallet limits-create --key-file FILE --max-amount ARETOVUS --max-fee ARETOVUS"
             );
             println!("  aretovus-wallet limits-show --key-file FILE");
             println!("    A FILE.limits policy is applied automatically to send, including --yes; one-shot limits only tighten it.");
-            println!("  aretovus-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
+            println!("  aretovus-wallet sign-offline --key-file FILE --to ACCOUNT_HEX --amount ARETOVUS --fee ARETOVUS --nonce N --out SIGNED_FILE [--dry-run | --yes] [--max-amount ARETOVUS] [--max-fee ARETOVUS]");
             println!("    No network requests; supplied nonce and balance remain unverified. Wallet limits apply.");
             println!("  aretovus-wallet inspect-signed --from SIGNED_FILE");
             println!("    Offline, read-only signature and field inspection; compare independently before broadcast.");
-            println!("  aretovus-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount AUR --fee AUR --nonce N");
+            println!("  aretovus-wallet verify-signed-intent --from SIGNED_FILE --sender ACCOUNT_HEX --to ACCOUNT_HEX --amount ARETOVUS --fee ARETOVUS --nonce N");
             println!("    Fail closed if an independently supplied spend field differs; no key, RPC or broadcast.");
             println!("  aretovus-wallet broadcast --from SIGNED_FILE --node IP:PORT [--expected-txid VERIFIED_TXID] [--yes]");
             println!("    Pin a txid from independent review to block swapped signed-file authorization before RPC.");
             println!("    The connected machine needs no private key. A signed file is a spending authorization, with no automatic expiry.");
-            println!("  aretovus-wallet send --key-file FILE --to ACCOUNT_HEX --amount AUR --fee AUR --node IP:PORT [--dry-run | --yes] [--max-amount AUR] [--max-fee AUR]");
+            println!("  aretovus-wallet send --key-file FILE --to ACCOUNT_HEX --amount ARETOVUS --fee ARETOVUS --node IP:PORT [--dry-run | --yes] [--max-amount ARETOVUS] [--max-fee ARETOVUS]");
             println!("  aretovus-wallet verify --node IP:PORT --txid TXID_HEX --confirmations N");
             println!("  aretovus-wallet status --node IP:PORT --txid TXID_HEX");
             println!("  aretovus-wallet wait --node IP:PORT --txid TXID_HEX --timeout-seconds N");

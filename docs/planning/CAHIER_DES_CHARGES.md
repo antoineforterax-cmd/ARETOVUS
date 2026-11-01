@@ -21,7 +21,7 @@ Concevoir une blockchain indépendante en Rust, décentralisée et vérifiable, 
 - Cible de 60 s par bloc ; taille maximale de bloc 4 MiB ; difficulté initiale de test très faible.
 - Stockage persistant, index paginés et checksummés, restauration et tests de reprise.
 - Transport P2P TCP à pairs configurés, découverte limitée opt-in, wallet CLI et tests multi-nœuds bornés.
-- Émission brute maximale de 500 000 000 AUR à 8 décimales ; genèse vide ; première récompense 500 AUR ; 5 % trésorerie expérimentale / 95 % mineur ; frais 50 % mineur / 50 % brûlés. Les détails exacts sont définis dans `docs/PROTOCOL.md` et `docs/TESTNET_DECISIONS.md`.
+- Émission brute maximale de 500 000 000 ARETOVUS à 8 décimales ; genèse vide ; première récompense 500 ARETOVUS ; 5 % trésorerie expérimentale / 95 % mineur ; frais 50 % mineur / 50 % brûlés. Les détails exacts sont définis dans `docs/PROTOCOL.md` et `docs/TESTNET_DECISIONS.md`.
 
 ## 4. Hors périmètre actuel
 - Mainnet, fonds réels, promesses de sécurité, audit humain indépendant.

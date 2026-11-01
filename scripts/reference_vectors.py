@@ -22,11 +22,12 @@ def tagged(tag, data):
     return sha(bytes([len(tag)]) + tag + data)
 
 
-TX = b"AURORA/exp/v0/txid"
-HD = b"AURORA/exp/v0/block-header"
-ML = b"AURORA/exp/v1/merkle-leaf"
-MN = b"AURORA/exp/v1/merkle-node"
-ME = b"AURORA/exp/v1/merkle-empty"
+TX = b"ARETOVUS/exp/v0/txid"
+HD = b"ARETOVUS/exp/v0/block-header"
+TL = b"ARETOVUS/exp/v0/tx-list"
+ML = b"ARETOVUS/exp/v1/merkle-leaf"
+MN = b"ARETOVUS/exp/v1/merkle-node"
+ME = b"ARETOVUS/exp/v1/merkle-empty"
 
 
 def merkle(txids):

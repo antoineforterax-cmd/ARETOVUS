@@ -1,4 +1,4 @@
-//! Canonical v3 transaction construction and AUR amount parsing.
+//! Canonical v3 transaction construction and ARETOVUS amount parsing.
 use std::error::Error;
 
 use aretovus_core::{
@@ -10,7 +10,7 @@ use ml_dsa::Signer;
 
 use crate::keys::WalletKey;
 
-/// Parse a non-negative decimal AUR amount without floating-point arithmetic.
+/// Parse a non-negative decimal ARETOVUS amount without floating-point arithmetic.
 pub fn parse_amount(value: &str) -> Result<Amount, Box<dyn Error>> {
     let (whole, fraction) = match value.split_once('.') {
         Some((whole, fraction)) if !fraction.contains('.') => (whole, fraction),

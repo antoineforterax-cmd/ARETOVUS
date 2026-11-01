@@ -18,7 +18,7 @@ La revue devrait couvrir le code et le protocole au commit exact enregistré par
 5. Émission, plafond brut, trésorerie 5 %, frais 50/50, burns et état lors d’une réorganisation.
 6. Décodage P2P/RPC, quotas, délais, synchronisation, découverte et gestion de données hostiles.
 7. Stockage paginé v6, lecture des snapshots v4 et index v5, checksums, rejeu de toutes les branches, reprise, verrou exclusif de dossier entre processus et erreurs d’E/S.
-8. Wallet testnet, fichiers de clés AURKEY4 chiffrés par défaut (Argon2id et XChaCha20-Poly1305), sauvegarde/restauration, format clair explicite réservé aux tests, URI et vérification SPV contre éclipses et données de pairs mensongères.
+8. Wallet testnet, fichiers de clés ARETOVK4 chiffrés par défaut (Argon2id et XChaCha20-Poly1305), sauvegarde/restauration, format clair explicite réservé aux tests, URI et vérification SPV contre éclipses et données de pairs mensongères.
 
 ## Reproduction locale
 

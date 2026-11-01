@@ -18,7 +18,7 @@ dans la PR du lot. Chaque changement fonctionnel conserve son propre commit.
 ## Portée et compatibilité
 
 Aucune règle de consensus, valeur monétaire, structure de transaction,
-format AURKEY3/AURKEY4, graine de récupération ou trame réseau ne change.
+format ARETOVK3/ARETOVK4, graine de récupération ou trame réseau ne change.
 Aucune dépendance supplémentaire ni télémétrie n'est ajoutée.
 
 Les commandes CLI qui utilisaient une faute de frappe, un argument non

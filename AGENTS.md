@@ -1,6 +1,6 @@
 # Instructions pour Codex — ARETOVUS
 
-Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](https://github.com/antoineforterax-cmd/ARETOVUS/blob/docs/aurora-master-plan-2026-10/docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
+Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidation : [politique d'implémentation](docs/planning/IMPLEMENTATION_POLICY.md). **Lire le guide complet avant toute action Git susceptible de modifier les bases ou de fusionner des branches.** Une mise à jour du guide n'est pas une approbation automatique de ses propositions.
 
 ## Objet
 
@@ -50,6 +50,6 @@ Donner : `branche/commit de départ ; fichiers ; résultat ; nouvelle branche/co
 
 La référence reste le **comportement réel du code sur le SHA ciblé**, et non une description historique ou une affirmation d'agent.
 
-## Renommage de marque ARETOVUS (2026-10-31)
+## Migration native ARETOVUS (branche expérimentale)
 
-Ne pas modifier les séparateurs de domaine cryptographiques `AURORA/`, les constantes `AURORIDX`, les identités de genèse, les empreintes réseau, les anciens schémas `aurora://`, les chemins de stockage historiques ou les symboles monétaires de testnet sans migration de protocole distincte. Le dépôt et les branches historiques peuvent garder `AURORA` dans leurs URLs pour conserver les liens existants. Voir `docs/BRANDING_COMPATIBILITY.md`.
+Le responsable demande une identité **ARETOVUS** dans les domaines de hachage, la genèse, les magics de fichier, les URI, le wallet et les outils. Cette demande est mise en œuvre **uniquement sur la branche de migration**, en tant que changement de réseau volontairement incompatible. Ne pas réécrire l'histoire Git, ne pas supprimer d'archives, ne pas migrer automatiquement les clés/soldes et **ne jamais fusionner sans revue des tests et accord explicite**. Lire [la migration de protocole](docs/PROTOCOL_IDENTITY_MIGRATION.md).

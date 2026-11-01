@@ -20,7 +20,7 @@ confiance.
 ## Machine qui conserve la clé, sans connexion
 
 ```sh
-aretovus-wallet sign-offline --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --nonce 0 --out payment.aurtx
+aretovus-wallet sign-offline --key-file wallet.aretkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --nonce 0 --out payment.aurtx
 ```
 
 Remplacer les valeurs, notamment le nonce, par celles du paiement prévu.
@@ -34,7 +34,7 @@ Une annulation ne signe et n'écrit rien. `--dry-run` affiche un aperçu sans
 signature ni écriture ; `--yes` choisit explicitement l'automatisation.
 Ces deux options ne se combinent pas.
 
-La politique `wallet.aurkey.limits` est chargée automatiquement. Les
+La politique `wallet.aretkey.limits` est chargée automatiquement. Les
 plafonds ponctuels `--max-amount` et `--max-fee` ne peuvent que la
 renforcer. Elle est relue après confirmation avant signature ; un changement
 annule l'opération. Un nonce égal à u64::MAX est refusé par ce parcours, car

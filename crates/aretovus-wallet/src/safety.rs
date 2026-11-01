@@ -73,7 +73,7 @@ pub fn payment_intent_confirmation_phrase(
     fee: Amount,
     nonce: u64,
 ) -> String {
-    format!("SEND AURORA-TESTNET {destination} {amount} {fee} {nonce}")
+    format!("SEND ARETOVUS-TESTNET {destination} {amount} {fee} {nonce}")
 }
 
 /// Verify the signed bytes against the independently reviewed CLI intent.
@@ -231,7 +231,7 @@ mod tests {
         let fee = units(1_000_000);
         let nonce = 42;
         let phrase = payment_intent_confirmation_phrase(&destination, amount, fee, nonce);
-        assert!(phrase.starts_with("SEND AURORA-TESTNET "));
+        assert!(phrase.starts_with("SEND ARETOVUS-TESTNET "));
         for valid in [format!("{phrase}\n"), format!("{phrase}\r\n")] {
             assert!(read_payment_intent_confirmation(
                 &mut valid.as_bytes(),
@@ -244,7 +244,10 @@ mod tests {
         }
         let alternatives = [
             phrase.clone(),
-            format!("{}\n", phrase.replace("AURORA-TESTNET", "AURORA-MAINNET")),
+            format!(
+                "{}\n",
+                phrase.replace("ARETOVUS-TESTNET", "ARETOVUS-MAINNET")
+            ),
             format!(
                 "{}\n",
                 payment_intent_confirmation_phrase(&"ac".repeat(32), amount, fee, nonce)

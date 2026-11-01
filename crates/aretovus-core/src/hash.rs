@@ -69,17 +69,17 @@ impl CanonicalDecode for Hash256 {
     }
 }
 
-const TAG_TXID: &[u8] = b"AURORA/exp/v0/txid";
-const TAG_ACCOUNT_TXID: &[u8] = b"AURORA/exp/v0/account-txid";
-const TAG_TX_SIGNING: &[u8] = b"AURORA/exp/v0/tx-signing";
-const TAG_BLOCK_HEADER: &[u8] = b"AURORA/exp/v0/block-header";
-const TAG_TX_LIST: &[u8] = b"AURORA/exp/v0/tx-list";
-const TAG_ACCOUNT_TX_LIST: &[u8] = b"AURORA/exp/v0/account-tx-list";
-const TAG_HYBRID_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/hybrid-account-id";
-const TAG_POST_QUANTUM_ACCOUNT_ID: &[u8] = b"AURORA/exp/v0/post-quantum-account-id";
-const TAG_MERKLE_LEAF: &[u8] = b"AURORA/exp/v1/merkle-leaf";
-const TAG_MERKLE_NODE: &[u8] = b"AURORA/exp/v1/merkle-node";
-const TAG_MERKLE_EMPTY: &[u8] = b"AURORA/exp/v1/merkle-empty";
+const TAG_TXID: &[u8] = b"ARETOVUS/exp/v0/txid";
+const TAG_ACCOUNT_TXID: &[u8] = b"ARETOVUS/exp/v0/account-txid";
+const TAG_TX_SIGNING: &[u8] = b"ARETOVUS/exp/v0/tx-signing";
+const TAG_BLOCK_HEADER: &[u8] = b"ARETOVUS/exp/v0/block-header";
+const TAG_TX_LIST: &[u8] = b"ARETOVUS/exp/v0/tx-list";
+const TAG_ACCOUNT_TX_LIST: &[u8] = b"ARETOVUS/exp/v0/account-tx-list";
+const TAG_HYBRID_ACCOUNT_ID: &[u8] = b"ARETOVUS/exp/v0/hybrid-account-id";
+const TAG_POST_QUANTUM_ACCOUNT_ID: &[u8] = b"ARETOVUS/exp/v0/post-quantum-account-id";
+const TAG_MERKLE_LEAF: &[u8] = b"ARETOVUS/exp/v1/merkle-leaf";
+const TAG_MERKLE_NODE: &[u8] = b"ARETOVUS/exp/v1/merkle-node";
+const TAG_MERKLE_EMPTY: &[u8] = b"ARETOVUS/exp/v1/merkle-empty";
 
 /// Domaine de hachage : deux domaines différents ne produisent jamais le même condensat
 /// pour les mêmes données.

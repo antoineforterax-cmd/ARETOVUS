@@ -4,8 +4,8 @@
 
 ## Règles économiques actives
 
-- Genèse vide, sans préminage. Plafond brut strict : 500 000 000 AUR à 8 décimales.
-- Par bloc, `R = min(reliquat, max(1, floor(reliquat / 1_000_000)))` unités minimales. Le premier bloc émet 500 AUR. Les réorganisations recalculent l’offre de chaque branche.
+- Genèse vide, sans préminage. Plafond brut strict : 500 000 000 ARETOVUS à 8 décimales.
+- Par bloc, `R = min(reliquat, max(1, floor(reliquat / 1_000_000)))` unités minimales. Le premier bloc émet 500 ARETOVUS. Les réorganisations recalculent l’offre de chaque branche.
 - Trésorerie : `floor(R / 20)` au compte fixe testnet `[0xA0; 32]`; le reste au mineur.
 - Frais : `floor(F / 2)` au mineur et le reliquat brûlé. Le burn ne réouvre pas le plafond. Ce taux est fixe dans ce profil; un taux dynamique exigerait une nouvelle règle de consensus et des essais adversariaux.
 - Après épuisement du plafond, le mineur ne reçoit plus d’émission. Sa part des frais reste 50 %.

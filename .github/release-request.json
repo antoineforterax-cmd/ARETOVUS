@@ -1,4 +1,6 @@
 {
-  "source": "421d443370e83a9ffa0c128da9f09d6f99b0ef8f",
-  "tag": "testnet-v0.0.1-experimental.1"
+  "protocol": "aretovus-native-v1",
+  "ready": false,
+  "source": null,
+  "tag": null
 }

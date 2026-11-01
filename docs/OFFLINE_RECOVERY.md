@@ -11,7 +11,7 @@ récupérer un compte pour lequel aucun secret de secours n'a été conservé.
 ## Préparer et vérifier le secours
 
 ```sh
-aretovus-wallet recovery-export --key-file wallet.aurkey --out recovery-secret.txt --acknowledge-secret
+aretovus-wallet recovery-export --key-file wallet.aretkey --out recovery-secret.txt --acknowledge-secret
 aretovus-wallet recovery-verify --from recovery-secret.txt --expected-account ADRESSE_HEX
 ```
 
@@ -36,7 +36,7 @@ pas d'une phrase BIP39 et ce code n'est pas un format universel de wallet.
 ## Restaurer après la perte
 
 ```sh
-aretovus-wallet recovery-restore --out recovered.aurkey --expected-account ADRESSE_HEX
+aretovus-wallet recovery-restore --out recovered.aretkey --expected-account ADRESSE_HEX
 ```
 
 Saisir le code de secours dans l'invite masquée, puis choisir et confirmer
@@ -47,7 +47,7 @@ fichier, ajouter `--from recovery-secret.txt`.
 L'opération est hors ligne : aucun nœud, service central ou gardien n'est
 contacté. Une erreur de format, de contrôle ou de compte attendu bloque la
 restauration. Une destination existante n'est jamais écrasée. Les nouvelles
-copies chiffrées utilisent le format AURKEY4 existant, avec sel et nonce neufs.
+copies chiffrées utilisent le format ARETOVK4 existant, avec sel et nonce neufs.
 Le lecteur de fichier limite les données à 257 octets pour refuser les entrées
 trop grandes. Les nouveaux tampons contenant le secours sont effacés à leur
 libération en mémoire ; cela ne garantit pas l'effacement du disque, du

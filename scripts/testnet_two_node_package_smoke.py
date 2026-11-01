@@ -212,8 +212,8 @@ def main() -> None:
         try:
             # These disposable, unencrypted keys exist only within the
             # temporary CI directory. Never use this option with real funds.
-            alice_key = root / "alice.aurkey"
-            bob_key = root / "bob.aurkey"
+            alice_key = root / "alice.aretkey"
+            bob_key = root / "bob.aretkey"
             run(wallet, "keygen", "--out", alice_key, "--plain-testnet")
             run(wallet, "keygen", "--out", bob_key, "--plain-testnet")
             miner = wallet_account(wallet, alice_key)

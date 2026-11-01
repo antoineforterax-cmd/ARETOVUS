@@ -28,13 +28,13 @@ jobs:
         run: cargo test --locked -p aretovus-node --lib --no-run
       - name: Mesurer TCP et operations de persistance a 8192 et 32768 blocs
         env:
-          AURORA_P2P_PROFILE: "1"
-          AURORA_STORAGE_PROFILE: "1"
+          ARETOVUS_P2P_PROFILE: "1"
+          ARETOVUS_STORAGE_PROFILE: "1"
         run: |
           set -euo pipefail
           mkdir -p p2p-storage-io
           for blocks in 8192 32768; do
-            export AURORA_P2P_VOLUME_BLOCKS="$blocks"
+            export ARETOVUS_P2P_VOLUME_BLOCKS="$blocks"
             log="p2p-storage-io/${blocks}.log"
             echo "Running TCP with $blocks blocks after genesis on SHA $GITHUB_SHA"
             /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture > "$log" 2>&1

@@ -110,7 +110,7 @@ def self_test() -> None:
         artifact = Path(folder) / "failure.json"
         miner = FakeMiner()
         with (patch("subprocess.Popen", return_value=miner),
-              patch.object(Path, "glob", return_value=[Path("snapshot-1.auridx")]),
+              patch.object(Path, "glob", return_value=[Path("snapshot-1.aretidx")]),
               patch(__name__ + ".probe", side_effect=[
                   (0.01, (1, "ab" * 32, 2)),
                   RuntimeError("injected verifier error"),
@@ -155,7 +155,7 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float,
                         raise TimeoutError("miner exceeded overall CI timeout")
                     # The very first snapshot may not yet exist; do not treat
                     # pre-genesis startup as a storage reader failure.
-                    if not any(directory.glob("snapshot-*.auridx")):
+                    if not any(directory.glob("snapshot-*.aretidx")):
                         time.sleep(0.04)
                         continue
                     measured_at = time.monotonic()

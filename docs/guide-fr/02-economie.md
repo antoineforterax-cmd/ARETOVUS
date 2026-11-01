@@ -6,7 +6,7 @@ Les règles ci-dessous sont celles du testnet de référence. Elles sont exprim�
 
 ## Plafond et émission
 
-La genèse ne distribue aucun jeton : il n’y a pas de préminage dans ce profil. Le plafond d’émission brute est de **500 000 000 AUR**. Un AUR vaut **100 000 000 unités minimales**; la plus petite unité vaut donc `0.00000001 AUR`.
+La genèse ne distribue aucun jeton : il n’y a pas de préminage dans ce profil. Le plafond d’émission brute est de **500 000 000 ARETOVUS**. Un ARETOVUS vaut **100 000 000 unités minimales**; la plus petite unité vaut donc `0.00000001 ARETOVUS`.
 
 À chaque bloc, le protocole calcule l’émission à partir du reliquat jamais émis :
 
@@ -15,7 +15,7 @@ reliquat = plafond - émission_brute_cumulée
 récompense = min(reliquat, max(1, floor(reliquat / 1_000_000)))
 ```
 
-Tous ces nombres sont en unités minimales. Le premier bloc émet **500 AUR**. Le second en émet **499,99950000 AUR**. La récompense diminue avec le reliquat et les arrondis entiers; il n’y a pas de halving programmé. Le plancher d’une unité permet de finir par épuiser le reliquat. Quand celui-ci vaut zéro, la récompense est zéro.
+Tous ces nombres sont en unités minimales. Le premier bloc émet **500 ARETOVUS**. Le second en émet **499,99950000 ARETOVUS**. La récompense diminue avec le reliquat et les arrondis entiers; il n’y a pas de halving programmé. Le plancher d’une unité permet de finir par épuiser le reliquat. Quand celui-ci vaut zéro, la récompense est zéro.
 
 Il faut distinguer l’**émission brute cumulée** des unités encore présentes dans les soldes. Le burn réduit ces dernières, mais ne rouvre jamais de place sous le plafond d’émission. Une unité brûlée n’est pas réémise grâce à ce burn.
 
@@ -27,7 +27,7 @@ Il faut distinguer l’**émission brute cumulée** des unités encore présente
 | Frais de transaction | `floor(frais / 2)` pour le mineur, le reste détruit. |
 | Après le plafond | Aucune nouvelle émission; le mineur reçoit toujours sa part des frais. |
 
-Pour le premier bloc sans transaction, le mineur reçoit **475 AUR** et la trésorerie **25 AUR**. Avec des frais de `0.01 AUR`, le mineur reçoit `0.005 AUR` et `0.005 AUR` sont détruits. Si des frais valent trois unités minimales, une unité va au mineur et deux sont brûlées. L’arrondi se fait à l’unité minimale.
+Pour le premier bloc sans transaction, le mineur reçoit **475 ARETOVUS** et la trésorerie **25 ARETOVUS**. Avec des frais de `0.01 ARETOVUS`, le mineur reçoit `0.005 ARETOVUS` et `0.005 ARETOVUS` sont détruits. Si des frais valent trois unités minimales, une unité va au mineur et deux sont brûlées. L’arrondi se fait à l’unité minimale.
 
 Le burn est une opération comptable du protocole. Les unités ne sont pas mises en attente chez un acheteur et ne sont pas versées dans une réserve échangeable. Son taux est fixe dans ce profil; aucun taux dynamique lié à la charge n’est actif.
 
