@@ -1244,28 +1244,15 @@ mod tests {
     #[test]
     fn native_testnet_damaged_latest_manifest_falls_back_without_overwrite() {
         let root = dir();
-        let genesis = AccountBlock::build(
-            NetworkId::Testnet,
-            Hash256::ZERO,
-            1,
-            0,
-            Vec::new(),
-        )
-        .unwrap();
+        let genesis =
+            AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
         let mut chain =
             AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
         let previous_tip = chain.tip_hash();
         let previous_manifest = save_snapshot(&root, &chain).unwrap();
         let previous_bytes = fs::read(&previous_manifest).unwrap();
 
-        let next = AccountBlock::build(
-            NetworkId::Testnet,
-            previous_tip,
-            2,
-            0,
-            Vec::new(),
-        )
-        .unwrap();
+        let next = AccountBlock::build(NetworkId::Testnet, previous_tip, 2, 0, Vec::new()).unwrap();
         let expected_tip = next.header.hash().unwrap();
         chain.submit(next).unwrap();
         let latest_manifest = save_snapshot(&root, &chain).unwrap();
@@ -1284,14 +1271,15 @@ mod tests {
         // pretending the checksum error or content mismatch never occurred.
         assert!(matches!(
             save_snapshot(&root, &chain),
-            Err(StorageError::InvalidFormat("content-addressed file mismatch"))
+            Err(StorageError::InvalidFormat(
+                "content-addressed file mismatch"
+            ))
         ));
         assert_eq!(fs::read(&latest_manifest).unwrap(), damaged);
         assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
 
         fs::write(&latest_manifest, native_bytes).unwrap();
-        let restored =
-            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        let restored = load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
         assert_eq!(restored.height(), 1);
         assert_eq!(restored.tip_hash(), expected_tip);
         fs::remove_dir_all(root).unwrap();
@@ -1300,22 +1288,15 @@ mod tests {
     #[test]
     fn native_testnet_damaged_v6_page_falls_back_without_silent_repair() {
         let root = dir();
-        let genesis = AccountBlock::build(
-            NetworkId::Testnet,
-            Hash256::ZERO,
-            1,
-            0,
-            Vec::new(),
-        )
-        .unwrap();
+        let genesis =
+            AccountBlock::build(NetworkId::Testnet, Hash256::ZERO, 1, 0, Vec::new()).unwrap();
         let mut chain =
             AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
         let previous_tip = chain.tip_hash();
         let previous_manifest = save_snapshot(&root, &chain).unwrap();
         let previous_bytes = fs::read(&previous_manifest).unwrap();
 
-        let next =
-            AccountBlock::build(NetworkId::Testnet, previous_tip, 2, 0, Vec::new()).unwrap();
+        let next = AccountBlock::build(NetworkId::Testnet, previous_tip, 2, 0, Vec::new()).unwrap();
         let expected_tip = next.header.hash().unwrap();
         chain.submit(next).unwrap();
         let latest_manifest = save_snapshot(&root, &chain).unwrap();
@@ -1347,7 +1328,9 @@ mod tests {
 
         assert!(matches!(
             save_snapshot(&root, &chain),
-            Err(StorageError::InvalidFormat("content-addressed file mismatch"))
+            Err(StorageError::InvalidFormat(
+                "content-addressed file mismatch"
+            ))
         ));
         assert_eq!(fs::read(&latest_page).unwrap(), damaged_page);
         assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
@@ -1355,8 +1338,7 @@ mod tests {
         // Restore only disposable fixture bytes; the loader never repairs
         // or mutates the hostile page, and the original tip is recoverable.
         fs::write(&latest_page, native_page).unwrap();
-        let restored =
-            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        let restored = load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
         assert_eq!(restored.height(), 1);
         assert_eq!(restored.tip_hash(), expected_tip);
         fs::remove_dir_all(root).unwrap();
