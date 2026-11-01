@@ -208,13 +208,19 @@ mod tests {
         tx.network = NetworkId::Testnet;
         // A syntactically valid legacy v1 transaction must be rejected even
         // before signature verification and before reaching the ledger.
-        assert_eq!(tx.check_stateless(), Err(AccountTxError::UnsupportedVersion));
+        assert_eq!(
+            tx.check_stateless(),
+            Err(AccountTxError::UnsupportedVersion)
+        );
 
         // v2 has exactly the expected hybrid authorization payload length,
         // so the test must reject the *version*, not malformed auth bytes.
         tx.version = HYBRID_ACCOUNT_TX_VERSION;
         tx.auth_data = vec![0; HYBRID_AUTH_BYTES];
-        assert_eq!(tx.check_stateless(), Err(AccountTxError::UnsupportedVersion));
+        assert_eq!(
+            tx.check_stateless(),
+            Err(AccountTxError::UnsupportedVersion)
+        );
 
         // The only currently accepted native testnet transaction profile.
         tx.version = POST_QUANTUM_ACCOUNT_TX_VERSION;
