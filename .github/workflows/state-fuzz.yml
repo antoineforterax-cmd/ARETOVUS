@@ -5,8 +5,10 @@ on:
   pull_request:
     paths:
       - 'fuzz/fuzz_targets/account_state.rs'
+      - 'fuzz/fuzz_targets/native_account_state.rs'
       - '.github/workflows/state-fuzz.yml'
       - 'fuzz/seeds/account_state/**'
+      - 'fuzz/seeds/native_account_state/**'
       - 'crates/aretovus-core/**'
       - 'fuzz/Cargo.toml'
 permissions:
@@ -56,3 +58,50 @@ jobs:
             fuzz/artifacts/account_state/
             fuzz/corpus/account_state/
           retention-days: 14
+
+  native-account-fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly toolchain and pinned cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo +stable install cargo-fuzz --version 0.13.2 --locked
+      - name: Record native Testnet provenance
+        shell: bash
+        run: |
+          mkdir -p target/native-account-fuzz
+          git rev-parse HEAD > target/native-account-fuzz/commit.txt
+          rustc +nightly -Vv > target/native-account-fuzz/toolchain.txt
+          printf 'seconds_per_target=300\nrun_id=%s\n' "$GITHUB_RUN_ID" > target/native-account-fuzz/budget.txt
+      - name: Replay deterministic native ML-DSA-65 seed
+        shell: bash
+        run: |
+          mkdir -p fuzz/corpus/native_account_state
+          set -o pipefail
+          for seed in fuzz/seeds/native_account_state/*; do
+            cargo +nightly fuzz run native_account_state "$seed" 2>&1 | tee -a target/native-account-fuzz/seeds.log
+          done
+          cp fuzz/seeds/native_account_state/* fuzz/corpus/native_account_state/
+      - name: Fuzz native ML-DSA-65 account transitions
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run native_account_state -- -max_total_time=300 -max_len=40 -print_final_stats=1 2>&1 | tee target/native-account-fuzz/results.log
+      - name: Replay enriched native corpus
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run native_account_state fuzz/corpus/native_account_state -- -runs=0 -max_len=40 -print_final_stats=1 2>&1 | tee target/native-account-fuzz/replay.log
+      - name: Upload reproducible native fuzz evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-testnet-account-fuzz
+          path: |
+            target/native-account-fuzz/
+            fuzz/corpus/native_account_state/
+            fuzz/artifacts/native_account_state/
+          retention-days: 14
+          if-no-files-found: warn
