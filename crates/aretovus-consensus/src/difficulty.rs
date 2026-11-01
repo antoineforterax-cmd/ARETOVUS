@@ -114,6 +114,31 @@ mod tests {
         assert_eq!(p.retarget(20, 10_000), 18);
     }
 
+
+    #[test]
+    fn retarget_extreme_elapsed_time_remains_bounded_and_deterministic() {
+        let params = DifficultyParams {
+            target_block_seconds: 60,
+            adjustment_interval: 10,
+            max_adjustment_bits: 2,
+            min_bits: 4,
+            max_bits: 20,
+        };
+
+        for bits in [4, 5, 8, 19, 20] {
+            for elapsed in [0, 1, 100, 600, 1_200, u64::MAX] {
+                let next = params.retarget(bits, elapsed);
+                assert!((4..=20).contains(&next));
+                assert!(bits.abs_diff(next) <= 2);
+                assert_eq!(next, params.retarget(bits, elapsed));
+            }
+        }
+        assert_eq!(params.retarget(8, 0), 10);
+        assert_eq!(params.retarget(8, u64::MAX), 6);
+        assert_eq!(params.retarget(20, 0), 20);
+        assert_eq!(params.retarget(4, u64::MAX), 4);
+    }
+
     #[test]
     fn cumulative_work_compares_expected_hash_cost_not_height() {
         let two_easy = ChainWork::for_difficulty(1)
