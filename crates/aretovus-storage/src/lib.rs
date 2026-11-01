@@ -1203,7 +1203,7 @@ mod tests {
         );
 
         let mut foreign = native;
-        foreign[..8].copy_from_slice(b"AURORSNP");
+        foreign[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4f, 0x52, 0x53, 0x4e, 0x50]);
         let body_len = foreign.len() - CHECKSUM_LEN;
         let checksum = sha256_plain(&foreign[..body_len]);
         foreign[body_len..].copy_from_slice(checksum.as_bytes());
@@ -1222,7 +1222,7 @@ mod tests {
         assert_eq!(&native[..8], INDEX_MAGIC);
 
         let mut foreign = native.clone();
-        foreign[..8].copy_from_slice(b"AURORIDX");
+        foreign[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4f, 0x52, 0x49, 0x44, 0x58]);
         let body_len = foreign.len() - CHECKSUM_LEN;
         let checksum = sha256_plain(&foreign[..body_len]);
         foreign[body_len..].copy_from_slice(checksum.as_bytes());
