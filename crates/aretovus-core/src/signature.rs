@@ -11,6 +11,7 @@ use crate::accounts::{
     ML_DSA_65_SIGNATURE_BYTES, POST_QUANTUM_ACCOUNT_TX_VERSION, POST_QUANTUM_AUTH_BYTES,
 };
 use crate::hash::{tagged_hash, Domain};
+use crate::network::NetworkId;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SignatureError {
@@ -19,10 +20,22 @@ pub enum SignatureError {
     InvalidSignature,
     InvalidHybridAccountId,
     InvalidPostQuantumAccountId,
+    /// Legacy Ed25519/hybrid profiles are never valid on native ARETOVUS Testnet.
+    UnsupportedTestnetTransactionProfile,
+}
+
+// This is defense in depth: consensus already rejects v1/v2 for Testnet.
+// Check before invoking legacy crypto or consulting any signature cache.
+fn require_native_testnet_profile(tx: &AccountTransaction) -> Result<(), SignatureError> {
+    if tx.network == NetworkId::Testnet && tx.version != POST_QUANTUM_ACCOUNT_TX_VERSION {
+        return Err(SignatureError::UnsupportedTestnetTransactionProfile);
+    }
+    Ok(())
 }
 
 /// Valide les octets de signature d'une transaction contre la clé publique `sender`.
 pub fn verify_account_transaction(tx: &AccountTransaction) -> Result<(), SignatureError> {
+    require_native_testnet_profile(tx)?;
     if tx.version == POST_QUANTUM_ACCOUNT_TX_VERSION {
         return verify_post_quantum_account_transaction(tx);
     }
@@ -151,6 +164,33 @@ mod tests {
     }
 
     #[test]
+    fn obsolete_ed25519_transaction_cannot_be_reused_on_native_testnet() {
+        let (key, mut tx) = signed_transaction();
+        // Ensure this is a *validly signed* v1 transaction on Regtest,
+        // then sign again for Testnet to prove that the version gate,
+        // rather than a changed digest, refuses the obsolete profile.
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
+        tx.network = NetworkId::Testnet;
+        tx.auth_data = key
+            .sign(tx.signing_digest().unwrap().as_bytes())
+            .to_bytes()
+            .to_vec();
+        assert_eq!(
+            verify_account_transaction(&tx),
+            Err(SignatureError::UnsupportedTestnetTransactionProfile)
+        );
+        let mut cached = SignatureCache::new(4);
+        assert_eq!(
+            cached.verify(&tx),
+            Err(SignatureError::UnsupportedTestnetTransactionProfile)
+        );
+        assert_eq!(
+            verify_account_transaction_cached(&tx),
+            Err(SignatureError::UnsupportedTestnetTransactionProfile)
+        );
+    }
+
+    #[test]
     fn hybrid_v2_requires_both_ed25519_and_ml_dsa_65_signatures() {
         use crate::accounts::{HYBRID_ACCOUNT_TX_VERSION, HYBRID_AUTH_BYTES};
         use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
@@ -180,11 +220,83 @@ mod tests {
         tx.auth_data[ed_sig_start + ed_sig.len()..].copy_from_slice(ml_sig.as_slice());
         assert_eq!(verify_account_transaction(&tx), Ok(()));
 
+        // Valid v2 hybrid signatures MUST NOT authorize a native Testnet
+        // transaction even if both Ed25519 and ML-DSA-65 signatures verify.
+        let regtest_tx = tx.clone();
+        tx.network = NetworkId::Testnet;
+        let digest = tx.signing_digest().unwrap();
+        let ed_sig = ed.sign(digest.as_bytes()).to_bytes();
+        let ml_sig = ml.sign(digest.as_bytes()).encode();
+        tx.auth_data[ed_sig_start..ed_sig_start + ed_sig.len()].copy_from_slice(&ed_sig);
+        tx.auth_data[ed_sig_start + ed_sig.len()..].copy_from_slice(ml_sig.as_slice());
+        assert_eq!(
+            verify_account_transaction(&tx),
+            Err(SignatureError::UnsupportedTestnetTransactionProfile)
+        );
+        tx = regtest_tx;
         tx.amount = Amount::from_units(5).unwrap();
         assert_eq!(
             verify_account_transaction(&tx),
             Err(SignatureError::InvalidSignature)
         );
+    }
+
+    #[test]
+    fn old_network_domain_signature_is_rejected_for_native_mldsa_testnet() {
+        use crate::codec::{CanonicalEncode, Encoder};
+        use ml_dsa::{Keypair, MlDsa65, Signer as MlSigner, SigningKey as MlSigningKey};
+        use sha2::{Digest, Sha256};
+
+        let signing_key = MlSigningKey::<MlDsa65>::from_seed(&ml_dsa::Seed::default());
+        let public_key = signing_key.verifying_key().encode();
+        let mut tx = AccountTransaction {
+            version: POST_QUANTUM_ACCOUNT_TX_VERSION,
+            network: NetworkId::Testnet,
+            sender: post_quantum_account_id(public_key.as_slice()),
+            nonce: 4,
+            recipient: AccountId([0x45; 32]),
+            amount: Amount::from_units(11).unwrap(),
+            fee: Amount::from_units(1).unwrap(),
+            auth_data: vec![0; POST_QUANTUM_AUTH_BYTES],
+        };
+        tx.auth_data[..ML_DSA_65_PUBLIC_KEY_BYTES].copy_from_slice(public_key.as_slice());
+
+        // Reconstruct the old signing-domain digest using a byte-only
+        // historical fixture. The active source never accepts that domain.
+        // This is the domain used before the ARETOVUS network separation.
+        let old_tag: &[u8] = &[
+            0x41, 0x55, 0x52, 0x4f, 0x52, 0x41, 0x2f, 0x65, 0x78, 0x70, 0x2f, 0x76, 0x30, 0x2f,
+            0x74, 0x78, 0x2d, 0x73, 0x69, 0x67, 0x6e, 0x69, 0x6e, 0x67,
+        ];
+        let mut enc = Encoder::new();
+        enc.put_u32(tx.version);
+        tx.network.encode(&mut enc).unwrap();
+        tx.sender.encode(&mut enc).unwrap();
+        enc.put_u64(tx.nonce);
+        tx.recipient.encode(&mut enc).unwrap();
+        tx.amount.encode(&mut enc).unwrap();
+        tx.fee.encode(&mut enc).unwrap();
+        let payload = enc.into_bytes();
+        let mut sha = Sha256::new();
+        sha.update([old_tag.len() as u8]);
+        sha.update(old_tag);
+        sha.update(payload);
+        let old_digest = sha.finalize();
+
+        let old_signature = signing_key.sign(old_digest.as_slice()).encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(old_signature.as_slice());
+        assert_eq!(
+            verify_account_transaction(&tx),
+            Err(SignatureError::InvalidSignature)
+        );
+
+        // A correctly signed native transaction with exactly the same
+        // fields and key remains valid; only the network domain changes.
+        let native_signature = signing_key
+            .sign(tx.signing_digest().unwrap().as_bytes())
+            .encode();
+        tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(native_signature.as_slice());
+        assert_eq!(verify_account_transaction(&tx), Ok(()));
     }
 
     #[test]
@@ -267,6 +379,7 @@ impl SignatureCache {
     }
 
     pub fn verify(&mut self, tx: &AccountTransaction) -> Result<(), SignatureError> {
+        require_native_testnet_profile(tx)?;
         let id = tx.txid().map_err(|_| SignatureError::InvalidSignature)?;
         if self.entries.contains(&id) {
             return Ok(());
@@ -292,6 +405,7 @@ impl SignatureCache {
 /// Process-local cache used only by mempool state transitions.
 /// Locks are released during cryptography; concurrent misses may duplicate work.
 pub fn verify_account_transaction_cached(tx: &AccountTransaction) -> Result<(), SignatureError> {
+    require_native_testnet_profile(tx)?;
     use std::sync::{Mutex, OnceLock};
     static CACHE: OnceLock<Mutex<SignatureCache>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(SignatureCache::new(4096)));

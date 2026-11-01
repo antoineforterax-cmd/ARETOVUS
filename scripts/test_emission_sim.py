@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Independent integer checks for the emission simulator (no mined blocks)."""
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 
-from emission_sim import CAP, simulate_at_heights
+from emission_sim import CAP, CAP_ARETOVUS, print_height_simulation, simulate_at_heights
 
 
 def naive_supply(height: int, cap: int, denominator: int) -> dict[str, int]:
@@ -27,6 +29,18 @@ def naive_supply(height: int, cap: int, denominator: int) -> dict[str, int]:
 
 
 class EmissionScaleTests(unittest.TestCase):
+    def test_native_aretovus_reports_use_no_old_token_columns(self):
+        self.assertEqual(CAP_ARETOVUS, 500_000_000)
+        output = StringIO()
+        with redirect_stdout(output):
+            print_height_simulation([1])
+        header = output.getvalue().splitlines()[0]
+        self.assertEqual(
+            header,
+            "height,issued_ARETOVUS,treasury_ARETOVUS,miner_ARETOVUS,"
+            "remaining_ARETOVUS,cap_reached_at",
+        )
+
     def test_interval_acceleration_matches_naive_on_small_models(self):
         for cap, denominator in ((51, 3), (100, 7), (2_117, 21), (10_000, 101)):
             heights = [0, 1, 2, 3, 7, 9, 21, 60, 250, 500, 1_000]
