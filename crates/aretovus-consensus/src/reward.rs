@@ -197,7 +197,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn cap_boundary_mints_last_unit_once_and_then_stops() {
         let miner = AccountId([81; 32]);
