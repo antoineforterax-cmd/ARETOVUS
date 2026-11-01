@@ -412,8 +412,8 @@ mod tests {
         let native_encrypted = fs::read(&encrypted).unwrap();
         let mut old_plain = native_plain.clone();
         let mut old_encrypted = native_encrypted.clone();
-        old_plain[..8].copy_from_slice(b"AURKEY3\0");
-        old_encrypted[..8].copy_from_slice(b"AURKEY4\0");
+        old_plain[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4b, 0x45, 0x59, 0x33, 0x00]);
+        old_encrypted[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4b, 0x45, 0x59, 0x34, 0x00]);
         fs::write(&plain, &old_plain).unwrap();
         fs::write(&encrypted, &old_encrypted).unwrap();
 
