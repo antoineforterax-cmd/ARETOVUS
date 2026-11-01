@@ -1192,6 +1192,56 @@ mod tests {
         AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Regtest)).unwrap()
     }
     #[test]
+    fn historical_snapshot_magic_is_rejected_even_with_matching_checksum() {
+        let original = chain();
+        let native = encode_snapshot(&original).unwrap();
+        assert_eq!(
+            decode_snapshot(&native, AccountLedger::new(NetworkId::Regtest))
+                .unwrap()
+                .tip_hash(),
+            original.tip_hash()
+        );
+
+        let mut foreign = native;
+        foreign[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4f, 0x52, 0x53, 0x4e, 0x50]);
+        let body_len = foreign.len() - CHECKSUM_LEN;
+        let checksum = sha256_plain(&foreign[..body_len]);
+        foreign[body_len..].copy_from_slice(checksum.as_bytes());
+        assert!(matches!(
+            decode_snapshot(&foreign, AccountLedger::new(NetworkId::Regtest)),
+            Err(StorageError::InvalidFormat("bad magic"))
+        ));
+    }
+
+    #[test]
+    fn historical_index_magic_is_rejected_without_overwriting_the_file() {
+        let root = dir();
+        let original = chain();
+        let manifest = save_snapshot(&root, &original).unwrap();
+        let native = fs::read(&manifest).unwrap();
+        assert_eq!(&native[..8], INDEX_MAGIC);
+
+        let mut foreign = native.clone();
+        foreign[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4f, 0x52, 0x49, 0x44, 0x58]);
+        let body_len = foreign.len() - CHECKSUM_LEN;
+        let checksum = sha256_plain(&foreign[..body_len]);
+        foreign[body_len..].copy_from_slice(checksum.as_bytes());
+        fs::write(&manifest, &foreign).unwrap();
+        assert!(matches!(
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)),
+            Err(StorageError::InvalidFormat("bad index magic"))
+        ));
+        assert_eq!(fs::read(&manifest).unwrap(), foreign);
+
+        // The old bytes must never be "repaired" automatically. Restoring
+        // the native manifest by hand recovers the exact original chain.
+        fs::write(&manifest, native).unwrap();
+        let restored = load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        assert_eq!(restored.tip_hash(), original.tip_hash());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn snapshot_roundtrip_revalidates_genesis_and_state() {
         let path = dir();
         let mut original = chain();

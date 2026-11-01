@@ -390,6 +390,60 @@ mod tests {
     static NEXT: AtomicU64 = AtomicU64::new(0);
 
     #[test]
+    fn historical_key_magic_is_rejected_for_plain_and_encrypted_files() {
+        let root = std::env::temp_dir().join(format!(
+            "aretovus-wallet-foreign-magic-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&root).unwrap();
+        let key = WalletKey::from_seed_bytes([0x5c; 32]);
+        let plain = root.join("plain.aretkey");
+        let encrypted = root.join("encrypted.aretkey");
+        let password = "test-only native wallet password";
+
+        key.save_plain_testnet_file(&plain).unwrap();
+        key.save_encrypted_testnet_file(&encrypted, password)
+            .unwrap();
+        assert!(!WalletKey::file_is_encrypted(&plain).unwrap());
+        assert!(WalletKey::file_is_encrypted(&encrypted).unwrap());
+
+        let native_plain = fs::read(&plain).unwrap();
+        let native_encrypted = fs::read(&encrypted).unwrap();
+        let mut old_plain = native_plain.clone();
+        let mut old_encrypted = native_encrypted.clone();
+        old_plain[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4b, 0x45, 0x59, 0x33, 0x00]);
+        old_encrypted[..8].copy_from_slice(&[0x41, 0x55, 0x52, 0x4b, 0x45, 0x59, 0x34, 0x00]);
+        fs::write(&plain, &old_plain).unwrap();
+        fs::write(&encrypted, &old_encrypted).unwrap();
+
+        assert!(WalletKey::file_is_encrypted(&plain).is_err());
+        assert!(WalletKey::load_plain_testnet_file(&plain).is_err());
+        assert!(WalletKey::file_is_encrypted(&encrypted).is_err());
+        assert!(WalletKey::load_encrypted_testnet_file(&encrypted, password).is_err());
+        assert_eq!(fs::read(&plain).unwrap(), old_plain);
+        assert_eq!(fs::read(&encrypted).unwrap(), old_encrypted);
+
+        // Reverting only the two test fixtures re-enables native reads; no
+        // migration or write to the rejected original files occurs.
+        fs::write(&plain, native_plain).unwrap();
+        fs::write(&encrypted, native_encrypted).unwrap();
+        assert_eq!(
+            WalletKey::load_plain_testnet_file(&plain)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        assert_eq!(
+            WalletKey::load_encrypted_testnet_file(&encrypted, password)
+                .unwrap()
+                .account_id(),
+            key.account_id()
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn key_file_roundtrip_is_stable_and_never_overwrites() {
         let path = std::env::temp_dir().join(format!(
             "aretovus-wallet-key-{}-{}",
