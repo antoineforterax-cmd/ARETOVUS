@@ -128,6 +128,14 @@ impl AccountTransaction {
         ) {
             return Err(AccountTxError::UnsupportedVersion);
         }
+        // Native ARETOVUS Testnet uses v3 exclusively. Keep the Regtest
+        // fixtures temporarily until the separate legacy-removal PR, but
+        // reject v1/v2 before cryptography, caches, or state mutation.
+        if self.network == NetworkId::Testnet
+            && self.version != POST_QUANTUM_ACCOUNT_TX_VERSION
+        {
+            return Err(AccountTxError::UnsupportedVersion);
+        }
         if (self.version == HYBRID_ACCOUNT_TX_VERSION && self.auth_data.len() != HYBRID_AUTH_BYTES)
             || (self.version == POST_QUANTUM_ACCOUNT_TX_VERSION
                 && self.auth_data.len() != POST_QUANTUM_AUTH_BYTES)
