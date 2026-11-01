@@ -1186,8 +1186,7 @@ mod tests {
             let signature = signing_key
                 .sign(tx.signing_digest().unwrap().as_bytes())
                 .encode();
-            tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..]
-                .copy_from_slice(signature.as_slice());
+            tx.auth_data[ML_DSA_65_PUBLIC_KEY_BYTES..].copy_from_slice(signature.as_slice());
             tx
         };
         let spend_a = signed(70, 10);
@@ -1259,10 +1258,7 @@ mod tests {
             chain.canonical_transaction(txid_a).is_some(),
             !branch_b_wins
         );
-        assert_eq!(
-            chain.canonical_transaction(txid_b).is_some(),
-            branch_b_wins
-        );
+        assert_eq!(chain.canonical_transaction(txid_b).is_some(), branch_b_wins);
         let first_reward = crate::reward::scheduled_issuance(Amount::from_units(1_000).unwrap());
         let second_reward = crate::reward::scheduled_issuance(
             Amount::from_units(1_000 + first_reward.to_units()).unwrap(),
@@ -1272,8 +1268,15 @@ mod tests {
             1_000 + first_reward.to_units() + second_reward.to_units()
         );
         assert_eq!(
-            chain.state().account(if branch_b_wins { account(61) } else { account(62) })
-                .balance.to_units(),
+            chain
+                .state()
+                .account(if branch_b_wins {
+                    account(61)
+                } else {
+                    account(62)
+                })
+                .balance
+                .to_units(),
             0,
             "orphan miner reward must be removed after a reorg"
         );
