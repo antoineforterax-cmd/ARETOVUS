@@ -12,16 +12,16 @@ from dataclasses import dataclass
 from math import ceil
 
 DECIMALS = 100_000_000
-CAP_AUR = 500_000_000
-CAP = CAP_AUR * DECIMALS
+CAP_ARETOVUS = 500_000_000
+CAP = CAP_ARETOVUS * DECIMALS
 BLOCK_TARGET_SECONDS = 120
 SECONDS_PER_YEAR = 365.2425 * 24 * 60 * 60
 
 
 @dataclass(frozen=True)
 class Tier:
-    until_supply_aur: int
-    reward_aur: int
+    until_supply_aretovus: int
+    reward_aretovus: int
 
 
 CANDIDATES = {
@@ -30,14 +30,14 @@ CANDIDATES = {
         Tier(25_000_000, 30),
         Tier(75_000_000, 20),
         Tier(175_000_000, 10),
-        Tier(CAP_AUR, 1),
+        Tier(CAP_ARETOVUS, 1),
     ],
     "balanced_100": [
         Tier(5_000_000, 100),
         Tier(25_000_000, 60),
         Tier(75_000_000, 30),
         Tier(175_000_000, 10),
-        Tier(CAP_AUR, 1),
+        Tier(CAP_ARETOVUS, 1),
     ],
     "historical_fast_start_500": [
         Tier(5_000_000, 500),
@@ -45,7 +45,7 @@ CANDIDATES = {
         Tier(75_000_000, 60),
         Tier(175_000_000, 30),
         Tier(350_000_000, 10),
-        Tier(CAP_AUR, 1),
+        Tier(CAP_ARETOVUS, 1),
     ],
 }
 
@@ -54,22 +54,22 @@ def validate_tiers(tiers: list[Tier]) -> None:
     previous_threshold = 0
     previous_reward = None
     for tier in tiers:
-        if not previous_threshold < tier.until_supply_aur <= CAP_AUR:
+        if not previous_threshold < tier.until_supply_aretovus <= CAP_ARETOVUS:
             raise ValueError("Thresholds must strictly increase and not exceed cap")
-        if tier.reward_aur <= 0:
+        if tier.reward_aretovus <= 0:
             raise ValueError("Rewards must be positive")
-        if previous_reward is not None and tier.reward_aur > previous_reward:
+        if previous_reward is not None and tier.reward_aretovus > previous_reward:
             raise ValueError("Rewards must not increase between tiers")
-        previous_threshold = tier.until_supply_aur
-        previous_reward = tier.reward_aur
-    if not tiers or tiers[-1].until_supply_aur != CAP_AUR:
+        previous_threshold = tier.until_supply_aretovus
+        previous_reward = tier.reward_aretovus
+    if not tiers or tiers[-1].until_supply_aretovus != CAP_ARETOVUS:
         raise ValueError("Last tier must end at the strict cap")
 
 
 def years_for_blocks(blocks: int) -> float:
     return blocks * BLOCK_TARGET_SECONDS / SECONDS_PER_YEAR
 
-def format_aur(units: int) -> str:
+def format_aretovus(units: int) -> str:
     whole, fraction = divmod(units, DECIMALS)
     return f"{whole}.{fraction:08d}"
 
@@ -81,13 +81,13 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
     treasury = 0
     miner_issuance = 0
     print(f"\n## {name}")
-    print("threshold_AUR,reward_AUR,blocks_in_tier,elapsed_years,cumulative_issued_AUR,treasury_AUR,miner_issuance_AUR")
+    print("threshold_ARETOVUS,reward_ARETOVUS,blocks_in_tier,elapsed_years,cumulative_issued_ARETOVUS,treasury_ARETOVUS,miner_issuance_ARETOVUS")
 
     for tier in tiers:
-        threshold = tier.until_supply_aur * DECIMALS
+        threshold = tier.until_supply_aretovus * DECIMALS
         if issued >= threshold:
             continue
-        reward = tier.reward_aur * DECIMALS
+        reward = tier.reward_aretovus * DECIMALS
         # Supply is checked before each block. A block can cross a threshold;
         # the new tier applies to the following block.
         blocks_in_tier = min(ceil((threshold - issued) / reward), ceil((CAP - issued) / reward))
@@ -103,7 +103,7 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
         treasury += treasury_part
         miner_issuance += miner_part
         print(
-            f"{tier.until_supply_aur},{tier.reward_aur},{blocks_in_tier},"
+            f"{tier.until_supply_aretovus},{tier.reward_aretovus},{blocks_in_tier},"
             f"{years_for_blocks(blocks):.4f},{issued / DECIMALS:.8f},"
             f"{treasury / DECIMALS:.8f},{miner_issuance / DECIMALS:.8f}"
         )
@@ -119,7 +119,7 @@ def simulate(name: str, tiers: list[Tier]) -> dict[str, int | float | str]:
         f"blocks={blocks}, years={years_for_blocks(blocks):.4f}"
     )
     if issued < CAP:
-        print(f"REMAINDER: {CAP_AUR - issued / DECIMALS:.8f} ARETOVUS not issued")
+        print(f"REMAINDER: {CAP_ARETOVUS - issued / DECIMALS:.8f} ARETOVUS not issued")
     print("NOTE: fixed target-time assumption; excludes fees, orphan blocks, "
           "hashrate, market value, and miner costs.")
     return {"name": name, "issued": issued, "blocks": blocks, "years": years_for_blocks(blocks)}
@@ -153,19 +153,19 @@ def simulate_proportional_remaining() -> dict[str, int | float | str]:
 
     years = blocks * target_seconds / SECONDS_PER_YEAR
     print(f"\n## Current consensus: proportional remaining supply")
-    print(f"first block reward: {format_aur(first_reward)} ARETOVUS")
+    print(f"first block reward: {format_aretovus(first_reward)} ARETOVUS")
     for supply, milestone_blocks in reached:
         print(
-            f"reached {format_aur(supply)} issued ARETOVUS after "
+            f"reached {format_aretovus(supply)} issued ARETOVUS after "
             f"{milestone_blocks:,} blocks ({milestone_blocks * target_seconds / SECONDS_PER_YEAR:.2f} years)"
         )
     print(
-        f"cap: {format_aur(issued)} ARETOVUS after {blocks:,} blocks "
+        f"cap: {format_aretovus(issued)} ARETOVUS after {blocks:,} blocks "
         f"({years:.2f} years at 60 seconds/block)"
     )
     print(
-        f"treasury={format_aur(treasury)} ARETOVUS; "
-        f"miner issuance={format_aur(miner_issuance)} ARETOVUS"
+        f"treasury={format_aretovus(treasury)} ARETOVUS; "
+        f"miner issuance={format_aretovus(miner_issuance)} ARETOVUS"
     )
     assert issued == CAP
     assert treasury + miner_issuance == CAP
@@ -228,14 +228,14 @@ def simulate_at_heights(
 
 
 def print_height_simulation(heights: list[int]) -> None:
-    print("height,issued_AUR,treasury_AUR,miner_AUR,remaining_AUR,cap_reached_at")
+    print("height,issued_ARETOVUS,treasury_ARETOVUS,miner_ARETOVUS,remaining_ARETOVUS,cap_reached_at")
     for state in simulate_at_heights(heights):
         print(
             f"{state['height']},"
-            f"{format_aur(state['issued_units'])},"
-            f"{format_aur(state['treasury_units'])},"
-            f"{format_aur(state['miner_units'])},"
-            f"{format_aur(state['remaining_units'])},"
+            f"{format_aretovus(state['issued_units'])},"
+            f"{format_aretovus(state['treasury_units'])},"
+            f"{format_aretovus(state['miner_units'])},"
+            f"{format_aretovus(state['remaining_units'])},"
             f"{state['cap_reached_at'] or 'not_yet'}"
         )
     print(
