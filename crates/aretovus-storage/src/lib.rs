@@ -1236,8 +1236,7 @@ mod tests {
         // The old bytes must never be "repaired" automatically. Restoring
         // the native manifest by hand recovers the exact original chain.
         fs::write(&manifest, native).unwrap();
-        let restored =
-            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
+        let restored = load_latest_snapshot(&root, AccountLedger::new(NetworkId::Regtest)).unwrap();
         assert_eq!(restored.tip_hash(), original.tip_hash());
         fs::remove_dir_all(root).unwrap();
     }
