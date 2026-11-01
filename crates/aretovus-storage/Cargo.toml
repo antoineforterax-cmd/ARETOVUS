@@ -16,3 +16,7 @@ aretovus-consensus = { path = "../aretovus-consensus" }
 [target.'cfg(unix)'.dependencies]
 # Same already-vetted syscall flag dependency as aretovus-wallet: O_NOFOLLOW.
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# File identity comparison using OS volume and file IDs, with no unsafe in ARETOVUS.
+same-file = "=1.0.6"
