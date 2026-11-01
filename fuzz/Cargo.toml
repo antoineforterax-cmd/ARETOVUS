@@ -16,6 +16,7 @@ aretovus-consensus = { path = "../crates/aretovus-consensus" }
 aretovus-core = { path = "../crates/aretovus-core" }
 aretovus-node = { path = "../crates/aretovus-node" }
 libfuzzer-sys = "=0.4.13"
+ml-dsa = "=0.1.1"
 
 [[bin]]
 name = "canonical_decode"
@@ -41,6 +42,13 @@ bench = false
 [[bin]]
 name = "account_state"
 path = "fuzz_targets/account_state.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "native_account_state"
+path = "fuzz_targets/native_account_state.rs"
 test = false
 doc = false
 bench = false
