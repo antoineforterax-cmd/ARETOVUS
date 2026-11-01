@@ -290,7 +290,11 @@ mod tests {
         let mut ledger = funded_ledger();
         let before = ledger.clone();
         let mut transaction = tx(0, 10, 1);
+        // Use the native testnet transaction shape: an obsolete v1 profile
+        // must fail stateless validation before the network mismatch branch.
         transaction.network = NetworkId::Testnet;
+        transaction.version = crate::accounts::POST_QUANTUM_ACCOUNT_TX_VERSION;
+        transaction.auth_data = vec![0; crate::accounts::POST_QUANTUM_AUTH_BYTES];
         assert_eq!(
             ledger.apply_transaction(&transaction),
             Err(StateError::WrongNetwork)
