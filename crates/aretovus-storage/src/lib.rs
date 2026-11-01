@@ -1242,6 +1242,127 @@ mod tests {
     }
 
     #[test]
+    fn native_testnet_damaged_latest_manifest_falls_back_without_overwrite() {
+        let root = dir();
+        let genesis = AccountBlock::build(
+            NetworkId::Testnet,
+            Hash256::ZERO,
+            1,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let mut chain =
+            AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        let previous_tip = chain.tip_hash();
+        let previous_manifest = save_snapshot(&root, &chain).unwrap();
+        let previous_bytes = fs::read(&previous_manifest).unwrap();
+
+        let next = AccountBlock::build(
+            NetworkId::Testnet,
+            previous_tip,
+            2,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let expected_tip = next.header.hash().unwrap();
+        chain.submit(next).unwrap();
+        let latest_manifest = save_snapshot(&root, &chain).unwrap();
+        let native_bytes = fs::read(&latest_manifest).unwrap();
+        let mut damaged = native_bytes.clone();
+        damaged[INDEX_MAGIC.len() + 4] ^= 0x40;
+        fs::write(&latest_manifest, &damaged).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
+
+        // A retry must not overwrite a corrupted immutable manifest by
+        // pretending the checksum error or content mismatch never occurred.
+        assert!(matches!(
+            save_snapshot(&root, &chain),
+            Err(StorageError::InvalidFormat("content-addressed file mismatch"))
+        ));
+        assert_eq!(fs::read(&latest_manifest).unwrap(), damaged);
+        assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
+
+        fs::write(&latest_manifest, native_bytes).unwrap();
+        let restored =
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        assert_eq!(restored.height(), 1);
+        assert_eq!(restored.tip_hash(), expected_tip);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_testnet_damaged_v6_page_falls_back_without_silent_repair() {
+        let root = dir();
+        let genesis = AccountBlock::build(
+            NetworkId::Testnet,
+            Hash256::ZERO,
+            1,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let mut chain =
+            AccountForkChain::new(genesis, 0, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        let previous_tip = chain.tip_hash();
+        let previous_manifest = save_snapshot(&root, &chain).unwrap();
+        let previous_bytes = fs::read(&previous_manifest).unwrap();
+
+        let next =
+            AccountBlock::build(NetworkId::Testnet, previous_tip, 2, 0, Vec::new()).unwrap();
+        let expected_tip = next.header.hash().unwrap();
+        chain.submit(next).unwrap();
+        let latest_manifest = save_snapshot(&root, &chain).unwrap();
+        let latest_bytes = fs::read(&latest_manifest).unwrap();
+        let page_dir = root.join(INDEX_PAGE_DIRECTORY);
+        let latest_page = fs::read_dir(&page_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .max_by_key(|path| fs::metadata(path).unwrap().len())
+            .unwrap();
+        let native_page = fs::read(&latest_page).unwrap();
+        assert!(native_page.len() > 24 + 32 + CHECKSUM_LEN);
+
+        // Even a page with a self-consistent trailing checksum must not be
+        // accepted when its content-addressed page ID no longer matches.
+        let mut damaged_page = native_page.clone();
+        damaged_page[24] ^= 0x01;
+        let payload_len = damaged_page.len() - CHECKSUM_LEN;
+        let checksum = sha256_plain(&damaged_page[..payload_len]);
+        damaged_page[payload_len..].copy_from_slice(checksum.as_bytes());
+        fs::write(&latest_page, &damaged_page).unwrap();
+
+        let recovered =
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        assert_eq!(recovered.height(), 0);
+        assert_eq!(recovered.tip_hash(), previous_tip);
+        assert_eq!(fs::read(&latest_manifest).unwrap(), latest_bytes);
+        assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
+
+        assert!(matches!(
+            save_snapshot(&root, &chain),
+            Err(StorageError::InvalidFormat("content-addressed file mismatch"))
+        ));
+        assert_eq!(fs::read(&latest_page).unwrap(), damaged_page);
+        assert_eq!(fs::read(&previous_manifest).unwrap(), previous_bytes);
+
+        // Restore only disposable fixture bytes; the loader never repairs
+        // or mutates the hostile page, and the original tip is recoverable.
+        fs::write(&latest_page, native_page).unwrap();
+        let restored =
+            load_latest_snapshot(&root, AccountLedger::new(NetworkId::Testnet)).unwrap();
+        assert_eq!(restored.height(), 1);
+        assert_eq!(restored.tip_hash(), expected_tip);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn snapshot_roundtrip_revalidates_genesis_and_state() {
         let path = dir();
         let mut original = chain();
