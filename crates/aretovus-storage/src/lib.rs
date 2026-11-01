@@ -804,6 +804,12 @@ fn read_bounded_limit_with_preopen_hook(
             "storage object exceeds byte limit",
         ));
     }
+    // Windows exposes no stable file-index accessor in std on the pinned
+    // toolchain. Keep a real preflight handle alive and compare the identity
+    // against the descriptor ultimately opened. A size/mtime check is not
+    // sufficient when one regular file is swapped for another.
+    #[cfg(windows)]
+    let preflight_identity = same_file::Handle::from_path(path)?;
     before_open();
     let mut options = OpenOptions::new();
     options.read(true);
@@ -831,6 +837,15 @@ fn read_bounded_limit_with_preopen_hook(
         {
             return Err(StorageError::InvalidFormat(
                 "storage object is not a regular file",
+            ));
+        }
+        // Compare live handles, not the path again: re-resolving a path
+        // would introduce a second rename race. Keep both handles open
+        // while comparing volume and file identifiers.
+        let opened_identity = same_file::Handle::from_file(file.try_clone()?)?;
+        if preflight_identity != opened_identity {
+            return Err(StorageError::InvalidFormat(
+                "storage object changed between preflight and open",
             ));
         }
     }
@@ -1421,6 +1436,41 @@ mod tests {
         assert_eq!(
             read_bounded_limit(&object, 4096).unwrap(),
             b"same original inode"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn read_rejects_regular_file_swapped_between_metadata_and_open() {
+        let root = dir();
+        fs::create_dir_all(&root).unwrap();
+        let object = root.join("immutable.auridx");
+        let original = root.join("original.auridx");
+        let replacement = root.join("replacement.auridx");
+        fs::write(&object, b"original payload").unwrap();
+        fs::write(&replacement, b"forged__ payload").unwrap();
+        assert_eq!(
+            fs::metadata(&object).unwrap().len(),
+            fs::metadata(&replacement).unwrap().len()
+        );
+
+        // Windows reparse-point guards do not detect swapping one ordinary
+        // file for another after the preflight. No sleeps or timing races.
+        let result = read_bounded_limit_with_preopen_hook(&object, 4096, || {
+            fs::rename(&object, &original).unwrap();
+            fs::rename(&replacement, &object).unwrap();
+        });
+        assert!(
+            result.is_err(),
+            "Windows reader accepted another regular file with the same size"
+        );
+
+        fs::remove_file(&object).unwrap();
+        fs::rename(&original, &object).unwrap();
+        assert_eq!(
+            read_bounded_limit(&object, 4096).unwrap(),
+            b"original payload"
         );
         fs::remove_dir_all(root).unwrap();
     }
