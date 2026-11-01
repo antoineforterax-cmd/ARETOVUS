@@ -1,6 +1,6 @@
 # Contre-revue P2P — inventaires répétés
 
-Analyse commencée le 27 octobre et complétée le 28 octobre 2026 par un sous-agent IA. Base examinée : `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`, puis correctif local dans `crates/aurora-node/src/p2p.rs`. Ce document ne constitue pas une revue humaine indépendante. Il ne revendique pas de validation CI du correctif avant qu'un commit et ses résultats y soient ajoutés.
+Analyse commencée le 27 octobre et complétée le 28 octobre 2026 par un sous-agent IA. Base examinée : `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`, puis correctif local dans `crates/aretovus-node/src/p2p.rs`. Ce document ne constitue pas une revue humaine indépendante. Il ne revendique pas de validation CI du correctif avant qu'un commit et ses résultats y soient ajoutés.
 
 ## Défaut identifié
 

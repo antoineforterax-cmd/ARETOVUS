@@ -1,4 +1,4 @@
-# AURORA — Baseline de décisions de travail et plan d'exécution
+# ARETOVUS — Baseline de décisions de travail et plan d'exécution
 
 **Statut général : propositions historiques de phase 0, conservées pour traçabilité.**
 

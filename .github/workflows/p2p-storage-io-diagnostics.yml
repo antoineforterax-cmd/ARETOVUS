@@ -4,13 +4,13 @@ on:
   push:
     branches: [perf/storage-p2p-io-accounting-20261031]
     paths:
-      - "crates/aurora-storage/**"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-storage/**"
+      - "crates/aretovus-node/**"
       - ".github/workflows/p2p-storage-io-diagnostics.yml"
   pull_request:
     paths:
-      - "crates/aurora-storage/**"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-storage/**"
+      - "crates/aretovus-node/**"
       - ".github/workflows/p2p-storage-io-diagnostics.yml"
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
       - name: Installer Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Precompiler les tests P2P
-        run: cargo test --locked -p aurora-node --lib --no-run
+        run: cargo test --locked -p aretovus-node --lib --no-run
       - name: Mesurer TCP et operations de persistance a 8192 et 32768 blocs
         env:
           AURORA_P2P_PROFILE: "1"
@@ -37,7 +37,7 @@ jobs:
             export AURORA_P2P_VOLUME_BLOCKS="$blocks"
             log="p2p-storage-io/${blocks}.log"
             echo "Running TCP with $blocks blocks after genesis on SHA $GITHUB_SHA"
-            /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture > "$log" 2>&1
+            /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture > "$log" 2>&1
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -Eq "network volume probe: network=regtest blocks=$((blocks + 2)) height=${blocks}([[:space:]]|$)" "$log"
             grep -q 'p2p sync phases:' "$log"

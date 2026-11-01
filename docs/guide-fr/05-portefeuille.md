@@ -9,8 +9,8 @@ Cette page continue le scénario précédent : Alice a reçu une récompense, le
 Dans un terminal libre, depuis le dossier extrait :
 
 ```powershell
-.\bin\aurora-wallet.exe keygen --out .\demo\cles\bob.aurkey
-$bob = .\bin\aurora-wallet.exe address --key-file .\demo\cles\bob.aurkey
+.\bin\aretovus-wallet.exe keygen --out .\demo\cles\bob.aurkey
+$bob = .\bin\aretovus-wallet.exe address --key-file .\demo\cles\bob.aurkey
 ```
 
 Bob possède une clé différente d’Alice. Une adresse est publique et peut être transmise à l’expéditeur. Un mot de passe ou un fichier de clé ne doit pas lui être transmis.
@@ -18,8 +18,8 @@ Bob possède une clé différente d’Alice. Une adresse est publique et peut ê
 ## Lire le solde et envoyer
 
 ```powershell
-.\bin\aurora-wallet.exe balance --key-file .\demo\cles\alice.aurkey --node 127.0.0.1:19444
-.\bin\aurora-wallet.exe send --key-file .\demo\cles\alice.aurkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
+.\bin\aretovus-wallet.exe balance --key-file .\demo\cles\alice.aurkey --node 127.0.0.1:19444
+.\bin\aretovus-wallet.exe send --key-file .\demo\cles\alice.aurkey --to $bob --amount 1.25 --fee 0.01 --node 127.0.0.1:19444
 ```
 
 Les montants de la commande utilisent un point, sans séparateur de milliers. Le transfert débite 1,26 AUR à Alice : 1,25 AUR pour Bob et 0,01 AUR de frais. Le wallet récupère le nonce auprès du nœud, signe avec ML-DSA-65 puis transmet la transaction. Ne modifiez pas vous-même le nonce dans ce parcours.
@@ -32,7 +32,7 @@ La sortie donne un `transaction_id`. Copiez cet identifiant dans une variable, e
 
 ```powershell
 $txid = 'coller_ici_les_64_caracteres_du_transaction_id'
-.\bin\aurora-wallet.exe status --node 127.0.0.1:19444 --txid $txid
+.\bin\aretovus-wallet.exe status --node 127.0.0.1:19444 --txid $txid
 ```
 
 `Pending` signifie que le nœud conserve le transfert en attente. Cela ne signifie pas qu’il est déjà dans un bloc. Le mempool n’est pas sauvegardé sur disque; un redémarrage peut faire disparaître cette attente.
@@ -42,15 +42,15 @@ $txid = 'coller_ici_les_64_caracteres_du_transaction_id'
 Dans le terminal du mineur, où `$alice` contient son adresse :
 
 ```powershell
-.\bin\aurora-node.exe testnet mine --data-dir .\demo\mineur --miner $alice --count 1 --peer 127.0.0.1:19444
+.\bin\aretovus-node.exe testnet mine --data-dir .\demo\mineur --miner $alice --count 1 --peer 127.0.0.1:19444
 ```
 
 Le mineur prend les transactions du premier `--peer` fourni. Revenez ensuite au terminal du wallet :
 
 ```powershell
-.\bin\aurora-wallet.exe status --node 127.0.0.1:19444 --txid $txid
-.\bin\aurora-wallet.exe verify --node 127.0.0.1:19444 --txid $txid --confirmations 1
-.\bin\aurora-wallet.exe balance --key-file .\demo\cles\bob.aurkey --node 127.0.0.1:19444
+.\bin\aretovus-wallet.exe status --node 127.0.0.1:19444 --txid $txid
+.\bin\aretovus-wallet.exe verify --node 127.0.0.1:19444 --txid $txid --confirmations 1
+.\bin\aretovus-wallet.exe balance --key-file .\demo\cles\bob.aurkey --node 127.0.0.1:19444
 ```
 
 Bob doit voir 1,25 AUR dans cet exemple neuf. `verify` contrôle la chaîne d’en-têtes et une preuve d’inclusion Merkle. Cette vérification légère dépend des données du pair interrogé; elle ne prouve pas l’absence d’éclipse ou de censure.
@@ -60,7 +60,7 @@ Bob doit voir 1,25 AUR dans cet exemple neuf. `verify` contrôle la chaîne d’
 Une commande d’attente est aussi disponible :
 
 ```powershell
-.\bin\aurora-wallet.exe wait --node 127.0.0.1:19444 --txid $txid --timeout-seconds 120
+.\bin\aretovus-wallet.exe wait --node 127.0.0.1:19444 --txid $txid --timeout-seconds 120
 ```
 
 Elle attend l’inclusion mais ne mine rien. Un mineur doit donc travailler dans un autre terminal, sinon l’attente peut expirer normalement.
@@ -74,9 +74,9 @@ Le portefeuille n’utilise pas de phrase de récupération de douze ou vingt-qu
 ## Sauvegarder et essayer la restauration
 
 ```powershell
-.\bin\aurora-wallet.exe backup --key-file .\demo\cles\alice.aurkey --out .\demo\cles\alice-sauvegarde.aurkey
-.\bin\aurora-wallet.exe restore --from .\demo\cles\alice-sauvegarde.aurkey --out .\demo\cles\alice-restauree.aurkey
-.\bin\aurora-wallet.exe address --key-file .\demo\cles\alice-restauree.aurkey
+.\bin\aretovus-wallet.exe backup --key-file .\demo\cles\alice.aurkey --out .\demo\cles\alice-sauvegarde.aurkey
+.\bin\aretovus-wallet.exe restore --from .\demo\cles\alice-sauvegarde.aurkey --out .\demo\cles\alice-restauree.aurkey
+.\bin\aretovus-wallet.exe address --key-file .\demo\cles\alice-restauree.aurkey
 ```
 
 L’adresse restaurée doit être exactement celle d’Alice. Le fichier est rechiffré avec de nouveaux paramètres aléatoires, tout en conservant la même graine et le même mot de passe. Les commandes refusent d’écraser un fichier existant.

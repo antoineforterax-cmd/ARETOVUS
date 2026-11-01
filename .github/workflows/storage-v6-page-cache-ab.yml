@@ -4,8 +4,8 @@ on:
   push:
     branches: [perf/storage-incremental-v6-pages-20261031]
     paths:
-      - "crates/aurora-node/**"
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-node/**"
+      - "crates/aretovus-storage/**"
       - ".github/workflows/storage-v6-page-cache-ab.yml"
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
           mkdir -p p2p-page-cache-ab
           for ref in "$BASE_SHA" "$candidate"; do
             git -c advice.detachedHead=false checkout --detach "$ref"
-            cargo test --locked -p aurora-node --lib --no-run
+            cargo test --locked -p aretovus-node --lib --no-run
           done
           for slot in base-1 candidate-1 candidate-2 base-2; do
             case "$slot" in
@@ -42,7 +42,7 @@ jobs:
             git -c advice.detachedHead=false checkout --detach "$ref"
             test "$(git rev-parse HEAD)" = "$ref"
             echo "=== $slot commit=$ref blocks=$AURORA_P2P_VOLUME_BLOCKS ==="
-            /usr/bin/time -v cargo test --locked -p aurora-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee "p2p-page-cache-ab/$slot.log"
+            /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee "p2p-page-cache-ab/$slot.log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "p2p-page-cache-ab/$slot.log"
             grep -q 'p2p sync phases:' "p2p-page-cache-ab/$slot.log"
             grep -Eq 'network volume probe: network=regtest blocks=8194 height=8192([[:space:]]|$)' "p2p-page-cache-ab/$slot.log"

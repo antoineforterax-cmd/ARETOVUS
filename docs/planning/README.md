@@ -1,8 +1,8 @@
-# AURORA — Documentation du projet (mise à jour le 29 octobre 2026)
+# ARETOVUS — Documentation du projet (mise à jour le 29 octobre 2026)
 
 **Statut : proposition documentaire pour revue.** Référence : branche expérimentale `feature/emission-schedule-v0`. Aucune modification de consensus ou de code n'est incluse.
 
-Le [README public de `main`](https://github.com/antoineforterax-cmd/AURORA) présente désormais l'état général du projet. Le testnet avancé reste sur `feature/emission-schedule-v0`, et les améliorations des PR #13 à #22 ne sont pas encore fusionnées. Les comptes rendus techniques et les résultats de CI se trouvent sur ces PR ; les tests réussis sur une branche ne prouvent pas que `main` contient la fonctionnalité.
+Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) présente désormais l'état général du projet. Le testnet avancé reste sur `feature/emission-schedule-v0`, et les améliorations des PR #13 à #22 ne sont pas encore fusionnées. Les comptes rendus techniques et les résultats de CI se trouvent sur ces PR ; les tests réussis sur une branche ne prouvent pas que `main` contient la fonctionnalité.
 
 ## Ordre de lecture
 1. [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) — finalité, exigences, limites.

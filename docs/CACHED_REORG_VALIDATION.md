@@ -18,7 +18,7 @@ résultat et le même état. Une tentative rejetée doit préserver l'état comp
 L'index des transactions canoniques est vérifié lors des bascules.
 
 Commande :
-cargo test --locked -p aurora-consensus --test cached_reorg
+cargo test --locked -p aretovus-consensus --test cached_reorg
 
 Les tests isolent les transitions et la sélection de chaîne en utilisant une
 difficulté nulle et des récompenses désactivées. Ils ne mesurent ni propagation

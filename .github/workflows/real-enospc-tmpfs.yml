@@ -3,7 +3,7 @@ name: real-enospc-tmpfs
 on:
   pull_request:
     paths:
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-storage/**"
       - ".github/workflows/real-enospc-tmpfs.yml"
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Compile the targeted regression before mounting tmpfs
-        run: cargo test --locked -p aurora-storage --lib --no-run
+        run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Fill isolated 32 MiB tmpfs, verify recovery and retry
         run: |
           set -euo pipefail
@@ -34,7 +34,7 @@ jobs:
           test "$(findmnt -n -o TARGET --target "$mountdir")" = "$mountdir"
           df -h "$mountdir"
           AURORA_ENOSPC_PROBE=1 AURORA_ENOSPC_TEST_ROOT="$mountdir" \
-            cargo test --locked -p aurora-storage --lib tests::genuine_enospc_tmpfs_preserves_recovery_and_retry \
+            cargo test --locked -p aretovus-storage --lib tests::genuine_enospc_tmpfs_preserves_recovery_and_retry \
               -- --exact --ignored --nocapture 2>&1 | tee real-enospc-tmpfs.log
           grep -Fq 'test result: ok. 1 passed; 0 failed;' real-enospc-tmpfs.log
           grep -Fq 'real ENOSPC tmpfs: recovered prior tip and retried successfully' real-enospc-tmpfs.log

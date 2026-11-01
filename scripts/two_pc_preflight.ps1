@@ -1,4 +1,4 @@
-# Verify an unpacked AURORA CI package before a private-LAN trial.
+# Verify an unpacked ARETOVUS CI package before a private-LAN trial.
 # This script never changes network settings or opens a firewall port.
 [CmdletBinding()]
 param(
@@ -17,14 +17,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath($PackageRoot)
-$node = Join-Path $root 'bin/aurora-node.exe'
-$wallet = Join-Path $root 'bin/aurora-wallet.exe'
+$node = Join-Path $root 'bin/aretovus-node.exe'
+$wallet = Join-Path $root 'bin/aretovus-wallet.exe'
 $manifest = Join-Path $root 'EXPERIMENTAL_TESTNET.txt'
 $checksums = Join-Path $root 'SHA256SUMS.txt'
 
 foreach ($file in @($node, $wallet, $manifest, $checksums)) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        throw "Missing AURORA package file: $file"
+        throw "Missing ARETOVUS package file: $file"
     }
 }
 
@@ -69,11 +69,11 @@ if ($count -lt 2) {
 
 # A run without credentials or a wallet is enough to check executable startup.
 & $node --help | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'aurora-node.exe --help failed' }
+if ($LASTEXITCODE -ne 0) { throw 'aretovus-node.exe --help failed' }
 & $wallet --help | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'aurora-wallet.exe --help failed' }
+if ($LASTEXITCODE -ne 0) { throw 'aretovus-wallet.exe --help failed' }
 
-Write-Host "AURORA package OK: revision=$revision checked_files=$count"
+Write-Host "ARETOVUS package OK: revision=$revision checked_files=$count"
 Write-Host "node_sha256=$((Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash)"
 Write-Host "wallet_sha256=$((Get-FileHash -LiteralPath $wallet -Algorithm SHA256).Hash)"
 

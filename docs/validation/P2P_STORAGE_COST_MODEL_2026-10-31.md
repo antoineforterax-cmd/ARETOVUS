@@ -1,4 +1,4 @@
-# AURORA — coût des snapshots pendant une synchronisation P2P
+# ARETOVUS — coût des snapshots pendant une synchronisation P2P
 
 _Date : 31 octobre 2026 — diagnostic du testnet Regtest, aucun changement de consensus._
 
@@ -6,12 +6,12 @@ _Date : 31 octobre 2026 — diagnostic du testnet Regtest, aucun changement de c
 
 | Hauteur TCP | SHA testé | Sessions TCP | Sync + sauvegarde | Dont sauvegarde | Recharge | Source |
 | ---: | --- | ---: | ---: | ---: | ---: | --- |
-| 32 768 | `6f4b9b1956b49fb1049595d84191646a1133eb03` | 74 | 116,094 s | 78,703 s | 9,17 s | [Run 41212675879](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41212675879) |
-| 65 536 | `4576f7dd692a0dbef4ee4883b1513ee8f38c07fd` | 147 | 355,390 s | 271,128 s | 18,76 s | [Run 41213036562](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41213036562) |
+| 32 768 | `6f4b9b1956b49fb1049595d84191646a1133eb03` | 74 | 116,094 s | 78,703 s | 9,17 s | [Run 41212675879](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41212675879) |
+| 65 536 | `4576f7dd692a0dbef4ee4883b1513ee8f38c07fd` | 147 | 355,390 s | 271,128 s | 18,76 s | [Run 41213036562](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41213036562) |
 
 Deux runs GitHub distincts, pas un protocole A/B/A/B sur un runner fixe ; la variation du matériel et du disque peut influer. Ce sont des tests **TCP loopback Regtest**, avec branche secondaire et restauration, pas un essai sur deux PC physiques. La RSS `/usr/bin/time -v cargo test` n'isole pas le processus nœud.
 
-Le test TCP à 100 001 blocs a été lancé sur `main` SHA `8643bab287b0d1a89c38e35affd64f58c5861a52`, via la [PR #116](https://github.com/antoineforterax-cmd/AURORA/pull/116). Ne pas considérer ce palier réussi sans la conclusion et les logs du **workflow push** qui sélectionne 100 001 (une PR ordinaire exécute seulement 2 048).
+Le test TCP à 100 001 blocs a été lancé sur `main` SHA `8643bab287b0d1a89c38e35affd64f58c5861a52`, via la [PR #116](https://github.com/antoineforterax-cmd/ARETOVUS/pull/116). Ne pas considérer ce palier réussi sans la conclusion et les logs du **workflow push** qui sélectionne 100 001 (une PR ordinaire exécute seulement 2 048).
 
 ## Modèle de coût déduit du code
 
@@ -34,7 +34,7 @@ Les branches secondaires et les autres écritures peuvent augmenter ce volume. L
 
 ## Instrumentation ajoutée dans la PR #117
 
-Les profils de compilation de test/débogage avec `AURORA_STORAGE_PROFILE=1` exposent : contrôles de métadonnées existantes, nouveaux objets blocs, pages réutilisées, pages non cachées, coût de la phase blocs, de l'index, de la publication et des deux étapes de purge. Aucun compteur n'autorise à sauter une vérification. La CI dédiée mesure 8 192 et 32 768 blocs TCP sur un même runner avec contrôle du résultat et artefacts de logs ; les chiffres ne sont **pas** des mesures avant la fin de la CI au SHA exact.
+Les profils de compilation de test/débogage avec `ARETOVUS_STORAGE_PROFILE=1` exposent : contrôles de métadonnées existantes, nouveaux objets blocs, pages réutilisées, pages non cachées, coût de la phase blocs, de l'index, de la publication et des deux étapes de purge. Aucun compteur n'autorise à sauter une vérification. La CI dédiée mesure 8 192 et 32 768 blocs TCP sur un même runner avec contrôle du résultat et artefacts de logs ; les chiffres ne sont **pas** des mesures avant la fin de la CI au SHA exact.
 
 ## Options et décisions de sûreté
 

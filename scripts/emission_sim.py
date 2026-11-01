@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AURORA experimental issuance simulator, not consensus code.
+"""ARETOVUS experimental issuance simulator, not consensus code.
 
 Default output compares the current proportional schedule with historical tier
 candidates. With --heights, fast-forward over intervals with the same integer
@@ -253,7 +253,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Research-only AURORA emission simulator")
+    parser = ArgumentParser(description="Research-only ARETOVUS emission simulator")
     parser.add_argument(
         "--heights",
         nargs="+",

@@ -30,14 +30,14 @@ jobs:
           python -m py_compile scripts/testnet_concurrent_verify_smoke.py
           python scripts/testnet_concurrent_verify_smoke.py --self-test
       - name: Build node with locked dependencies
-        run: cargo build --locked -p aurora-node
+        run: cargo build --locked -p aretovus-node
       - name: Repeated read-only verify across at least three mining heights
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            binary=target/debug/aurora-node.exe
+            binary=target/debug/aretovus-node.exe
           else
-            binary=target/debug/aurora-node
+            binary=target/debug/aretovus-node
           fi
           python scripts/testnet_concurrent_verify_smoke.py --node "$binary" --blocks 48 --max-seconds 240 --probe-timeout 45 --min-distinct-heights 3 --output target/concurrent-verify-evidence.json
       - name: Upload CI evidence (never physical-host evidence)

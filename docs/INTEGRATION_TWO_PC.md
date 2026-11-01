@@ -1,4 +1,4 @@
-# Intégration AURORA — état et provenance pour un essai sur deux ordinateurs
+# Intégration ARETOVUS — état et provenance pour un essai sur deux ordinateurs
 
 Cette page remplace les notes historiques de la branche `integration/two-pc-testnet`.
 **Au 30 octobre 2026**, `main` inclut les PR de consolidation jusqu'à la #76,
@@ -9,13 +9,13 @@ une **CI sur ce SHA réussie** et une **archive créée sur ce SHA**.
 
 ## Choisir les archives
 
-Utiliser le [workflow testnet-packages](https://github.com/antoineforterax-cmd/AURORA/actions/workflows/testnet-packages.yml)
+Utiliser le [workflow testnet-packages](https://github.com/antoineforterax-cmd/ARETOVUS/actions/workflows/testnet-packages.yml)
 sur `main`, après succès des jobs Windows, Linux et macOS. Télécharger l'artefact
 Windows **de ce même run**, extraire l'archive ZIP contenue dans l'artefact
 si nécessaire, puis conserver `EXPERIMENTAL_TESTNET.txt` et `SHA256SUMS.txt`.
 
 Comparer sur les deux machines le contenu de `Source commit:` ainsi que
-les SHA-256 de `bin/aurora-node.exe` et `bin/aurora-wallet.exe`. Le script
+les SHA-256 de `bin/aretovus-node.exe` et `bin/aretovus-wallet.exe`. Le script
 `scripts/two_pc_preflight.ps1` vérifie les checksums internes et le démarrage
 des exécutables ; il ne modifie ni les droits de pare-feu ni la configuration LAN.
 Les archives CI sont non signées, expirent après 14 jours et restent

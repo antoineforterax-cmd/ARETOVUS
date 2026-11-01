@@ -8,11 +8,11 @@ Seeking a Rust code review of an experimental blockchain: consensus, storage and
 
 ## Post
 
-I'm working on AURORA, a small experimental blockchain in Rust. The repository is public, and I'd like help finding design and implementation mistakes before extending it further.
+I'm working on ARETOVUS, a small experimental blockchain in Rust. The repository is public, and I'd like help finding design and implementation mistakes before extending it further.
 
-Repository: https://github.com/antoineforterax-cmd/AURORA
+Repository: https://github.com/antoineforterax-cmd/ARETOVUS
 
-Work in progress: https://github.com/antoineforterax-cmd/AURORA/pull/2
+Work in progress: https://github.com/antoineforterax-cmd/ARETOVUS/pull/2
 
 The review baseline is commit `7d0f1ee598235b7194f92081424c008c4c628ceb`. Later documentation and test-harness changes are outside this baseline until explicitly added to the review. The review brief is `docs/INDEPENDENT_REVIEW.md` at that revision.
 

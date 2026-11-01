@@ -1,4 +1,4 @@
-# AURORA — Architecture présente et options futures
+# ARETOVUS — Architecture présente et options futures
 
 Cette description concerne le testnet en développement, pas le code historique de `main`. Les correctifs récents sur les connexions P2P, le cache du mempool, les réorganisations et la validation des adresses sont répartis entre les PR #16 à #22, non fusionnées au 29 octobre 2026.
 

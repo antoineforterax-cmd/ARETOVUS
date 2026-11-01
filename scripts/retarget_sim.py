@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent integer oracle for the current AURORA testnet retarget.
+"""Independent integer oracle for the current ARETOVUS testnet retarget.
 
 No Rust imports, subprocesses or third-party packages. The threshold formula
 counts powers of two instead of reproducing the Rust mutable retarget loop.

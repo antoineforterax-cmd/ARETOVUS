@@ -26,9 +26,11 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts -p 'test_emission_sim.py'
           python3 scripts/emission_sim.py --heights 10000000 100000000 500000000
+      - name: Contrôler le renommage et les identifiants de protocole historiques
+        run: python3 scripts/test_branding_compatibility.py
       - name: Tests
         run: cargo test --workspace --locked
       - name: Testnet multi-nœuds
         run: python3 scripts/testnet_smoke.py
       - name: Vérifier le lanceur d’endurance et sa collecte de mesures
-        run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --wallet target/debug/aurora-wallet --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0
+        run: python3 scripts/testnet_endurance.py --binary target/debug/aretovus-node --wallet target/debug/aretovus-wallet --output target/endurance-ci --max-rounds 6 --restart-every 3 --interval-seconds 0

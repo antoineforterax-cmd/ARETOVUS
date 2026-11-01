@@ -1,4 +1,4 @@
-# AURORA — spécification expérimentale v0
+# ARETOVUS — spécification expérimentale v0
 
 **Version de travail :** 0.1-expérimental. **Branche :** `feature/emission-schedule-v0`. **Usage :** expériences locales/testnet, aucun fonds réel. Les règles sont exécutables et couvertes par CI, mais le protocole n’a pas reçu de revue indépendante et n’est pas prêt pour un mainnet.
 
@@ -29,7 +29,7 @@ Cinq pour cent de l’émission (arrondi inférieur en unité minimale) vont au 
 
 Le nœud construit une genèse testnet vide et déterministe. Paramètres actuels : 8 bits initiaux, cible 60 secondes, fenêtre de 10 blocs, ajustement maximal de 2 bits par fenêtre, bornes 4 à 20 bits. La configuration persistée et une empreinte de protocole distinguent ce testnet des configurations incompatibles.
 
-Le stockage v6 de cette branche écrit les blocs acceptés une fois dans `blocks-v5/`, sous leur hash. Il écrit leur ordre d’arrivée dans des pages immuables checksummées dans `index-pages-v6/`, puis publie atomiquement un manifeste `AURORIDX` engageant les pages et les paramètres de consensus. Les trois derniers manifestes sont conservés. Le chargeur lit aussi les index v5 et les snapshots `AURORSNP` v4; il vérifie les hashes, rejoue tous les blocs et choisit la chaîne valide au travail cumulé maximal. La version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614); aucun essai de volume ou de panne matérielle n’en découle. Une sauvegarde doit copier le dossier entier, notamment les deux sous-dossiers et les manifestes. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
+Le stockage v6 de cette branche écrit les blocs acceptés une fois dans `blocks-v5/`, sous leur hash. Il écrit leur ordre d’arrivée dans des pages immuables checksummées dans `index-pages-v6/`, puis publie atomiquement un manifeste `AURORIDX` engageant les pages et les paramètres de consensus. Les trois derniers manifestes sont conservés. Le chargeur lit aussi les index v5 et les snapshots `AURORSNP` v4; il vérifie les hashes, rejoue tous les blocs et choisit la chaîne valide au travail cumulé maximal. La version v6 a passé la [CI Rust et multi-nœuds](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485261614); aucun essai de volume ou de panne matérielle n’en découle. Une sauvegarde doit copier le dossier entier, notamment les deux sous-dossiers et les manifestes. Voir [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md).
 
 ## Réseau expérimental
 
@@ -39,7 +39,7 @@ La découverte est opt-in, limitée à un saut depuis des bootstrap peers statiq
 
 ## Portefeuille et RPC testnet
 
-Le CLI `aurora-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet et compare le fingerprint reçu au profil P2P v4 et aux paramètres de consensus testnet épinglés dans `aurora-consensus`. Un nœud utilisant d’autres paramètres est refusé avant toute requête de solde ou d’envoi. Le client SPV applique aussi la borne locale de deux heures aux en-têtes reçus; ce contrôle d’admission ne modifie pas le consensus.
+Le CLI `aretovus-wallet` ne contacte que le protocole wallet du testnet ML-DSA v3. Chaque échange utilise le framing TCP existant : longueur big-endian u32 puis charge utile, limite de 4 MiB, délai d’E/S de 10 secondes. Le client commence par le message d’un octet `WALLET_HELLO=5`; le serveur répond `0x85 || network || fingerprint[32] || height[u64] || tip[32]`. Le client exige le réseau Testnet et compare le fingerprint reçu au profil P2P v4 et aux paramètres de consensus testnet épinglés dans `aretovus-consensus`. Un nœud utilisant d’autres paramètres est refusé avant toute requête de solde ou d’envoi. Le client SPV applique aussi la borne locale de deux heures aux en-têtes reçus; ce contrôle d’admission ne modifie pas le consensus.
 
 Les commandes utilisent les messages suivants :
 
@@ -52,9 +52,9 @@ Les commandes utilisent les messages suivants :
 
 Le compte et le nonce sont calculés en rejouant les transactions actuellement en attente sur l’état confirmé. L’admission au mempool exige le réseau et la version v3, l’encodage canonique, une signature valide, le prochain nonce et un solde suffisant, après application des transactions déjà en attente. Le mempool est borné à 4 096 transactions et 32 MiB; une page contient au plus 700 transactions et le client avance l’offset jusqu’à une page vide, avec au plus 16 pages par consultation. Il est en mémoire et ne survit pas à un redémarrage. Les serveurs interrogent périodiquement leurs pairs configurés et valident les transactions reçues avant admission. Le mineur récupère les transactions du premier pair `--peer`, vérifie les règles de consensus en construisant le bloc, puis propage le bloc. Le protocole n’a pas de diffusion spontanée, de persistance du mempool ni de sélection économique des frais.
 
-Les commandes `aurora-wallet verify --txid <hex> --confirmations N` téléchargent des pages d’en-têtes depuis la genèse testnet épinglée, vérifient le PoW, les horodatages, les retargets et le travail cumulé, puis demandent une preuve d’inclusion Merkle au nœud. Le client vérifie que l’en-tête prouvant la transaction est canonique dans la chaîne téléchargée et respecte le nombre minimal de confirmations demandé. C’est une vérification légère dépendante de la vue des pairs; elle ne prouve pas à elle seule que le réseau n’a pas été éclipsé ou censuré.
+Les commandes `aretovus-wallet verify --txid <hex> --confirmations N` téléchargent des pages d’en-têtes depuis la genèse testnet épinglée, vérifient le PoW, les horodatages, les retargets et le travail cumulé, puis demandent une preuve d’inclusion Merkle au nœud. Le client vérifie que l’en-tête prouvant la transaction est canonique dans la chaîne téléchargée et respecte le nombre minimal de confirmations demandé. C’est une vérification légère dépendante de la vue des pairs; elle ne prouve pas à elle seule que le réseau n’a pas été éclipsé ou censuré.
 
-Le module `aurora_wallet::uri` encode les paiements comme `aurora://testnet/<adresse-hex>?amount=<AUR>&memo=<texte-percent-encodé>`. Le parseur refuse réseau, paramètres, montants, encodages et mémo invalides. Le montant et le mémo sont optionnels. L’URI ne transporte aucune preuve d’identité ni signature de demande.
+Le module `aretovus_wallet::uri` encode les paiements comme `aurora://testnet/<adresse-hex>?amount=<AUR>&memo=<texte-percent-encodé>`. Le parseur refuse réseau, paramètres, montants, encodages et mémo invalides. Le montant et le mémo sont optionnels. L’URI ne transporte aucune preuve d’identité ni signature de demande.
 
 Les nouveaux fichiers de clés wallet `AURKEY4` contiennent une graine de 32 octets générée par le CSPRNG du système, chiffrée avec XChaCha20-Poly1305 et une clé dérivée du mot de passe par Argon2id (64 MiB, trois passes). La commande `backup` vérifie la source puis crée un fichier chiffré indépendant avec sel et nonce nouveaux; `restore` vérifie la sauvegarde et recrée une clé sans écraser un fichier existant. L’ancien `AURKEY3` en clair n’est conservé que pour les essais automatisés. L’adresse actuelle est l’identifiant de 32 octets dérivé de la clé publique ML-DSA-65; son affichage est 64 caractères hexadécimaux. Il n’y a pas encore de dérivation hiérarchique, de phrase de récupération, de gardiens/time-locks, de DID intégré aux comptes ou de protection matérielle des clés.
 
@@ -63,9 +63,9 @@ Les nouveaux fichiers de clés wallet `AURKEY4` contiennent une graine de 32 oct
 ## Commandes
 
 ```bash
-cargo run -p aurora-node -- testnet mine --data-dir ./node-a --miner <64 caractères hex> --count 10
-cargo run -p aurora-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:18444 --peer 192.0.2.20:18444
-cargo run -p aurora-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444 --discover
+cargo run -p aretovus-node -- testnet mine --data-dir ./node-a --miner <64 caractères hex> --count 10
+cargo run -p aretovus-node -- testnet serve --data-dir ./node-a --listen 0.0.0.0:18444 --peer 192.0.2.20:18444
+cargo run -p aretovus-node -- testnet sync --data-dir ./node-b --peer 127.0.0.1:18444 --discover
 ```
 
 ## État de préparation

@@ -1,8 +1,8 @@
 # Provenance et vérifications
 
-Le prototype initial d’AURORA a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
+Le prototype initial d’ARETOVUS a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
 
-Le porteur du projet définit la vision d’AURORA, propose les orientations d’architecture, fixe les priorités et pilote activement le développement. Il a personnellement écrit et corrigé des pans entiers du code (notamment les scripts de test et d'automatisation en Python, ainsi que des contributions directes sur le Rust). L’IA est utilisée comme un outil d’assistance technique à la demande pour accélérer la mise en œuvre, générer certaines structures ou aider à la recherche de défauts. Les propositions et le code restent soumis aux décisions du porteur et à ses vérifications.
+Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d’architecture, fixe les priorités et pilote activement le développement. Il a personnellement écrit et corrigé des pans entiers du code (notamment les scripts de test et d'automatisation en Python, ainsi que des contributions directes sur le Rust). L’IA est utilisée comme un outil d’assistance technique à la demande pour accélérer la mise en œuvre, générer certaines structures ou aider à la recherche de défauts. Les propositions et le code restent soumis aux décisions du porteur et à ses vérifications.
 
 ## Ce qui a réellement été vérifié
 

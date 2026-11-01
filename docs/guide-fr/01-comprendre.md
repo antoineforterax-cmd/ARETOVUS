@@ -1,10 +1,10 @@
-# 1. Comprendre AURORA
+# 1. Comprendre ARETOVUS
 
 [Sommaire](README.md) · [Économie →](02-economie.md)
 
 ## Le but du projet
 
-AURORA explore une monnaie numérique dont les règles peuvent être vérifiées et exécutées localement. Le projet associe une émission limitée et dégressive, des paiements signés avec ML-DSA-65, et des nœuds qui conservent et valident eux-mêmes leur chaîne. L’objectif est de rendre le fonctionnement observable et reproductible sur des ordinateurs individuels, puis de mesurer ses limites avant d’en élargir l’usage.
+ARETOVUS explore une monnaie numérique dont les règles peuvent être vérifiées et exécutées localement. Le projet associe une émission limitée et dégressive, des paiements signés avec ML-DSA-65, et des nœuds qui conservent et valident eux-mêmes leur chaîne. L’objectif est de rendre le fonctionnement observable et reproductible sur des ordinateurs individuels, puis de mesurer ses limites avant d’en élargir l’usage.
 
 Ce but décrit le travail demandé et le logiciel en construction. Il ne prédit ni adoption, ni valeur marchande, ni rentabilité du minage. Il n’existe pas aujourd’hui de réseau public déclaré stable, de cotation officielle ni de mécanisme de vente livré par ce projet.
 
@@ -12,8 +12,8 @@ Ce but décrit le travail demandé et le logiciel en construction. Il ne prédit
 
 L’archive fournit deux programmes :
 
-- **`aurora-node`** vérifie et conserve les blocs, communique avec les pairs, sert les requêtes du portefeuille et peut miner des blocs de test.
-- **`aurora-wallet`** crée une clé, dérive son adresse, signe des paiements et interroge un nœud. Il fonctionne en ligne de commande.
+- **`aretovus-node`** vérifie et conserve les blocs, communique avec les pairs, sert les requêtes du portefeuille et peut miner des blocs de test.
+- **`aretovus-wallet`** crée une clé, dérive son adresse, signe des paiements et interroge un nœud. Il fonctionne en ligne de commande.
 
 L’archive ne contient pas une blockchain complète à jour. Le nœud crée la genèse déterministe de ce testnet, puis reçoit des blocs de ses pairs ou en mine. Chaque bloc reçu est vérifié avant d’être accepté. Le dossier choisi avec `--data-dir` contient la copie locale de la chaîne.
 
@@ -21,7 +21,7 @@ Le nœud n’a pas besoin d’un compte auprès d’un fournisseur d’API pour 
 
 ## Les mots utiles
 
-| Mot | Sens dans AURORA |
+| Mot | Sens dans ARETOVUS |
 | --- | --- |
 | AUR | Unité monétaire du protocole; un AUR est divisé en 100 000 000 unités minimales. |
 | Adresse | Identifiant public du compte, affiché actuellement comme 64 caractères hexadécimaux. Ce n’est pas la clé privée. |

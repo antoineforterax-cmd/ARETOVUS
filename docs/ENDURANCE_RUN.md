@@ -9,10 +9,10 @@ Il faut Python 3.10 ou plus et une archive de binaires issue d’un commit ident
 Depuis le dossier extrait, dans PowerShell :
 
 ```powershell
-python .\scripts\testnet_endurance.py --binary .\bin\aurora-node.exe --output .\endurance-72h --hours 72
+python .\scripts\testnet_endurance.py --binary .\bin\aretovus-node.exe --output .\endurance-72h --hours 72
 ```
 
-Sous Linux/macOS, remplacez les chemins par `./scripts/testnet_endurance.py` et `./bin/aurora-node`. Le dossier de sortie doit être nouveau. L’essai produit environ un bloc par minute, vérifie que les trois nœuds atteignent le même sommet et tue le pair intermédiaire tous les trente blocs avant de le redémarrer et mesurer son rattrapage. Le temps de calcul s’ajoute si une opération dépasse la cadence prévue. Il utilise une adresse factice sans clé privée : les récompenses de cet essai ne sont pas destinées à être dépensées.
+Sous Linux/macOS, remplacez les chemins par `./scripts/testnet_endurance.py` et `./bin/aretovus-node`. Le dossier de sortie doit être nouveau. L’essai produit environ un bloc par minute, vérifie que les trois nœuds atteignent le même sommet et tue le pair intermédiaire tous les trente blocs avant de le redémarrer et mesurer son rattrapage. Le temps de calcul s’ajoute si une opération dépasse la cadence prévue. Il utilise une adresse factice sans clé privée : les récompenses de cet essai ne sont pas destinées à être dépensées.
 
 Pour arrêter proprement : créez un fichier vide `STOP` dans le dossier de sortie. Le lanceur finit le tour courant, arrête ses processus, restaure une copie du dossier B et marque l’essai comme arrêté, sans le compter comme 72 h réussies. Une fermeture forcée du lanceur peut laisser ses processus enfants actifs; ne terminez que les PID consignés dans son journal après avoir vérifié leurs chemins et arguments.
 

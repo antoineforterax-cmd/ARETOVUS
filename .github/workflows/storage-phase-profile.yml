@@ -4,11 +4,11 @@ on:
   push:
     branches: [test/storage-phase-profile-8192, test/storage-profile-2048-8192-ci, test/storage-phase-profile-32768-20261031, perf/storage-dedup-retained-page-verification-20261031, perf/storage-p2p-io-accounting-20261031]
     paths:
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-storage/**"
       - ".github/workflows/storage-phase-profile.yml"
   pull_request:
     paths:
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-storage/**"
       - ".github/workflows/storage-phase-profile.yml"
   workflow_dispatch:
     inputs:
@@ -29,7 +29,7 @@ jobs:
       - name: Installer Rust 1.99.1
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Précompiler les tests hors des mesures CPU et mémoire
-        run: cargo test --locked -p aurora-storage --lib --no-run
+        run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Profiler 2048 puis 8192 blocs sur le même runner
         env:
           AURORA_STORAGE_PROFILE: "1"
@@ -57,7 +57,7 @@ jobs:
             export AURORA_STORAGE_PROFILE_BLOCKS="$blocks"
             log="storage-profile-${blocks}.log"
             echo "=== Starting $blocks-block storage profile ==="
-            /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
+            /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -q 'storage phases:' "$log"
             if [ "$GITHUB_REF" = refs/heads/perf/storage-p2p-io-accounting-20261031 ]; then

@@ -33,7 +33,7 @@ def wallet_probe(port: int) -> float:
 
 
 def run_case(binary: Path, kind: str, maximum: float | None) -> dict:
-    with tempfile.TemporaryDirectory(prefix="aurora-admission-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="aretovus-admission-") as temporary:
         root = Path(temporary)
         log = root / "server.log"
         with log.open("wb") as output:

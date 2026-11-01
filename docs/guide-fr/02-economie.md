@@ -45,4 +45,4 @@ Un plafond et un burn ne garantissent ni rareté économique utile, ni hausse de
 
 Aucun mécanisme actif ne confisque ou recycle les comptes inactifs. Aucun gardien ne peut récupérer une clé perdue. Ces propositions touchent aux droits de propriété et à l’autorisation des transferts; elles restent séparées du consensus actuel.
 
-Références : [modèle d’émission](../EMISSION_MODEL.md), [décisions testnet](../TESTNET_DECISIONS.md), [règles de récompense](../../crates/aurora-consensus/src/reward.rs).
+Références : [modèle d’émission](../EMISSION_MODEL.md), [décisions testnet](../TESTNET_DECISIONS.md), [règles de récompense](../../crates/aretovus-consensus/src/reward.rs).

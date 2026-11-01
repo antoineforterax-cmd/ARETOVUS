@@ -50,7 +50,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: python3 scripts/testnet_smoke.py
-      - run: python3 scripts/testnet_endurance.py --binary target/debug/aurora-node --output target/endurance-release --max-rounds 6 --restart-every 3 --interval-seconds 0
+      - run: python3 scripts/testnet_endurance.py --binary target/debug/aretovus-node --output target/endurance-release --max-rounds 6 --restart-every 3 --interval-seconds 0
   package:
     needs: request
     strategy:
@@ -74,7 +74,7 @@ jobs:
         run: |
           suffix=''
           if [ "$RUNNER_OS" = Windows ]; then suffix='.exe'; fi
-          python scripts/testnet_endurance.py --binary "target/release/aurora-node${suffix}" --output target/endurance-package --max-rounds 3 --restart-every 3 --interval-seconds 0
+          python scripts/testnet_endurance.py --binary "target/release/aretovus-node${suffix}" --output target/endurance-package --max-rounds 3 --restart-every 3 --interval-seconds 0
       - run: python scripts/package_testnet.py
       - uses: actions/upload-artifact@v4
         with:
@@ -126,4 +126,4 @@ jobs:
           GH_REPO: ${{ github.repository }}
           SOURCE: ${{ needs.request.outputs.source }}
           TAG: ${{ needs.request.outputs.tag }}
-        run: gh release create "$TAG" --target "$SOURCE" --prerelease --title "AURORA $TAG" --notes-file release-notes.md dist/*.zip dist/SHA256SUMS.txt
+        run: gh release create "$TAG" --target "$SOURCE" --prerelease --title "ARETOVUS $TAG" --notes-file release-notes.md dist/*.zip dist/SHA256SUMS.txt

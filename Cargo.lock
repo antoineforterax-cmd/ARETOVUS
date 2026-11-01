@@ -25,16 +25,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-consensus"
+name = "aretovus-consensus"
 version = "0.0.1"
 dependencies = [
- "aurora-core",
+ "aretovus-core",
  "ed25519-dalek",
  "ml-dsa",
 ]
 
 [[package]]
-name = "aurora-core"
+name = "aretovus-core"
 version = "0.0.1"
 dependencies = [
  "ed25519-dalek",
@@ -43,31 +43,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-node"
+name = "aretovus-node"
 version = "0.0.1"
 dependencies = [
- "aurora-consensus",
- "aurora-core",
- "aurora-storage",
+ "aretovus-consensus",
+ "aretovus-core",
+ "aretovus-storage",
  "ml-dsa",
 ]
 
 [[package]]
-name = "aurora-storage"
+name = "aretovus-storage"
 version = "0.0.1"
 dependencies = [
- "aurora-consensus",
- "aurora-core",
+ "aretovus-consensus",
+ "aretovus-core",
  "libc",
 ]
 
 [[package]]
-name = "aurora-wallet"
+name = "aretovus-wallet"
 version = "0.0.1"
 dependencies = [
  "argon2",
- "aurora-consensus",
- "aurora-core",
+ "aretovus-consensus",
+ "aretovus-core",
  "chacha20poly1305",
  "getrandom 0.2.17",
  "libc",

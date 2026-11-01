@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NODE = ROOT / "target" / "release" / ("aurora-node.exe" if os.name == "nt" else "aurora-node")
+NODE = ROOT / "target" / "release" / ("aretovus-node.exe" if os.name == "nt" else "aretovus-node")
 MINER = "42" * 32
 
 
@@ -36,7 +36,7 @@ def wait_listening(server: subprocess.Popen[bytes], port: int, log: Path) -> Non
 def main() -> None:
     if not NODE.is_file():
         raise FileNotFoundError(NODE)
-    with tempfile.TemporaryDirectory(prefix="aurora-lock-smoke-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="aretovus-lock-smoke-") as temporary:
         data_dir = Path(temporary) / "node"
         log = Path(temporary) / "server.log"
         port = free_port()

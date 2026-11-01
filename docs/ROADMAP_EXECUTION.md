@@ -17,7 +17,7 @@ Les sections suivantes conservent leurs dates et résultats d'origine ; les ment
 ---
 
 
-# AURORA — état vérifié et chemin vers une version finale
+# ARETOVUS — état vérifié et chemin vers une version finale
 
 **Branche de travail :** `feature/emission-schedule-v0`.  
 **État :** testnet expérimental supervisé. La PR reste non fusionnée. Aucun fonds réels; aucune revendication de sécurité mainnet.
@@ -30,7 +30,7 @@ Les sections suivantes conservent leurs dates et résultats d'origine ; les ment
 - Stockage v5 par blocs immuables et index checksummés avec trois points de reprise; relecture/revalidation des branches, retour à un index valide antérieur si le dernier est corrompu, lecture des snapshots v4 et restauration d’une copie dans un autre dossier. Les commandes `mine`, `sync` et `serve` prennent un verrou exclusif sur leur dossier de données; le smoke test vérifie le refus d’un second écrivain.
 - Décodage hostile : tailles excessives, trames/inventaires malformés, handshake incompatible, bloc rejeté et limites de session. La lecture et l’écriture complètes d’une trame ont chacune un délai total; les réponses volumineuses sont écrites après libération des verrous de chaîne et de mempool. Une page n’est publiée en mémoire qu’après validation et sauvegarde complètes.
 - Scénario multi-processus : le smoke test mine et propage, inclut une transaction wallet, vérifie son statut et sa preuve Merkle, passe la hauteur 20 à travers deux fenêtres de retarget, redémarre un pair et synchronise les blocs manquants. Un serveur déjà lancé rattrape automatiquement un pair à la hauteur 21 puis un nouveau bloc à la hauteur 22. Le mempool est récupéré par pages depuis les pairs configurés; les transactions sont revalidées avant admission locale, relayées et minées par un pair distinct dans le smoke test.
-- Essai local à trois nœuds : 36 blocs propagés en 490,2 secondes avec quatre redémarrages d’un pair et restauration vérifiée d’une copie complète; [preuve CI](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40361895189).
+- Essai local à trois nœuds : 36 blocs propagés en 490,2 secondes avec quatre redémarrages d’un pair et restauration vérifiée d’une copie complète; [preuve CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40361895189).
 - Reprise après terminaison forcée entre des sauvegardes; essai d’échec d’écriture simulé par limite de taille de fichier sur Linux.
 - Test reproductible déterministe d’entrées arbitraires pour les décodeurs de transactions, blocs, en-têtes, inventaires et listes de pairs.
 - Trois cibles libFuzzer pour les décodeurs canoniques, les preuves Merkle et les charges P2P; job GitHub Actions séparé. Le [rapport](TESTNET_VALIDATION_REPORT.md) donne les nombres d’entrées et les limites.
@@ -38,7 +38,7 @@ Les sections suivantes conservent leurs dates et résultats d'origine ; les ment
 ### À compléter avant de prétendre à une robustesse élevée
 
 - Campagnes fuzz longues et rapport de couverture; le job CI court ne remplace pas une campagne de plusieurs heures/jours.
-- Le test de déconnexion au milieu d’une page vérifie désormais l’absence de publication partielle. Restent les [horodatages futurs](https://github.com/antoineforterax-cmd/AURORA/issues/3), la [saturation simultanée des workers](https://github.com/antoineforterax-cmd/AURORA/issues/4), les inventaires menteurs et les partitions répétées.
+- Le test de déconnexion au milieu d’une page vérifie désormais l’absence de publication partielle. Restent les [horodatages futurs](https://github.com/antoineforterax-cmd/ARETOVUS/issues/3), la [saturation simultanée des workers](https://github.com/antoineforterax-cmd/ARETOVUS/issues/4), les inventaires menteurs et les partitions répétées.
 - Une copie complète de dossier est restaurée par test automatisé, et la lecture v4 puis écriture v5 est couverte. Il reste à éprouver une sauvegarde hors machine réelle, un disque effectivement plein et une panne électrique. La limite de taille du fichier reproduit une erreur d’écriture; elle ne simule pas un volume saturé.
 - Le stockage et le fil P2P n’ont plus de seuil logique à 100 000 blocs, mais le franchissement réel de cette borne et la croissance mémoire/CPU restent à prouver avant un testnet durable. Il faut également éprouver des réorganisations concurrentes répétées et une synchronisation pendant des jours sur plusieurs machines réelles; les 490,2 secondes de rattrapage local restent un essai borné.
 - Vérification indépendante du retarget sous dérive d’horloge, longues pauses et rafales.

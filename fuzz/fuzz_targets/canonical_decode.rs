@@ -1,7 +1,7 @@
 #![no_main]
 
-use aurora_consensus::{account_block::AccountBlock, experimental::BlockHeader};
-use aurora_core::{accounts::AccountTransaction, codec::CanonicalDecode};
+use aretovus_consensus::{account_block::AccountBlock, experimental::BlockHeader};
+use aretovus_core::{accounts::AccountTransaction, codec::CanonicalDecode};
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|bytes: &[u8]| {

@@ -1,14 +1,14 @@
-# Architecture d’AURORA
+# Architecture d’ARETOVUS
 
-AURORA est un testnet expérimental par comptes. Les montants sont des entiers à huit décimales. Le profil actuel combine transactions v3 ML-DSA-65, en-têtes v1 avec racine Merkle, stockage v6 et transport P2P v4. Ces numéros désignent des formats différents.
+ARETOVUS est un testnet expérimental par comptes. Les montants sont des entiers à huit décimales. Le profil actuel combine transactions v3 ML-DSA-65, en-têtes v1 avec racine Merkle, stockage v6 et transport P2P v4. Ces numéros désignent des formats différents.
 
 | Crate | Responsabilité | Dépendances internes |
 | --- | --- | --- |
-| `aurora-core` | Montants, comptes, encodage canonique, domaines de hash, signatures et transitions de compte. | Aucune. |
-| `aurora-consensus` | Validation des blocs, PoW, retarget, horodatages, émission, choix de chaîne, réorganisations et chaîne d’en-têtes. | `aurora-core`. |
-| `aurora-storage` | Blocs immuables, pages d’index et manifestes v6; lecture v4/v5, sommes de contrôle et rejeu. | Core et consensus. |
-| `aurora-node` | Commandes mine/sync/serve/verify, verrou de dossier, transport TCP, mempool et RPC wallet/SPV. | Core, consensus et stockage. |
-| `aurora-wallet` | Clés chiffrées, sauvegarde/restauration, construction et signature des paiements, RPC, URI et preuves SPV. | Core et consensus. |
+| `aretovus-core` | Montants, comptes, encodage canonique, domaines de hash, signatures et transitions de compte. | Aucune. |
+| `aretovus-consensus` | Validation des blocs, PoW, retarget, horodatages, émission, choix de chaîne, réorganisations et chaîne d’en-têtes. | `aretovus-core`. |
+| `aretovus-storage` | Blocs immuables, pages d’index et manifestes v6; lecture v4/v5, sommes de contrôle et rejeu. | Core et consensus. |
+| `aretovus-node` | Commandes mine/sync/serve/verify, verrou de dossier, transport TCP, mempool et RPC wallet/SPV. | Core, consensus et stockage. |
+| `aretovus-wallet` | Clés chiffrées, sauvegarde/restauration, construction et signature des paiements, RPC, URI et preuves SPV. | Core et consensus. |
 
 Une transaction est décodée et vérifiée avant son admission. Un bloc engage les transactions et le mineur dans son en-tête; son PoW et ses transitions sont vérifiés contre l’état de son parent. La branche au travail cumulé maximal devient canonique, avec départage déterministe par hash. L’état du sommet et des points de contrôle sont conservés; les autres états sont reconstruits à partir des blocs validés. Ce rejeu et les copies de chaîne doivent encore être mesurés sous charge hostile.
 

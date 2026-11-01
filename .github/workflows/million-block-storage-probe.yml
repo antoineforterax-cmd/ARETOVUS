@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup toolchain install 1.99.1 --profile minimal
       - name: Precompile before measuring
-        run: cargo test --locked -p aurora-storage --lib --no-run
+        run: cargo test --locked -p aretovus-storage --lib --no-run
       - name: Check available disk before expensive storage probe
         run: |
           set -euo pipefail
@@ -34,7 +34,7 @@ jobs:
           AURORA_MILLION_BLOCK_PROBE: "1"
         run: |
           set -euo pipefail
-          /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::million_block_persistence_and_restart_probe -- --exact --ignored --nocapture 2>&1 | tee million-block-probe.log
+          /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::million_block_persistence_and_restart_probe -- --exact --ignored --nocapture 2>&1 | tee million-block-probe.log
           grep -Fq 'test result: ok. 1 passed; 0 failed;' million-block-probe.log
           grep -Fq 'million-block probe: blocks=1000001 ' million-block-probe.log
       - uses: actions/upload-artifact@v4

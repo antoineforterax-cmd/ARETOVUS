@@ -5,9 +5,9 @@ on:
     branches: [feature/emission-schedule-v0]
     paths:
       - "scripts/testnet_soak.py"
-      - "crates/aurora-node/**"
-      - "crates/aurora-storage/**"
-      - "crates/aurora-consensus/**"
+      - "crates/aretovus-node/**"
+      - "crates/aretovus-storage/**"
+      - "crates/aretovus-consensus/**"
       - ".github/workflows/testnet-soak.yml"
   workflow_dispatch:
 
@@ -33,5 +33,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: testnet-soak-logs
-          path: target/aurora-soak-*/**/*.log
+          path: target/aretovus-soak-*/**/*.log
           retention-days: 7

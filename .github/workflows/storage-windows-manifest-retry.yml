@@ -3,7 +3,7 @@ name: storage-windows-manifest-retry
 on:
   pull_request:
     paths:
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-storage/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/storage-windows-manifest-retry.yml"
@@ -21,8 +21,8 @@ jobs:
       - name: Install pinned Rust
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Repeated snapshot must resync its existing manifest on Windows
-        run: cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_reuses_blocks_and_rejects_non_file_object -- --exact --nocapture
+        run: cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_reuses_blocks_and_rejects_non_file_object -- --exact --nocapture
       - name: Retry after a failed directory sync must reach injected callback
-        run: cargo test --locked -p aurora-storage --lib tests::manifest_parent_sync_failure_leaves_visible_generation_recoverable -- --exact --nocapture
+        run: cargo test --locked -p aretovus-storage --lib tests::manifest_parent_sync_failure_leaves_visible_generation_recoverable -- --exact --nocapture
       - name: Run all storage regressions
-        run: cargo test --locked -p aurora-storage --lib
+        run: cargo test --locked -p aretovus-storage --lib

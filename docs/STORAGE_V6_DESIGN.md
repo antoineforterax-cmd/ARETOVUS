@@ -1,6 +1,6 @@
-# AURORA — proposition de stockage et de synchronisation v6
+# ARETOVUS — proposition de stockage et de synchronisation v6
 
-**Statut : implémentation partielle; CI du lot réseau/états verte sur `7d0f1ee`.** La branche écrit déjà un manifeste et des pages v6, lit v4/v5, et sert les blocs dans un ordre d’arrivée stable. Le P2P utilise maintenant un curseur u64 et rouvre les sessions avant leurs quotas. Les états complets ont été réduits à des points de contrôle tous les 256 blocs et au sommet canonique, mais leur croissance et la copie de chaîne par page restent à mesurer. Les jobs GitHub Actions ont repris et la [CI v6](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40485261614) a réussi; l’essai de volume manque toujours. Aucun fonds réel.
+**Statut : implémentation partielle; CI du lot réseau/états verte sur `7d0f1ee`.** La branche écrit déjà un manifeste et des pages v6, lit v4/v5, et sert les blocs dans un ordre d’arrivée stable. Le P2P utilise maintenant un curseur u64 et rouvre les sessions avant leurs quotas. Les états complets ont été réduits à des points de contrôle tous les 256 blocs et au sommet canonique, mais leur croissance et la copie de chaîne par page restent à mesurer. Les jobs GitHub Actions ont repris et la [CI v6](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40485261614) a réussi; l’essai de volume manque toujours. Aucun fonds réel.
 
 ## Problème observé
 
@@ -19,7 +19,7 @@ Le stockage v5 écrit un index monolithique contenant tous les identifiants de b
 
 - Fait dans le code : ordre d’acceptation persistant et test d’une branche ancienne qui ne décale pas le curseur.
 - Fait et vérifié par CI : écriture/lecture du manifeste et des pages v6, test de corruption et migration v5. Restent l’essai de coupure au milieu d’une page, la restauration après plusieurs générations et la mesure de volume.
-- API P2P u64, reconnexion de session avec contrôle du dernier hash et tests de pair incohérent écrits; leur [CI](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607637) est verte. Reste une chaîne au-delà de 100 000 blocs.
+- API P2P u64, reconnexion de session avec contrôle du dernier hash et tests de pair incohérent écrits; leur [CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) est verte. Reste une chaîne au-delà de 100 000 blocs.
 - Des points de contrôle tous les 256 blocs et un rejeu borné ont été ajoutés avec un test de branche profonde et récompenses; la CI est verte; les mesures mémoire restent à faire. La copie de chaîne par page de sync reste coûteuse.
 - Mesurer sur une chaîne synthétique de plus de 100 000 blocs, incluant branches secondaires, redémarrage, restauration et sync depuis zéro; conserver CPU, RAM, disque, durée et hashes des sommets dans le rapport d'essai.
 

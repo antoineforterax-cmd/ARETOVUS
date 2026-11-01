@@ -1,8 +1,15 @@
-# AURORA — blockchain expérimentale
+# ARETOVUS — blockchain expérimentale
+
+<p align="center">
+  <img src="assets/aretovus-logo.svg" alt="Emblème officiel ARETOVUS : temple stylisé et lettre A" width="320">
+</p>
+
+
+> **Renommage de marque (2026-10-31).** Ancien nom : AURORA. Les identifiants consensus, le protocole `aurora://`, les noms historiques de fichiers et les releases déjà publiées conservent leurs valeurs pour assurer la compatibilité. Voir [politique de migration](docs/BRANDING_COMPATIBILITY.md).
 
 > Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
 
-Pour découvrir le projet et faire un premier essai : [AURORA, de A à Z](docs/guide-fr/README.md). La [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/AURORA/releases/tag/testnet-v0.0.1-experimental.1) fournit les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
+Pour découvrir le projet et faire un premier essai : [ARETOVUS, de A à Z](docs/guide-fr/README.md). La [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) fournit les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
 
 ## État actuel
 
@@ -10,11 +17,11 @@ Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v
 
 | Composant | Fonctionnement présent |
 |---|---|
-| `aurora-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
-| `aurora-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
-| `aurora-storage` | Blocs immuables, pages d’index et manifestes checksummés `AURORIDX` v6, trois générations récentes et une ancre de reprise ancienne, toutes les branches; lecture v4/v5 et revalidation au chargement. La [CI du lot réseau/états](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Un [essai de stockage de 100 003 blocs connus](https://github.com/antoineforterax-cmd/AURORA/actions/runs/40527921129), avec branche secondaire et rechargement, a réussi; la synchronisation réseau de ce volume reste à démontrer. |
-| `aurora-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull v4 à inventaire u64 et reprise de session, rattrapage périodique et relais validé des transactions en attente depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées avec au plus 4 par IP et handshake de 2 secondes, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
-| `aurora-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aurora://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
+| `aretovus-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
+| `aretovus-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
+| `aretovus-storage` | Blocs immuables, pages d’index et manifestes checksummés `AURORIDX` v6, trois générations récentes et une ancre de reprise ancienne, toutes les branches; lecture v4/v5 et revalidation au chargement. La [CI du lot réseau/états](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Un [essai de stockage de 100 003 blocs connus](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129), avec branche secondaire et rechargement, a réussi; la synchronisation réseau de ce volume reste à démontrer. |
+| `aretovus-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull v4 à inventaire u64 et reprise de session, rattrapage périodique et relais validé des transactions en attente depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées avec au plus 4 par IP et handshake de 2 secondes, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
+| `aretovus-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aurora://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
 
 ## Règles économiques exécutées
 
@@ -44,7 +51,7 @@ Le smoke test démarre plusieurs processus, vérifie les récompenses, envoie et
 
 ## Limites avant de parler d’une blockchain terminée
 
-Il reste notamment les simulations approfondies d’[horodatages futurs](https://github.com/antoineforterax-cmd/AURORA/issues/3), la [saturation des workers P2P](https://github.com/antoineforterax-cmd/AURORA/issues/4), la preuve d’une synchronisation réseau au-delà de 100 000 blocs connus ([issue #5](https://github.com/antoineforterax-cmd/AURORA/issues/5)), les campagnes fuzz longues, les essais prolongés de pairs hostiles, une simulation indépendante du retarget, des tests de restauration hors machine et un essai sur volume réellement saturé. Une limite de taille de fichier simule déjà une écriture interrompue sous Linux, mais ce n’est pas une panne électrique. Aucune revue indépendante n’a été réalisée; voir le dossier [docs/INDEPENDENT_REVIEW.md](docs/INDEPENDENT_REVIEW.md). Le DID/récupération a un document de conception, mais n’altère pas les comptes. Le portefeuille CLI expérimental propose maintenant une vérification SPV et une bibliothèque d’URI de paiement; cela ne remplace pas une validation par un nœud complet. La trésorerie n’a pas de gouvernance ni de règles de dépense. Les mécanismes de récupération et de recyclage des soldes restent hors consensus. Explorateur, site, vente simulée et mobile sont hors du périmètre actuel; aucun usage de fonds réels ou présentation de sécurité mainnet n’est justifié sans stabilisation, revue indépendante et analyse juridique de la vente.
+Il reste notamment les simulations approfondies d’[horodatages futurs](https://github.com/antoineforterax-cmd/ARETOVUS/issues/3), la [saturation des workers P2P](https://github.com/antoineforterax-cmd/ARETOVUS/issues/4), la preuve d’une synchronisation réseau au-delà de 100 000 blocs connus ([issue #5](https://github.com/antoineforterax-cmd/ARETOVUS/issues/5)), les campagnes fuzz longues, les essais prolongés de pairs hostiles, une simulation indépendante du retarget, des tests de restauration hors machine et un essai sur volume réellement saturé. Une limite de taille de fichier simule déjà une écriture interrompue sous Linux, mais ce n’est pas une panne électrique. Aucune revue indépendante n’a été réalisée; voir le dossier [docs/INDEPENDENT_REVIEW.md](docs/INDEPENDENT_REVIEW.md). Le DID/récupération a un document de conception, mais n’altère pas les comptes. Le portefeuille CLI expérimental propose maintenant une vérification SPV et une bibliothèque d’URI de paiement; cela ne remplace pas une validation par un nœud complet. La trésorerie n’a pas de gouvernance ni de règles de dépense. Les mécanismes de récupération et de recyclage des soldes restent hors consensus. Explorateur, site, vente simulée et mobile sont hors du périmètre actuel; aucun usage de fonds réels ou présentation de sécurité mainnet n’est justifié sans stabilisation, revue indépendante et analyse juridique de la vente.
 
 ## Hors périmètre / pour les repreneurs
 
@@ -56,4 +63,4 @@ Lire [ARCHITECTURE.md](ARCHITECTURE.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SE
 
 ## Licence
 
-Le code AURORA est proposé sous **MIT OR Apache-2.0**, au choix : [LICENSE](LICENSE), [MIT](LICENSE-MIT), [Apache-2.0](LICENSE-APACHE). Les licences des dépendances restent applicables.
+Le code ARETOVUS est proposé sous **MIT OR Apache-2.0**, au choix : [LICENSE](LICENSE), [MIT](LICENSE-MIT), [Apache-2.0](LICENSE-APACHE). Les licences des dépendances restent applicables.

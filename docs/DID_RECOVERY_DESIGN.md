@@ -1,4 +1,4 @@
-# Conception DID, authentification et récupération — AURORA
+# Conception DID, authentification et récupération — ARETOVUS
 
 **Statut :** proposition pour le testnet expérimental, pas une règle de consensus active.  
 **Portée :** définir les comportements avant toute extension de l’état des comptes. Le format actuel v3 reste inchangé jusqu’à l’implémentation et à la revue du nouveau profil.
@@ -15,9 +15,9 @@
 
 Le vérificateur génère un nonce aléatoire de 32 octets à usage unique. Le portefeuille signe l’encodage canonique de :
 
-- version du message AURORA-DID-AUTH-v1;
+- version du message ARETOVUS-DID-AUTH-v1;
 - identifiant de réseau;
-- compte AURORA;
+- compte ARETOVUS;
 - DID optionnel présenté (UTF-8 normalisé NFC, maximum 512 octets);
 - nonce;
 - audience exacte (origine ou service qui vérifie, maximum 256 octets);

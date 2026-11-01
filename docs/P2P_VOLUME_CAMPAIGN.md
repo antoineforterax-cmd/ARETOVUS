@@ -1,4 +1,4 @@
-# AURORA — campagne de montée en charge P2P (Regtest local)
+# ARETOVUS — campagne de montée en charge P2P (Regtest local)
 
 Ce document concerne les **essais de synchronisation TCP** du nœud expérimental.
 Il ne constitue ni un audit de sécurité ni une mesure du débit du Testnet
@@ -6,7 +6,7 @@ public (PoW, plusieurs machines, latence WAN et profils de signature différents
 
 ## Reproductibilité
 
-- Source : `crates/aurora-node/src/p2p.rs`, test Rust
+- Source : `crates/aretovus-node/src/p2p.rs`, test Rust
   `p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay`.
 - Lanceur : `.github/workflows/p2p-volume-probe.yml`, runner GitHub
   `ubuntu-latest`, Rust 1.99.1, limite 45 minutes, logs artefacts conservés 14 jours.
@@ -28,9 +28,9 @@ public (PoW, plusieurs machines, latence WAN et profils de signature différents
 
 | Campagne | SHA | Blocs connus | Sessions TCP | Synchronisation + persistance | Restauration | Preuve |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
-| Baseline après #64 | `0e0bb6798d45f939b9d111c77c56105a89c6c6ff` | 2 050 | 5 | 3,70 s | 0,40 s | [Actions 41059067553](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41059067553) |
-| Palier 8 192, branche de validation | `3b85bdc47c840adf53a7619890de64127a091a0e` | 8 194 | 19 | 37,27 s | 1,79 s | [Actions 41060240777](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41060240777) |
-| Palier 16 384, branche de validation | `e966fc1dc8d2d75fc4018ed2719bac217ba379e1` | 16 386 | 37 | 79,23 s | 4,48 s | [Actions 41061566814](https://github.com/antoineforterax-cmd/AURORA/actions/runs/41061566814) |
+| Baseline après #64 | `0e0bb6798d45f939b9d111c77c56105a89c6c6ff` | 2 050 | 5 | 3,70 s | 0,40 s | [Actions 41059067553](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41059067553) |
+| Palier 8 192, branche de validation | `3b85bdc47c840adf53a7619890de64127a091a0e` | 8 194 | 19 | 37,27 s | 1,79 s | [Actions 41060240777](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41060240777) |
+| Palier 16 384, branche de validation | `e966fc1dc8d2d75fc4018ed2719bac217ba379e1` | 16 386 | 37 | 79,23 s | 4,48 s | [Actions 41061566814](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41061566814) |
 
 Avec ~4 fois plus de blocs, la synchronisation + persistance passe de
 3,70 s à 37,27 s (~10,1 fois). Cette mesure suggère un coût non linéaire :

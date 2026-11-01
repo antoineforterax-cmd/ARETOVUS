@@ -5,9 +5,9 @@ on:
     branches: [main, feature/emission-schedule-v0]
     paths:
       - "fuzz/**"
-      - "crates/aurora-core/**"
-      - "crates/aurora-consensus/**"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-core/**"
+      - "crates/aretovus-consensus/**"
+      - "crates/aretovus-node/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "**/Cargo.toml"
@@ -16,9 +16,9 @@ on:
   pull_request:
     paths:
       - "fuzz/**"
-      - "crates/aurora-core/**"
-      - "crates/aurora-consensus/**"
-      - "crates/aurora-node/**"
+      - "crates/aretovus-core/**"
+      - "crates/aretovus-consensus/**"
+      - "crates/aretovus-node/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "**/Cargo.toml"

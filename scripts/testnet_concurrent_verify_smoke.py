@@ -106,7 +106,7 @@ def self_test() -> None:
         def wait(self, timeout=5):
             return -15
 
-    with tempfile.TemporaryDirectory(prefix="aurora-verify-failure-evidence-") as folder:
+    with tempfile.TemporaryDirectory(prefix="aretovus-verify-failure-evidence-") as folder:
         artifact = Path(folder) / "failure.json"
         miner = FakeMiner()
         with (patch("subprocess.Popen", return_value=miner),
@@ -139,7 +139,7 @@ def exercise(node: Path, blocks: int, timeout: float, probe_timeout: float,
     samples: list[dict] = []
     miner_status = ""
     previous_snapshot: tuple[int, str, int] | None = None
-    with tempfile.TemporaryDirectory(prefix="aurora-verify-overlap-") as root:
+    with tempfile.TemporaryDirectory(prefix="aretovus-verify-overlap-") as root:
         root_path = Path(root)
         directory = root_path / "chain"
         log_path = root_path / "miner.log"

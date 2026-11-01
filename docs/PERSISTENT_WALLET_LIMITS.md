@@ -8,9 +8,9 @@ et appliqués automatiquement aux prochains paiements de ce wallet.
 ## Usage
 
 ```sh
-aurora-wallet limits-create --key-file wallet.aurkey --max-amount 10 --max-fee 0.001
-aurora-wallet limits-show --key-file wallet.aurkey
-aurora-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000
+aretovus-wallet limits-create --key-file wallet.aurkey --max-amount 10 --max-fee 0.001
+aretovus-wallet limits-show --key-file wallet.aurkey
+aretovus-wallet send --key-file wallet.aurkey --to ADRESSE_HEX --amount 1 --fee 0.00000003 --node 127.0.0.1:7000
 ```
 
 La création demande le mot de passe si le wallet est chiffré. Elle crée

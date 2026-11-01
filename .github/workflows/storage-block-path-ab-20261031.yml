@@ -4,7 +4,7 @@ on:
   push:
     branches: [perf/storage-reuse-block-path-after-profile-20261031]
     paths:
-      - "crates/aurora-storage/**"
+      - "crates/aretovus-storage/**"
       - ".github/workflows/storage-block-path-ab-20261031.yml"
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
           mkdir -p storage-a-b-logs
           for ref in "$BASE_SHA" "$candidate"; do
             git -c advice.detachedHead=false checkout --detach "$ref"
-            cargo test --locked -p aurora-storage --lib --no-run
+            cargo test --locked -p aretovus-storage --lib --no-run
           done
           for slot in base-1 candidate-1 candidate-2 base-2; do
             case "$slot" in
@@ -42,7 +42,7 @@ jobs:
             test "$(git rev-parse HEAD)" = "$ref"
             log="storage-a-b-logs/$slot.log"
             echo "=== $slot, commit=$ref, blocks=$AURORA_STORAGE_PROFILE_BLOCKS ==="
-            /usr/bin/time -v cargo test --locked -p aurora-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
+            /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture 2>&1 | tee "$log"
             grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' "$log"
             grep -Eq 'storage volume probe: height=32768 known_blocks=32769 snapshot_calls=512([[:space:]]|$)' "$log"
             grep -q 'storage phases: blocks=32769' "$log"

@@ -7,7 +7,7 @@ on:
       - 'fuzz/fuzz_targets/account_state.rs'
       - '.github/workflows/state-fuzz.yml'
       - 'fuzz/seeds/account_state/**'
-      - 'crates/aurora-core/**'
+      - 'crates/aretovus-core/**'
       - 'fuzz/Cargo.toml'
 permissions:
   contents: read

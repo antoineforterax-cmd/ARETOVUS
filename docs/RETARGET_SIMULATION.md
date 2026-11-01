@@ -18,9 +18,9 @@ Il constitue une implémentation distincte, pas une revue humaine indépendante.
 ```sh
 python3 scripts/retarget_sim.py
 python3 scripts/retarget_sim.py --check
-cargo test --locked -p aurora-consensus --test retarget_vectors
-cargo test --locked -p aurora-node independent_admission_vectors
-cargo test --locked -p aurora-wallet independent_admission_vectors
+cargo test --locked -p aretovus-consensus --test retarget_vectors
+cargo test --locked -p aretovus-node independent_admission_vectors
+cargo test --locked -p aretovus-wallet independent_admission_vectors
 ```
 
 Sans option, le simulateur imprime un bilan JSON sans modifier de fichier.

@@ -1,4 +1,4 @@
-# AURORA — Contrôle préalable à l'intégration des branches
+# ARETOVUS — Contrôle préalable à l'intégration des branches
 
 _Date du relevé : 29 octobre 2026. Ce document présente des constats GitHub vérifiés ; il ne vaut pas autorisation de fusion._
 
@@ -27,9 +27,9 @@ _« Ahead » indique une ascendance des commits, pas un succès d'exécution ni 
 
 ## Travaux déjà vérifiés, à ne pas recommencer inutilement
 
-La [PR #37](https://github.com/antoineforterax-cmd/AURORA/pull/37) a déjà construit une carte détaillée, verrouillé les dépendances de la fondation et exécuté ses contrôles sur `e0254493e93adce6080ba129ce32f6683f772ae3`. Les workflows `ci` et `foundation-check` associés sont marqués **success**. Sa description indique également un contrôle distinct de #2, sans fusion combinée. La preuve ne doit pas être interprétée comme une validation intégrée de #37 et #2.
+La [PR #37](https://github.com/antoineforterax-cmd/ARETOVUS/pull/37) a déjà construit une carte détaillée, verrouillé les dépendances de la fondation et exécuté ses contrôles sur `e0254493e93adce6080ba129ce32f6683f772ae3`. Les workflows `ci` et `foundation-check` associés sont marqués **success**. Sa description indique également un contrôle distinct de #2, sans fusion combinée. La preuve ne doit pas être interprétée comme une validation intégrée de #37 et #2.
 
-Les workflows `ci`, `p2p-admission` et `network-partitions` de la [PR #36](https://github.com/antoineforterax-cmd/AURORA/pull/36) sur `8227d97436497120c5fd590095a9364d162a038a` sont également marqués **success**. Aucun de ces succès ne prouve le comportement d'une fusion avec les changements les plus récents de `feature/emission-schedule-v0`.
+Les workflows `ci`, `p2p-admission` et `network-partitions` de la [PR #36](https://github.com/antoineforterax-cmd/ARETOVUS/pull/36) sur `8227d97436497120c5fd590095a9364d162a038a` sont également marqués **success**. Aucun de ces succès ne prouve le comportement d'une fusion avec les changements les plus récents de `feature/emission-schedule-v0`.
 
 ## Prochain protocole d'intégration (sans fusion automatique)
 

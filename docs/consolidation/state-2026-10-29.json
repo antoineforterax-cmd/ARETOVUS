@@ -1,6 +1,6 @@
 {
   "date": "2026-10-29",
-  "repository": "antoineforterax-cmd/AURORA",
+  "repository": "antoineforterax-cmd/ARETOVUS",
   "scope": "23 branches et 22 PR ouvertes avant création du chantier de consolidation",
   "branches": [
     {
@@ -135,13 +135,13 @@
       "behind": 1,
       "merge_base": "d7154c68ee52f62b4793fb0b8e758e253b53c5d8",
       "files": [
-        "crates/aurora-consensus/src/block_validation.rs",
-        "crates/aurora-consensus/src/experimental.rs",
-        "crates/aurora-consensus/src/lib.rs",
-        "crates/aurora-consensus/src/local_chain.rs",
-        "crates/aurora-consensus/src/proof_of_work.rs",
-        "crates/aurora-core/src/experimental.rs",
-        "crates/aurora-core/src/hash.rs",
+        "crates/aretovus-consensus/src/block_validation.rs",
+        "crates/aretovus-consensus/src/experimental.rs",
+        "crates/aretovus-consensus/src/lib.rs",
+        "crates/aretovus-consensus/src/local_chain.rs",
+        "crates/aretovus-consensus/src/proof_of_work.rs",
+        "crates/aretovus-core/src/experimental.rs",
+        "crates/aretovus-core/src/hash.rs",
         "docs/DECISION_REGISTER.md",
         "docs/PROTOCOL.md",
         "docs/SECURITY_REVIEW_2026-10-25.md",
@@ -155,7 +155,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40211934797"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40211934797"
         },
         {
           "id": 40207116452,
@@ -164,7 +164,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40207116452"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40207116452"
         },
         {
           "id": 40207113270,
@@ -173,13 +173,13 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40207113270"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40207113270"
         }
       ]
     },
     {
       "number": 2,
-      "title": "[WIP] AURORA : testnet expérimentale, émission lissée et réseau P2P",
+      "title": "[WIP] ARETOVUS : testnet expérimentale, émission lissée et réseau P2P",
       "base": "docs/phase-0-protocol",
       "base_reported_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
       "base_current_sha": "eada9effb11d7ef0ad96f082f55feb1558cb90bb",
@@ -213,42 +213,42 @@
         "PROVENANCE.md",
         "README.md",
         "SECURITY.md",
-        "crates/aurora-consensus/Cargo.toml",
-        "crates/aurora-consensus/src/account_block.rs",
-        "crates/aurora-consensus/src/account_fork_chain.rs",
-        "crates/aurora-consensus/src/difficulty.rs",
-        "crates/aurora-consensus/src/experimental.rs",
-        "crates/aurora-consensus/src/fork_chain.rs",
-        "crates/aurora-consensus/src/lib.rs",
-        "crates/aurora-consensus/src/light_header_chain.rs",
-        "crates/aurora-consensus/src/proof_of_work.rs",
-        "crates/aurora-consensus/src/reward.rs",
-        "crates/aurora-consensus/src/testnet.rs",
-        "crates/aurora-consensus/tests/vectors.rs",
-        "crates/aurora-core/Cargo.toml",
-        "crates/aurora-core/src/accounts.rs",
-        "crates/aurora-core/src/amount.rs",
-        "crates/aurora-core/src/hash.rs",
-        "crates/aurora-core/src/lib.rs",
-        "crates/aurora-core/src/merkle.rs",
-        "crates/aurora-core/src/signature.rs",
-        "crates/aurora-core/src/state.rs",
-        "crates/aurora-core/tests/fips204_vectors.rs",
-        "crates/aurora-core/tests/vectors.rs",
-        "crates/aurora-node/Cargo.toml",
-        "crates/aurora-node/src/lib.rs",
-        "crates/aurora-node/src/main.rs",
-        "crates/aurora-node/src/p2p.rs",
-        "crates/aurora-storage/Cargo.toml",
-        "crates/aurora-storage/src/lib.rs",
-        "crates/aurora-wallet/Cargo.toml",
-        "crates/aurora-wallet/src/builder.rs",
-        "crates/aurora-wallet/src/keys.rs",
-        "crates/aurora-wallet/src/lib.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/rpc.rs",
-        "crates/aurora-wallet/src/spv.rs",
-        "crates/aurora-wallet/src/uri.rs",
+        "crates/aretovus-consensus/Cargo.toml",
+        "crates/aretovus-consensus/src/account_block.rs",
+        "crates/aretovus-consensus/src/account_fork_chain.rs",
+        "crates/aretovus-consensus/src/difficulty.rs",
+        "crates/aretovus-consensus/src/experimental.rs",
+        "crates/aretovus-consensus/src/fork_chain.rs",
+        "crates/aretovus-consensus/src/lib.rs",
+        "crates/aretovus-consensus/src/light_header_chain.rs",
+        "crates/aretovus-consensus/src/proof_of_work.rs",
+        "crates/aretovus-consensus/src/reward.rs",
+        "crates/aretovus-consensus/src/testnet.rs",
+        "crates/aretovus-consensus/tests/vectors.rs",
+        "crates/aretovus-core/Cargo.toml",
+        "crates/aretovus-core/src/accounts.rs",
+        "crates/aretovus-core/src/amount.rs",
+        "crates/aretovus-core/src/hash.rs",
+        "crates/aretovus-core/src/lib.rs",
+        "crates/aretovus-core/src/merkle.rs",
+        "crates/aretovus-core/src/signature.rs",
+        "crates/aretovus-core/src/state.rs",
+        "crates/aretovus-core/tests/fips204_vectors.rs",
+        "crates/aretovus-core/tests/vectors.rs",
+        "crates/aretovus-node/Cargo.toml",
+        "crates/aretovus-node/src/lib.rs",
+        "crates/aretovus-node/src/main.rs",
+        "crates/aretovus-node/src/p2p.rs",
+        "crates/aretovus-storage/Cargo.toml",
+        "crates/aretovus-storage/src/lib.rs",
+        "crates/aretovus-wallet/Cargo.toml",
+        "crates/aretovus-wallet/src/builder.rs",
+        "crates/aretovus-wallet/src/keys.rs",
+        "crates/aretovus-wallet/src/lib.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/rpc.rs",
+        "crates/aretovus-wallet/src/spv.rs",
+        "crates/aretovus-wallet/src/uri.rs",
         "deny.toml",
         "docs/AI_COUNTER_REVIEW.md",
         "docs/CONSENSUS.md",
@@ -311,7 +311,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939804136"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40939804136"
         },
         {
           "id": 40939797106,
@@ -320,13 +320,13 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939797106"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40939797106"
         }
       ]
     },
     {
       "number": 12,
-      "title": "docs: consolider le cahier des charges et la feuille de route AURORA",
+      "title": "docs: consolider le cahier des charges et la feuille de route ARETOVUS",
       "base": "feature/emission-schedule-v0",
       "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
@@ -354,7 +354,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939684877"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40939684877"
         },
         {
           "id": 40939671161,
@@ -363,7 +363,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "e7887da5918a50a8d326f40890750dd17082b7ca",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40939671161"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40939671161"
         }
       ]
     },
@@ -383,8 +383,8 @@
       "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "files": [
         "Cargo.lock",
-        "crates/aurora-node/Cargo.toml",
-        "crates/aurora-node/src/p2p.rs"
+        "crates/aretovus-node/Cargo.toml",
+        "crates/aretovus-node/src/p2p.rs"
       ],
       "runs": [
         {
@@ -394,7 +394,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40789281024"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40789281024"
         },
         {
           "id": 40789274223,
@@ -403,7 +403,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "e082dc2136adfbd0ea7d488a8c2f3a04e53f885f",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40789274223"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40789274223"
         }
       ]
     },
@@ -423,10 +423,10 @@
       "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "files": [
         ".github/workflows/ci.yml",
-        "crates/aurora-consensus/src/difficulty.rs",
-        "crates/aurora-consensus/tests/retarget_vectors.rs",
-        "crates/aurora-node/src/p2p.rs",
-        "crates/aurora-wallet/src/spv.rs",
+        "crates/aretovus-consensus/src/difficulty.rs",
+        "crates/aretovus-consensus/tests/retarget_vectors.rs",
+        "crates/aretovus-node/src/p2p.rs",
+        "crates/aretovus-wallet/src/spv.rs",
         "docs/RETARGET_SIMULATION.md",
         "scripts/retarget_sim.py",
         "tests/vectors-retarget/admission.tsv",
@@ -441,7 +441,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790194961"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40790194961"
         },
         {
           "id": 40790189288,
@@ -450,7 +450,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8b550421843b4c2d54ab3f865cba4cd119821d47",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790189288"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40790189288"
         }
       ]
     },
@@ -480,7 +480,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790271759"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40790271759"
         },
         {
           "id": 40790266481,
@@ -489,7 +489,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "927bf7fbe03cf1bd5ce5f1a33117f145e9591644",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40790266481"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40790266481"
         }
       ]
     },
@@ -509,7 +509,7 @@
       "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "files": [
         ".github/workflows/p2p-admission.yml",
-        "crates/aurora-node/src/p2p.rs",
+        "crates/aretovus-node/src/p2p.rs",
         "docs/P2P_ADMISSION.md",
         "scripts/testnet_admission_probe.py"
       ],
@@ -521,7 +521,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855158390"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40855158390"
         },
         {
           "id": 40855158200,
@@ -530,7 +530,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855158200"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40855158200"
         },
         {
           "id": 40855150345,
@@ -539,7 +539,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855150345"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40855150345"
         },
         {
           "id": 40855150230,
@@ -548,7 +548,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b413cb07a8ef5826c00f23c170469a136efc1071",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40855150230"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40855150230"
         }
       ]
     },
@@ -568,7 +568,7 @@
       "merge_base": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "files": [
         ".github/workflows/mempool-benchmark.yml",
-        "crates/aurora-core/tests/mempool_benchmark.rs",
+        "crates/aretovus-core/tests/mempool_benchmark.rs",
         "docs/MEMPOOL_BENCHMARK.md"
       ],
       "runs": [
@@ -579,7 +579,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856155126"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40856155126"
         },
         {
           "id": 40856155127,
@@ -588,7 +588,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856155127"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40856155127"
         },
         {
           "id": 40856146659,
@@ -597,7 +597,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856146659"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40856146659"
         },
         {
           "id": 40856146579,
@@ -606,7 +606,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "6c4a5e35372ac43388ed5a113c73714715caf657",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40856146579"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40856146579"
         }
       ]
     },
@@ -625,10 +625,10 @@
       "behind": 0,
       "merge_base": "6c4a5e35372ac43388ed5a113c73714715caf657",
       "files": [
-        "crates/aurora-core/src/signature.rs",
-        "crates/aurora-core/src/state.rs",
-        "crates/aurora-core/tests/mempool_benchmark.rs",
-        "crates/aurora-node/src/p2p.rs",
+        "crates/aretovus-core/src/signature.rs",
+        "crates/aretovus-core/src/state.rs",
+        "crates/aretovus-core/tests/mempool_benchmark.rs",
+        "crates/aretovus-node/src/p2p.rs",
         "docs/MEMPOOL_SIGNATURE_CACHE.md"
       ],
       "runs": [
@@ -639,7 +639,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857164286"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40857164286"
         },
         {
           "id": 40857164473,
@@ -648,7 +648,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857164473"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40857164473"
         },
         {
           "id": 40857153753,
@@ -657,7 +657,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857153753"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40857153753"
         },
         {
           "id": 40857153780,
@@ -666,7 +666,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "bc577cab501da266a0372a642269d27d24050d9e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40857153780"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40857153780"
         }
       ]
     },
@@ -706,7 +706,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858038542"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40858038542"
         },
         {
           "id": 40858038616,
@@ -715,7 +715,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858038616"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40858038616"
         },
         {
           "id": 40858029423,
@@ -724,7 +724,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858029423"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40858029423"
         },
         {
           "id": 40858029437,
@@ -733,7 +733,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "f38e9fc5e3208803e3676f17bc5683927cf9c9c9",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40858029437"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40858029437"
         }
       ]
     },
@@ -752,7 +752,7 @@
       "behind": 0,
       "merge_base": "bc577cab501da266a0372a642269d27d24050d9e",
       "files": [
-        "crates/aurora-consensus/tests/cached_reorg.rs",
+        "crates/aretovus-consensus/tests/cached_reorg.rs",
         "docs/CACHED_REORG_VALIDATION.md"
       ],
       "runs": [
@@ -763,7 +763,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40859310606"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40859310606"
         },
         {
           "id": 40859301119,
@@ -772,7 +772,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40859301119"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40859301119"
         }
       ]
     },
@@ -792,8 +792,8 @@
       "merge_base": "17f6cf43e417338adf4e5fd706e5babb52afbcf1",
       "files": [
         "Cargo.lock",
-        "crates/aurora-node/Cargo.toml",
-        "crates/aurora-node/src/p2p.rs",
+        "crates/aretovus-node/Cargo.toml",
+        "crates/aretovus-node/src/p2p.rs",
         "docs/ORPHAN_TRANSACTION_REINSERTION.md"
       ],
       "runs": [
@@ -804,7 +804,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40860481639"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40860481639"
         },
         {
           "id": 40860475405,
@@ -813,7 +813,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40860475405"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40860475405"
         }
       ]
     },
@@ -832,9 +832,9 @@
       "behind": 0,
       "merge_base": "d52cd096316b01ffc0d875cfa516da6c7a780e80",
       "files": [
-        "crates/aurora-core/src/accounts.rs",
-        "crates/aurora-node/src/main.rs",
-        "crates/aurora-wallet/src/builder.rs",
+        "crates/aretovus-core/src/accounts.rs",
+        "crates/aretovus-node/src/main.rs",
+        "crates/aretovus-wallet/src/builder.rs",
         "docs/REVIEW_2026_10_29.md"
       ],
       "runs": [
@@ -845,7 +845,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861675910"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40861675910"
         },
         {
           "id": 40861675687,
@@ -854,7 +854,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861675687"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40861675687"
         },
         {
           "id": 40861668512,
@@ -863,7 +863,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861668512"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40861668512"
         },
         {
           "id": 40861668335,
@@ -872,7 +872,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40861668335"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40861668335"
         }
       ]
     },
@@ -891,7 +891,7 @@
       "behind": 0,
       "merge_base": "a836a3e1bd87d9fce53a1be6474d6feeddb09de7",
       "files": [
-        "crates/aurora-wallet/src/rpc.rs",
+        "crates/aretovus-wallet/src/rpc.rs",
         "docs/WALLET_RPC_DEADLINES.md"
       ],
       "runs": [
@@ -902,7 +902,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40908495775"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40908495775"
         },
         {
           "id": 40908483659,
@@ -911,7 +911,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "b2286cfc3fbe042197c5200c01f103a926b35df2",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40908483659"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40908483659"
         }
       ]
     },
@@ -943,7 +943,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909719657"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40909719657"
         },
         {
           "id": 40909720225,
@@ -952,7 +952,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909720225"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40909720225"
         },
         {
           "id": 40909707943,
@@ -961,7 +961,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909707943"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40909707943"
         },
         {
           "id": 40909707338,
@@ -970,13 +970,13 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "a1e2a78058ec9135dcc9dc1c339f77cc18128bb4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40909707338"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40909707338"
         }
       ]
     },
     {
       "number": 25,
-      "title": "integration: version commune AURORA pour les essais sur deux PC",
+      "title": "integration: version commune ARETOVUS pour les essais sur deux PC",
       "base": "feature/emission-schedule-v0",
       "base_reported_sha": "b990ce84c06c8a2bd0ef1c6593c595e8b7ab3e61",
       "base_current_sha": "0fbf9545a5bd60319d08ee64c9932e5ce04c2543",
@@ -996,19 +996,19 @@
         ".github/workflows/state-fuzz.yml",
         ".github/workflows/testnet-packages.yml",
         "Cargo.lock",
-        "crates/aurora-consensus/src/difficulty.rs",
-        "crates/aurora-consensus/tests/cached_reorg.rs",
-        "crates/aurora-consensus/tests/retarget_vectors.rs",
-        "crates/aurora-core/src/accounts.rs",
-        "crates/aurora-core/src/signature.rs",
-        "crates/aurora-core/src/state.rs",
-        "crates/aurora-core/tests/mempool_benchmark.rs",
-        "crates/aurora-node/Cargo.toml",
-        "crates/aurora-node/src/main.rs",
-        "crates/aurora-node/src/p2p.rs",
-        "crates/aurora-wallet/src/builder.rs",
-        "crates/aurora-wallet/src/rpc.rs",
-        "crates/aurora-wallet/src/spv.rs",
+        "crates/aretovus-consensus/src/difficulty.rs",
+        "crates/aretovus-consensus/tests/cached_reorg.rs",
+        "crates/aretovus-consensus/tests/retarget_vectors.rs",
+        "crates/aretovus-core/src/accounts.rs",
+        "crates/aretovus-core/src/signature.rs",
+        "crates/aretovus-core/src/state.rs",
+        "crates/aretovus-core/tests/mempool_benchmark.rs",
+        "crates/aretovus-node/Cargo.toml",
+        "crates/aretovus-node/src/main.rs",
+        "crates/aretovus-node/src/p2p.rs",
+        "crates/aretovus-wallet/src/builder.rs",
+        "crates/aretovus-wallet/src/rpc.rs",
+        "crates/aretovus-wallet/src/spv.rs",
         "docs/ACCOUNT_STATE_FUZZING.md",
         "docs/CACHED_REORG_VALIDATION.md",
         "docs/DECISION_BASELINE.md",
@@ -1055,7 +1055,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452930"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911452930"
         },
         {
           "id": 40911452612,
@@ -1064,7 +1064,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452612"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911452612"
         },
         {
           "id": 40911452793,
@@ -1073,7 +1073,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452793"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911452793"
         },
         {
           "id": 40911452452,
@@ -1082,7 +1082,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452452"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911452452"
         },
         {
           "id": 40911452230,
@@ -1091,7 +1091,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911452230"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911452230"
         },
         {
           "id": 40911442246,
@@ -1100,7 +1100,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442246"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911442246"
         },
         {
           "id": 40911442372,
@@ -1109,7 +1109,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442372"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911442372"
         },
         {
           "id": 40911442310,
@@ -1118,7 +1118,7 @@
           "status": "completed",
           "conclusion": "failure",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442310"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911442310"
         },
         {
           "id": 40911442174,
@@ -1127,7 +1127,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40911442174"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40911442174"
         }
       ]
     },
@@ -1146,10 +1146,10 @@
       "behind": 0,
       "merge_base": "2a4d7168213a88a1f763baa9e6c67b47bc1db010",
       "files": [
-        "crates/aurora-wallet/src/keys.rs",
-        "crates/aurora-wallet/src/lib.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/safety.rs",
+        "crates/aretovus-wallet/src/keys.rs",
+        "crates/aretovus-wallet/src/lib.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/safety.rs",
         "docs/WALLET_FUND_PROTECTION.md",
         "scripts/testnet_endurance.py",
         "scripts/testnet_smoke.py"
@@ -1162,7 +1162,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40914077529"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40914077529"
         },
         {
           "id": 40914072234,
@@ -1171,7 +1171,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40914072234"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40914072234"
         }
       ]
     },
@@ -1190,10 +1190,10 @@
       "behind": 0,
       "merge_base": "2131e4d7cd4bbd43d220671156c35fc4bb66cd2e",
       "files": [
-        "crates/aurora-wallet/src/keys.rs",
-        "crates/aurora-wallet/src/lib.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/recovery.rs",
+        "crates/aretovus-wallet/src/keys.rs",
+        "crates/aretovus-wallet/src/lib.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/recovery.rs",
         "docs/OFFLINE_RECOVERY.md",
         "docs/WALLET_FUND_PROTECTION.md",
         "scripts/testnet_smoke.py"
@@ -1206,7 +1206,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40916543169"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40916543169"
         },
         {
           "id": 40916533019,
@@ -1215,7 +1215,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "07b7c37229843286f39d5ad787da782d54afb8c4",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40916533019"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40916533019"
         }
       ]
     },
@@ -1234,10 +1234,10 @@
       "behind": 0,
       "merge_base": "07b7c37229843286f39d5ad787da782d54afb8c4",
       "files": [
-        "crates/aurora-wallet/src/lib.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/policy.rs",
-        "crates/aurora-wallet/src/safety.rs",
+        "crates/aretovus-wallet/src/lib.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/policy.rs",
+        "crates/aretovus-wallet/src/safety.rs",
         "docs/PERSISTENT_WALLET_LIMITS.md",
         "docs/WALLET_FUND_PROTECTION.md",
         "scripts/testnet_smoke.py"
@@ -1250,7 +1250,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40919309224"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40919309224"
         },
         {
           "id": 40919298757,
@@ -1259,7 +1259,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "4b79b738dc942e9d6fda34c85f8a91463f951191",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40919298757"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40919298757"
         }
       ]
     },
@@ -1278,9 +1278,9 @@
       "behind": 0,
       "merge_base": "4b79b738dc942e9d6fda34c85f8a91463f951191",
       "files": [
-        "crates/aurora-wallet/src/lib.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/signed_payment.rs",
+        "crates/aretovus-wallet/src/lib.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/signed_payment.rs",
         "docs/OFFLINE_PAYMENTS.md",
         "scripts/testnet_smoke.py"
       ],
@@ -1292,7 +1292,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40921391697"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40921391697"
         },
         {
           "id": 40921378692,
@@ -1301,7 +1301,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "90bfc744c7651ab9a3579e22a6715fb42836c016",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40921378692"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40921378692"
         }
       ]
     },
@@ -1320,11 +1320,11 @@
       "behind": 0,
       "merge_base": "90bfc744c7651ab9a3579e22a6715fb42836c016",
       "files": [
-        "crates/aurora-wallet/src/keys.rs",
-        "crates/aurora-wallet/src/main.rs",
-        "crates/aurora-wallet/src/rpc.rs",
-        "crates/aurora-wallet/src/uri.rs",
-        "crates/aurora-wallet/tests/cli_validation.rs",
+        "crates/aretovus-wallet/src/keys.rs",
+        "crates/aretovus-wallet/src/main.rs",
+        "crates/aretovus-wallet/src/rpc.rs",
+        "crates/aretovus-wallet/src/uri.rs",
+        "crates/aretovus-wallet/tests/cli_validation.rs",
         "docs/ESSENTIAL_WALLET_CLEANUPS.md",
         "docs/FINALIZATION_CHECKLIST.md",
         "docs/planning/ROADMAP.md"
@@ -1337,7 +1337,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40924268768"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40924268768"
         },
         {
           "id": 40924259960,
@@ -1346,7 +1346,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "62fcf0cefb2a78c7c2f60d37a49c1fea646026bb",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40924259960"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40924259960"
         }
       ]
     },
@@ -1367,8 +1367,8 @@
       "files": [
         ".github/workflows/network-partitions.yml",
         ".github/workflows/p2p-admission.yml",
-        "crates/aurora-consensus/src/account_fork_chain.rs",
-        "crates/aurora-node/src/p2p.rs",
+        "crates/aretovus-consensus/src/account_fork_chain.rs",
+        "crates/aretovus-node/src/p2p.rs",
         "docs/ADVERSARIAL_DOS_FIXES.md",
         "scripts/testnet_admission_probe.py"
       ],
@@ -1380,7 +1380,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369597"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40928369597"
         },
         {
           "id": 40928369342,
@@ -1389,7 +1389,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369342"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40928369342"
         },
         {
           "id": 40928369365,
@@ -1398,7 +1398,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928369365"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40928369365"
         },
         {
           "id": 40928361216,
@@ -1407,7 +1407,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928361216"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40928361216"
         },
         {
           "id": 40928360977,
@@ -1416,7 +1416,7 @@
           "status": "completed",
           "conclusion": "success",
           "head_sha": "8227d97436497120c5fd590095a9364d162a038a",
-          "url": "https://github.com/antoineforterax-cmd/AURORA/actions/runs/40928360977"
+          "url": "https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40928360977"
         }
       ]
     }

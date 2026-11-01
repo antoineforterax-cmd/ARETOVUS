@@ -11,8 +11,8 @@ récupérer un compte pour lequel aucun secret de secours n'a été conservé.
 ## Préparer et vérifier le secours
 
 ```sh
-aurora-wallet recovery-export --key-file wallet.aurkey --out recovery-secret.txt --acknowledge-secret
-aurora-wallet recovery-verify --from recovery-secret.txt --expected-account ADRESSE_HEX
+aretovus-wallet recovery-export --key-file wallet.aurkey --out recovery-secret.txt --acknowledge-secret
+aretovus-wallet recovery-verify --from recovery-secret.txt --expected-account ADRESSE_HEX
 ```
 
 Le mot de passe actuel est demandé si le wallet est chiffré. Le code
@@ -27,7 +27,7 @@ imprimantes partagées. Vérifier la copie réellement conservée : pour un code
 papier, lancer la vérification sans `--from` et saisir le code dans l'invite
 masquée. Conserver aussi l'adresse publique attendue par un moyen indépendant.
 
-Le format est spécifique à AURORA testnet v1 : préfixe de réseau/version,
+Le format est spécifique à ARETOVUS testnet v1 : préfixe de réseau/version,
 graine de 32 octets en hexadécimal, puis somme de contrôle SHA-256 complète.
 La somme de contrôle détecte les fautes de copie ; elle ne chiffre pas le
 secret et ne remplace pas la vérification de l'adresse attendue. Il ne s'agit
@@ -36,7 +36,7 @@ pas d'une phrase BIP39 et ce code n'est pas un format universel de wallet.
 ## Restaurer après la perte
 
 ```sh
-aurora-wallet recovery-restore --out recovered.aurkey --expected-account ADRESSE_HEX
+aretovus-wallet recovery-restore --out recovered.aurkey --expected-account ADRESSE_HEX
 ```
 
 Saisir le code de secours dans l'invite masquée, puis choisir et confirmer
