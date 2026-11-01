@@ -198,6 +198,70 @@ mod tests {
     }
 
     #[test]
+    fn cap_boundary_mints_last_unit_once_and_then_stops() {
+        let miner = AccountId([81; 32]);
+        let treasury = AccountId([82; 32]);
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger
+            .credit_issuance(treasury, Amount::from_units(CAP_UNITS - 1).unwrap())
+            .unwrap();
+        assert_eq!(scheduled_issuance(ledger.total_issued()).to_units(), 1);
+
+        let params = RewardParams::experimental_testnet(treasury);
+        apply_block_reward(&mut ledger, Some(miner), Amount::ZERO, params).unwrap();
+        assert_eq!(ledger.total_issued().to_units(), CAP_UNITS);
+        assert_eq!(ledger.account(miner).balance.to_units(), 1);
+        assert_eq!(ledger.account(treasury).balance.to_units(), CAP_UNITS - 1);
+        assert_eq!(scheduled_issuance(ledger.total_issued()), Amount::ZERO);
+
+        let at_cap = ledger.clone();
+        apply_block_reward(&mut ledger, Some(miner), Amount::ZERO, params).unwrap();
+        assert_eq!(ledger, at_cap, "zero issuance must not pay twice");
+        assert_eq!(
+            apply_block_reward(&mut ledger, None, Amount::ZERO, params),
+            Ok(())
+        );
+        assert_eq!(ledger, at_cap);
+    }
+
+    #[test]
+    fn reward_errors_leave_the_ledger_atomic_at_supply_cap() {
+        let miner = AccountId([83; 32]);
+        let treasury = AccountId([84; 32]);
+        let params = RewardParams::experimental_testnet(treasury);
+        let mut ledger = AccountLedger::new(NetworkId::Testnet);
+        ledger.credit_issuance(miner, Amount::MAX).unwrap();
+        let full = ledger.clone();
+        assert_eq!(scheduled_issuance(ledger.total_issued()), Amount::ZERO);
+
+        // No issuance remains. A fee reward that would overflow a balance
+        // must not partially update gross issuance or any other account.
+        assert!(matches!(
+            apply_block_reward(
+                &mut ledger,
+                Some(miner),
+                Amount::from_units(3).unwrap(),
+                params,
+            ),
+            Err(RewardError::State(StateError::BalanceOutOfRange(_)))
+        ));
+        assert_eq!(ledger, full);
+        assert_eq!(ledger.account(treasury).balance.to_units(), 0);
+
+        // No miner while an issuance is due must likewise never mutate.
+        let mut near_cap = AccountLedger::new(NetworkId::Testnet);
+        near_cap
+            .credit_issuance(miner, Amount::from_units(CAP_UNITS - 1).unwrap())
+            .unwrap();
+        let before = near_cap.clone();
+        assert_eq!(
+            apply_block_reward(&mut near_cap, None, Amount::ZERO, params),
+            Err(RewardError::MissingMiner)
+        );
+        assert_eq!(near_cap, before);
+    }
+
+    #[test]
     fn fee_split_rounds_miner_down_and_burns_remainder() {
         let miner = AccountId([1; 32]);
         let treasury = AccountId([2; 32]);
