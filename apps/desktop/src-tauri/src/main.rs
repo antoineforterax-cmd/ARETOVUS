@@ -4,8 +4,8 @@ use std::{
     io::{Read, Write},
     path::Path,
     process::{Command, Stdio},
-    thread,
     sync::atomic::{AtomicBool, Ordering},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -52,7 +52,9 @@ fn validate_status_response(answer: &serde_json::Value) -> Result<(), String> {
     }
     let tip = answer["tip"].as_str().ok_or_else(invalid)?;
     if tip.len() != 64
-        || !tip.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        || !tip
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
         return Err(invalid());
     }
@@ -149,7 +151,10 @@ async fn read_node_status(data_dir: String) -> Result<serde_json::Value, String>
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![read_node_status, explorer::read_canonical_page])
+        .invoke_handler(tauri::generate_handler![
+            read_node_status,
+            explorer::read_canonical_page
+        ])
         .run(tauri::generate_context!())
         .expect("failed to run ARETOVUS Desktop Lab");
 }
@@ -181,12 +186,19 @@ mod tests {
             ("known_blocks", serde_json::json!(0)),
             ("known_blocks", serde_json::json!(9_007_199_254_740_992_u64)),
             ("tip", serde_json::json!("<script>alert(1)</script>")),
-            ("chain_work_display", serde_json::json!("<svg/onload=alert(1)>"))
+            (
+                "chain_work_display",
+                serde_json::json!("<svg/onload=alert(1)>"),
+            ),
         ];
         for (key, value) in attacks {
             let mut forged = valid.clone();
             forged[key] = value;
-            assert_eq!(validate_status_response(&forged), Err("invalid_response".into()), "{key}");
+            assert_eq!(
+                validate_status_response(&forged),
+                Err("invalid_response".into()),
+                "{key}"
+            );
         }
     }
 
