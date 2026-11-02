@@ -134,3 +134,20 @@ Les sorties doivent afficher des valeurs identiques de `height`, `tip` **et** `w
 **Échec / stop immédiatement :** archive ou checksum divergents, connexion TCP impossible, refus de fingerprint, perte de snapshot, `height` identique mais `tip` divergent après rattrapage, preuve d'inclusion incohérente, nouvelle règle de pare-feu publique ou un dossier de données utilisé par deux processus.
 
 Cela ne démontre **ni** un mainnet sécurisé, **ni** la stabilité sur 72 h, **ni** 100 000 blocs synchronisés entre machines, **ni** une résistance générale aux pairs malveillants. Ces campagnes demandent des rapports séparés.
+
+
+## D3 — Assistant natif ARETOVUS multiplateforme (CLI expérimental)
+
+**Statut :** outillage pour un testnet de laboratoire, pas preuve de synchronisation entre deux ordinateurs physiques. L'assistant `scripts/lan_pair.py` est inclus dans les archives CI Windows/Linux/macOS. Il ne crée aucune clé, ne modifie pas le pare-feu et n'ouvre pas de port public. Python 3.10 ou plus récent est nécessaire **uniquement pour l'assistant**. Les utilisateurs peuvent continuer à démarrer le nœud directement sans Python.
+
+1. Depuis le workflow `testnet-packages` du **même commit Git**, récupérer une archive construite pour chaque système, conserver les anciens dossiers du réseau précédent séparément et extraire les paquets dans des dossiers **neufs**, y compris avec des espaces si nécessaire.
+2. Contrôler depuis une **source de confiance distincte** l'identifiant de commit et le SHA-256 du ZIP téléchargé. Puis, à la racine du dossier extrait, exécuter la vérification locale des fichiers :
+   - Windows PowerShell : `py -3 scripts/lan_pair.py --verify-package`
+   - Linux ou macOS : `python3 scripts/lan_pair.py --verify-package`
+3. Sur le premier ordinateur, choisir une IPv4 privée du LAN, par exemple `192.168.1.10`. Vérifier le plan sans démarrer : `python3 scripts/lan_pair.py --role server --local-ip 192.168.1.10`, puis relancer avec `--run`.
+4. Sur le second ordinateur, par exemple `192.168.1.11` : `python3 scripts/lan_pair.py --role client --local-ip 192.168.1.11 --peer-ip 192.168.1.10`, puis `--run` après la même vérification.
+5. Sous Windows, remplacer `python3` par `py -3`. Pour arrêter le processus lancé dans le terminal, utiliser `Ctrl+C`. Comparer `testnet verify`, la hauteur, le tip et le travail de chaque nœud selon la procédure manuelle ci-dessus.
+
+L'assistant refuse les adresses publiques, la boucle locale comme adresse de pair et le lancement client vers lui-même ; il sépare les données dans `two-pc/assistant-a` et `two-pc/assistant-b`. Il ne découvre pas automatiquement les machines, ne transfère pas de wallet et ne garantit pas le passage à travers NAT, VPN, pare-feu ou réseau invité. **N'effectuer aucune redirection de port Internet et ne désactiver aucune protection du système.**
+
+**Limite critique :** les SHA-256 placés **dans** un ZIP non signé détectent des modifications locales après empaquetage mais **n'authentifient pas** l'auteur de l'archive. Aucun audit indépendant, aucune release pour fonds réels. Les tests CI du logiciel peuvent vérifier le fonctionnement du package sur chaque OS, mais pas remplacer deux ordinateurs et une campagne 72 heures.
