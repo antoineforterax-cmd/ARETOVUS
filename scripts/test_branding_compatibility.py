@@ -23,7 +23,7 @@ def audit_full_tracked_tree() -> None:
 
     listed = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
     former_ticker = bytes.fromhex("415552").lower()
-    original_credit = b"copyright (c) 2026 " + OLD_BRAND.upper().lower() + b" contributors"
+    current_credit = b"copyright (c) 2026 aretovus contributors"
     failures = []
     for item in listed.split(b"\0"):
         if not item:
@@ -49,9 +49,8 @@ def audit_full_tracked_tree() -> None:
             continue
         data = (ROOT / path).read_bytes().lower()
         if path in ("LICENSE", "LICENSE-MIT"):
-            # Keep legally required original contributor attribution intact.
-            assert data.count(original_credit) == 1, path
-            data = data.replace(original_credit, b"", 1)
+            # Keep exactly one attribution to the same contributor collective.
+            assert data.count(current_credit) == 1, path
         if OLD_BRAND in data or any(token.lower() in data for token in OLD_TOKENS):
             failures.append(f"old protocol or brand marker: {path}")
         if re.search(rb"(?<![a-z0-9_])" + former_ticker + rb"(?![a-z0-9_])", data):
@@ -92,9 +91,8 @@ def main() -> None:
     assert read("README.md").startswith("# ARETOVUS")
     # Legal history and copyright must not be erased in a branding change.
     assert read("LICENSE").startswith("ARETOVUS is available, at your option,")
-    expected_legacy_credit = "Copyright (c) 2026 " + OLD_BRAND.decode("ascii").upper() + " contributors"
-    assert expected_legacy_credit in read("LICENSE")
-    assert expected_legacy_credit in read("LICENSE-MIT")
+    for license_path in ("LICENSE", "LICENSE-MIT"):
+        assert read(license_path).count("Copyright (c) 2026 ARETOVUS contributors") == 1
     assert 'src="assets/aretovus-logo.svg"' in read("README.md")
     assert 'src="../../assets/aretovus-logo.svg"' in read("docs/guide-fr/README.md")
     logo = read("assets/aretovus-logo.svg")
