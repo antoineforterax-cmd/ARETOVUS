@@ -1,0 +1,76 @@
+name: v2-native-explorer
+on:
+  pull_request:
+    paths:
+      - "crates/aretovus-node/src/bin/aretovus-explorer.rs"
+      - "docs/planning/V2_NATIVE_EXPLORER_PAGES.md"
+      - ".github/workflows/v2-native-explorer.yml"
+  push:
+    branches: [feature/v2-explorer-canonical-pages-20261102, main]
+    paths:
+      - "crates/aretovus-node/src/bin/aretovus-explorer.rs"
+      - ".github/workflows/v2-native-explorer.yml"
+permissions:
+  contents: read
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Format and lint
+        run: cargo fmt --all -- --check
+      - name: Check native explorer unit tests and locked build
+        run: cargo test --locked -p aretovus-node --bin aretovus-explorer
+      - name: Clippy native explorer
+        run: cargo clippy --locked -p aretovus-node --bin aretovus-explorer -- -D warnings
+  real-local-page:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native node and explorer
+        run: cargo build --locked -p aretovus-node --bin aretovus-node --bin aretovus-explorer
+      - name: Mine one disposable block and read canonical page
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          data="$tmp/ARETOVUS local block explorer data"
+          mkdir -p "$data"
+          miner="$(printf '11%.0s' {1..32})"
+          timeout 90s target/debug/aretovus-node testnet mine --data-dir "$data" --miner "$miner" --count 1
+          target/debug/aretovus-explorer --data-dir "$data" --start 0 --limit 2 > "$tmp/page.json"
+          python3 - "$tmp/page.json" <<'PY'
+          import json,sys
+          with open(sys.argv[1],encoding="utf-8") as f:
+              j=json.load(f)
+          assert j["schema_version"] == 1 and j["source"] == "aretovus-native-explorer"
+          assert j["status"] == "verified_local" and j["read_only"] is True
+          assert j["network"] == "testnet" and j["chain_height"] == 1
+          assert [x["height"] for x in j["blocks"]] == [0,1]
+          assert j["blocks"][-1]["hash"] == j["chain_tip"]
+          assert j["next_start"] is None
+          assert j["blocks"][-1]["tx_count"] == 0
+          print("Verified canonical explorer: genesis and one real mined block")
+          PY
+          if target/debug/aretovus-explorer --data-dir "$data" --limit 21 > "$tmp/rejected.json"; then
+            echo "Unbounded explorer request was improperly accepted" >&2
+            exit 1
+          fi
+          python3 - "$tmp/rejected.json" <<'PY'
+          import json,sys
+          with open(sys.argv[1],encoding="utf-8") as f:
+              j=json.load(f)
+          assert j["status"] == "error" and j["code"] == "invalid_limit"
+          PY
+          if target/debug/aretovus-explorer --data-dir "$tmp/absent" > "$tmp/absent.json"; then
+            echo "Missing snapshot accepted" >&2
+            exit 1
+          fi
+          test ! -e "$tmp/absent"
