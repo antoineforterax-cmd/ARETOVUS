@@ -9,6 +9,9 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+fuzz-internals = []
+
 [dependencies]
 aretovus-core.workspace = true
 aretovus-consensus = { path = "../aretovus-consensus" }

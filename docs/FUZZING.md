@@ -39,3 +39,14 @@ cargo +nightly fuzz run canonical_decode fuzz/artifacts/canonical_decode/crash-E
 `crash-EXEMPLE` n'est qu'un nom illustratif ; utiliser le chemin réel de l'artefact. Ajouter ensuite un test de régression déterministe et ne corriger ni contourner le défaut en supprimant simplement le cas. Les corpus sont générés uniquement sur des données synthétiques de CI : ne jamais y joindre des clés, sauvegardes ou identifiants réels.
 
 **Limites :** un résultat `success` signifie seulement qu'aucune erreur n'a été remontée durant cette campagne bornée. Le replay n'est pas garanti bit pour bit sur des machines et versions différentes ; l'archivage améliore l'analyse mais n'est ni un audit indépendant ni une preuve d'absence de bug ou de sécurité mainnet.
+
+## Couverture additionnelle du plan B4 (wallet / stockage)
+
+Le job indépendant `wallet-storage-fuzz` exécute deux nouvelles cibles bornées à partir d'entrées entièrement synthétiques :
+
+- `wallet_inputs` : parseur des URI de paiement Testnet, décodage d'échappements, paramètres montant/mémo, longueur, puis propriété `parse → encode → parse` et canonicalisation des demandes acceptées.
+- `storage_parsers` : parseurs purs des pages d'index v6 et des snapshots v4, par octets libres **et** constructions partiellement structurées avec SHA-256 recalculé pour exercer les contrôles post-checksum. Le point d'entrée n'existe qu'avec la feature Rust opt-in `fuzz-internals` du crate storage, non activée dans le build normal.
+
+Chaque cible reçoit 180 secondes, `max_len` respectif 1024/512 et limite RSS libFuzzer 2048 MiB. Le job rejoue les graines avant et les corpus après, conserve SHA du checkout, toolchain, logs et artefacts 14 jours même en cas d'échec. Les résultats ne sont pas une preuve qu'aucune corruption ou vulnérabilité n'existe : ce harness ne reproduit pas une coupure électrique, un système de fichiers hostile ni la restauration intégrale d'un gros réseau.
+
+**B4 ne pourra être cochée qu'après la conclusion `success` de la CI et la présence de l'artefact sur le SHA exact** de la PR et du commit de fusion. Les campagnes prolongées, fuzzing approfondi des sauvegardes chiffrées et revue indépendante restent à planifier en D/E.
