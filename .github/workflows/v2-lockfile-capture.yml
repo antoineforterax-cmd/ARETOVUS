@@ -1,0 +1,34 @@
+name: v2-desktop-locked-dependencies
+on:
+  push:
+    branches: [feature/v2-desktop-dependency-lock-20261102]
+  pull_request:
+    paths:
+      - "apps/desktop/package.json"
+      - "apps/desktop/package-lock.json"
+      - "apps/desktop/src-tauri/Cargo.toml"
+      - "apps/desktop/src-tauri/Cargo.lock"
+      - ".github/workflows/v2-lockfile-capture.yml"
+permissions:
+  contents: read
+jobs:
+  verify-lockfiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install exact npm dependency graph
+        working-directory: apps/desktop
+        run: npm ci --no-audit --no-fund
+      - name: Test and build locked frontend
+        working-directory: apps/desktop
+        run: |
+          npm test
+          npm run build
+      - name: Validate isolated Cargo lockfile without changing it
+        run: cargo metadata --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --format-version 1 --no-deps
+      - name: Detect accidental lockfile regeneration
+        run: git diff --exit-code -- apps/desktop/package-lock.json apps/desktop/src-tauri/Cargo.lock
