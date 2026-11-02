@@ -23,6 +23,9 @@ export type CanonicalPage = {
 };
 const HEX = /^[0-9a-f]{64}$/;
 const DECIMAL = /^(0|[1-9][0-9]{0,19})$/;
+const MAX_U64 = 18_446_744_073_709_551_615n;
+const uint64Decimal = (value: unknown): value is string =>
+  typeof value === "string" && DECIMAL.test(value) && BigInt(value) <= MAX_U64;
 const safe = (v: unknown): v is number =>
   typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
@@ -57,8 +60,8 @@ export function parseCanonicalPage(
         typeof block.hash !== "string" || !HEX.test(block.hash) ||
         typeof block.parent !== "string" || !HEX.test(block.parent) ||
         typeof block.merkle_root !== "string" || !HEX.test(block.merkle_root) ||
-        typeof block.timestamp_decimal !== "string" || !DECIMAL.test(block.timestamp_decimal) ||
-        typeof block.nonce_decimal !== "string" || !DECIMAL.test(block.nonce_decimal) ||
+        !uint64Decimal(block.timestamp_decimal) ||
+        !uint64Decimal(block.nonce_decimal) ||
         !safe(block.tx_count) || (previousHash !== null && block.parent !== previousHash)) {
       throw Error("invalid_page");
     }
