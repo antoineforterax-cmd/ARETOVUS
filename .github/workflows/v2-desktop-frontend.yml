@@ -1,5 +1,7 @@
 name: v2-desktop-frontend
 on:
+  push:
+    branches: [feature/v2-tauri-readonly-dashboard-20261102]
   pull_request:
     paths:
       - "apps/desktop/**"
