@@ -1,5 +1,9 @@
 # Rapport d’essais du testnet ARETOVUS
 
+> **Note d'actualisation du 2 novembre 2026 :** les preuves du 29 octobre ci-dessous sont conservées pour la traçabilité, mais leurs descriptions de PR non fusionnées sont **périmées** après la migration native. Consulter la [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) et les runs des PR natives : [C1 #165](https://github.com/antoineforterax-cmd/ARETOVUS/pull/165), [C2 #166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166), [C3 #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) ([preuve TCP 100 001 blocs](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41466739781)), et [E2 #168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168). **Aucun audit indépendant ni autorisation mainnet** ; E3 reste [NO-GO](E3_PRELIMINARY_NO_GO_2026-11-02.md).
+
+---
+
 ## Relevé des vérifications au 29 octobre 2026
 
 Ce rapport garde les résultats de chaque campagne avec leur date et leur commit. Depuis sa dernière mise à jour, plusieurs PR supplémentaires ont publié des résultats de CI :

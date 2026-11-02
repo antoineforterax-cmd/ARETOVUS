@@ -1,6 +1,6 @@
 # ARETOVUS — Instructions de développement et d'intégration pour Codex
 
-_Mise à jour : 29 octobre 2026. À utiliser avec [AGENTS.md](https://github.com/antoineforterax-cmd/ARETOVUS/blob/feature/emission-schedule-v0/AGENTS.md) lorsqu'il est présent sur la branche de travail._
+_Mise à jour opérationnelle : 2 novembre 2026 ; contexte historique du 29 octobre conservé dans Git. Consulter [AGENTS.md](../../AGENTS.md) sur le **même SHA** que le code et [la feuille de route active #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Le dépôt est un réseau expérimental natif ARETOVUS, non le prototype des branches initiales._
 
 ## 1. Mission et autorité
 
@@ -10,25 +10,15 @@ ARETOVUS est un testnet expérimental en Rust. Le responsable du projet décide 
 
 Ne jamais employer de véritables fonds ni de clés privées réelles pour les tests. Respecter `SECURITY.md` pour les vulnérabilités.
 
-## 2. État des branches à vérifier en premier
+## 2. État de référence, dépendances et archives
 
-Au **29 octobre 2026**, `main` contient un prototype historique. La PR #1 propose `docs/phase-0-protocol` vers `main`. La PR #2 propose `feature/emission-schedule-v0` vers `docs/phase-0-protocol`. Les PR #12 à #36 ouvertes au moment du relevé sont des brouillons ; il faut reconsulter GitHub à chaque reprise.
+Le réseau natif ARETOVUS a été intégré sur `main` le 1er novembre 2026. **Relever à chaque session** le SHA courant, la topologie des PR, leurs dépendances et les contrôles au SHA exact ; les relevés du 29 octobre et les anciennes bases `feature/emission-schedule-v0` sont des **archives**, pas la vérité opérationnelle.
 
-### Branches indépendantes issues du testnet
-
-- #12 documentation stratégique ; #13 tests d'auto-transfert ; #14 simulation de difficulté ; #15 réconciliation de documentation ; #16 admission P2P.
-- #17 benchmark du mempool, puis #18 cache de signatures.
-- #19 fuzzing des états avec cache, issue de #18, est **parallèle** à #20. Ne pas la confondre avec un maillon linéaire de #20.
-
-### Chaîne A : tests, réseau et mempool
-
-`feature/emission-schedule-v0` → #17 → #18 → #20 → #21 → #22 → #23 → #24.
-
-### Chaîne B : intégration et portefeuille
-
-`feature/emission-schedule-v0` → #25 → #26 → #27 → #28 → #29 → #35 → #36.
-
-**Ne présumer aucune fusion.** Vérifier pour chaque PR le numéro, la base, la tête, le SHA, le statut draft, les fichiers modifiés, les conflits et les workflows correspondants. Si les branches ou les bases ont changé depuis cette fiche, recalculer le graphe avant toute opération.
+- A1–A4, B1–B4, C1 : intégrations et limitations consignées dans l'[issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142).
+- C2 : [PR #166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166) intégrée (tests réorganisations et partitions locaux) ; C3 : [PR #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) intégrée (100 001 blocs TCP loopback, pas réseau physique).
+- E2 : [PR #168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168) améliore la reproductibilité **des métadonnées ZIP**, pas celle des exécutables ; E3 : [PR #169](https://github.com/antoineforterax-cmd/ARETOVUS/pull/169) documente un **NO-GO**, pas un lancement.
+- Les PR historiques #108/#109/#112/#115/#116/#124–#131 incluent des conceptions, des branches empilées, des précurseurs et des résultats parfois anciens. Conserver leur provenance, revoir leurs différences avant toute reprise ; ne pas fusionner directement les assistants LAN sous l'ancienne marque.
+- Le responsable a placé **E1, audit indépendant, en ultime étape finale**, sans l'annuler et sans prétendre qu'il est accompli. Aucun mainnet ou fonds réel avant preuves et décisions adaptées.
 
 ## 3. Ordre obligatoire pour chaque session de travail
 
@@ -74,16 +64,16 @@ Si l'environnement ne permet pas de lancer des sous-agents, réaliser une revue 
 
 Les relecteurs rendent leurs résultats indépendamment. Les corrections vont sur des branches isolées après triage. Ne jamais demander à un agent de « trouver obligatoirement une faille » : un constat sans reproduction est une hypothèse, et un test sans crash n'est pas une preuve d'absence de faille.
 
-## 6. Ordre de consolidation conseillé
+## 6. Ordre opérationnel de consolidation (après migration native)
 
-1. **Fondations :** vérifier #1 puis #2 et leurs différences par rapport à `main`. Préparer une intégration testée et versionnée ; ne pas déclencher une fusion générale automatiquement.
-2. **PR indépendantes :** examiner #12 à #16 séparément ; régler les conflits et revalider les branches avec la base à jour.
-3. **Chaîne A :** #17, #18, puis examiner la bifurcation #19 / #20 avant d'intégrer #21, #22, #23 et #24. Utiliser `merge`, `rebase` ou `cherry-pick` seulement après avoir expliqué leurs conséquences sur l'historique et les tests. Éviter les doublons de commits.
-4. **Chaîne B :** intégrer et tester #25, #26, #27, #28, #29, #35, #36 dans l'ordre de leurs bases, en portant une attention renforcée à la récupération des fonds et aux privilèges de signature.
-5. **Version commune :** rejouer CI, tests multi-processus, invariants économiques, simulation des réorganisations et tests P2P/wallet sur la combinaison finale. Vérifier spécialement les interactions entre les chaînes A et B.
-6. **Validation sur deux PC :** deux machines réellement distinctes, versions/profils compatibles, dossiers indépendants, synchro bidirectionnelle, transactions signées, redémarrage et partition/reconnexion. Archiver hauteur, hash, latences, logs, caractéristiques des hôtes et résultats.
-7. **Limites P0 et endurance :** finir les issues #3/#4/#5, synchro réelle 100k+, campagne 72 h avec rapport final, pannes réelles, fuzzing prolongé et examen extérieur qualifié avant toute revendication mainnet.
-8. **Évolutions futures :** confidentialité native, anti-arnaque et récupération avancée, gouvernance de trésorerie, interface graphique et mobile seulement avec architecture, décision et programme de tests distincts.
+1. **D4 — traçabilité et règles d'agents.** Inventorier les PR historiques ; intégrer sans perte de créditeurs les corrections de marque et de documentation ; maintenir `AGENTS.md`, cette politique et les guides d'essai cohérents.
+2. **D3 — outils multi-OS natifs.** Reconstruire sur `main` les parties sûres et utiles des assistants #127/#128 ; vérifier l'archive et les chemins, modes et binaires ARETOVUS sur Windows/Linux/macOS, sans démarrer de réseau non autorisé ni désactiver les pare-feu.
+3. **D1 — profils et optimisation durable.** Mesurer sur SHA épinglé les lectures de snapshots, les contrôles de métadonnées, CPU/RSS du processus nœud distinct, la latence de vérification ; ne jamais supprimer les vérifications de fichiers, le rejeu ou la restauration pour gagner du temps.
+4. **Compléter C2/C3/C4, D2 et E2 selon leurs preuves manquantes.** Refaire les expériences longues sur machines distinctes lorsque requises ; des smokes courts ou des modèles de 500 M blocs ne remplacent pas de vrais essais.
+5. **E3 — maintenir NO-GO tant que les critères de testnet public sont ouverts**. La préparation d'une checklist n'est pas une décision d'ouverture.
+6. **E1 — audit externe indépendant en étape ultime** selon la priorité demandée par le responsable. La repousser n'autorise aucune déclaration de sécurité pour des fonds réels.
+
+Chaque fusion demeure conditionnée aux autorisations, aux contrôles au SHA exact et à une contre-revue de sécurité. La liste et les résultats à jour se trouvent dans l'issue #142, pas dans l'ancien tableau de PR d'octobre.
 
 ## 7. Modèle de compte rendu obligatoire
 
