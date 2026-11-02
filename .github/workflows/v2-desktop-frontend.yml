@@ -20,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install version-constrained app dependencies (temporary: lockfile pending)
-        run: npm install --no-audit --no-fund
+      - name: Install exact locked npm dependencies
+        run: npm ci --no-audit --no-fund
       - name: Validate JSON trust boundary
         run: npm test
       - name: Type-check and build React/Vite dashboard
