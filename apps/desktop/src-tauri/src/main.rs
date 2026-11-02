@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod explorer;
 use std::{
     io::{Read, Write},
     path::Path,
@@ -148,7 +149,7 @@ async fn read_node_status(data_dir: String) -> Result<serde_json::Value, String>
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![read_node_status])
+        .invoke_handler(tauri::generate_handler![read_node_status, explorer::read_canonical_page])
         .run(tauri::generate_context!())
         .expect("failed to run ARETOVUS Desktop Lab");
 }
