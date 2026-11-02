@@ -1,0 +1,40 @@
+name: c1-sequential-lease-recovery
+on:
+  pull_request:
+    paths:
+      - "scripts/testnet_lease_recovery_probe.py"
+      - ".github/workflows/c1-sequential-lease-recovery.yml"
+      - "crates/aretovus-node/**"
+  push:
+    branches: [test/c1-hostile-admission-resource-bounds-20261102]
+    paths:
+      - "scripts/testnet_lease_recovery_probe.py"
+      - ".github/workflows/c1-sequential-lease-recovery.yml"
+      - "crates/aretovus-node/**"
+permissions:
+  contents: read
+jobs:
+  lease-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build ARETOVUS testnet node
+        run: cargo build -p aretovus-node --locked
+      - name: Verify bounded sequential lease recovery, without concurrent saturation
+        run: |
+          python3 scripts/testnet_lease_recovery_probe.py \
+            --binary target/debug/aretovus-node \
+            --report target/c1-sequential-lease-recovery.json \
+            --cycles 8 \
+            --recovery-seconds 2
+      - name: Preserve red or green evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c1-sequential-lease-recovery-evidence
+          path: target/c1-sequential-lease-recovery.json
+          retention-days: 14
+          if-no-files-found: warn
