@@ -28,3 +28,7 @@ jobs:
         run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
       - name: Run native Rust desktop contract unit tests
         run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Build ARETOVUS native node and bridge from pinned workspace
+        run: cargo build --workspace --locked -p aretovus-node --bin aretovus-node --bin aretovus-local-bridge
+      - name: Exercise real Rust node and bridge with disposable testnet data
+        run: python apps/desktop/scripts/test_native_integration.py --node target/debug/aretovus-node.exe --bridge target/debug/aretovus-local-bridge.exe
