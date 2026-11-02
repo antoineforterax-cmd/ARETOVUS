@@ -5,12 +5,12 @@ Travail expérimental pour les tickets #181 et #178 ; dépend de **PR #192** et 
 ## Compilation de développement (non distribuable)
 
 1. Compiler le nœud et le pont depuis la racine ARETOVUS : `cargo build --locked -p aretovus-node --bin aretovus-node --bin aretovus-local-bridge`.
-2. Installer les dépendances JS : `cd apps/desktop && npm install`.
+2. Installer les dépendances JavaScript exactement comme la CI : `cd apps/desktop && npm ci`.
 3. Compiler/lancer la partie Tauri : `npm run desktop` (dépendances Tauri/WebView du système requises).
 4. **Important :** placer le binaire `aretovus-local-bridge` construit à côté du binaire `aretovus-desktop` produit par Tauri (ou configurer le même dossier cible Cargo de façon maîtrisée). Pas de résolution par PATH ni de binaire téléchargeable depuis la webview.
 5. Dans l'application, indiquer un chemin de **snapshot testnet natif déjà créé** puis connecter. La hauteur, le tip et le travail proviennent du vrai nœud via le pont ; la vue se rafraîchit toutes les 20 secondes, avec erreur explicite si le pont est indisponible.
 
-L'absence de package-lock et d'icônes/bundles signés bloque encore un build reproductible/distribuable. Cette étape ne revendique **pas** un installateur utilisable par le public. Le build CI frontend valide typage/tests, la compilation hôte Tauri et le packaging multi-OS restent à vérifier séparément.
+Les fichiers de verrouillage npm et Cargo sont désormais présents sur cette branche, mais la reproductibilité des binaires et la signature des installateurs restent à démontrer. Cette étape ne revendique **pas** un installateur utilisable par le public. Le build CI frontend valide typage/tests, la compilation hôte Tauri et le packaging multi-OS restent à vérifier séparément.
 
 ## Sécurité
 
@@ -22,4 +22,4 @@ L'absence de package-lock et d'icônes/bundles signés bloque encore un build re
 
 ## Reste à faire
 
-Pin du lockfile npm, intégration packaging binaire côte-à-côte, test hôte Windows/Linux/macOS, cas de processus suspendu, chemin verrouillé, corruption de snapshot, refresh en cas de réorganisation et interface professionnelle. Ensuite wallet graphique testnet, minage et explorateur, via contrats dédiés et revue de sécurité.
+Audit et actualisation contrôlée des lockfiles, intégration packaging binaire côte-à-côte, test hôte Windows/Linux/macOS, cas de processus suspendu, chemin verrouillé, corruption de snapshot, refresh en cas de réorganisation et interface professionnelle. Ensuite wallet graphique testnet, minage et explorateur, via contrats dédiés et revue de sécurité.
