@@ -58,6 +58,8 @@ def audit_full_tracked_tree() -> None:
 
 def main() -> None:
     audit_full_tracked_tree()
+    # NIST fixture guidance is actively maintained, even though test fixtures are historical.
+    assert OLD_BRAND not in read("tests/vectors-fips204/README.md").lower().encode("utf-8")
     workspace = read("Cargo.toml")
     lockfile = read("Cargo.lock")
     for component in CRATES:
