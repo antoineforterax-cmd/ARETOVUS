@@ -31,3 +31,14 @@ Le sondage wallet initial fonctionne. Après la série de connexions avec préfa
 ## Portée et blocages
 
 Aucune correction du code de production n'a été faite. La modification de scénario suggérée lors de la revue précédente n'a pas pu être appliquée. La résistance aux pairs WAN, aux attaques distribuées, aux connexions prolongées derrière un NAT et aux effets de concurrence sur différents OS reste non validée.
+
+## Test d'isolation complémentaire — récupération séquentielle
+
+La branche contient désormais `scripts/testnet_lease_recovery_probe.py` et le workflow `c1-sequential-lease-recovery`. Cette campagne n'exécute **jamais** de saturation simultanée : une seule connexion invalide locale est ouverte puis fermée avant chaque wallet.
+
+- Source testée : `0581ab24d1f14275468b9eff970393401d1e875e`.
+- [Run #41464758219](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41464758219) : **completed/success** ; artefact `c1-sequential-lease-recovery-evidence` présent.
+- Huit cycles successifs sur `127.0.0.1` ; wallet répond à chaque premier essai, en environ **0,0202–0,0204 seconde**, sans retry ni exception. Baseline wallet : environ 0,0207 s.
+- Le test C1 de concurrence `c1-hostile-admission` reste **failure** au même SHA. Les deux résultats ne sont pas contradictoires : la récupération séquentielle ne prouve pas une disponibilité après rafale de connexions ou sous NAT.
+
+**Décision :** ne pas modifier le seuil de connexions ni cocher C1 ; instrumenter ensuite la concurrence/quota en gardant un contrôle depuis une autre adresse source loopback et une reprise mesurée depuis la même IP.
