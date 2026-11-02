@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import io
 import json
 from pathlib import Path
 import re
@@ -130,7 +129,9 @@ def create_archive(args: argparse.Namespace) -> None:
     try:
         with zipfile.ZipFile(output, "x", allowZip64=True) as archive:
             for name in BINARIES:
-                archive.write(inputs[name], arcname=ROOT + name, compress_type=zipfile.ZIP_STORED)
+                with inputs[name].open("rb") as source, archive.open(zip_info(name), "w", force_zip64=True) as target:
+                    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                        target.write(chunk)
             for name, data in payloads.items():
                 archive.writestr(zip_info(name), data)
         verify_archive(output)
