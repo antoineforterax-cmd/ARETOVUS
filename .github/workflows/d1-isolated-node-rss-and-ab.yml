@@ -1,0 +1,119 @@
+name: d1-isolated-node-rss-and-ab
+
+on:
+  pull_request:
+    paths:
+      - "scripts/d1_isolated_node_sync_profile.py"
+      - "scripts/d1_verify_while_mining.py"
+      - ".github/workflows/d1-isolated-node-rss-and-ab.yml"
+  push:
+    branches: [main, test/d1-isolated-node-sync-metrics-20261102]
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-node-rss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build node outside measured interval
+        run: cargo build --locked -p aretovus-node
+      - name: Sample actual node processes during short local TCP sync
+        run: |
+          python3 scripts/d1_isolated_node_sync_profile.py \
+            --binary target/debug/aretovus-node \
+            --blocks 32 --max-rss-mib 512 \
+            --report d1-isolated-node-report.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("d1-isolated-node-report.json"))
+          assert r["status"] == "success"
+          assert r["height"] == 32
+          assert r["sample_count"] > 0
+          assert r["target_sync_rss_peak_bytes_sampled"] > 0
+          assert r["source_server_rss_peak_bytes_sampled"] > 0
+          print("Isolated process metrics validated; CI loopback only.")
+          PY
+      - name: Measure read-only verify during live local mining
+        run: |
+          python3 scripts/d1_verify_while_mining.py \
+            --binary target/debug/aretovus-node \
+            --samples 8 --report d1-verify-while-mining.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("d1-verify-while-mining.json"))
+          assert d["status"] == "success"
+          assert d["samples"] == 8 and d["post_stop_height"] >= 8
+          print("Concurrent read-only verification validated on a local testnet.")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-isolated-node-32-blocks
+          path: |
+            d1-isolated-node-report.json
+            d1-verify-while-mining.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  snapshot-restore-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Benchmark baseline and current code without mutating main
+        shell: bash
+        env:
+          BASE_SHA: a9b2e41971dbaf51f4ed4a1a1e2365bf92c26f06
+          ARETOVUS_STORAGE_PROFILE: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p d1-ab
+          git cat-file -e "$BASE_SHA^{commit}"
+          git worktree add --detach ../aretovus-d1-baseline "$BASE_SHA"
+          # Compile before measurements, so timings refer to test execution.
+          cargo test --locked -p aretovus-storage --lib --no-run
+          (cd ../aretovus-d1-baseline && cargo test --locked -p aretovus-storage --lib --no-run)
+          for spec in "base-1 2048" "candidate-1 2048" "candidate-2 2048" "base-2 2048"; do
+            set -- $spec
+            label="$1"; blocks="$2"
+            export ARETOVUS_STORAGE_PROFILE_BLOCKS="$blocks"
+            if [[ "$label" == base-* ]]; then
+              dir="../aretovus-d1-baseline"
+            else
+              dir="."
+            fi
+            (cd "$dir" && /usr/bin/time -v cargo test --locked -p aretovus-storage --lib tests::repeated_snapshot_phase_profile_with_restart -- --exact --ignored --nocapture) > "d1-ab/$label.log" 2>&1
+            grep -Eq "storage volume probe: height=$blocks known_blocks=$((blocks+1)) snapshot_calls=32([[:space:]]|$)" "d1-ab/$label.log"
+            grep -Eq 'test result: ok\. 1 passed; 0 failed;' "d1-ab/$label.log"
+          done
+          python3 - <<'PY' | tee d1-ab/summary.txt
+          import pathlib, re, statistics
+          values = {}
+          for label in ("base-1", "candidate-1", "candidate-2", "base-2"):
+              data = (pathlib.Path("d1-ab") / (label + ".log")).read_text(errors="replace")
+              match = re.search(r"storage volume probe:.*build_and_save_seconds=([0-9.]+) restore_seconds=([0-9.]+)", data)
+              assert match, label
+              values[label] = {"build_save": float(match[1]), "restore": float(match[2])}
+              print(label, values[label])
+          for metric in ("build_save", "restore"):
+              base = statistics.mean(values[n][metric] for n in ("base-1", "base-2"))
+              new = statistics.mean(values[n][metric] for n in ("candidate-1", "candidate-2"))
+              print(f"{metric} candidate/base = {new/base:.3f}; noisy shared CI runner, two iterations only")
+          print("This measures synthetic Regtest snapshots and tests, not node process RSS.")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-replay-restore-ab-2048-evidence
+          path: d1-ab/
+          retention-days: 14
+          if-no-files-found: warn
