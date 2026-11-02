@@ -1,0 +1,30 @@
+name: v2-offline-node-viewer
+on:
+  pull_request:
+    paths:
+      - "scripts/aretovus_snapshot_page.py"
+      - "scripts/test_aretovus_snapshot_page.py"
+      - ".github/workflows/v2-offline-node-viewer.yml"
+  push:
+    branches: [feature/v2-first-static-node-dashboard-20261102, main]
+    paths:
+      - "scripts/aretovus_snapshot_page.py"
+      - "scripts/test_aretovus_snapshot_page.py"
+      - ".github/workflows/v2-offline-node-viewer.yml"
+permissions:
+  contents: read
+jobs:
+  offline-render:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify real status contract can safely generate offline HTML
+        run: python -m unittest discover -s scripts -p test_aretovus_snapshot_page.py -v
