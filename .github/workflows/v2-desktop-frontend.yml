@@ -1,7 +1,7 @@
 name: v2-desktop-frontend
 on:
   push:
-    branches: [feature/v2-tauri-readonly-dashboard-20261102]
+    branches: [feature/v2-tauri-readonly-dashboard-20261102, feature/v2-desktop-glass-ui-20261102]
   pull_request:
     paths:
       - "apps/desktop/**"
@@ -26,3 +26,5 @@ jobs:
         run: npm test
       - name: Type-check and build React/Vite dashboard
         run: npm run build
+      - name: Check glass theme fallback and status UI invariants
+        run: python scripts/test_glass_style.py
