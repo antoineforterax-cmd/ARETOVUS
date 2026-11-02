@@ -15,7 +15,6 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 NODE_PORT = 19444
 CLIENT_PORT = 19445
 REVISION = re.compile(r"(?m)^Source commit: ([0-9a-f]{12})\r?$")
-HASH_LINE = re.compile(r"^([0-9a-f]{64})  (bin/aretovus-(?:node|wallet)(?:\.exe)?)$")
 
 
 def private_lan_ip(value: str) -> str:
@@ -48,8 +47,15 @@ def inspect_package(root: Path) -> tuple[str, Path]:
         if (path.is_absolute() or ".." in path.parts or relative in digests):
             raise ValueError("Unsafe or duplicate checksum path")
         source = root / path
-        if not source.is_file() or source.is_symlink():
-            raise ValueError(f"Missing or symbolic-link package file: {relative}")
+        current = root
+        for component in path.parts:
+            current = current / component
+            # Reject symlinked files and intermediate directories, not just
+            # the final node or wallet binary path.
+            if current.is_symlink():
+                raise ValueError(f"Symbolic link in package path: {relative}")
+        if not source.is_file():
+            raise ValueError(f"Missing or invalid package file: {relative}")
         if hashlib.sha256(source.read_bytes()).hexdigest() != digest:
             raise ValueError(f"Package integrity failure: {relative}")
         digests[relative] = digest
