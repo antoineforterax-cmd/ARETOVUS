@@ -1,4 +1,4 @@
-name: v2-desktop-lockfile-capture
+name: v2-desktop-locked-dependencies
 on:
   push:
     branches: [feature/v2-desktop-dependency-lock-20261102]
@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 jobs:
-  generate-locked-deps:
+  verify-lockfiles:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -20,27 +20,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Resolve frontend lock only, never execute dependency scripts
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install exact npm dependency graph
         working-directory: apps/desktop
-      - name: Resolve isolated Tauri Cargo lock
-        run: cargo generate-lockfile --manifest-path apps/desktop/src-tauri/Cargo.toml
-      - name: Emit public dependency manifests for maintainer verification
-        shell: bash
+        run: npm ci --no-audit --no-fund
+      - name: Test and build locked frontend
+        working-directory: apps/desktop
         run: |
-          node <<'JS'
-          const fs = require('node:fs');
-          for (const [label, path] of [
-            ['NPM', 'apps/desktop/package-lock.json'],
-            ['CARGO', 'apps/desktop/src-tauri/Cargo.lock'],
-          ]) {
-            const raw = fs.readFileSync(path);
-            const encoded = raw.toString('base64');
-            console.log('ARETOVUS_LOCKFILE_BEGIN_' + label);
-            for (let i = 0; i < encoded.length; i += 160) {
-              console.log(encoded.slice(i, i + 160));
-            }
-            console.log('ARETOVUS_LOCKFILE_END_' + label);
-            console.log('LOCKFILE_BYTES_' + label + '=' + raw.length);
-          }
-          JS
+          npm test
+          npm run build
+      - name: Validate isolated Cargo lockfile without changing it
+        run: cargo metadata --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --format-version 1 --no-deps
+      - name: Detect accidental lockfile regeneration
+        run: git diff --exit-code -- apps/desktop/package-lock.json apps/desktop/src-tauri/Cargo.lock
