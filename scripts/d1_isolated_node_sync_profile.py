@@ -109,8 +109,19 @@ def main() -> None:
                         samples = 0
                         try:
                             while client.poll() is None:
-                                client_rss_max = max(client_rss_max, resident_bytes(client.pid))
-                                client_cpu_at_last = cpu_seconds(client.pid)
+                                # A short-lived sync can exit between poll()
+                                # and reading /proc. Do not mistake a zombie
+                                # without VmRSS for a node failure; only skip
+                                # the sample if the child actually exited.
+                                try:
+                                    sampled_rss = resident_bytes(client.pid)
+                                    sampled_cpu = cpu_seconds(client.pid)
+                                except (FileNotFoundError, RuntimeError):
+                                    if client.poll() is not None:
+                                        break
+                                    raise
+                                client_rss_max = max(client_rss_max, sampled_rss)
+                                client_cpu_at_last = sampled_cpu
                                 server_rss_max = max(server_rss_max, resident_bytes(server.pid))
                                 samples += 1
                                 time.sleep(0.01)
