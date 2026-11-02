@@ -34,9 +34,10 @@ def audit_full_tracked_tree() -> None:
             failures.append(f"outdated file path: {path}")
         # Historical evidence is immutable; active test sources and test READMEs
         # must still be checked for obsolete branding.
-        # Only the three dated consolidation snapshots are exempt. New docs
-        # created in the same directory must still pass the branding audit.
+        # Only the canonical history and three dated snapshots are exempt.
+        # New documents in historical directories still pass the audit.
         historical = path in {
+            "docs/PROJECT_HISTORY.md",
             "docs/consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md",
             "docs/consolidation/STATE_2026-10-29.md",
             "docs/consolidation/state-2026-10-29.json",
@@ -89,7 +90,7 @@ def main() -> None:
             assert all(token.lower() not in lowered for token in OLD_TOKENS), file
 
     assert read("README.md").startswith("# ARETOVUS")
-    # Legal history and copyright must not be erased in a branding change.
+    # Preserve license text and document the original copyright in project history.
     assert read("LICENSE").startswith("ARETOVUS is available, at your option,")
     for license_path in ("LICENSE", "LICENSE-MIT"):
         assert read(license_path).count("Copyright (c) 2026 ARETOVUS contributors") == 1
