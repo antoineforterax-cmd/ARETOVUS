@@ -14,7 +14,7 @@ function sample() {
     chain_tip: ONE,
     chain_height: 1,
     start: 0,
-    next_start: null,
+    next_start: null as number | null,
     blocks: [
       { height: 0, hash: ZERO, parent: ZERO, timestamp_decimal: "1", nonce_decimal: "0", tx_count: 0, merkle_root: ZERO },
       { height: 1, hash: ONE, parent: ZERO, timestamp_decimal: "2", nonce_decimal: "18446744073709551615", tx_count: 0, merkle_root: ZERO },
