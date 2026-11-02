@@ -4,6 +4,11 @@ Le prototype initial d’ARETOVUS a été largement écrit avec une IA à la dem
 
 Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d’architecture, fixe les priorités et pilote activement le développement. Il a personnellement écrit et corrigé des pans entiers du code (notamment les scripts de test et d'automatisation en Python, ainsi que des contributions directes sur le Rust). L’IA est utilisée comme un outil d’assistance technique à la demande pour accélérer la mise en œuvre, générer certaines structures ou aider à la recherche de défauts. Les propositions et le code restent soumis aux décisions du porteur et à ses vérifications.
 
+
+## Continuité des attributions après le renommage
+
+La mention `ARETOVUS contributors` utilisée dans les licences désigne le collectif des contributeurs du projet, y compris ceux intervenus avant son changement de nom. Le renommage de cette désignation ne constitue ni un transfert de droits, ni une suppression de contributions ou une validation de l'appartenance juridique des droits. Les textes MIT/Apache restent inchangés et les notices de licence antérieures demeurent consultables dans l'historique Git, notamment au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`. Consulter [l'histoire du projet](docs/PROJECT_HISTORY.md) pour les notices originelles et les références archivées.
+
 ## Ce qui a réellement été vérifié
 
 - GitHub Actions exécute formatage, Clippy, compilation, tests Rust, smoke multi-nœuds, empaquetage et campagnes bornées de fuzzing/soak. Les commits et liens sont dans [TESTNET_VALIDATION_REPORT.md](docs/TESTNET_VALIDATION_REPORT.md).

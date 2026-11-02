@@ -16,7 +16,61 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def audit_full_tracked_tree() -> None:
+    """Review every tracked source, not only the Rust and workflow directories."""
+    import re
+    import subprocess
+
+    listed = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
+    former_ticker = bytes.fromhex("415552").lower()
+    current_credit = b"copyright (c) 2026 aretovus contributors"
+    failures = []
+    for item in listed.split(b"\0"):
+        if not item:
+            continue
+        path = item.decode("utf-8")
+        lower_path = item.lower()
+        if OLD_BRAND in lower_path or any(token.lower() in lower_path for token in OLD_TOKENS):
+            failures.append(f"outdated file path: {path}")
+        # Historical evidence is immutable; active test sources and test READMEs
+        # must still be checked for obsolete branding.
+        # Only the canonical history and three dated snapshots are exempt.
+        # New documents in historical directories still pass the audit.
+        historical = path in {
+            "docs/PROJECT_HISTORY.md",
+            "docs/consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md",
+            "docs/consolidation/STATE_2026-10-29.md",
+            "docs/consolidation/state-2026-10-29.json",
+        }
+        historical = historical or path.startswith("fuzz/seeds/")
+        historical = historical or (
+            path.startswith("tests/") and path.endswith((".txt", ".tsv"))
+        )
+        if historical:
+            continue
+        data = (ROOT / path).read_bytes().lower()
+        if path in ("LICENSE", "LICENSE-MIT"):
+            # Keep exactly one attribution to the same contributor collective.
+            assert data.count(current_credit) == 1, path
+        if OLD_BRAND in data or any(token.lower() in data for token in OLD_TOKENS):
+            failures.append(f"old protocol or brand marker: {path}")
+        if re.search(rb"(?<![a-z0-9_])" + former_ticker + rb"(?![a-z0-9_])", data):
+            failures.append(f"old standalone ticker: {path}")
+    assert not failures, "\n".join(failures)
+
+    # A rename must not accidentally allow historical private-key exports into Git.
+    for suffix in ("aretkey", bytes.fromhex("6175726b6579").decode("ascii")):
+        status = subprocess.run(
+            ["git", "check-ignore", "-q", "--no-index", "wallet." + suffix],
+            cwd=ROOT, check=False
+        )
+        assert status.returncode == 0, "wallet key files must remain ignored"
+
+
 def main() -> None:
+    audit_full_tracked_tree()
+    # NIST fixture guidance is actively maintained, even though test fixtures are historical.
+    assert OLD_BRAND not in read("tests/vectors-fips204/README.md").lower().encode("utf-8")
     workspace = read("Cargo.toml")
     lockfile = read("Cargo.lock")
     for component in CRATES:
@@ -36,11 +90,10 @@ def main() -> None:
             assert all(token.lower() not in lowered for token in OLD_TOKENS), file
 
     assert read("README.md").startswith("# ARETOVUS")
-    # Legal history and copyright must not be erased in a branding change.
+    # Preserve license text and document the original copyright in project history.
     assert read("LICENSE").startswith("ARETOVUS is available, at your option,")
-    expected_legacy_credit = "Copyright (c) 2026 " + OLD_BRAND.decode("ascii").upper() + " contributors"
-    assert expected_legacy_credit in read("LICENSE")
-    assert expected_legacy_credit in read("LICENSE-MIT")
+    for license_path in ("LICENSE", "LICENSE-MIT"):
+        assert read(license_path).count("Copyright (c) 2026 ARETOVUS contributors") == 1
     assert 'src="assets/aretovus-logo.svg"' in read("README.md")
     assert 'src="../../assets/aretovus-logo.svg"' in read("docs/guide-fr/README.md")
     logo = read("assets/aretovus-logo.svg")
