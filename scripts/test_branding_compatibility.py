@@ -16,7 +16,48 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def audit_full_tracked_tree() -> None:
+    """Review every tracked source, not only the Rust and workflow directories."""
+    import re
+    import subprocess
+
+    listed = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
+    former_ticker = bytes.fromhex("415552").lower()
+    original_credit = b"copyright (c) 2026 " + OLD_BRAND.upper().lower() + b" contributors"
+    failures = []
+    for item in listed.split(b"\0"):
+        if not item:
+            continue
+        path = item.decode("utf-8")
+        lower_path = item.lower()
+        if OLD_BRAND in lower_path or any(token.lower() in lower_path for token in OLD_TOKENS):
+            failures.append(f"outdated file path: {path}")
+        historical = path.startswith(("docs/consolidation/", "tests/", "fuzz/seeds/"))
+        historical = historical or (path.startswith("crates/") and "/tests/" in path)
+        if historical:
+            continue
+        data = (ROOT / path).read_bytes().lower()
+        if path in ("LICENSE", "LICENSE-MIT"):
+            # Keep legally required original contributor attribution intact.
+            assert original_credit in data, path
+            data = data.replace(original_credit, b"")
+        if OLD_BRAND in data or any(token.lower() in data for token in OLD_TOKENS):
+            failures.append(f"old protocol or brand marker: {path}")
+        if re.search(rb"(?<![a-z0-9_])" + former_ticker + rb"(?![a-z0-9_])", data):
+            failures.append(f"old standalone ticker: {path}")
+    assert not failures, "\n".join(failures)
+
+    # A rename must not accidentally allow historical private-key exports into Git.
+    for suffix in ("aretkey", bytes.fromhex("6175726b6579").decode("ascii")):
+        status = subprocess.run(
+            ["git", "check-ignore", "-q", "--no-index", "wallet." + suffix],
+            cwd=ROOT, check=False
+        )
+        assert status.returncode == 0, "wallet key files must remain ignored"
+
+
 def main() -> None:
+    audit_full_tracked_tree()
     workspace = read("Cargo.toml")
     lockfile = read("Cargo.lock")
     for component in CRATES:
