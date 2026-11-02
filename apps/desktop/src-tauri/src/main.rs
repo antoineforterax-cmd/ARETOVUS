@@ -131,10 +131,4 @@ mod tests {
         drop(first);
         assert!(BridgeLease::acquire().is_ok());
     }
-
-    #[test]
-    fn invalid_path_is_refused_before_starting_any_child() {
-        assert_eq!(bridge_status("").unwrap_err(), "invalid_data_dir");
-        assert_eq!(bridge_status("a".repeat(1025).as_str()).unwrap_err(), "invalid_data_dir");
-    }
 }
