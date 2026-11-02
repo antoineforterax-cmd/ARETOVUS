@@ -14,7 +14,7 @@ export function App() {
   const pendingDir = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const refresh = useCallback(async (dataDir: string) => {
+  const refresh = useCallback(async function verifyLocalNode(dataDir: string): Promise<void> {
     if (busy.current) {
       // Coalesce requests: only the currently selected directory may win.
       pendingDir.current = dataDir;
@@ -42,9 +42,9 @@ export function App() {
       const next = pendingDir.current;
       pendingDir.current = null;
       if (next && next === activeDir.current) {
-        void refresh(next);
+        void verifyLocalNode(next);
       } else if (activeDir.current && activeDir.current !== dataDir) {
-        void refresh(activeDir.current);
+        void verifyLocalNode(activeDir.current);
       } else if (!activeDir.current) {
         setLoading(false);
       }
