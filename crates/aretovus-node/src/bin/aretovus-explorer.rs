@@ -3,7 +3,6 @@
 use std::{
     env,
     error::Error,
-    ffi::OsStr,
     fmt::Write as FmtWrite,
     path::PathBuf,
     process,
