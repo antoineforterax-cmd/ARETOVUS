@@ -24,20 +24,22 @@ jobs:
         run: cargo build --locked -p aretovus-node
       - name: Sample actual node processes during short local TCP sync
         run: |
-          python3 scripts/d1_isolated_node_sync_profile.py \
-            --binary target/debug/aretovus-node \
-            --blocks 32 --max-rss-mib 512 \
-            --report d1-isolated-node-report.json
-          python3 - <<'PY'
-          import json
-          r = json.load(open("d1-isolated-node-report.json"))
+          for attempt in 1 2 3; do
+            python3 scripts/d1_isolated_node_sync_profile.py \
+              --binary target/debug/aretovus-node \
+              --blocks 32 --max-rss-mib 512 \
+              --report "d1-isolated-node-report-${attempt}.json"
+            python3 - "$attempt" <<'PY'
+          import json, sys
+          r = json.load(open("d1-isolated-node-report-" + sys.argv[1] + ".json"))
           assert r["status"] == "success"
           assert r["height"] == 32
           assert r["sample_count"] > 0
           assert r["target_sync_rss_peak_bytes_sampled"] > 0
           assert r["source_server_rss_peak_bytes_sampled"] > 0
-          print("Isolated process metrics validated; CI loopback only.")
+          print("Isolated process sample validated; CI loopback only.")
           PY
+          done
       - name: Measure read-only verify during live local mining
         run: |
           python3 scripts/d1_verify_while_mining.py \
@@ -55,7 +57,7 @@ jobs:
         with:
           name: d1-isolated-node-32-blocks
           path: |
-            d1-isolated-node-report.json
+            d1-isolated-node-report-*.json
             d1-verify-while-mining.json
           if-no-files-found: warn
           retention-days: 14
