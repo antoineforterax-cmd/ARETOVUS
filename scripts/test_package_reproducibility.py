@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path
 
 import package_testnet
+import lan_pair
 
 
 class DeterministicPackageTest(unittest.TestCase):
@@ -49,6 +50,28 @@ class DeterministicPackageTest(unittest.TestCase):
                         digest, name = line.split("  ", 1)
                         self.assertEqual(digest, hashlib.sha256(archive.read(name)).hexdigest())
                     self.assertIn(b"Unsigned CI artifact", archive.read("EXPERIMENTAL_TESTNET.txt"))
+                    self.assertIn("scripts/lan_pair.py", archive.namelist())
+                # Exercise offline LAN helper against a real extracted package,
+                # including its synthetic node files and path with spaces.
+                extract_root = root / "ARETOVUS package with spaces"
+                with zipfile.ZipFile(packages[0]) as archive:
+                    archive.extractall(extract_root)
+                revision, node = lan_pair.inspect_package(extract_root)
+                self.assertEqual(len(revision), 12)
+                self.assertTrue(node.is_file())
+                server = lan_pair.command_for("server", "192.168.1.11", None, extract_root)
+                client = lan_pair.command_for(
+                    "client", "192.168.1.12", "192.168.1.11", extract_root
+                )
+                self.assertIn("assistant-a", server[4])
+                self.assertIn("assistant-b", client[4])
+                with self.assertRaises(ValueError):
+                    lan_pair.command_for("client", "192.168.1.12", "8.8.8.8", extract_root)
+                with self.assertRaises(ValueError):
+                    lan_pair.command_for("client", "192.168.1.12", "192.168.1.12", extract_root)
+                node.write_bytes(node.read_bytes() + b"tampered")
+                with self.assertRaises(ValueError):
+                    lan_pair.inspect_package(extract_root)
             finally:
                 package_testnet.BIN_DIR = original_bin
                 package_testnet.DIST = original_dist
