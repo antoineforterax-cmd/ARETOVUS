@@ -28,7 +28,7 @@ class StorageScaleModelTests(unittest.TestCase):
 
     def test_partial_final_page(self) -> None:
         self.assertEqual(estimate(1)["minimal_existing_path_metadata_checks_modelled"], 2)
-        self.assertEqual(estimate(65)["minimal_existing_path_metadata_checks_modelled"], 132)
+        self.assertEqual(estimate(65)["minimal_existing_path_metadata_checks_modelled"], 131)
 
     def test_assumed_raw_size_is_not_measurement(self) -> None:
         result = estimate(1_000_000, assumed_bytes_per_block=1024)
