@@ -1,0 +1,26 @@
+name: e2-deterministic-package-metadata
+on:
+  pull_request:
+    paths:
+      - "scripts/package_testnet.py"
+      - "scripts/test_package_reproducibility.py"
+      - ".github/workflows/e2-deterministic-package-metadata.yml"
+  push:
+    branches: [fix/e2-deterministic-testnet-packages-20261102]
+permissions:
+  contents: read
+jobs:
+  metadata-repro:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Repack synthetic binaries with changed mtimes and verify identical digests
+        run: python scripts/test_package_reproducibility.py
