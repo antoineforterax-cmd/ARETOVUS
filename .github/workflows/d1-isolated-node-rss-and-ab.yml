@@ -7,7 +7,7 @@ on:
       - "scripts/d1_verify_while_mining.py"
       - ".github/workflows/d1-isolated-node-rss-and-ab.yml"
   push:
-    branches: [test/d1-isolated-node-sync-metrics-20261102]
+    branches: [main, test/d1-isolated-node-sync-metrics-20261102]
 
 permissions:
   contents: read
