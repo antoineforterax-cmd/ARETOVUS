@@ -16,7 +16,33 @@ def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def scan_every_tracked_file() -> None:
+    """Fail on obsolete identity tokens outside immutable test evidence."""
+    import re
+    import subprocess
+
+    listed = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
+    legacy_unit = bytes.fromhex("415552").lower()
+    failures = []
+    for name in (n.decode("utf-8") for n in listed.split(b"\0") if n):
+        file = ROOT / name
+        lower_name = name.encode("utf-8").lower()
+        if OLD_BRAND in lower_name or any(t.lower() in lower_name for t in OLD_TOKENS):
+            failures.append("legacy filename: " + name)
+        historical = name.startswith(("docs/consolidation/", "tests/", "fuzz/seeds/"))
+        historical = historical or (name.startswith("crates/") and "/tests/" in name)
+        if historical:
+            continue
+        data = file.read_bytes().lower()
+        if OLD_BRAND in data or any(t.lower() in data for t in OLD_TOKENS):
+            failures.append("legacy content: " + name)
+        if re.search(rb"(?<![a-z0-9_])" + legacy_unit + rb"(?![a-z0-9_])", data):
+            failures.append("legacy ticker: " + name)
+    assert not failures, "\n".join(failures)
+
+
 def main() -> None:
+    scan_every_tracked_file()
     workspace = read("Cargo.toml")
     lockfile = read("Cargo.lock")
     for component in CRATES:
