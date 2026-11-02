@@ -103,7 +103,7 @@ def main() -> int:
         if not args.role or not args.local_ip:
             parser.error("select --role and --local-ip (or --verify-package)")
         command = command_for(args.role, args.local_ip, args.peer_ip, PACKAGE_ROOT)
-        print(f"Role={args.role}, data folder={command[5]}, network restricted to private LAN")
+        print(f"Role={args.role}, data folder={command[4]}, network restricted to private LAN")
         if not args.run:
             print("Plan verified; use --run to start the node, Ctrl+C to stop.")
             return 0
