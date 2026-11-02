@@ -8,15 +8,15 @@ L'identité native opérationnelle est **ARETOVUS** : dépôt, crates, binaires,
 
 La recherche indexée GitHub montre encore des références anciennes dans `docs/consolidation/` ; il s'agit d'archives datées et non de noms d'outils natifs. La présence de l'ancien nom dans les textes d'une PR **non fusionnée** n'implique pas que le code opérationnel l'utilise. Les scripts actifs sont contrôlés par le test de branding. Cet inventaire ne prétend pas une disparition de chaque mention historique.
 
-## PR encore ouvertes : disposition recommandée, pas de fusion automatique
+## PR historiques réconciliées ou encore ouvertes : disposition recommandée
 
 | PR | État de base/dépendance au pointage | Disposition prudente |
 | --- | --- | --- |
 | [#108](https://github.com/antoineforterax-cmd/ARETOVUS/pull/108) | Conflit de fusion avec `main`, optimisation storage ancienne | **Bloquer** ; mesurer sur le code natif actuel et revérifier durabilité / symlinks avant éventuelle reconstruction. |
 | [#109](https://github.com/antoineforterax-cmd/ARETOVUS/pull/109) | Projet de conception storage incremental, base `main`, sans exécution | **Conserver en étude** ; ne pas interpréter une note de conception comme un correctif. |
-| [#112](https://github.com/antoineforterax-cmd/ARETOVUS/pull/112) | 32 768 blocs TCP, base `test/storage-cache-symlink-guard-20261031` | **Précurseur historique**, pas fusionnable en l'état dans le flux courant. |
-| [#115](https://github.com/antoineforterax-cmd/ARETOVUS/pull/115) | 65 536 blocs TCP, même branche de base ancienne | **Précurseur historique**, éviter les duplications de workflow. |
-| [#116](https://github.com/antoineforterax-cmd/ARETOVUS/pull/116) | Validation TCP 100 001 blocs sur ancien état, base `main` | **Supplantée pour l'identité native** par [#167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) fusionnée ; préserver les logs originaux. |
+| [#112](https://github.com/antoineforterax-cmd/ARETOVUS/pull/112) | 32 768 blocs TCP, base `test/storage-cache-symlink-guard-20261031` | **Fermée sans fusion après triage du 2 novembre 2026** ; **Précurseur historique**, pas fusionnable en l'état dans le flux courant. |
+| [#115](https://github.com/antoineforterax-cmd/ARETOVUS/pull/115) | 65 536 blocs TCP, même branche de base ancienne | **Fermée sans fusion après triage du 2 novembre 2026** ; **Précurseur historique**, éviter les duplications de workflow. |
+| [#116](https://github.com/antoineforterax-cmd/ARETOVUS/pull/116) | Validation TCP 100 001 blocs sur ancien état, base `main` | **Fermée sans fusion après triage du 2 novembre 2026** ; **Supplantée pour l'identité native** par [#167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) fusionnée ; préserver les logs originaux. |
 | [#124](https://github.com/antoineforterax-cmd/ARETOVUS/pull/124) | Guide contributeurs/licences daté ; références à l'ancienne marque à relire | **Porter sélectivement** des clarifications après audit des attributions et test de marque. |
 | [#125](https://github.com/antoineforterax-cmd/ARETOVUS/pull/125) | Navigation débutants, ancien texte de marque | **Rebaser/revoir** plutôt que fusionner tel quel. |
 | [#126](https://github.com/antoineforterax-cmd/ARETOVUS/pull/126) | Empilée sur #125 ; inclut des instructions d'agent | **Bloquer fusion directe** : relire chaque règle d'agent, préserver les décisions de protocole natives. |
@@ -31,7 +31,7 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 - [x] Inventorier les anciennes PR et leurs bases, documenter les conflits, la chaîne d'empilement et les remplacements connus.
 - [ ] Réconcilier ou fermer les PR dépassées uniquement après décision et revalidation, sans suppression d'archives ni de commits.
 - [ ] Harmoniser les assistants LAN #127/#128 et remplacer les noms opérationnels obsolètes après qualification multi-OS D3.
-- [ ] Réviser `AGENTS.md` et la politique d'implémentation pour séparer clairement l'historique du 29 octobre des règles actuelles, avec approbation explicite des changements de protocole.
+- [x] Réviser `AGENTS.md` et la politique d'implémentation pour séparer clairement l'historique du 29 octobre des règles actuelles, avec approbation explicite des changements de protocole.
 - [ ] Vérifier exhaustivement les références AURORA dans tous les **documents actifs** ; préserver les citations d'histoire, les licences et les résultats originaux.
 
 **D4 ne peut donc pas être cochée comme terminée sur la seule base de cette PR.** Aucun changement de consensus, format natif, émission, clé ou règle de réseau. Tester les modifications documentaires par `scripts/test_branding_compatibility.py` et la CI au SHA exact. L'étape E3 demeure **NO-GO pour extension publique** tant que les lacunes C4/D1–D4/E1/E2 pertinentes ne sont pas levées.
