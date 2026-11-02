@@ -108,8 +108,10 @@ def main() -> None:
                     b"\x00\x00",
                 ]
                 for index, payload in enumerate(malformed):
-                    with socket.create_connection(("127.0.0.1", port), timeout=3) as conn:
+                    with socket.socket() as conn:
                         conn.settimeout(3)
+                        conn.bind((f"127.0.0.{index + 2}", 0))
+                        conn.connect(("127.0.0.1", port))
                         conn.sendall(payload)
                     sample(f"malformed-{index}")
                 wallet("after_malformed_handshakes")
