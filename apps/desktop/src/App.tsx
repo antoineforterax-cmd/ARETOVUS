@@ -59,7 +59,6 @@ export function App() {
     }
     // Mark the old asynchronous response stale *before* React rerenders.
     activeDir.current = nextDir;
-    pendingDir.current = nextDir;
     setData(null);
     setUpdated(null);
     setError("");
