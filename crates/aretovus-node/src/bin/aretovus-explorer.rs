@@ -1,12 +1,6 @@
 //! ARETOVUS V2/V5: strictly bounded canonical block page from a verified
 //! LOCAL testnet snapshot. No HTTP, P2P sessions, keys or consensus writes.
-use std::{
-    env,
-    error::Error,
-    fmt::Write as FmtWrite,
-    path::PathBuf,
-    process,
-};
+use std::{env, error::Error, fmt::Write as FmtWrite, path::PathBuf, process};
 
 use aretovus_consensus::{
     account_fork_chain::AccountForkChain,
@@ -25,9 +19,7 @@ struct Options {
     limit: usize,
 }
 
-fn parse_options<I: Iterator<Item = std::ffi::OsString>>(
-    args: I,
-) -> Result<Options, &'static str> {
+fn parse_options<I: Iterator<Item = std::ffi::OsString>>(args: I) -> Result<Options, &'static str> {
     let mut data_dir = None;
     let mut start = None;
     let mut limit = None;
@@ -73,10 +65,16 @@ fn parse_options<I: Iterator<Item = std::ffi::OsString>>(
 
 fn require_native_identity(chain: &AccountForkChain) -> Result<(), &'static str> {
     let expected = testnet_genesis_block()
-        .header.hash().map_err(|_| "verification_failed")?;
-    let actual = chain.blocks().next()
+        .header
+        .hash()
+        .map_err(|_| "verification_failed")?;
+    let actual = chain
+        .blocks()
+        .next()
         .ok_or("verification_failed")?
-        .header.hash().map_err(|_| "verification_failed")?;
+        .header
+        .hash()
+        .map_err(|_| "verification_failed")?;
     if expected != actual
         || chain.initial_difficulty_bits() != TESTNET_INITIAL_BITS
         || chain.difficulty_params() != TESTNET_DIFFICULTY
@@ -95,7 +93,9 @@ fn render_page(chain: &AccountForkChain, start: u64, limit: usize) -> Result<Str
         "{{\"schema_version\":1,\"network\":\"testnet\",\"read_only\":true,\
          \"source\":\"aretovus-native-explorer\",\"status\":\"verified_local\",\
          \"chain_tip\":\"{}\",\"chain_height\":{},\"start\":{},\"blocks\":[",
-        chain.tip_hash(), chain.height(), start
+        chain.tip_hash(),
+        chain.height(),
+        start
     );
     let mut count = 0u64;
     for block in chain.canonical_block_page(start, limit) {
@@ -154,9 +154,7 @@ mod tests {
     use std::ffi::OsString;
 
     fn parse(args: &[&str]) -> Result<(u64, usize), &'static str> {
-        let result = parse_options(
-            args.iter().map(|x| OsString::from(*x))
-        )?;
+        let result = parse_options(args.iter().map(|x| OsString::from(*x)))?;
         Ok((result.start, result.limit))
     }
 
@@ -164,7 +162,10 @@ mod tests {
     fn parser_never_allows_unbounded_pages_or_unknown_options() {
         let cwd = std::env::current_dir().unwrap();
         let folder = cwd.to_string_lossy().into_owned();
-        assert_eq!(parse(&["--data-dir", &folder, "--start", "23", "--limit", "20"]), Ok((23, 20)));
+        assert_eq!(
+            parse(&["--data-dir", &folder, "--start", "23", "--limit", "20"]),
+            Ok((23, 20))
+        );
         assert_eq!(parse(&["--data-dir", &folder]), Ok((0, 10)));
         for args in [
             vec!["--data-dir", &folder, "--limit", "0"],
@@ -184,16 +185,20 @@ mod tests {
     fn only_verified_canonical_genesis_is_emitted() {
         let chain = AccountForkChain::new_with_protocol_params(
             testnet_genesis_block(),
-            TESTNET_INITIAL_BITS, TESTNET_DIFFICULTY,
+            TESTNET_INITIAL_BITS,
+            TESTNET_DIFFICULTY,
             RewardParams::experimental_testnet(TESTNET_TREASURY),
             AccountLedger::new(NetworkId::Testnet),
-        ).unwrap();
+        )
+        .unwrap();
         require_native_identity(&chain).unwrap();
         let page = render_page(&chain, 0, 20).unwrap();
         assert!(page.contains("\"chain_height\":0"));
         assert!(page.contains("\"height\":0"));
         assert!(page.contains("\"next_start\":null"));
-        assert!(render_page(&chain, 99, 20).unwrap().contains("\"blocks\":[]"));
+        assert!(render_page(&chain, 99, 20)
+            .unwrap()
+            .contains("\"blocks\":[]"));
         assert_eq!(render_page(&chain, 0, 21), Err("invalid_limit"));
     }
 }
