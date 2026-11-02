@@ -12,7 +12,7 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 
 | PR | État de base/dépendance au pointage | Disposition prudente |
 | --- | --- | --- |
-| [#108](https://github.com/antoineforterax-cmd/ARETOVUS/pull/108) | Conflit de fusion avec `main`, optimisation storage ancienne | **Bloquer** ; mesurer sur le code natif actuel et revérifier durabilité / symlinks avant éventuelle reconstruction. |
+| [#108](https://github.com/antoineforterax-cmd/ARETOVUS/pull/108) | Conflit de fusion avec `main`, optimisation storage ancienne | Fermée sans fusion : optimisation de chemin de sauvegarde déjà présente sur le natif, test additionnel à reporter. |
 | [#109](https://github.com/antoineforterax-cmd/ARETOVUS/pull/109) | Projet de conception storage incremental, base `main`, sans exécution | **Conserver en étude** ; ne pas interpréter une note de conception comme un correctif. |
 | [#112](https://github.com/antoineforterax-cmd/ARETOVUS/pull/112) | 32 768 blocs TCP, base `test/storage-cache-symlink-guard-20261031` | **Fermée sans fusion après triage du 2 novembre 2026** ; **Précurseur historique**, pas fusionnable en l'état dans le flux courant. |
 | [#115](https://github.com/antoineforterax-cmd/ARETOVUS/pull/115) | 65 536 blocs TCP, même branche de base ancienne | **Fermée sans fusion après triage du 2 novembre 2026** ; **Précurseur historique**, éviter les duplications de workflow. |
@@ -20,8 +20,8 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 | [#124](https://github.com/antoineforterax-cmd/ARETOVUS/pull/124) | Guide contributeurs/licences daté ; références à l'ancienne marque à relire | **Porter sélectivement** des clarifications après audit des attributions et test de marque. |
 | [#125](https://github.com/antoineforterax-cmd/ARETOVUS/pull/125) | Navigation débutants, ancien texte de marque | **Rebaser/revoir** plutôt que fusionner tel quel. |
 | [#126](https://github.com/antoineforterax-cmd/ARETOVUS/pull/126) | Empilée sur #125 ; inclut des instructions d'agent | **Bloquer fusion directe** : relire chaque règle d'agent, préserver les décisions de protocole natives. |
-| [#127](https://github.com/antoineforterax-cmd/ARETOVUS/pull/127) | Assistant LAN Windows, utilise d'anciens noms de fichiers `AURORA-LAN` | **D3 en attente** ; adapter binaires/chemins ARETOVUS, vérifier commandes sans secrets. |
-| [#128](https://github.com/antoineforterax-cmd/ARETOVUS/pull/128) | Empilée sur #127, assistant LAN macOS/Linux | **D3 en attente** ; reconstruire après #127 plutôt qu'intégrer directement. |
+| [#127](https://github.com/antoineforterax-cmd/ARETOVUS/pull/127) | Assistant LAN Windows, utilise d'anciens noms de fichiers `AURORA-LAN` | Fermée sans fusion : assistant Windows sous l'ancienne identité, remplacé pour la CLI de base par #174 ; GUI non reprise. |
+| [#128](https://github.com/antoineforterax-cmd/ARETOVUS/pull/128) | Empilée sur #127, assistant LAN macOS/Linux | Fermée sans fusion : assistant Unix sous l'ancienne identité, remplacé pour la CLI de base par #174 ; découverte automatique non reprise. |
 | [#129](https://github.com/antoineforterax-cmd/ARETOVUS/pull/129) | Campagne physique de 4 h inconclusive et diagnostics Windows | **Conserver les échecs** ; ne pas comptabiliser comme validation d'endurance C4. |
 | [#131](https://github.com/antoineforterax-cmd/ARETOVUS/pull/131) | Empilée sur #129 ; supervision CPU/RAM 4 h | **Instrumentation candidate C4/D1**, à tester sur nouvelle base ; ne pas inventer 4 ou 72 h de résultats. |
 
@@ -30,7 +30,7 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 - [x] Distinguer nom actif et archives, et corriger le libellé public du fichier `LICENSE` sans effacer les copyrights historiques.
 - [x] Inventorier les anciennes PR et leurs bases, documenter les conflits, la chaîne d'empilement et les remplacements connus.
 - [ ] Réconcilier ou fermer les PR dépassées uniquement après décision et revalidation, sans suppression d'archives ni de commits.
-- [ ] Harmoniser les assistants LAN #127/#128 et remplacer les noms opérationnels obsolètes après qualification multi-OS D3.
+- [x] Remplacer les assistants LAN historiques #127/#128 par la CLI native #174 intégrée et vérifiée sur les trois OS, sans revendiquer la GUI/découverte automatique ou les essais physiques C4.
 - [x] Réviser `AGENTS.md` et la politique d'implémentation pour séparer clairement l'historique du 29 octobre des règles actuelles, avec approbation explicite des changements de protocole.
 - [ ] Vérifier exhaustivement les références AURORA dans tous les **documents actifs** ; préserver les citations d'histoire, les licences et les résultats originaux.
 
