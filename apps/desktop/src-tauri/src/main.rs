@@ -29,6 +29,45 @@ impl Drop for BridgeLease {
     }
 }
 
+/// Validate native IPC data again before letting it cross into the webview.
+/// In particular, JSON numbers larger than JS MAX_SAFE_INTEGER are not safe
+/// for frontend arithmetic, and the diagnostic work string must not contain
+/// HTML/control characters or unbounded payloads.
+fn validate_status_response(answer: &serde_json::Value) -> Result<(), String> {
+    const JS_MAX_SAFE: u64 = 9_007_199_254_740_991;
+    let invalid = || "invalid_response".to_string();
+    if answer["schema_version"] != 1
+        || answer["status"] != "verified"
+        || answer["network"] != "testnet"
+        || answer["read_only"] != true
+        || answer["source"] != "aretovus-native-stdio"
+    {
+        return Err(invalid());
+    }
+    let height = answer["height"].as_u64().ok_or_else(invalid)?;
+    let known = answer["known_blocks"].as_u64().ok_or_else(invalid)?;
+    if height >= JS_MAX_SAFE || known > JS_MAX_SAFE || known <= height {
+        return Err(invalid());
+    }
+    let tip = answer["tip"].as_str().ok_or_else(invalid)?;
+    if tip.len() != 64
+        || !tip.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err(invalid());
+    }
+    let work = answer["chain_work_display"].as_str().ok_or_else(invalid)?;
+    if work.len() > 255
+        || !work.starts_with("ChainWork([")
+        || !work.ends_with("])")
+        || !work[11..work.len() - 2]
+            .bytes()
+            .all(|b| b.is_ascii_digit() || b == b',' || b == b' ')
+    {
+        return Err(invalid());
+    }
+    Ok(())
+}
+
 fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
     let _single_reader = BridgeLease::acquire()?;
     if data_dir.is_empty() || data_dir.len() > 1024 || data_dir.contains('\0') {
@@ -96,14 +135,7 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
     }
     let answer: serde_json::Value =
         serde_json::from_slice(&bytes).map_err(|_| "invalid_response".to_string())?;
-    if answer["schema_version"] != 1
-        || answer["status"] != "verified"
-        || answer["network"] != "testnet"
-        || answer["read_only"] != true
-        || answer["source"] != "aretovus-native-stdio"
-    {
-        return Err("invalid_response".into());
-    }
+    validate_status_response(&answer)?;
     Ok(answer)
 }
 
@@ -124,6 +156,39 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn valid_status() -> serde_json::Value {
+        serde_json::json!({
+            "schema_version": 1, "status": "verified", "network": "testnet",
+            "read_only": true, "source": "aretovus-native-stdio",
+            "height": 1, "known_blocks": 2,
+            "tip": "ab".repeat(32), "chain_work_display": "ChainWork([256, 0, 0, 0, 0])"
+        })
+    }
+
+    #[test]
+    fn native_bridge_response_requires_strict_fields() {
+        let valid = valid_status();
+        assert!(validate_status_response(&valid).is_ok());
+        let attacks = [
+            ("schema_version", serde_json::json!(2)),
+            ("network", serde_json::json!("regtest")),
+            ("read_only", serde_json::json!(false)),
+            ("source", serde_json::json!("untrusted-web")),
+            ("height", serde_json::json!(-1)),
+            ("height", serde_json::json!(1.5)),
+            ("height", serde_json::json!(9_007_199_254_740_991_u64)),
+            ("known_blocks", serde_json::json!(0)),
+            ("known_blocks", serde_json::json!(9_007_199_254_740_992_u64)),
+            ("tip", serde_json::json!("<script>alert(1)</script>")),
+            ("chain_work_display", serde_json::json!("<svg/onload=alert(1)>"))
+        ];
+        for (key, value) in attacks {
+            let mut forged = valid.clone();
+            forged[key] = value;
+            assert_eq!(validate_status_response(&forged), Err("invalid_response".into()), "{key}");
+        }
+    }
+
     #[test]
     fn only_one_snapshot_reader_is_allowed() {
         let first = BridgeLease::acquire().unwrap();
