@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseNodeStatus, type VerifiedNodeStatus } from "./status";
+import { ExplorerPanel } from "./ExplorerPanel";
 
 export function App() {
   const [folder, setFolder] = useState("");
@@ -60,7 +61,8 @@ export function App() {
       <section className="details"><h2>État vérifié par Rust</h2><div className="row"><span>Sommet (tip)</span><code>{data?.tip ?? "Non disponible"}</code></div>
       <div className="row"><span>Travail cumulé (diagnostic)</span><code>{data?.chain_work_display ?? "Non disponible"}</code></div>
       <button className="refresh" type="button" disabled={!selected || loading} onClick={() => void refresh(selected)}>Actualiser maintenant</button></section>
-      <section className="roadmap"><h2>À intégrer ensuite</h2><div className="next"><div>Wallet graphique <small>Non disponible</small></div><div>Minage contrôlé <small>Non disponible</small></div><div>Explorateur P2P <small>Non disponible</small></div></div></section>
+      <ExplorerPanel dataDir={selected} verifiedTip={data?.tip ?? null} />
+      <section className="roadmap"><h2>À intégrer ensuite</h2><div className="next"><div>Wallet graphique <small>Non disponible</small></div><div>Minage contrôlé <small>Non disponible</small></div><div>Visualisation des pairs P2P <small>Non disponible</small></div></div></section>
     </main><footer>ARETOVUS V2 — prototype de laboratoire. Pas de fonds réels. Aucune action de minage, signature ou transaction dans cette version.</footer>
   </div>;
 }
