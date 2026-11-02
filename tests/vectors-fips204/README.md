@@ -1,6 +1,6 @@
 # Public NIST ACVP ML-DSA-65 examples
 
-Source: **National Institute of Standards and Technology**, [ACVP-Server](https://github.com/usnistgov/ACVP-Server/tree/975de31eb83d87039ec88934fdc47d8c312b892d), commit `975de31eb83d87039ec88934fdc47d8c312b892d` (release v1.1.0.43). These are sample data for the `FIPS204` revision, not an AURORA certificate or a successful ACVTS submission.
+Source: **National Institute of Standards and Technology**, [ACVP-Server](https://github.com/usnistgov/ACVP-Server/tree/975de31eb83d87039ec88934fdc47d8c312b892d), commit `975de31eb83d87039ec88934fdc47d8c312b892d` (release v1.1.0.43). These are sample data for the `FIPS204` revision, not an ARETOVUS certificate or a successful ACVTS submission.
 
 Extracted on 2026-10-27. Changes: selected the ML-DSA-65 groups/cases below, omitted unused fields, and changed JSON representation to simple `name=value` records. Retained field values are unchanged. All seeds and expanded signing keys here are **public test material**, never wallet keys. Never use them for a real account. `NIST-NOTICE.txt` reproduces the complete upstream license notice; the data are not relicensed under the repository's MIT/Apache terms.
 
