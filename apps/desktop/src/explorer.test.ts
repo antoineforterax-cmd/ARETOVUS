@@ -42,6 +42,8 @@ describe("native explorer page trust boundary", () => {
       { ...p, blocks: [p.blocks[0], { ...p.blocks[1], height: 4 }] },
       { ...p, blocks: [p.blocks[0], { ...p.blocks[1], hash: '<script>' }] },
       { ...p, blocks: [p.blocks[0], { ...p.blocks[1], nonce_decimal: "01" }] },
+      { ...p, blocks: [p.blocks[0], { ...p.blocks[1], nonce_decimal: "18446744073709551616" }] },
+      { ...p, blocks: [p.blocks[0], { ...p.blocks[1], timestamp_decimal: "99999999999999999999" }] },
       { ...p, blocks: [p.blocks[0], { ...p.blocks[1], tx_count: -1 }] },
       { ...p, blocks: [p.blocks[0], { ...p.blocks[1], timestamp_decimal: 123 }] },
     ];
