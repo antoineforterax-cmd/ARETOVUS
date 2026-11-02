@@ -31,3 +31,12 @@ Le nouveau panneau « Explorateur de blocs » appelle `read_canonical_page` depu
 La page est **déclenchée à la demande**, et non à chaque rafraîchissement du nœud, afin de limiter la charge CPU/disque. La vue refuse des pages provenant d'un autre sommet que celui affiché dans le statut local. Il faut rafraîchir le statut puis la page après une réorganisation : l'identité du sommet ne garantit pas une finalité globale. La limite de 10 blocs par page utilisée côté UI est volontairement inférieure à celle du moteur Rust.
 
 **Prérequis supplémentaire :** construire `aretovus-explorer` depuis un commit où la PR #195 est intégrée et placer ce binaire dans le même répertoire approuvé que `aretovus-desktop` et `aretovus-local-bridge`. Le workflow Windows de cette PR ne prouve pas encore le packaging multi-OS, les ACL du dossier d'installation, ni la présence du compagnon chez les utilisateurs. Aucun wallet réel, clé, transaction, minage ou service HTTP n'est ajouté.
+
+
+## Apparence glassmorphism — amélioration visuelle facultative
+
+Le tableau de bord conserve une identité bleu nuit/or discret, avec des panneaux à effet verre dépoli **lorsque le moteur WebView prend en charge `backdrop-filter`**. Les fonds de remplacement restent suffisamment opaques pour lire les informations sans cet effet ; le texte, les valeurs du nœud et les contrôles restent des éléments React, et non des images.
+
+Principes : aucun CDN, image distante, import CSS externe ou police à télécharger ; bordures et focus clavier visibles, typographie et tableaux adaptés aux petits écrans, `prefers-reduced-motion`, `prefers-reduced-transparency` et `forced-colors` pris en compte au mieux. Le test `python apps/desktop/scripts/test_glass_style.py` vérifie ces contrats statiques et les avertissements de testnet, en complément des tests `npm test` et de la compilation `npm run build`.
+
+Ces contrôles ne remplacent **ni audit WCAG, ni vérification visuelle sur les différents WebView/écrans**. Le thème est purement cosmétique, sans modification de l'IPC Rust, du consensus ou des politiques de portefeuille. 
