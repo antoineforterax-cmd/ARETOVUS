@@ -1,0 +1,40 @@
+name: c1-hostile-admission
+on:
+  pull_request:
+    paths:
+      - "crates/aretovus-node/**"
+      - "scripts/testnet_hostile_admission_probe.py"
+      - ".github/workflows/c1-hostile-admission.yml"
+  push:
+    branches: [test/c1-hostile-admission-resource-bounds-20261102]
+    paths:
+      - "crates/aretovus-node/**"
+      - "scripts/testnet_hostile_admission_probe.py"
+      - ".github/workflows/c1-hostile-admission.yml"
+permissions:
+  contents: read
+jobs:
+  hostile-loopback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build ARETOVUS node without changing protocol
+        run: cargo build --locked -p aretovus-node
+      - name: Reject malformed frames while preserving legitimate wallet and sync traffic
+        run: |
+          python3 scripts/testnet_hostile_admission_probe.py \
+            --binary target/debug/aretovus-node \
+            --report target/c1-hostile-admission.json \
+            --max-wallet-seconds 1.5 \
+            --max-rss-mib 512 \
+            --max-cpu-seconds 20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c1-hostile-admission-evidence
+          path: target/c1-hostile-admission.json
+          retention-days: 14
+          if-no-files-found: warn
