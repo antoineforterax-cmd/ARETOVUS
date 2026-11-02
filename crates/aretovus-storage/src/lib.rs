@@ -1017,10 +1017,15 @@ fn replay_index_blocks(
 ) -> Result<AccountForkChain, StorageError> {
     require_real_storage_directory(&dir.join(BLOCK_DIRECTORY))?;
     let mut chain = None;
+    // Reuse path/name buffers during replay without skipping any disk read,
+    // checksum, block validation, or path-security checks.
+    let mut block_name = String::with_capacity(64 + 1 + BLOCK_EXTENSION.len());
+    let mut block_path = dir.join(BLOCK_DIRECTORY).join("block.aretblk");
     for block_id in ids {
-        let block_path = dir
-            .join(BLOCK_DIRECTORY)
-            .join(format!("{block_id}.{BLOCK_EXTENSION}"));
+        block_name.clear();
+        write!(&mut block_name, "{block_id}.{BLOCK_EXTENSION}")
+            .expect("writing to a String cannot fail");
+        block_path.set_file_name(&block_name);
         let encoded = read_bounded_limit(&block_path, MAX_ACCOUNT_BLOCK_BYTES)?;
         let block = AccountBlock::from_canonical_bytes(&encoded)?;
         if block.header.hash()? != *block_id {
