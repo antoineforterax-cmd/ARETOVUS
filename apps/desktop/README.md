@@ -23,3 +23,11 @@ Les fichiers de verrouillage npm et Cargo sont désormais présents sur cette br
 ## Reste à faire
 
 Audit et actualisation contrôlée des lockfiles, intégration packaging binaire côte-à-côte, test hôte Windows/Linux/macOS, cas de processus suspendu, chemin verrouillé, corruption de snapshot, refresh en cas de réorganisation et interface professionnelle. Ensuite wallet graphique testnet, minage et explorateur, via contrats dédiés et revue de sécurité.
+
+## Pages de blocs canoniques (PR empilée #196, dépendance #195)
+
+Le nouveau panneau « Explorateur de blocs » appelle `read_canonical_page` depuis l'hôte Tauri. L'hôte démarre uniquement le binaire Rust compagnon `aretovus-explorer` (PR #195) placé à côté de son propre exécutable, avec un dossier existant, un départ borné et une limite d'au plus 20 blocs. Il capture la sortie sans risque de blocage si elle dépasse la capacité du pipe, impose un timeout de 30 s, borne la réponse à 16 KiB, et **rejette** JSON malformé, discontinuité des parents, nombres JS non sûrs, faux tip et curseurs invalides. Les champs natifs timestamp et nonce (u64) passent dans la webview sous forme de **chaînes décimales** pour éviter tout arrondi JavaScript.
+
+La page est **déclenchée à la demande**, et non à chaque rafraîchissement du nœud, afin de limiter la charge CPU/disque. La vue refuse des pages provenant d'un autre sommet que celui affiché dans le statut local. Il faut rafraîchir le statut puis la page après une réorganisation : l'identité du sommet ne garantit pas une finalité globale. La limite de 10 blocs par page utilisée côté UI est volontairement inférieure à celle du moteur Rust.
+
+**Prérequis supplémentaire :** construire `aretovus-explorer` depuis un commit où la PR #195 est intégrée et placer ce binaire dans le même répertoire approuvé que `aretovus-desktop` et `aretovus-local-bridge`. Le workflow Windows de cette PR ne prouve pas encore le packaging multi-OS, les ACL du dossier d'installation, ni la présence du compagnon chez les utilisateurs. Aucun wallet réel, clé, transaction, minage ou service HTTP n'est ajouté.

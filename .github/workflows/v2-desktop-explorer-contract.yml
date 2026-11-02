@@ -1,0 +1,54 @@
+name: v2-desktop-explorer-contract
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/v2-desktop-explorer-contract.yml"
+  push:
+    branches: [feature/v2-desktop-canonical-explorer-20261102]
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/v2-desktop-explorer-contract.yml"
+permissions:
+  contents: read
+jobs:
+  ui-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm install --no-audit --no-fund
+      - name: Run malformed JSON and reorg tests
+        working-directory: apps/desktop
+        run: npm test
+      - name: Typecheck and build desktop UI
+        working-directory: apps/desktop
+        run: npm run build
+  rust-host:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install and build UI (Tauri build prerequisite)
+        working-directory: apps/desktop
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Validate Tauri host Rust format
+        run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+      - name: Compile native Tauri host including explorer module
+        run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Exercise native Rust host adversarial page parser
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml

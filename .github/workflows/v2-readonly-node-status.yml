@@ -1,0 +1,73 @@
+name: v2-readonly-node-status
+on:
+  pull_request:
+    paths:
+      - "scripts/aretovus_status_json.py"
+      - "scripts/test_aretovus_status_json.py"
+      - ".github/workflows/v2-readonly-node-status.yml"
+  push:
+    branches: [main, feature/v2-readonly-explorer-status-json-20261102]
+    paths:
+      - "scripts/aretovus_status_json.py"
+      - "scripts/test_aretovus_status_json.py"
+      - ".github/workflows/v2-readonly-node-status.yml"
+permissions:
+  contents: read
+
+jobs:
+  portable-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refuse forged read-only node status and private output
+        run: python -m unittest discover -s scripts -p test_aretovus_status_json.py -v
+
+  actual-local-node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Build the native experimental node
+        run: cargo build --locked -p aretovus-node
+      - name: Mine one disposable testnet block and read real verified JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)"
+          trap 'rm -rf "$root"' EXIT
+          mkdir -p "$root/ARETOVUS temporary data with spaces"
+          data="$root/ARETOVUS temporary data with spaces"
+          miner="$(printf '11%.0s' {1..32})"
+          timeout 60s target/debug/aretovus-node testnet mine --data-dir "$data" --miner "$miner" --count 1
+          python3 scripts/aretovus_status_json.py --node-binary target/debug/aretovus-node --data-dir "$data" > "$root/status.json"
+          python3 - "$root/status.json" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert d["schema_version"] == 1
+          assert d["status"] == "verified" and d["read_only"] is True
+          assert d["network"] == "testnet" and d["height"] == 1
+          assert len(d["tip"]) == 64
+          assert d["known_blocks"] >= 2
+          print("Local verified node JSON contract passed at height", d["height"])
+          PY
+          if python3 scripts/aretovus_status_json.py --node-binary target/debug/aretovus-node --data-dir "$root/nonexistent" > "$root/rejected.json"; then
+            echo "Missing state directory was improperly accepted" >&2
+            exit 1
+          fi
+          python3 - "$root/rejected.json" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          assert d["status"] == "error" and d["read_only"] is True
+          assert "nonexistent" not in str(d) and "Traceback" not in str(d)
+          print("Read-only JSON error contract passed")
+          PY
