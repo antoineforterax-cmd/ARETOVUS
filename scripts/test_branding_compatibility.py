@@ -32,15 +32,19 @@ def audit_full_tracked_tree() -> None:
         lower_path = item.lower()
         if OLD_BRAND in lower_path or any(token.lower() in lower_path for token in OLD_TOKENS):
             failures.append(f"outdated file path: {path}")
-        historical = path.startswith(("docs/consolidation/", "tests/", "fuzz/seeds/"))
-        historical = historical or (path.startswith("crates/") and "/tests/" in path)
+        # Historical evidence is immutable; active test sources and test READMEs
+        # must still be checked for obsolete branding.
+        historical = path.startswith(("docs/consolidation/", "fuzz/seeds/"))
+        historical = historical or (
+            path.startswith("tests/") and path.endswith((".txt", ".tsv"))
+        )
         if historical:
             continue
         data = (ROOT / path).read_bytes().lower()
         if path in ("LICENSE", "LICENSE-MIT"):
             # Keep legally required original contributor attribution intact.
-            assert original_credit in data, path
-            data = data.replace(original_credit, b"")
+            assert data.count(original_credit) == 1, path
+            data = data.replace(original_credit, b"", 1)
         if OLD_BRAND in data or any(token.lower() in data for token in OLD_TOKENS):
             failures.append(f"old protocol or brand marker: {path}")
         if re.search(rb"(?<![a-z0-9_])" + former_ticker + rb"(?![a-z0-9_])", data):
