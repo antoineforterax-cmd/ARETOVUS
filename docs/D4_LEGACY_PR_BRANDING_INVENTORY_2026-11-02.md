@@ -4,7 +4,7 @@
 
 ## Identité et provenance
 
-L'identité native opérationnelle est **ARETOVUS** : dépôt, crates, binaires, genèse, empreintes et formats réseau distincts du projet précédent (voir `docs/PROTOCOL_IDENTITY_MIGRATION.md` et `scripts/test_branding_compatibility.py`). Le libellé descriptif de `LICENSE` a été corrigé de l'ancien projet vers ARETOVUS ; **les mentions de copyright `AURORA contributors` dans `LICENSE` et `LICENSE-MIT` sont conservées délibérément** pour ne pas effacer des attributions historiques. Les droits d'origine doivent être examinés avant tout changement de crédits. Ne pas réécrire les commits Git, archives de tests ou états datés de 2026-10-29.
+L'identité native opérationnelle est **ARETOVUS** : dépôt, crates, binaires, genèse, empreintes et formats réseau distincts du projet précédent (voir `docs/PROTOCOL_IDENTITY_MIGRATION.md` et `scripts/test_branding_compatibility.py`). Le libellé descriptif de `LICENSE` a été corrigé de l'ancien projet vers ARETOVUS ; **les mentions de copyright des contributeurs d'origine dans `LICENSE` et `LICENSE-MIT` sont conservées délibérément** pour ne pas effacer des attributions historiques. Les droits d'origine doivent être examinés avant tout changement de crédits. Ne pas réécrire les commits Git, archives de tests ou états datés de 2026-10-29.
 
 La recherche indexée GitHub montre encore des références anciennes dans `docs/consolidation/` ; il s'agit d'archives datées et non de noms d'outils natifs. La présence de l'ancien nom dans les textes d'une PR **non fusionnée** n'implique pas que le code opérationnel l'utilise. Les scripts actifs sont contrôlés par le test de branding. Cet inventaire ne prétend pas une disparition de chaque mention historique.
 
@@ -20,7 +20,7 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 | [#124](https://github.com/antoineforterax-cmd/ARETOVUS/pull/124) | Guide contributeurs/licences daté ; références à l'ancienne marque à relire | **Porter sélectivement** des clarifications après audit des attributions et test de marque. |
 | [#125](https://github.com/antoineforterax-cmd/ARETOVUS/pull/125) | Navigation débutants, ancien texte de marque | **Rebaser/revoir** plutôt que fusionner tel quel. |
 | [#126](https://github.com/antoineforterax-cmd/ARETOVUS/pull/126) | Empilée sur #125 ; inclut des instructions d'agent | **Bloquer fusion directe** : relire chaque règle d'agent, préserver les décisions de protocole natives. |
-| [#127](https://github.com/antoineforterax-cmd/ARETOVUS/pull/127) | Assistant LAN Windows, utilise d'anciens noms de fichiers `AURORA-LAN` | Fermée sans fusion : assistant Windows sous l'ancienne identité, remplacé pour la CLI de base par #174 ; GUI non reprise. |
+| [#127](https://github.com/antoineforterax-cmd/ARETOVUS/pull/127) | Assistant LAN Windows, utilise d'anciens noms de fichiers liés à l'identité précédente | Fermée sans fusion : assistant Windows sous l'ancienne identité, remplacé pour la CLI de base par #174 ; GUI non reprise. |
 | [#128](https://github.com/antoineforterax-cmd/ARETOVUS/pull/128) | Empilée sur #127, assistant LAN macOS/Linux | Fermée sans fusion : assistant Unix sous l'ancienne identité, remplacé pour la CLI de base par #174 ; découverte automatique non reprise. |
 | [#129](https://github.com/antoineforterax-cmd/ARETOVUS/pull/129) | Campagne physique de 4 h inconclusive et diagnostics Windows | **Conserver les échecs** ; ne pas comptabiliser comme validation d'endurance C4. |
 | [#131](https://github.com/antoineforterax-cmd/ARETOVUS/pull/131) | Empilée sur #129 ; supervision CPU/RAM 4 h | **Instrumentation candidate C4/D1**, à tester sur nouvelle base ; ne pas inventer 4 ou 72 h de résultats. |
@@ -32,6 +32,6 @@ La recherche indexée GitHub montre encore des références anciennes dans `docs
 - [ ] Réconcilier ou fermer les PR dépassées uniquement après décision et revalidation, sans suppression d'archives ni de commits.
 - [x] Remplacer les assistants LAN historiques #127/#128 par la CLI native #174 intégrée et vérifiée sur les trois OS, sans revendiquer la GUI/découverte automatique ou les essais physiques C4.
 - [x] Réviser `AGENTS.md` et la politique d'implémentation pour séparer clairement l'historique du 29 octobre des règles actuelles, avec approbation explicite des changements de protocole.
-- [ ] Vérifier exhaustivement les références AURORA dans tous les **documents actifs** ; préserver les citations d'histoire, les licences et les résultats originaux.
+- [ ] Vérifier exhaustivement les références à l'ancien nom dans tous les **documents actifs** ; préserver les citations d'histoire, les licences et les résultats originaux.
 
 **D4 ne peut donc pas être cochée comme terminée sur la seule base de cette PR.** Aucun changement de consensus, format natif, émission, clé ou règle de réseau. Tester les modifications documentaires par `scripts/test_branding_compatibility.py` et la CI au SHA exact. L'étape E3 demeure **NO-GO pour extension publique** tant que les lacunes C4/D1–D4/E1/E2 pertinentes ne sont pas levées.
