@@ -1173,6 +1173,17 @@ fn decode_snapshot(
     replay_blocks(blocks, initial_difficulty, params, rewards, initial_state)
 }
 
+#[cfg(feature = "fuzz-internals")]
+/// Exercises the read-only v4 snapshot and v6 page parsers with untrusted bytes.
+/// Enabled only for the isolated cargo-fuzz workspace; no production API is changed.
+pub fn fuzz_parse_storage_bytes(bytes: &[u8]) {
+    let _ = decode_index_page(bytes, 0);
+    let _ = decode_snapshot(
+        bytes,
+        AccountLedger::new(aretovus_core::network::NetworkId::Testnet),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
