@@ -36,6 +36,10 @@ def main() -> None:
             assert all(token.lower() not in lowered for token in OLD_TOKENS), file
 
     assert read("README.md").startswith("# ARETOVUS")
+    # Legal history and copyright must not be erased in a branding change.
+    assert read("LICENSE").startswith("ARETOVUS is available, at your option,")
+    assert "Copyright (c) 2026 AURORA contributors" in read("LICENSE")
+    assert "Copyright (c) 2026 AURORA contributors" in read("LICENSE-MIT")
     assert 'src="assets/aretovus-logo.svg"' in read("README.md")
     assert 'src="../../assets/aretovus-logo.svg"' in read("docs/guide-fr/README.md")
     logo = read("assets/aretovus-logo.svg")
