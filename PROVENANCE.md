@@ -7,7 +7,7 @@ Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d
 
 ## Continuité des attributions après le renommage
 
-La mention `ARETOVUS contributors` utilisée dans les licences désigne le collectif des contributeurs du projet, y compris ceux intervenus avant son changement de nom. Le renommage de cette désignation ne constitue ni un transfert de droits, ni une suppression de contributions ou une validation de l'appartenance juridique des droits. Les textes MIT/Apache restent inchangés et les notices de licence antérieures demeurent consultables dans l'historique Git, notamment au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`.
+La mention `ARETOVUS contributors` utilisée dans les licences désigne le collectif des contributeurs du projet, y compris ceux intervenus avant son changement de nom. Le renommage de cette désignation ne constitue ni un transfert de droits, ni une suppression de contributions ou une validation de l'appartenance juridique des droits. Les textes MIT/Apache restent inchangés et les notices de licence antérieures demeurent consultables dans l'historique Git, notamment au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`. Consulter [l'histoire du projet](docs/PROJECT_HISTORY.md) pour les notices originelles et les références archivées.
 
 ## Ce qui a réellement été vérifié
 
