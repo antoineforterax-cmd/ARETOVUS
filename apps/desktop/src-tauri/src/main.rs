@@ -4,6 +4,7 @@ use std::{
     path::Path,
     process::{Command, Stdio},
     thread,
+    sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
 
@@ -11,7 +12,25 @@ const REQUEST: &[u8] = br#"{"schema_version":1,"method":"status"}"#;
 const MAX_OUTPUT: u64 = 4096;
 const DEADLINE: Duration = Duration::from_secs(30);
 
+// A compromised webview must not spawn unlimited expensive snapshot readers.
+static BRIDGE_BUSY: AtomicBool = AtomicBool::new(false);
+struct BridgeLease;
+impl BridgeLease {
+    fn acquire() -> Result<Self, String> {
+        BRIDGE_BUSY
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "bridge_busy".to_string())?;
+        Ok(Self)
+    }
+}
+impl Drop for BridgeLease {
+    fn drop(&mut self) {
+        BRIDGE_BUSY.store(false, Ordering::Release);
+    }
+}
+
 fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
+    let _single_reader = BridgeLease::acquire()?;
     if data_dir.is_empty() || data_dir.len() > 1024 || data_dir.contains('\0') {
         return Err("invalid_data_dir".into());
     }
@@ -100,4 +119,22 @@ fn main() {
         .invoke_handler(tauri::generate_handler![read_node_status])
         .run(tauri::generate_context!())
         .expect("failed to run ARETOVUS Desktop Lab");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn only_one_snapshot_reader_is_allowed() {
+        let first = BridgeLease::acquire().unwrap();
+        assert!(matches!(BridgeLease::acquire(), Err(ref s) if s == "bridge_busy"));
+        drop(first);
+        assert!(BridgeLease::acquire().is_ok());
+    }
+
+    #[test]
+    fn invalid_path_is_refused_before_starting_any_child() {
+        assert_eq!(bridge_status("").unwrap_err(), "invalid_data_dir");
+        assert_eq!(bridge_status("a".repeat(1025).as_str()).unwrap_err(), "invalid_data_dir");
+    }
 }
