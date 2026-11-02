@@ -1,0 +1,47 @@
+name: c3-native-tcp-100001
+on:
+  push:
+    branches: [volume/c3-native-100001-tcp-20261102]
+    paths: [".github/workflows/c3-native-tcp-100001.yml"]
+permissions:
+  contents: read
+jobs:
+  tcp-100001:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ARETOVUS_P2P_VOLUME_BLOCKS: "100001"
+      ARETOVUS_P2P_PROFILE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Record provenance and environment
+        run: |
+          printf 'SHA=%s; RUN=%s; BLOCKS=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$ARETOVUS_P2P_VOLUME_BLOCKS" | tee c3-provenance.log
+          uname -a | tee -a c3-provenance.log
+          df -h . | tee -a c3-provenance.log
+          grep MemTotal /proc/meminfo | tee -a c3-provenance.log
+      - name: Transfer 100001 blocks over real loopback TCP and replay persistent storage
+        shell: bash
+        run: |
+          test "$ARETOVUS_P2P_VOLUME_BLOCKS" = "100001"
+          /usr/bin/time -v cargo test --locked -p aretovus-node --lib p2p::tests::network_volume_tcp_sync_with_side_branch_and_disk_replay -- --exact --ignored --nocapture 2>&1 | tee c3-tcp-results.log
+          test "${PIPESTATUS[0]}" -eq 0
+          grep -Eq 'test result: ok\. 1 passed; 0 failed; 0 ignored;' c3-tcp-results.log
+          grep -q 'p2p sync phases:' c3-tcp-results.log
+          grep -q 'height=100001' c3-tcp-results.log
+      - name: Capture disk remaining after test
+        if: always()
+        run: df -h . > c3-final-disk.log
+      - name: Preserve exact-SHA volume evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c3-native-tcp-100001-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            c3-provenance.log
+            c3-tcp-results.log
+            c3-final-disk.log
