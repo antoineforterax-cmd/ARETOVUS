@@ -34,7 +34,14 @@ def audit_full_tracked_tree() -> None:
             failures.append(f"outdated file path: {path}")
         # Historical evidence is immutable; active test sources and test READMEs
         # must still be checked for obsolete branding.
-        historical = path.startswith(("docs/consolidation/", "fuzz/seeds/"))
+        # Only the three dated consolidation snapshots are exempt. New docs
+        # created in the same directory must still pass the branding audit.
+        historical = path in {
+            "docs/consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md",
+            "docs/consolidation/STATE_2026-10-29.md",
+            "docs/consolidation/state-2026-10-29.json",
+        }
+        historical = historical or path.startswith("fuzz/seeds/")
         historical = historical or (
             path.startswith("tests/") and path.endswith((".txt", ".tsv"))
         )
