@@ -99,3 +99,61 @@ jobs:
             fuzz/corpus/
           if-no-files-found: warn
           retention-days: 14
+
+  wallet-storage-fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned cargo-fuzz and nightly
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo +stable install cargo-fuzz --version 0.13.2 --locked
+      - name: Record exact code and tool provenance
+        shell: bash
+        run: |
+          mkdir -p target/wallet-storage-fuzz fuzz/corpus/wallet_inputs fuzz/corpus/storage_parsers
+          git rev-parse HEAD > target/wallet-storage-fuzz/checkout-sha.txt
+          printf 'github_sha=%s\nrun_id=%s\nwallet_seconds=180\nstorage_seconds=180\nmax_len_wallet=1024\nmax_len_storage=512\nrss_limit_mb=2048\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > target/wallet-storage-fuzz/config.txt
+          rustc +nightly -Vv > target/wallet-storage-fuzz/toolchain.txt
+      - name: Replay synthetic wallet and storage seeds
+        shell: bash
+        run: |
+          set -o pipefail
+          for seed in fuzz/seeds/wallet_inputs/*; do
+            cargo +nightly fuzz run wallet_inputs "$seed" -- -rss_limit_mb=2048 2>&1 | tee -a target/wallet-storage-fuzz/wallet-seeds.log
+          done
+          for seed in fuzz/seeds/storage_parsers/*; do
+            cargo +nightly fuzz run storage_parsers "$seed" -- -rss_limit_mb=2048 2>&1 | tee -a target/wallet-storage-fuzz/storage-seeds.log
+          done
+          cp fuzz/seeds/wallet_inputs/* fuzz/corpus/wallet_inputs/
+          cp fuzz/seeds/storage_parsers/* fuzz/corpus/storage_parsers/
+      - name: Fuzz native payment URI parsing and canonical roundtrips
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run wallet_inputs -- -max_total_time=180 -max_len=1024 -rss_limit_mb=2048 -print_final_stats=1 2>&1 | tee target/wallet-storage-fuzz/wallet-results.log
+      - name: Fuzz snapshot and index-page parsing
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run storage_parsers -- -max_total_time=180 -max_len=512 -rss_limit_mb=2048 -print_final_stats=1 2>&1 | tee target/wallet-storage-fuzz/storage-results.log
+      - name: Replay enriched wallet and storage corpora
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo +nightly fuzz run wallet_inputs fuzz/corpus/wallet_inputs -- -runs=0 -rss_limit_mb=2048 2>&1 | tee target/wallet-storage-fuzz/wallet-replay.log
+          cargo +nightly fuzz run storage_parsers fuzz/corpus/storage_parsers -- -runs=0 -rss_limit_mb=2048 2>&1 | tee target/wallet-storage-fuzz/storage-replay.log
+      - name: Archive evidence and crash inputs even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallet-storage-fuzz-evidence
+          path: |
+            target/wallet-storage-fuzz/
+            fuzz/corpus/wallet_inputs/
+            fuzz/corpus/storage_parsers/
+            fuzz/artifacts/wallet_inputs/
+            fuzz/artifacts/storage_parsers/
+          if-no-files-found: warn
+          retention-days: 14
