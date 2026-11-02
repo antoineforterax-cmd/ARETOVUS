@@ -57,12 +57,12 @@ footer {margin-top:45px;color:#7b8aa4;font-size:13px;border-top:1px solid #26324
 <body><main>
 <header><div class="mark" aria-hidden="true">A</div><div class="brand">ARETOVUS</div><span class="tag">TESTNET EXPÉRIMENTAL</span></header>
 <div class="eyebrow">Tableau de bord · Instantané local</div>
-<h1>État vérifié<br>du nœud.</h1>
-<p class="lead">Ce rapport a été généré à partir du nœud Rust local. Il ne se met pas à jour en direct et ne garantit pas une synchronisation avec l'ensemble du réseau.</p>
+<h1>Instantané<br>du nœud.</h1>
+<p class="lead">Cette page affiche un fichier JSON fourni à l'outil. Son format est contrôlé, mais sa provenance n'est pas authentifiée. Il n'y a aucune mise à jour en direct ni garantie de synchronisation globale.</p>
 <div class="grid" aria-label="État de la chaîne">
 <article><div class="label">Hauteur locale</div><div class="value">{height}</div><div class="muted">Blocs après la genèse</div></article>
 <article><div class="label">Blocs connus</div><div class="value">{known_blocks}</div><div class="muted">Incluant les branches secondaires</div></article>
-<article><div class="label">Réseau</div><div class="value">Testnet</div><span class="pill">Validation locale réussie</span></article>
+<article><div class="label">Réseau</div><div class="value">Testnet</div><span class="pill">Statut déclaré : vérifié</span></article>
 <article class="full"><div class="label">Empreinte du sommet (tip)</div><p class="mono">{tip}</p></article>
 <article class="full"><div class="label">Travail cumulé · Diagnostic interne</div><p class="mono">{chain_work}</p><p class="muted">Représentation debug non prévue pour des calculs financiers.</p></article>
 </div>
@@ -70,7 +70,7 @@ footer {margin-top:45px;color:#7b8aa4;font-size:13px;border-top:1px solid #26324
 <h2>Les autres modules arrivent par étapes</h2>
 <p>Wallet non custodial, contrôle du minage, explorateur des transactions et gestion des pairs P2P nécessitent le pont local sécurisé. Aucun de ces contrôles n'est simulé dans cette première vue.</p>
 </section>
-<footer>Source : aretovus-node testnet verify · Rapport local en lecture seule · Pas de clés privées · Pas de fonds réels · Aucune connexion réseau initiée par cette page.</footer>
+<footer>Source : fichier JSON fourni, provenance non authentifiée · Lecture seule · Pas de clés privées · Pas de fonds réels · Aucune connexion réseau initiée par cette page.</footer>
 </main></body></html>
 """
 
