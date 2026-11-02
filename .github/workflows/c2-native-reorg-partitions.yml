@@ -1,0 +1,44 @@
+name: c2-native-reorg-partitions
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/c2-native-reorg-partitions.yml"
+      - "scripts/testnet_partitions.py"
+      - "scripts/testnet_reconnect.py"
+      - "crates/aretovus-node/**"
+      - "crates/aretovus-consensus/**"
+  push:
+    branches: [test/c2-native-reorg-partitions-20261102]
+permissions:
+  contents: read
+jobs:
+  native-reorg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.99.1
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Compile ARETOVUS node on pinned SHA
+        run: cargo build --locked -p aretovus-node
+      - name: Validate signed ML-DSA-65 orphan re-insertion during background TCP sync
+        run: cargo test --locked -p aretovus-node --lib p2p::tests::background_tcp_sync_restores_orphaned_payment_and_pending_successor -- --exact
+      - name: Validate signed ML-DSA-65 orphan re-insertion after direct block RPC reorg
+        run: cargo test --locked -p aretovus-node --lib p2p::tests::direct_block_rpc_restores_orphans_after_tie_break_reorg -- --exact
+      - name: Three partition and autonomous-reconnection cycles, independent node directories
+        run: python3 scripts/testnet_partitions.py --binary target/debug/aretovus-node --output target/c2-partitions --rounds 3 | tee target/c2-partitions.log
+      - name: Reconnect after source loss and restart
+        run: python3 scripts/testnet_reconnect.py --binary target/debug/aretovus-node --output target/c2-reconnect | tee target/c2-reconnect.log
+      - name: Save proof of process-level convergence and restart
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c2-native-reorg-partition-evidence
+          retention-days: 14
+          path: |
+            target/c2-*.log
+            target/c2-partitions/*.json
+            target/c2-partitions/*.log
+            target/c2-reconnect/*.json
+            target/c2-reconnect/*.log
+          if-no-files-found: warn
