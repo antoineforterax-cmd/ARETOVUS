@@ -1,0 +1,84 @@
+name: v2-local-stdio-ipc
+on:
+  pull_request:
+    paths:
+      - "crates/aretovus-node/src/bin/aretovus-local-bridge.rs"
+      - "docs/planning/V2_LOCAL_STDIO_IPC.md"
+      - ".github/workflows/v2-local-stdio-ipc.yml"
+  push:
+    branches: [main, feature/v2-local-stdio-ipc-readonly-20261102]
+    paths:
+      - "crates/aretovus-node/src/bin/aretovus-local-bridge.rs"
+      - ".github/workflows/v2-local-stdio-ipc.yml"
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Test bounded local read-only request (real Rust)
+        run: cargo test --locked -p aretovus-node --bin aretovus-local-bridge
+      - name: Check clippy and native build
+        run: cargo clippy --locked -p aretovus-node --bin aretovus-local-bridge -- -D warnings
+  native-disposable-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build real node and local bridge
+        run: cargo build --locked --bin aretovus-node --bin aretovus-local-bridge
+      - name: Mine disposable block and verify local JSON IPC and rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          data="$tmp/ARETOVUS data with spaces"
+          mkdir -p "$data"
+          miner="$(printf '11%.0s' {1..32})"
+          timeout 90s target/debug/aretovus-node testnet mine --data-dir "$data" --miner "$miner" --count 1
+          printf '{"schema_version":1,"method":"status"}' | target/debug/aretovus-local-bridge --data-dir "$data" > "$tmp/verified.json"
+          python3 - "$tmp/verified.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              status = json.load(handle)
+          assert status["status"] == "verified" and status["read_only"] is True
+          assert status["schema_version"] == 1 and status["network"] == "testnet"
+          assert status["height"] == 1 and status["known_blocks"] >= 2
+          assert len(status["tip"]) == 64 and status["source"] == "aretovus-native-stdio"
+          assert status["chain_work_display"].startswith("ChainWork(")
+          print("Verified native stdio read-only testnet state at height 1")
+          PY
+          if printf '{"schema_version":1,"method":"sign"}' | target/debug/aretovus-local-bridge --data-dir "$data" > "$tmp/denied.json"; then
+            echo "A signing request was improperly accepted" >&2
+            exit 1
+          fi
+          python3 - "$tmp/denied.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              denied = json.load(handle)
+          assert denied == {"schema_version":1, "status":"error", "code":"invalid_request", "read_only":True}
+          print("Write/signing method rejected without secrets")
+          PY
+          if printf '{"schema_version":1,"method":"status"}' | target/debug/aretovus-local-bridge --data-dir "$tmp/absent" > "$tmp/absent.json"; then
+            echo "Nonexistent data dir improperly accepted" >&2
+            exit 1
+          fi
+          test ! -e "$tmp/absent"
+          python3 - "$tmp/absent.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              denied = json.load(handle)
+          assert denied["code"] == "invalid_data_dir" and denied["status"] == "error"
+          assert "absent" not in str(denied)
+          print("Missing directory not initialized, private path not leaked")
+          PY
