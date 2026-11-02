@@ -27,7 +27,7 @@ Ouvrir `aretovus-etat-local.html` directement dans son navigateur. Cette page co
 ## Limites et intégrations futures
 
 - Il faut **régénérer** les deux fichiers pour voir de nouvelles données : aucun rafraîchissement automatique ni réseau P2P en JavaScript.
-- La valeur `verified` indique qu'un dossier local a été relu et validé. Elle ne certifie **ni le meilleur tip du réseau**, ni l'absence d'attaque P2P ou de réorganisation.
+- Si le JSON est produit directement par l'adaptateur officiel à partir du vrai nœud local, `verified` signifie que ce processus de lecture a réussi. **La page HTML seule ne sait pas authentifier un fichier JSON** : un fichier modifié à la main pourrait mentir, même avec un schéma valide. Elle affiche donc un statut *déclaré*, sans garantir la provenance, le meilleur tip du réseau, ni l'absence d'attaque P2P ou de réorganisation.
 - Les fonctionnalités wallet graphique, minage, recherche de transactions/blocs/adresses et carte des pairs seront ajoutées via l'**API locale sécurisée** proposée dans [#180](https://github.com/antoineforterax-cmd/ARETOVUS/issues/180), pas par un accès direct depuis cette page à un socket P2P.
 - Cette version ne doit jamais afficher de clés, seed, mot de passe, chemin personnel ou autres données de wallet. **Aucun fonds réel**.
 
