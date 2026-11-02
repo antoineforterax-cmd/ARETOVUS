@@ -4,7 +4,7 @@
 
 ## Identité et provenance
 
-L'identité native opérationnelle est **ARETOVUS** : dépôt, crates, binaires, genèse, empreintes et formats réseau distincts du projet précédent (voir `docs/PROTOCOL_IDENTITY_MIGRATION.md` et `scripts/test_branding_compatibility.py`). Le libellé descriptif de `LICENSE` a été corrigé de l'ancien projet vers ARETOVUS ; **les mentions de copyright des contributeurs d'origine dans `LICENSE` et `LICENSE-MIT` sont conservées délibérément** pour ne pas effacer des attributions historiques. Les droits d'origine doivent être examinés avant tout changement de crédits. Ne pas réécrire les commits Git, archives de tests ou états datés de 2026-10-29.
+L'identité native opérationnelle est **ARETOVUS** : dépôt, crates, binaires, genèse, empreintes et formats réseau distincts du projet précédent (voir `docs/PROTOCOL_IDENTITY_MIGRATION.md` et `scripts/test_branding_compatibility.py`). Le libellé du projet et les notices des contributeurs ont été actualisés sur la PR #193 ; leur ancienne formulation est reproduite dans [l'histoire du projet](PROJECT_HISTORY.md) et reste consultable dans les commits d'origine. **La conformité des notices modifiées doit être confirmée avec les titulaires des droits avant redistribution**. Ne pas réécrire les commits Git, archives de tests ou états datés de 2026-10-29.
 
 La recherche indexée GitHub montre encore des références anciennes dans `docs/consolidation/` ; il s'agit d'archives datées et non de noms d'outils natifs. La présence de l'ancien nom dans les textes d'une PR **non fusionnée** n'implique pas que le code opérationnel l'utilise. Les scripts actifs sont contrôlés par le test de branding. Cet inventaire ne prétend pas une disparition de chaque mention historique.
 
