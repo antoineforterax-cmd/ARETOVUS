@@ -44,17 +44,33 @@ def main() -> int:
             raise FileNotFoundError(source)
     DIST.mkdir(exist_ok=True)
     package = DIST / f"aretovus-testnet-{operating_system}-{architecture}-{revision}.zip"
+    # Fixed ZIP timestamps, creator OS, mode bits and member order make
+    # archives independent of source mtimes and file-system permissions.
+    # Cross-platform executables remain different builds by design.
+    def archive_entry(name: str, data: bytes, *, executable: bool = False) -> zipfile.ZipInfo:
+        info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.create_system = 3
+        info.external_attr = ((0o100755 if executable else 0o100644) << 16)
+        return info
+
     checksums = []
-    with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for source, destination in files:
             data = source.read_bytes()
-            archive.write(source, arcname=destination)
+            archive.writestr(
+                archive_entry(destination, data, executable=destination.startswith("bin/")),
+                data,
+                compress_type=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            )
             checksums.append(f"{hashlib.sha256(data).hexdigest()}  {destination}")
         archive.writestr(
-            "SHA256SUMS.txt", "\n".join(checksums) + "\n"
+            archive_entry("SHA256SUMS.txt", b""),
+            "\n".join(checksums) + "\n",
         )
         archive.writestr(
-            "EXPERIMENTAL_TESTNET.txt",
+            archive_entry("EXPERIMENTAL_TESTNET.txt", b""),
             "ARETOVUS experimental testnet build.\n"
             f"Source commit: {revision}\n"
             "Unsigned CI artifact. No mainnet or real-funds security claim.\n"
