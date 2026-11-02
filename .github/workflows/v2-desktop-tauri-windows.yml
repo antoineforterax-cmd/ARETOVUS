@@ -18,8 +18,13 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/desktop
         run: npm install --no-audit --no-fund
+      - name: Reject malformed frontend node responses
+        working-directory: apps/desktop
+        run: npm test
       - name: Compile verified frontend
         working-directory: apps/desktop
         run: npm run build
       - name: Verify Tauri host compiles on Windows
         run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Run native Rust desktop contract unit tests
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
