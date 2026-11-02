@@ -118,6 +118,7 @@ def create_archive(args: argparse.Namespace) -> None:
         "release_approved": False,
         "source_commit": source_sha,
         "binaries_sha256": hashes,
+        "guide_sha256": digest_bytes(README.encode("utf-8")),
     }
     payloads = {
         MANIFEST: (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode(),
@@ -166,6 +167,18 @@ def verify_archive(path: Path) -> None:
             or re.fullmatch(r"[0-9a-f]{40}", manifest["source_commit"]) is None
         ):
             raise ValueError("Invalid lab metadata")
+        if set(manifest) != {
+            "schema_version", "product", "network", "read_only_gui",
+            "signed", "release_approved", "source_commit",
+            "binaries_sha256", "guide_sha256",
+        } or manifest["product"] != "ARETOVUS Desktop Lab":
+            raise ValueError("Unexpected metadata keys or product identity")
+        guide_hash = manifest["guide_sha256"]
+        if not isinstance(guide_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", guide_hash):
+            raise ValueError("Invalid guide hash format")
+        guide_bytes = archive.read(ROOT + GUIDE)
+        if digest_bytes(guide_bytes) != guide_hash or guide_bytes != README.encode("utf-8"):
+            raise ValueError("Guide checksum mismatch or unexpected safety guidance")
         hashes = manifest.get("binaries_sha256")
         if not isinstance(hashes, dict) or set(hashes) != set(BINARIES):
             raise ValueError("Incorrect companion inventory")
