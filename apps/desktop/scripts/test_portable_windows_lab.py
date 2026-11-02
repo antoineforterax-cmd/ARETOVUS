@@ -93,6 +93,26 @@ class PortableLabTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "checksum mismatch"):
             lab.verify_archive(bad)
 
+    def test_tampered_safety_guide_or_manifest_injection_is_rejected(self):
+        original = self.root / "good.zip"
+        self.silent(lambda: self.pack(original))
+        for target, suffix in ((lab.GUIDE, "guide"), (lab.MANIFEST, "metadata")):
+            bad = self.root / (suffix + "-tampered.zip")
+            with zipfile.ZipFile(original) as src, zipfile.ZipFile(bad, "w") as dst:
+                for item in src.infolist():
+                    data = src.read(item.filename)
+                    if item.filename == lab.ROOT + target:
+                        if target == lab.GUIDE:
+                            data = data.replace(b"DO NOT disable", b"PLEASE disable")
+                        else:
+                            import json
+                            content = json.loads(data)
+                            content["untrusted_extra"] = "unexpected"
+                            data = json.dumps(content).encode()
+                    dst.writestr(item, data)
+            with self.assertRaisesRegex(ValueError, "Guide checksum|Unexpected metadata"):
+                lab.verify_archive(bad)
+
     def test_extra_and_duplicate_entries_are_rejected(self):
         out = self.root / "good.zip"
         self.silent(lambda: self.pack(out))
