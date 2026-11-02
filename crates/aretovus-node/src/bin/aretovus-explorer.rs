@@ -1,6 +1,6 @@
 //! ARETOVUS V2/V5: strictly bounded canonical block page from a verified
 //! LOCAL testnet snapshot. No HTTP, P2P sessions, keys or consensus writes.
-use std::{env, error::Error, fmt::Write as FmtWrite, path::PathBuf, process};
+use std::{env, fmt::Write as FmtWrite, path::PathBuf, process};
 
 use aretovus_consensus::{
     account_fork_chain::AccountForkChain,
