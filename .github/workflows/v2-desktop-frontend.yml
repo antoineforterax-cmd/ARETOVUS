@@ -1,0 +1,26 @@
+name: v2-desktop-frontend
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/v2-desktop-frontend.yml"
+permissions:
+  contents: read
+jobs:
+  types-and-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install version-constrained app dependencies (temporary: lockfile pending)
+        run: npm install --no-audit --no-fund
+      - name: Validate JSON trust boundary
+        run: npm test
+      - name: Type-check and build React/Vite dashboard
+        run: npm run build

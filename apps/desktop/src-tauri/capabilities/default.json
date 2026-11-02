@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Minimal local main-window capability; no plugins, filesystem or shell permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}
