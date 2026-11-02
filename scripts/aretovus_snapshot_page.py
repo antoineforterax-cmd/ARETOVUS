@@ -97,12 +97,18 @@ def checked_payload(data: object) -> dict[str, object]:
 
 def render(data: object) -> str:
     status = checked_payload(data)
-    return DOCUMENT.format(
-        height=f"{status['height']:,}".replace(",", " "),
-        known_blocks=f"{status['known_blocks']:,}".replace(",", " "),
-        tip=escape(str(status["tip"])),
-        chain_work=escape(str(status["chain_work_display"])),
-    )
+    # Direct replacement keeps CSS braces literal and substitutes only
+    # fixed, explicitly validated placeholders. There is no HTML injection.
+    result = DOCUMENT
+    values = {
+        "{height}": f"{status['height']:,}".replace(",", " "),
+        "{known_blocks}": f"{status['known_blocks']:,}".replace(",", " "),
+        "{tip}": escape(str(status["tip"])),
+        "{chain_work}": escape(str(status["chain_work_display"])),
+    }
+    for marker, value in values.items():
+        result = result.replace(marker, value)
+    return result
 
 
 def write_atomic(path: Path, contents: str) -> None:
