@@ -6,14 +6,13 @@ Ce fichier s'applique aux travaux sur cette branche. Guide complet de consolidat
 
 ARETOVUS est une blockchain Rust **expérimentale** ; aucun fonds réel ni annonce de sécurité mainnet. Le responsable fixe la vision, les orientations architecturales et les décisions de protocole. Codex accélère l'implémentation, les tests, la revue et la documentation. Ne jamais inventer une approbation, une preuve, un test réussi ou un audit indépendant.
 
-## Situation et branches
+## Situation et branches — état expérimental natif à revalider
 
-- `main` : prototype historique ; PR #1 : `docs/phase-0-protocol` vers `main`.
-- PR #2 : `feature/emission-schedule-v0` vers `docs/phase-0-protocol`, fondation du testnet avancé.
-- PR #12–#16 : travaux indépendants depuis le testnet.
-- Chaîne A : #17 → #18 → #20 → #21 → #22 → #23 → #24 ; #19 part de #18 en parallèle de #20.
-- Chaîne B : #25 → #26 → #27 → #28 → #29 → #35 → #36.
-- État relevé le 29 octobre 2026 ; **reconsulter GitHub**, car bases, SHA, statuts et nombre de PR peuvent changer.
+- `main` contient le réseau expérimental **ARETOVUS natif** depuis la migration A3 du 1er novembre 2026. Cette identité de protocole est volontairement incompatible avec les anciennes données et clés.
+- Les campagnes A1–A4, B1–B4 et C1 disposent de fusions et de preuves précisées dans la [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Les workflows C2 [#166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166), C3 [#167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) et le packaging partiel E2 [#168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168) ont été fusionnés le 2 novembre ; leur **périmètre borné** ne clôt pas automatiquement toute la phase.
+- La décision préliminaire E3 [#169](https://github.com/antoineforterax-cmd/ARETOVUS/pull/169) est **NO-GO** pour un testnet public élargi, un mainnet ou de vrais fonds. L'audit indépendant **E1 est réservé à l'ultime étape** à la demande du responsable ; il n'a pas eu lieu.
+- Les PR historiques #108/#109/#112/#115/#116/#124–#129/#131 ne doivent pas être fusionnées en cascade. Vérifier base, tête, SHA, conflits et CI avant de reconstruire les composants utiles, notamment les assistants LAN obsolètes.
+- Toute affirmation de statut dans ce fichier est datée : **la version réellement sur `main`, ses tests et les issues actuelles priment**. Ne jamais substituer une preuve de branche ancienne à une preuve du réseau natif.
 
 ## Procédure obligatoire, dans cet ordre
 
@@ -50,6 +49,6 @@ Donner : `branche/commit de départ ; fichiers ; résultat ; nouvelle branche/co
 
 La référence reste le **comportement réel du code sur le SHA ciblé**, et non une description historique ou une affirmation d'agent.
 
-## Migration native ARETOVUS (branche expérimentale)
+## Identité native ARETOVUS (intégrée au testnet expérimental)
 
-Le responsable demande une identité **ARETOVUS** dans les domaines de hachage, la genèse, les magics de fichier, les URI, le wallet et les outils. Cette demande est mise en œuvre **uniquement sur la branche de migration**, en tant que changement de réseau volontairement incompatible. Ne pas réécrire l'histoire Git, ne pas supprimer d'archives, ne pas migrer automatiquement les clés/soldes et **ne jamais fusionner sans revue des tests et accord explicite**. Lire [la migration de protocole](docs/PROTOCOL_IDENTITY_MIGRATION.md).
+La nouvelle identité ARETOVUS est intégrée dans `main` depuis A3. Elle distingue domaines de hachage, genèse, marqueurs de stockage, URI, wallet et outils du réseau antérieur. **Cette intégration ne signifie ni migration des soldes, ni sécurité mainnet.** Ne pas réécrire l'historique Git, supprimer les archives ou importer les clés/soldes de l'ancien réseau ; employer des dossiers de données neufs. Les décisions ultérieures de consensus, formats ou monnaie restent soumises à une approbation dédiée, des tests et une revue avant fusion. Lire [la migration de protocole](docs/PROTOCOL_IDENTITY_MIGRATION.md).
