@@ -76,6 +76,31 @@ class DeterministicPackageTest(unittest.TestCase):
                 package_testnet.BIN_DIR = original_bin
                 package_testnet.DIST = original_dist
 
+    def test_symlinked_ancestor_of_binary_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="aretovus-symlink-package-") as temp:
+            root = Path(temp)
+            trusted = root / "original-bin"
+            trusted.mkdir()
+            suffix = ".exe" if os.name == "nt" else ""
+            checksums = []
+            for component in ("node", "wallet"):
+                relative = f"bin/aretovus-{component}{suffix}"
+                data = f"synthetic-{component}".encode()
+                (trusted / f"aretovus-{component}{suffix}").write_bytes(data)
+                checksums.append(hashlib.sha256(data).hexdigest() + "  " + relative)
+            (root / "SHA256SUMS.txt").write_text(
+                "\n".join(checksums) + "\n", encoding="utf-8"
+            )
+            (root / "EXPERIMENTAL_TESTNET.txt").write_text(
+                "Source commit: abcdef123456\n", encoding="utf-8"
+            )
+            try:
+                (root / "bin").symlink_to(trusted, target_is_directory=True)
+            except OSError:
+                self.skipTest("directory symlinks unavailable without privileges")
+            with self.assertRaisesRegex(ValueError, "Symbolic link in package path"):
+                lan_pair.inspect_package(root)
+
 
 if __name__ == "__main__":
     unittest.main()
