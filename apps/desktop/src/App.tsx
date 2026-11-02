@@ -10,31 +10,67 @@ export function App() {
   const [error, setError] = useState("");
   const [updated, setUpdated] = useState<Date | null>(null);
   const busy = useRef(false);
+  const activeDir = useRef("");
+  const pendingDir = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async (dataDir: string) => {
-    if (busy.current) return;
+    if (busy.current) {
+      // Coalesce requests: only the currently selected directory may win.
+      pendingDir.current = dataDir;
+      return;
+    }
     busy.current = true;
     setLoading(true);
     try {
       const response = await invoke<unknown>("read_node_status", { dataDir });
-      setData(parseNodeStatus(response));
-      setError("");
-      setUpdated(new Date());
+      const verified = parseNodeStatus(response);
+      if (activeDir.current === dataDir) {
+        setData(verified);
+        setError("");
+        setUpdated(new Date());
+      }
     } catch {
-      setError("Lecture impossible : dossier, binaire ou snapshot invalide. Vérifie le testnet local.");
-      setData(null);
-      setUpdated(null);
+      if (activeDir.current === dataDir) {
+        setError("Lecture impossible : dossier, binaire ou snapshot invalide. Vérifie le testnet local.");
+        setData(null);
+        setUpdated(null);
+      }
     } finally {
       busy.current = false;
-      setLoading(false);
+      if (activeDir.current === dataDir) setLoading(false);
+      const next = pendingDir.current;
+      pendingDir.current = null;
+      if (next && next === activeDir.current) {
+        void refresh(next);
+      } else if (activeDir.current && activeDir.current !== dataDir) {
+        void refresh(activeDir.current);
+      } else if (!activeDir.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
+  const connect = (nextDir: string) => {
+    if (!nextDir) return;
+    if (nextDir === selected) {
+      void refresh(nextDir);
+      return;
+    }
+    // Mark the old asynchronous response stale *before* React rerenders.
+    activeDir.current = nextDir;
+    pendingDir.current = nextDir;
+    setData(null);
+    setUpdated(null);
+    setError("");
+    setSelected(nextDir);
+  };
+
   useEffect(() => {
+    activeDir.current = selected;
     if (!selected) return;
     void refresh(selected);
-    // Each refresh invokes the native bridge; no remote service or P2P socket in JS.
+    // Each refresh invokes native verification; never a public HTTP API.
     const timer = window.setInterval(() => void refresh(selected), 20_000);
     return () => window.clearInterval(timer);
   }, [selected, refresh]);
@@ -44,7 +80,7 @@ export function App() {
     <main>
       <section className="hero"><div className="eyebrow">NŒUD LOCAL • LECTURE SEULE</div><h1>Ton réseau.<br /><em>Ton nœud.</em></h1>
         <p>Affichage de l'état réel relu par le pont Rust. Un instantané local n'est ni une connexion P2P prouvée ni une garantie de finalité.</p></section>
-      <form className="connect" onSubmit={e => { e.preventDefault(); if (folder.trim()) { setSelected(folder.trim()); if (folder.trim() === selected) void refresh(selected); } }}>
+      <form className="connect" onSubmit={e => { e.preventDefault(); connect(folder.trim()); }}>
         <label htmlFor="path">Dossier de données ARETOVUS (testnet uniquement)</label>
         <div className="formline"><input id="path" value={folder} maxLength={1024} onChange={e => setFolder(e.target.value)} placeholder="Chemin local du dossier testnet" autoComplete="off" spellCheck={false}/>
         <button disabled={!folder.trim() || loading} type="submit">{loading ? "Vérification…" : "Connecter le nœud"}</button></div>
