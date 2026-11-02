@@ -1,0 +1,34 @@
+name: v2-desktop-tauri-host
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/v2-desktop-tauri-windows.yml"
+permissions:
+  contents: read
+jobs:
+  windows-host-check:
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm install --no-audit --no-fund
+      - name: Reject malformed frontend node responses
+        working-directory: apps/desktop
+        run: npm test
+      - name: Compile verified frontend
+        working-directory: apps/desktop
+        run: npm run build
+      - name: Verify Tauri host compiles on Windows
+        run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Run native Rust desktop contract unit tests
+        run: cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+      - name: Build ARETOVUS native node and bridge from pinned workspace
+        run: cargo build --workspace --locked -p aretovus-node --bin aretovus-node --bin aretovus-local-bridge
+      - name: Exercise real Rust node and bridge with disposable testnet data
+        run: python apps/desktop/scripts/test_native_integration.py --node target/debug/aretovus-node.exe --bridge target/debug/aretovus-local-bridge.exe
