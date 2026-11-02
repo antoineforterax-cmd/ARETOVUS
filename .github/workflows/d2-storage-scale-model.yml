@@ -1,0 +1,31 @@
+name: d2-storage-scale-model
+on:
+  pull_request:
+    paths:
+      - "scripts/scale_cost_model.py"
+      - "scripts/test_scale_cost_model.py"
+      - ".github/workflows/d2-storage-scale-model.yml"
+  push:
+    branches: [analysis/d2-big-block-scale-envelope-20261102]
+permissions:
+  contents: read
+jobs:
+  exact-estimates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify model and historical reference vectors
+        run: python3 -m unittest discover -s scripts -p 'test_scale_cost_model.py'
+      - name: Emit model-only 1M/10M/100M/500M cost envelope
+        run: |
+          python3 scripts/scale_cost_model.py > d2-theoretical-scale.json
+          python3 scripts/scale_cost_model.py --blocks 1000000 --assumed-bytes-per-block 1024 > d2-illustrative-size.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d2-theoretical-only-model-evidence
+          path: |
+            d2-theoretical-scale.json
+            d2-illustrative-size.json
+          retention-days: 14
+          if-no-files-found: error
