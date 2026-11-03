@@ -26,6 +26,8 @@ SUMS = "SHA256SUMS.txt"
 GUIDE = "README-LAB.txt"
 MAX_EXE = 256 * 1024 * 1024
 MAX_METADATA = 16 * 1024
+MAX_PE_HEADER_OFFSET = 4096
+PE_PREFIX_BYTES = MAX_PE_HEADER_OFFSET + 26
 TIME = (2026, 11, 2, 0, 0, 0)
 
 README = """ARETOVUS DESKTOP LAB — UNSIGNED EXPERIMENTAL TESTNET ONLY
@@ -68,6 +70,26 @@ def file_digest(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validate_pe_header(header: bytes, name: str) -> None:
+    """Reject fake MZ files and non-AMD64 Windows binaries before packaging.
+
+    This is a format sanity check, NOT code-signing or malware analysis.
+    """
+    if len(header) < 64 or header[:2] != b"MZ":
+        raise ValueError(f"Companion is not a Windows PE executable: {name}")
+    pe_offset = int.from_bytes(header[0x3C:0x40], "little")
+    if not 64 <= pe_offset <= MAX_PE_HEADER_OFFSET or len(header) < pe_offset + 26:
+        raise ValueError(f"Invalid Windows PE header offset: {name}")
+    if header[pe_offset:pe_offset + 4] != b"PE\\x00\\x00":
+        raise ValueError(f"Invalid Windows PE signature: {name}")
+    machine = int.from_bytes(header[pe_offset + 4:pe_offset + 6], "little")
+    if machine != 0x8664:
+        raise ValueError(f"Expected Windows AMD64 architecture: {name}")
+    optional_magic = int.from_bytes(header[pe_offset + 24:pe_offset + 26], "little")
+    if optional_magic != 0x20B:
+        raise ValueError(f"Expected PE32+ Windows executable: {name}")
+
+
 def validate_binary(path: Path, name: str) -> Path:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"Missing or symlinked companion: {name}")
@@ -75,8 +97,7 @@ def validate_binary(path: Path, name: str) -> Path:
     if size < 2 or size > MAX_EXE:
         raise ValueError(f"Invalid native binary size: {name}")
     with path.open("rb") as handle:
-        if handle.read(2) != b"MZ":
-            raise ValueError(f"Companion is not a Windows PE executable: {name}")
+        validate_pe_header(handle.read(PE_PREFIX_BYTES), name)
     return path
 
 
@@ -197,10 +218,9 @@ def verify_archive(path: Path) -> None:
                 raise ValueError(f"Bad hash format: {name}")
             digest = hashlib.sha256()
             with archive.open(ROOT + name) as handle:
-                first = handle.read(2)
-                if first != b"MZ":
-                    raise ValueError(f"Not a Windows PE executable: {name}")
-                digest.update(first)
+                prefix = handle.read(PE_PREFIX_BYTES)
+                validate_pe_header(prefix, name)
+                digest.update(prefix)
                 for block in iter(lambda: handle.read(1024 * 1024), b""):
                     digest.update(block)
             if digest.hexdigest() != sha:
