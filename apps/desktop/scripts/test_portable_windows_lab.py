@@ -24,7 +24,15 @@ class PortableLabTests(unittest.TestCase):
             path = self.root / name
             # Minimal PE magic fixture for PACKAGING validation only. It is
             # explicitly not an executable or a demonstration of a running app.
-            path.write_bytes(b"MZ" + (name * 8).encode())
+            # Synthetic x64 PE header for archive validation only. The bytes
+            # are not executable and do not substitute a real Windows build.
+            image = bytearray(0x80 + 26)
+            image[:2] = b"MZ"
+            image[0x3C:0x40] = (0x80).to_bytes(4, "little")
+            image[0x80:0x84] = b"PE\\0\\0"
+            image[0x84:0x86] = (0x8664).to_bytes(2, "little")
+            image[0x80 + 24:0x80 + 26] = (0x20B).to_bytes(2, "little")
+            path.write_bytes(bytes(image) + (name * 8).encode())
             self.binaries[name] = path
 
     def tearDown(self) -> None:
@@ -71,6 +79,20 @@ class PortableLabTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing"):
             self.pack(out)
         self.assertFalse(out.exists())
+
+    def test_mz_only_fake_windows_executable_is_rejected(self):
+        target = self.binaries[lab.BINARIES[0]]
+        target.write_bytes(b"MZ" + b"fake binary" * 12)
+        with self.assertRaisesRegex(ValueError, "PE|Windows"):
+            self.pack(self.root / "fake-mz.zip")
+
+    def test_rejects_windows_pe_of_wrong_architecture(self):
+        target = self.binaries[lab.BINARIES[1]]
+        with target.open("r+b") as file:
+            file.seek(0x84)
+            file.write((0x14C).to_bytes(2, "little"))  # i386, not AMD64
+        with self.assertRaisesRegex(ValueError, "AMD64|architecture"):
+            self.pack(self.root / "wrong-arch.zip")
 
     def test_rejects_invalid_source_commit_or_overwriting_existing_archive(self):
         out = self.root / "invalid.zip"
