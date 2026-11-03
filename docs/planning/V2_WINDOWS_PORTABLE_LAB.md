@@ -22,7 +22,8 @@ Workflow [`v2-portable-windows-lab.yml`](../../.github/workflows/v2-portable-win
 3. Builds Rust **debug** verrouillés de Tauri et des trois binaires natifs, même checkout/commit.
 4. Sur un dossier testnet temporaire avec espaces : miner un bloc jetable avec le vrai nœud Rust, vérifier hauteur/tip par le pont stdio et blocs 0/1 par l'explorateur ; rejeter méthodes de signature, limites de page et chemins absents.
 5. Assembleur Python : contrôle présence, type PE (signature `MZ`, vérification de format minimale seulement), taille maximale et absence de liens symboliques ; ZIP à structure fixe sans chemins arbitraires ; SHA-256 de chaque binaire et `manifest.json` avec SHA exact du checkout, avertissements explicites `signed:false` et `release_approved:false`.
-6. Vérification indépendante du ZIP par le script de contrôle avant dépôt de l'artefact GitHub (rétention **3 jours**). Le test adversarial refuse fichiers ajoutés, doublons, données modifiées, manifestes `mainnet`, limites dépassées, SHA incorrect, entrée non Windows et remplacement d'archive.
+6. Vérification indépendante du ZIP par le script de contrôle, **extraction uniquement après vérification de l'inventaire fixe**, puis exécution des trois vrais binaires de testnet extraits dans un dossier temporaire contenant des espaces. On vérifie de nouveau le bloc miné, le pont IPC, l'explorateur et l'absence de modification des binaires ou de création de fichiers à côté de l'application. Le binaire GUI est présent et haché, **mais aucun test interactif de fenêtre Tauri n'est revendiqué**.
+7. Dépôt de l'artefact GitHub (rétention **3 jours**) uniquement si les étapes précédentes passent. Le test adversarial refuse fichiers ajoutés, doublons, données modifiées, manifestes `mainnet`, limites dépassées, SHA incorrect, entrée non Windows et remplacement d'archive.
 
 Exécuter une vérification locale sans extraire ni exécuter les fichiers :
 
