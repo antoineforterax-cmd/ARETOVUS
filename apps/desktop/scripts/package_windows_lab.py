@@ -80,7 +80,7 @@ def validate_pe_header(header: bytes, name: str) -> None:
     pe_offset = int.from_bytes(header[0x3C:0x40], "little")
     if not 64 <= pe_offset <= MAX_PE_HEADER_OFFSET or len(header) < pe_offset + 26:
         raise ValueError(f"Invalid Windows PE header offset: {name}")
-    if header[pe_offset:pe_offset + 4] != b"PE\\x00\\x00":
+    if header[pe_offset:pe_offset + 4] != bytes((80, 69, 0, 0)):
         raise ValueError(f"Invalid Windows PE signature: {name}")
     machine = int.from_bytes(header[pe_offset + 4:pe_offset + 6], "little")
     if machine != 0x8664:
