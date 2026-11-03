@@ -26,9 +26,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--node", type=Path, required=True)
     parser.add_argument("--bridge", type=Path, required=True)
+    parser.add_argument("--explorer", type=Path, required=False)
     args = parser.parse_args()
     node = args.node.resolve(strict=True)
     bridge = args.bridge.resolve(strict=True)
+    explorer = args.explorer.resolve(strict=True) if args.explorer is not None else None
     with tempfile.TemporaryDirectory(prefix="ARETOVUS desktop IPC with spaces ") as temp:
         root = Path(temp)
         data = root / "fresh testnet directory"
@@ -49,6 +51,28 @@ def main() -> int:
         assert state["source"] == "aretovus-native-stdio"
         assert state["height"] == 1 and state["known_blocks"] >= 2
         assert len(state["tip"]) == 64
+
+        if explorer is not None:
+            page = subprocess.run(
+                [str(explorer), "--data-dir", str(data), "--start", "0", "--limit", "2"],
+                capture_output=True, check=False, timeout=30,
+            )
+            assert page.returncode == 0, "Native explorer refused the real testnet snapshot"
+            assert len(page.stdout) <= 16 * 1024
+            blocks = json.loads(page.stdout)
+            assert blocks["network"] == "testnet" and blocks["read_only"] is True
+            assert blocks["status"] == "verified_local"
+            assert blocks["source"] == "aretovus-native-explorer"
+            assert blocks["chain_tip"] == state["tip"]
+            assert [block["height"] for block in blocks["blocks"]] == [0, 1]
+            assert blocks["next_start"] is None
+
+            rejected_page = subprocess.run(
+                [str(explorer), "--data-dir", str(data), "--limit", "21"],
+                capture_output=True, check=False, timeout=30,
+            )
+            assert rejected_page.returncode == 2
+            assert json.loads(rejected_page.stdout)["code"] == "invalid_limit"
 
         for payload in (
             b'{"schema_version":1,"method":"sign"}',
