@@ -127,8 +127,12 @@ def create_archive(args: argparse.Namespace) -> None:
     }
     if any(len(v) > MAX_METADATA for v in payloads.values()):
         raise ValueError("Metadata too large")
+    # ZipFile(mode="x") uses exclusive creation. If another process wins
+    # the race between exists() and open(), never delete *its* file.
+    archive_created_by_us = False
     try:
         with zipfile.ZipFile(output, "x", allowZip64=True) as archive:
+            archive_created_by_us = True
             for name in BINARIES:
                 with inputs[name].open("rb") as source, archive.open(zip_info(name), "w", force_zip64=True) as target:
                     for chunk in iter(lambda: source.read(1024 * 1024), b""):
@@ -137,7 +141,8 @@ def create_archive(args: argparse.Namespace) -> None:
                 archive.writestr(zip_info(name), data)
         verify_archive(output)
     except Exception:
-        output.unlink(missing_ok=True)
+        if archive_created_by_us:
+            output.unlink(missing_ok=True)
         raise
     print(f"ARETOVUS lab archive created and verified: {output.name}; source {source_sha}")
 
