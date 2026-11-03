@@ -7,6 +7,7 @@ import io
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 import package_windows_lab as lab
@@ -79,6 +80,21 @@ class PortableLabTests(unittest.TestCase):
         self.silent(lambda: self.pack(out))
         with self.assertRaisesRegex(ValueError, "replace"):
             self.pack(out)
+
+    def test_racing_output_creator_is_never_deleted(self):
+        out = self.root / "raced-by-another-process.zip"
+        other_owner_data = b"other process owns this content"
+
+        def racing_creator(path, mode, **kwargs):
+            self.assertEqual(mode, "x")
+            self.assertEqual(Path(path), out)
+            out.write_bytes(other_owner_data)
+            raise FileExistsError("competing process won exclusive create")
+
+        with patch.object(lab.zipfile, "ZipFile", side_effect=racing_creator):
+            with self.assertRaises(FileExistsError):
+                self.pack(out)
+        self.assertEqual(out.read_bytes(), other_owner_data)
 
     def test_tampered_companion_is_rejected(self):
         out = self.root / "original.zip"
