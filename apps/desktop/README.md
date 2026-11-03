@@ -40,3 +40,11 @@ Le tableau de bord conserve une identité bleu nuit/or discret, avec des panneau
 Principes : aucun CDN, image distante, import CSS externe ou police à télécharger ; bordures et focus clavier visibles, typographie et tableaux adaptés aux petits écrans, `prefers-reduced-motion`, `prefers-reduced-transparency` et `forced-colors` pris en compte au mieux. Le test `python apps/desktop/scripts/test_glass_style.py` vérifie ces contrats statiques et les avertissements de testnet, en complément des tests `npm test` et de la compilation `npm run build`.
 
 Ces contrôles ne remplacent **ni audit WCAG, ni vérification visuelle sur les différents WebView/écrans**. Le thème est purement cosmétique, sans modification de l'IPC Rust, du consensus ou des politiques de portefeuille. 
+
+## Archive Windows portable de laboratoire — PR #199
+
+Une CI GitHub Windows dédiée prépare un **ZIP temporaire non signé**, sans installateur ni accès mainnet. Il comprend `aretovus-desktop.exe`, `aretovus-local-bridge.exe`, `aretovus-explorer.exe` et le `aretovus-node.exe` de testnet. Ces quatre exécutables sont construits depuis **le même SHA Git** et conservés côte à côte afin que l'application ne dépende pas du `PATH` pour ses compagnons. L'archive comporte un `manifest.json`, une liste SHA-256 et des avertissements obligatoires. Les hachages du ZIP ne sont **pas** des signatures numériques.
+
+Le workflow teste la lecture réelle d'une chaîne testnet jetable, crée le ZIP, vérifie sa structure, puis lance de nouveau les compagnons **extraits de l'archive** depuis un dossier temporaire avec espaces. Les tests refusent les fausses signatures PE, les architectures autres qu'AMD64, les archives modifiées ou les erreurs de concurrence sur la destination. Ils **ne valident pas** le démarrage graphique interactif de Tauri sur un bureau Windows ni l'installation WebView2 d'une machine extérieure.
+
+Voir [la spécification et ses limites](../../docs/planning/V2_WINDOWS_PORTABLE_LAB.md) et [la PR #199](https://github.com/antoineforterax-cmd/ARETOVUS/pull/199). N'ouvrez pas de fonds réels, ne désactivez pas les protections Windows contre un programme non signé, et n'interprétez pas cet artefact comme une release approuvée.
