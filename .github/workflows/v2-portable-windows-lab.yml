@@ -72,7 +72,7 @@ jobs:
       - name: Verify native Tauri contract tests
         run: cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
       - name: Build Windows desktop GUI in release mode with embedded frontend
-        run: cargo build --release --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
+        run: cargo build --release --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol
       - name: Build Rust testnet node and two read-only companions
         run: cargo build --workspace --locked -p aretovus-node --bin aretovus-node --bin aretovus-local-bridge --bin aretovus-explorer
       - name: Verify actual local native node and companions on disposable data
