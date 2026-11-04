@@ -22,6 +22,33 @@ import package_windows_lab as lab
 EXPECTED_TITLE = "ARETOVUS — Node Desktop"
 WINDOW_TIMEOUT_SECONDS = 45
 
+CI_SECRET_NAMES = (
+    "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
+    "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
+)
+WEBVIEW_ARGUMENTS = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+
+
+def sanitized_ci_environment(raw: dict[str, str] | os._Environ[str]) -> dict[str, str]:
+    """Strip runner credentials and inherited Chromium command-line options."""
+    env = dict(raw)
+    for name in (*CI_SECRET_NAMES, WEBVIEW_ARGUMENTS):
+        env.pop(name, None)
+    return env
+
+
+def gui_ci_environment(baseline: dict[str, str], enable_uia: bool) -> dict[str, str]:
+    """Opt into accessibility only while asserting the actual WebView2 UI in CI.
+
+    Chromium normally enables the renderer accessibility tree on demand.
+    --force-renderer-accessibility is a diagnostic switch supported by WebView2.
+    No extra browser flags or remote debugging listeners are permitted here.
+    """
+    result = sanitized_ci_environment(baseline)
+    if enable_uia:
+        result[WEBVIEW_ARGUMENTS] = "--force-renderer-accessibility"
+    return result
+
 
 def binary_digest(path: Path) -> str:
     digest = hashlib.sha256()
@@ -110,14 +137,10 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
         executables = {name: folder / name for name in lab.BINARIES}
         hashes_before = {name: binary_digest(path) for name, path in executables.items()}
 
-        # Do not pass CI authentication tokens to ANY spawned native binary,
-        # including the synthetic one-block miner, GUI or UI Automation runner.
-        environment = os.environ.copy()
-        for secret_name in (
-            "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
-            "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
-        ):
-            environment.pop(secret_name, None)
+        # Keep real testnet miner and PowerShell free of GitHub credentials
+        # and browser debugging options; only the extracted CI GUI may enable
+        # Chromium accessibility, never a remote DevTools port or production flag.
+        environment = sanitized_ci_environment(os.environ)
 
         # On UIA-enabled CI, create a ONE-BLOCK real native testnet snapshot
         # with the node CLI extracted from the same verified lab ZIP. No
@@ -145,7 +168,7 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=errors,
-                env=environment,
+                env=gui_ci_environment(environment, uia_script is not None),
             )
             try:
                 wait_for_desktop_window(proc, top_level_windows_for_pid)
