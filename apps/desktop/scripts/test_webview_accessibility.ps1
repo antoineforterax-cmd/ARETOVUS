@@ -26,9 +26,24 @@ function Get-AppWindow {
         [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
         [int] $TargetPid
     )
-    return [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+    # A native host can own more than one top-level HWND. FindFirst can pick
+    # a hidden auxiliary window instead of the visible Tauri window already
+    # verified by the independent Win32 test.
+    $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
         [System.Windows.Automation.TreeScope]::Children, $cond
     )
+    for ($i = 0; $i -lt $windows.Count; $i++) {
+        try {
+            $window = $windows.Item($i)
+            if ($window.Current.Name -eq "ARETOVUS — Node Desktop" -and
+                -not $window.Current.IsOffscreen) {
+                return $window
+            }
+        } catch [System.Windows.Automation.ElementNotAvailableException] {
+            # Window disposed while the WebView2 process starts.
+        }
+    }
+    return $null
 }
 
 function Get-Elements($root) {
@@ -65,12 +80,23 @@ function Match-Name($items, [string]$text) {
 
 function Wait-ReactTree {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
+    $windowSeen = $false
+    $maxElements = 0
+    $seen = @{}
+    $landmarks = @("Explorateur de blocs", "Hauteur valid", "TESTNET", "Aucun n", "Connecter le")
+    foreach ($landmark in $landmarks) { $seen[$landmark] = $false }
+
     while ([DateTime]::UtcNow -lt $deadline) {
         $process = [System.Diagnostics.Process]::GetProcessById($TargetPid)
         if ($process.HasExited) { throw "GUI exited before React accessibility tree loaded" }
         $window = Get-AppWindow
         if ($null -ne $window) {
+            $windowSeen = $true
             $tree = Get-Elements $window
+            $maxElements = [Math]::Max($maxElements, $tree.Count)
+            foreach ($landmark in $landmarks) {
+                if (Match-Name $tree $landmark) { $seen[$landmark] = $true }
+            }
             if (
                 (Match-Name $tree "Explorateur de blocs") -and
                 (Match-Name $tree "Hauteur valid") -and
@@ -83,7 +109,10 @@ function Wait-ReactTree {
         }
         Start-Sleep -Milliseconds 350
     }
-    throw "Embedded React content was NOT exposed by WebView2 UI Automation within 45s"
+    # Do not dump UIA element text: text may contain sensitive local paths.
+    # Only disclose presence/absence of the five fixed known UI landmarks.
+    $missing = @($landmarks | Where-Object { -not $seen[$_] })
+    throw "React UIA timeout: windowSeen=$windowSeen maxElements=$maxElements missingLandmarks=$($missing -join ',')"
 }
 
 function Find-ByNameAndType($tree, [string]$prefix, [string]$type) {
