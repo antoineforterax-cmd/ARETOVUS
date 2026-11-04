@@ -15,7 +15,7 @@ Les fichiers de verrouillage npm et Cargo sont désormais présents sur cette br
 ## Sécurité
 
 - Frontend **lecture seule**, ne conserve aucune clé, mot de passe ou seed dans JS.
-- Un unique invoke Rust asynchrone : `read_node_status` ; pas de shell, HTTP, plugin shell ou permission filesystem webview.
+- Deux commandes IPC Rust en lecture seule : `read_node_status` et `read_canonical_page` ; pas de shell, HTTP, plugin shell ou permission filesystem webview. Voir [les frontières de confiance](../../docs/planning/V0_DESKTOP_TRUST_BOUNDARIES.md).
 - Chemin choisi par l'utilisateur canonisé côté hôte ; binaire fixe adjacent à l'exécutable (pas PATH). Entrée et sortie limitées, timeout du processus à 30 s ; stderr supprimé et codes d'erreurs stables.
 - Les sorties du bridge sont vérifiées à nouveau dans l'hôte et dans le frontend. Un navigateur seul, même avec un JSON similaire, ne constitue pas un nœud validé.
 - Attention : le prototype dépend encore de l'intégrité des exécutables installés et peut consommer du CPU/disque à chaque relecture complète. Aucune garantie de synchronisation globale/P2P active. Distinguer la lecture du snapshot d'un affichage de consensus de réseau.
