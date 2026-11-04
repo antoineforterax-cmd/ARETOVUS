@@ -8,9 +8,15 @@ No browser debugging port, WebDriver service, secrets or network listener.
 param(
     [Parameter(Mandatory = $true)]
     [ValidateRange(1, 2147483647)]
-    [int] $TargetPid
+    [int] $TargetPid,
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string] $TestDataDir
 )
 $ErrorActionPreference = "Stop"
+if (-not (Test-Path -LiteralPath $TestDataDir -PathType Container)) {
+    throw "Test data directory is missing or not a directory"
+}
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Windows.Forms
@@ -106,6 +112,23 @@ function Set-InputValue($inputElement, [string]$value) {
     [System.Windows.Forms.SendKeys]::SendWait($value)
 }
 
+function Type-WithKeyboard($inputElement, [string]$value) {
+    $inputElement.SetFocus()
+    [System.Windows.Forms.SendKeys]::SendWait("^a")
+    [System.Windows.Forms.SendKeys]::SendWait($value)
+}
+
+function Wait-EnabledButton($window, [int]$seconds) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $tree = Get-Elements $window
+        $button = Find-ByNameAndType $tree "Connecter le" "ControlType.Button"
+        if ($button.Enabled) { return $button }
+        Start-Sleep -Milliseconds 250
+    }
+    return $null
+}
+
 function Activate-Button($buttonElement) {
     $pattern = $null
     if ($buttonElement.TryGetCurrentPattern(
@@ -131,27 +154,62 @@ if ($button.Enabled) { throw "Connect button should be disabled for an empty pat
 # Intentionally nonexistent (random) testnet folder; no keys, files or services.
 $missing = "X:\ARETOVUS_MISSING_$([Guid]::NewGuid().ToString('N'))"
 Set-InputValue $input $missing
-$deadline = [DateTime]::UtcNow.AddSeconds(12)
-$buttonReady = $false
-while ([DateTime]::UtcNow -lt $deadline) {
-    $tree = Get-Elements $observed.Window
-    $button = Find-ByNameAndType $tree "Connecter le" "ControlType.Button"
-    if ($button.Enabled) { $buttonReady = $true; break }
-    Start-Sleep -Milliseconds 250
+$button = Wait-EnabledButton $observed.Window 8
+if ($null -eq $button) {
+    # Some WebView2 providers implement ValuePattern without dispatching
+    # the browser's React onChange event. Use actual focused keyboard input.
+    Type-WithKeyboard $input $missing
+    $button = Wait-EnabledButton $observed.Window 8
 }
-if (-not $buttonReady) {
+if ($null -eq $button) {
     throw "Typing a nonexistent path did not enable the React-controlled button"
 }
 Activate-Button $button.Element
 $deadline = [DateTime]::UtcNow.AddSeconds(30)
 while ([DateTime]::UtcNow -lt $deadline) {
     $tree = Get-Elements $observed.Window
-    if ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "N") ) {
-        # Explicit error from the native Tauri IPC boundary, not invented data.
-        Write-Output "PASS: WebView2 exposes React dashboard and native IPC error for nonexistent testnet path"
-        Write-Output "NOT CHECKED: valid snapshot status, explorer pagination, screen pixels, wallet, mainnet"
+    if ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "indisponible")) {
+        # Native Tauri host correctly rejected the absent folder.
+        break
+    }
+    Start-Sleep -Milliseconds 350
+}
+if (-not ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "indisponible"))) {
+    throw "Native invalid-path rejection was never exposed in React"
+}
+
+# Now switch to a newly mined, disposable local testnet snapshot, created by
+# the Python parent with the REAL node CLI from the same verified ZIP.
+Type-WithKeyboard $input $TestDataDir
+$button = Wait-EnabledButton $observed.Window 12
+if ($null -eq $button) { throw "Could not select disposable native testnet directory" }
+Activate-Button $button.Element
+
+$deadline = [DateTime]::UtcNow.AddSeconds(45)
+$ready = $false
+while ([DateTime]::UtcNow -lt $deadline) {
+    $tree = Get-Elements $observed.Window
+    if ((Match-Name $tree "Snapshot local valid") -and (Match-Name $tree "TESTNET")) {
+        $ready = $true
+        break
+    }
+    Start-Sleep -Milliseconds 350
+}
+if (-not $ready) { throw "Tauri/React never displayed a validated real local testnet snapshot" }
+
+# Explicit on-demand native explorer call, not a fake page or mocked network.
+$load = Find-ByNameAndType $tree "Lire les blocs" "ControlType.Button"
+if (-not $load.Enabled) { throw "Native explorer button remains disabled after valid snapshot" }
+Activate-Button $load.Element
+$deadline = [DateTime]::UtcNow.AddSeconds(45)
+while ([DateTime]::UtcNow -lt $deadline) {
+    $tree = Get-Elements $observed.Window
+    if ((Match-Name $tree "Hash du bloc") -and (Match-Name $tree "Timestamp (s)")) {
+        Write-Output "PASS: WebView2 React displayed real Rust snapshot and canonical explorer from extracted ZIP"
+        Write-Output "PASS: Invalid-path native rejection, controlled path edit, and read-only explorer click"
+        Write-Output "NOT CHECKED: screen pixels, all accessibility modes, real funds, wallet GUI or P2P live"
         exit 0
     }
     Start-Sleep -Milliseconds 350
 }
-throw "React did not expose native invalid-path error within 30s after UI interaction"
+throw "Native explorer did not render canonical block table after real UI interaction"
