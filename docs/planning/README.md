@@ -24,4 +24,4 @@ En cas de divergence, ouvrir une tâche de réconciliation : ne jamais réécrir
 `main` est un prototype plus ancien ; PR #1 est un brouillon vers `main` ; PR #2 (`feature/emission-schedule-v0`) est un brouillon vers la branche de PR #1. Le contenu de PR #2 ne doit pas être présenté comme déjà fusionné à `main`.
 
 ## Limites
-Testnet expérimental uniquement, sans fonds réels, sans audit humain indépendant. Les essais locaux, CI et simulations ne démontrent ni sécurité mainnet ni anonymat absolu.
+Testnet expérimental uniquement, sans fonds réels, sans revue E1 par une personne extérieure au projet. Les essais locaux, CI et simulations ne démontrent ni sécurité mainnet ni anonymat absolu.
