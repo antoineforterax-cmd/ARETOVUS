@@ -1,11 +1,11 @@
 # Dossier de revue indépendante — ARETOVUS
 
 **Statut :** dossier préparatoire ; aucune revue extérieure qualifiée, approfondie et documentée n’est confirmée. Le responsable a déjà relu et corrigé du code, notamment en Python et rust, et réalisé des essais : cela relève des vérifications internes, distinctes de la revue demandée ici. Le porteur a choisi le 26 octobre 2026 de poursuivre le développement expérimental sans reviewer externe immédiat. Cette décision ne vaut pas revue et ne permet pas de revendiquer une sécurité pour des fonds réels.  
-**Branche concernée :** `feature/emission-schedule-v0`.  
-**Base proposée pour la revue du consensus :** `7d0f1ee598235b7194f92081424c008c4c628ceb`; les changements documentaires et de lanceurs suivants doivent être examinés séparément et identifiés dans le rapport.
+**Version à examiner pour E1 :** commit final gelé à définir après les tests physiques ; le réseau natif courant est sur `main`.  
+**Ancienne base historique :** `7d0f1ee598235b7194f92081424c008c4c628ceb` ne représente plus le code natif actuel. La personne extérieure devra relever le SHA final et inclure tous les changements ultérieurs dans son périmètre.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 
-Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Elle reste une aide interne; elle ne remplit pas le critère de revue humaine externe indépendante.
+Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Le responsable a lui aussi relu des passages et exécuté des essais. Ces travaux sont consignés comme vérifications internes ; ils ne remplissent pas le critère E1 d'une revue par une personne extérieure au projet.
 
 ## Portée demandée
 
