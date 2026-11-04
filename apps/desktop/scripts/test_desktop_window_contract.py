@@ -64,5 +64,40 @@ class WindowContractTests(unittest.TestCase):
             gui.top_level_windows_for_pid(123)
 
 
+
+class EnvironmentContractTests(unittest.TestCase):
+    def test_miner_and_powershell_get_no_credentials_or_chromium_flags(self):
+        raw = {
+            "PATH": "unchanged",
+            "GITHUB_TOKEN": "do-not-leak",
+            "GH_TOKEN": "do-not-leak",
+            "ACTIONS_RUNTIME_TOKEN": "do-not-leak",
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN": "do-not-leak",
+            "ACTIONS_ID_TOKEN_REQUEST_URL": "do-not-leak",
+            gui.WEBVIEW_ARGUMENTS: "--remote-debugging-port=9222",
+        }
+        clean = gui.sanitized_ci_environment(raw)
+        self.assertEqual(clean, {"PATH": "unchanged"})
+        self.assertEqual(raw["GITHUB_TOKEN"], "do-not-leak", "Never mutate the caller's environment")
+
+    def test_accessibility_only_for_real_gui_ci_not_other_processes(self):
+        raw = {
+            "PATH": "unchanged",
+            "GITHUB_TOKEN": "secret",
+            gui.WEBVIEW_ARGUMENTS: "--ignore-certificate-errors --remote-debugging-port=9222",
+        }
+        normal = gui.gui_ci_environment(raw, False)
+        self.assertEqual(normal, {"PATH": "unchanged"})
+        uia = gui.gui_ci_environment(raw, True)
+        self.assertEqual(uia, {
+            "PATH": "unchanged",
+            gui.WEBVIEW_ARGUMENTS: "--force-renderer-accessibility",
+        })
+        self.assertNotIn("GITHUB_TOKEN", uia)
+        self.assertNotIn("remote-debugging-port", uia[gui.WEBVIEW_ARGUMENTS])
+
+
+
+
 if __name__ == "__main__":
     unittest.main()

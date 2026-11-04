@@ -7,6 +7,7 @@ screen rendering, P2P connectivity, or suitability for actual funds.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import ctypes
 import hashlib
 import os
@@ -21,6 +22,33 @@ import package_windows_lab as lab
 
 EXPECTED_TITLE = "ARETOVUS — Node Desktop"
 WINDOW_TIMEOUT_SECONDS = 45
+
+CI_SECRET_NAMES = (
+    "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
+    "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
+)
+WEBVIEW_ARGUMENTS = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
+
+
+def sanitized_ci_environment(raw: Mapping[str, str]) -> dict[str, str]:
+    """Strip runner credentials and inherited Chromium command-line options."""
+    env = dict(raw)
+    for name in (*CI_SECRET_NAMES, WEBVIEW_ARGUMENTS):
+        env.pop(name, None)
+    return env
+
+
+def gui_ci_environment(baseline: dict[str, str], enable_uia: bool) -> dict[str, str]:
+    """Opt into accessibility only while asserting the actual WebView2 UI in CI.
+
+    Chromium normally enables the renderer accessibility tree on demand.
+    --force-renderer-accessibility is a diagnostic switch supported by WebView2.
+    No extra browser flags or remote debugging listeners are permitted here.
+    """
+    result = sanitized_ci_environment(baseline)
+    if enable_uia:
+        result[WEBVIEW_ARGUMENTS] = "--force-renderer-accessibility"
+    return result
 
 
 def binary_digest(path: Path) -> str:
@@ -93,7 +121,7 @@ def wait_for_desktop_window(
     raise TimeoutError("No visible ARETOVUS desktop window before the bounded deadline")
 
 
-def smoke_archive(archive: Path) -> None:
+def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
     if sys.platform != "win32":
         raise RuntimeError("Windows only: cannot substitute a Linux simulated GUI")
 
@@ -110,14 +138,29 @@ def smoke_archive(archive: Path) -> None:
         executables = {name: folder / name for name in lab.BINARIES}
         hashes_before = {name: binary_digest(path) for name, path in executables.items()}
 
-        # No user-supplied data directory or remote service is contacted. No
-        # credentials are passed intentionally to the GUI in a CI job.
-        environment = os.environ.copy()
-        for secret_name in (
-            "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
-            "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
-        ):
-            environment.pop(secret_name, None)
+        # Keep real testnet miner and PowerShell free of GitHub credentials
+        # and browser debugging options; only the extracted CI GUI may enable
+        # Chromium accessibility, never a remote DevTools port or production flag.
+        environment = sanitized_ci_environment(os.environ)
+
+        # On UIA-enabled CI, create a ONE-BLOCK real native testnet snapshot
+        # with the node CLI extracted from the same verified lab ZIP. No
+        # production keys, user data or P2P listeners are involved.
+        disposable_data = None
+        if uia_script is not None:
+            disposable_data = Path(temp) / "real native testnet snapshot with spaces"
+            disposable_data.mkdir()
+            mined = subprocess.run(
+                [
+                    str(executables["aretovus-node.exe"]), "testnet", "mine",
+                    "--data-dir", str(disposable_data),
+                    "--miner", "11" * 32, "--count", "1",
+                ],
+                capture_output=True, check=False, timeout=100, env=environment,
+            )
+            if mined.returncode != 0:
+                raise RuntimeError("Failed to mine disposable testnet snapshot for WebView2 UI smoke")
+
         diagnostic = Path(temp) / "desktop-stderr.log"
         with diagnostic.open("wb") as errors:
             proc = subprocess.Popen(
@@ -126,10 +169,36 @@ def smoke_archive(archive: Path) -> None:
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=errors,
-                env=environment,
+                env=gui_ci_environment(environment, uia_script is not None),
             )
             try:
                 wait_for_desktop_window(proc, top_level_windows_for_pid)
+                # The same extracted release GUI process must expose real
+                # React/WebView2 controls and reject an invalid folder via IPC.
+                if uia_script is not None:
+                    if sys.platform != "win32":
+                        raise RuntimeError("UI Automation requires Windows")
+                    verified_script = uia_script.resolve(strict=True)
+                    completed = subprocess.run(
+                        [
+                            "powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-File", str(verified_script),
+                            "-TargetPid", str(proc.pid),
+                            "-TestDataDir", str(disposable_data),
+                        ],
+                        capture_output=True,
+                        check=False,
+                        timeout=210,
+                        cwd=folder,
+                        env=environment,
+                    )
+                    if completed.returncode != 0:
+                        error_text = completed.stderr.decode("utf-8", errors="replace")[-1600:]
+                        raise RuntimeError("Actual React/WebView2 UI Automation smoke failed: " + error_text)
+                    output = completed.stdout.decode("utf-8", errors="replace")
+                    if "PASS: WebView2 React displayed real Rust snapshot" not in output:
+                        raise RuntimeError("UI Automation did not report a real successful interaction")
+                    print("Extracted React GUI: invalid-path rejection, real Rust snapshot and explorer click verified")
                 # A transient startup splash screen is insufficient.
                 time.sleep(2)
                 if proc.poll() is not None or EXPECTED_TITLE not in top_level_windows_for_pid(proc.pid):
@@ -152,14 +221,18 @@ def smoke_archive(archive: Path) -> None:
             raise RuntimeError("The running GUI wrote files into its own installation directory")
 
     print("PASS: actual extracted ARETOVUS desktop opened a stable visible window on Windows")
-    print("NOT CHECKED: rendered React content, accessibility, GUI interactions, installer or funds")
+    if uia_script is None:
+        print("NOT CHECKED: rendered React content, GUI interactions, installer or funds")
+    else:
+        print("NOT CHECKED: actual pixels, all accessibility modes, live P2P, signed installer or funds")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", required=True, type=Path)
+    parser.add_argument("--uia-script", type=Path, default=None)
     args = parser.parse_args()
-    smoke_archive(args.archive.resolve(strict=True))
+    smoke_archive(args.archive.resolve(strict=True), args.uia_script)
     return 0
 
 
