@@ -15,6 +15,8 @@ Le noyau ARETOVUS est en Rust ; le navigateur ne sait pas parler directement au 
 
 ## Frontières de confiance
 
+Le [modèle de menace V0/P0](V0_DESKTOP_TRUST_BOUNDARIES.md) détaille les flux réellement exposés et les conditions avant toute API locale ou commande d'écriture.
+
 1. Le nœud ARETOVUS et ses règles de consensus restent seuls responsables de valider les blocs/transactions.
 2. Le premier pont binaire Rust (#192) charge un snapshot existant et valide son identité native. Contrat V1 strict et read-only. Ce pont **ne prouve pas** la synchronisation globale ni le caractère définitif d'une transaction.
 3. Le conteneur Tauri démarre un binaire compagnon fixe situé à côté de son exécutable; il n'accepte ni commande shell ni binaire choisi dans PATH. Il termine les processus trop lents; l'intégrité du répertoire d'installation et le packaging du sidecar restent des risques à examiner.
