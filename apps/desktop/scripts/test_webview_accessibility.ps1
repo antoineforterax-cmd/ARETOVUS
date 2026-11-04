@@ -387,7 +387,11 @@ function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
     # A button that was enabled for an OLD path is not evidence that React
     # accepted the newly typed path. Assert the accessible edit value too.
     $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
+    $script:LastPathInputDiagnostic = "not-observed"
     while ([DateTime]::UtcNow -lt $deadline) {
+        $editSeen = $false
+        $valuePatternSeen = $false
+        $actualLength = -1
         $tree = Get-Elements $window
         $button = $null
         $pathMatches = $false
@@ -397,13 +401,16 @@ function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
                 $button = $entry
             }
             if ($entry.Type -eq "ControlType.Edit") {
+                $editSeen = $true
                 try {
                     $value = $null
                     if ($entry.Element.TryGetCurrentPattern(
                         [System.Windows.Automation.ValuePattern]::Pattern,
                         [ref]$value
                     )) {
+                        $valuePatternSeen = $true
                         $actual = ([System.Windows.Automation.ValuePattern]$value).Current.Value
+                        $actualLength = $actual.Length
                         if ($actual -ceq $expectedPath) {
                             $pathMatches = $true
                         }
@@ -413,7 +420,10 @@ function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
                 }
             }
         }
-        if ($null -ne $button -and $button.Enabled -and $pathMatches) {
+        $buttonSeen = $null -ne $button
+        $buttonEnabled = $buttonSeen -and $button.Enabled
+        $script:LastPathInputDiagnostic = "editSeen=$editSeen valuePattern=$valuePatternSeen actualLength=$actualLength expectedLength=$($expectedPath.Length) pathMatches=$pathMatches buttonSeen=$buttonSeen buttonEnabled=$buttonEnabled"
+        if ($buttonEnabled -and $pathMatches) {
             return $button
         }
         Start-Sleep -Milliseconds 250
@@ -482,7 +492,23 @@ foreach ($entry in $tree) {
 if ($null -eq $input) { throw "React path control disappeared after native error" }
 Type-WithKeyboard $input $TestDataDir
 $button = Wait-EnabledButton $observed.Window 12 $TestDataDir
-if ($null -eq $button) { throw "Could not select disposable native testnet directory" }
+if ($null -eq $button) {
+    # Chromium's keyboard path may lose events for a long path with spaces.
+    # Reacquire the live Edit and try its writable UIA ValuePattern.
+    $tree = Get-Elements $observed.Window
+    $input = $null
+    foreach ($entry in $tree) {
+        if ($entry.Type -eq "ControlType.Edit") { $input = $entry.Element; break }
+    }
+    if ($null -ne $input) {
+        Set-InputValue $input $TestDataDir
+        $button = Wait-EnabledButton $observed.Window 8 $TestDataDir
+    }
+}
+if ($null -eq $button) {
+    try { Save-BoundedFailureImage } catch {}
+    throw "Could not select disposable native testnet directory: $script:LastPathInputDiagnostic"
+}
 Activate-Button $button.Element
 
 $deadline = [DateTime]::UtcNow.AddSeconds(45)
