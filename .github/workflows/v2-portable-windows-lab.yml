@@ -38,6 +38,28 @@ jobs:
           if ($parseErrors.Count -gt 0) {
             throw "Windows UI Automation test script has PowerShell syntax errors"
           }
+          $source = Get-Content -LiteralPath $script -Raw
+          $compiled = [regex]::Match($source, "(?s)Add-Type -TypeDefinition @'\r?\n(.*?)\r?\n'@")
+          if (-not $compiled.Success) { throw "Missing Win32 UIA helper" }
+          Add-Type -TypeDefinition $compiled.Groups[1].Value
+          Add-Type -AssemblyName System.Windows.Forms
+          $hostForm = New-Object System.Windows.Forms.Form
+          $child = New-Object System.Windows.Forms.Panel
+          $otherForm = New-Object System.Windows.Forms.Form
+          try {
+            $hostForm.Controls.Add($child)
+            $hostForm.Show()
+            $otherForm.Show()
+            if (-not [AretovusWebViewChildren]::HandleBelongsToHost($hostForm.Handle, $hostForm.Handle) -or
+                -not [AretovusWebViewChildren]::HandleBelongsToHost($hostForm.Handle, $child.Handle) -or
+                [AretovusWebViewChildren]::HandleBelongsToHost($hostForm.Handle, $otherForm.Handle) -or
+                [AretovusWebViewChildren]::HandleBelongsToHost($hostForm.Handle, [IntPtr]::Zero)) {
+              throw "UIA helper accepted a foreign or missing HWND"
+            }
+          } finally {
+            $otherForm.Dispose()
+            $hostForm.Dispose()
+          }
       - name: Install exact frontend dependency graph
         working-directory: apps/desktop
         run: npm ci --no-audit --no-fund

@@ -85,10 +85,14 @@ public static class AretovusWebViewChildren {
     [DllImport("user32.dll")]
     private static extern bool IsChild(IntPtr parent, IntPtr child);
 
+    public static bool HandleBelongsToHost(IntPtr parent, IntPtr target) {
+        return parent != IntPtr.Zero && target != IntPtr.Zero &&
+            (target == parent || IsChild(parent, target));
+    }
+
     public static bool PointBelongsToHost(IntPtr parent, int x, int y) {
         var target = WindowFromPoint(new ScreenPoint { X = x, Y = y });
-        return target != IntPtr.Zero &&
-            (target == parent || IsChild(parent, target));
+        return HandleBelongsToHost(parent, target);
     }
 
     public static IntPtr[] Find(IntPtr parent) {
@@ -226,6 +230,13 @@ function Wait-ReactTree {
                             $point = [System.Windows.Point]::new([double]$sample[0], [double]$sample[1])
                             $current = [System.Windows.Automation.AutomationElement]::FromPoint($point)
                             for ($depth = 0; $depth -lt 12 -and $null -ne $current; $depth++) {
+                                # UIA's raw walker can reach the desktop root;
+                                # only accept ancestors native to this Tauri HWND.
+                                $candidateHandle = [IntPtr]([long]$current.Current.NativeWindowHandle)
+                                if ($candidateHandle -ne [IntPtr]::Zero -and
+                                    -not [AretovusWebViewChildren]::HandleBelongsToHost(
+                                        $nativeHandle, $candidateHandle
+                                    )) { break }
                                 $control = $current.Current.ControlType.ProgrammaticName
                                 if ($control -eq "ControlType.Document" -or
                                     $control -eq "ControlType.Pane" -or
@@ -234,6 +245,7 @@ function Wait-ReactTree {
                                     $candidates += $current
                                     $hitTestCandidates++
                                 }
+                                if ($candidateHandle -eq $nativeHandle) { break }
                                 $current = $walker.GetParent($current)
                             }
                         } catch [System.Windows.Automation.ElementNotAvailableException] {
