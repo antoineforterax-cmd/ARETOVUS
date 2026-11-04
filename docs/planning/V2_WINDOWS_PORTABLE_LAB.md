@@ -43,3 +43,11 @@ Le script d'archive refuse également une **course à la création du fichier ZI
 - Les tests physiques deux PC, endurance, signatures de release et E1 audit indépendant restent des phases distinctes non réalisées.
 
 **Gate de fusion :** PR associée, CI exacte `completed/success` y compris le job Windows de création et de vérification ; examen du rapport de sécurité, puis tests de la CI du nouveau `main`. Aucune release publique automatiquement créée.
+
+## Test de démarrage graphique Windows — validation supplémentaire
+
+Après validation du ZIP et exécution des compagnons natifs sur un bloc testnet jetable, le workflow lance **le véritable `aretovus-desktop.exe` extrait** depuis le répertoire portable. Un script de test Win32, sans téléchargement ni dépendance Python supplémentaire, recherche une **fenêtre de premier niveau visible, possédée par le PID lancé**, dont le titre est exactement `ARETOVUS — Node Desktop`. Il refuse les autres processus, les titres imités, les fermetures prématurées et un démarrage dépassant 45 secondes. La fenêtre doit être encore visible deux secondes après son apparition ; le processus est ensuite arrêté avec un délai borné.
+
+Le test vérifie à nouveau que les empreintes des quatre exécutables et l'inventaire du dossier portable n'ont pas changé pendant cet essai. Il ne lit ni clés privées ni dossier de données personnel, ne déclenche pas le minage, ne démarre pas de serveur HTTP et ne publie pas de release.
+
+**Ce que ce test ne prouve pas :** chargement du contenu React dans WebView2, interaction avec un nœud depuis les boutons, conformité WCAG, qualité graphique sur de vrais écrans, comportement à faible mémoire, fonctionnement sur l'ordinateur de l'utilisateur, installateur signé, vérification d'éditeur, Linux/macOS, audit indépendant ou sécurité mainnet. Un runner CI Windows peut ne pas offrir de session graphique utilisable ; dans ce cas le test doit **échouer clairement**, jamais être ignoré silencieusement.
