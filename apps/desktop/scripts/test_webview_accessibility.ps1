@@ -43,6 +43,35 @@ public static class AretovusWebViewChildren {
     private static extern int GetClassName(
         IntPtr hwnd, StringBuilder name, int capacity);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rectangle {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hwnd, out Rectangle rect);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    public static bool ForegroundIsVerifiedHost(IntPtr hwnd) {
+        if (hwnd == IntPtr.Zero) return false;
+        if (GetForegroundWindow() != hwnd) SetForegroundWindow(hwnd);
+        return GetForegroundWindow() == hwnd;
+    }
+
+    public static int[] Center(IntPtr hwnd) {
+        Rectangle rect;
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out rect) ||
+            rect.Right - rect.Left < 10 || rect.Bottom - rect.Top < 10)
+            return new int[0];
+        return new[] { rect.Left + (rect.Right - rect.Left) / 2,
+                       rect.Top + (rect.Bottom - rect.Top) / 2 };
+    }
+
     public static IntPtr[] Find(IntPtr parent) {
         var renderers = new List<IntPtr>();
         var webviews = new List<IntPtr>();
@@ -125,6 +154,8 @@ function Wait-ReactTree {
     $windowSeen = $false
     $maxElements = 0
     $maxRenderers = 0
+    $hitTestCandidates = 0
+    $foregroundSeen = $false
     $seen = @{}
     $landmarks = @("Explorateur de blocs", "Hauteur valid", "TESTNET", "Aucun n", "Connecter le")
     foreach ($landmark in $landmarks) { $seen[$landmark] = $false }
@@ -149,6 +180,39 @@ function Wait-ReactTree {
                     # A transient child HWND may lack a UIA provider.
                 }
             }
+            # Tauri/wry can leave its Chromium fragment tree orphaned when
+            # walked from the host HWND. Windows UIA hit-testing can address
+            # the actual renderer provider through its screen point, without
+            # changing browser flags or exposing a debugging TCP endpoint.
+            # Require the verified Tauri HWND itself to be foreground first,
+            # so the hit-test cannot land on some unrelated desktop window.
+            if ([AretovusWebViewChildren]::ForegroundIsVerifiedHost($nativeHandle)) {
+                $foregroundSeen = $true
+                $walker = [System.Windows.Automation.TreeWalker]::RawViewWalker
+                foreach ($childHwnd in $rendererHandles) {
+                    $center = [AretovusWebViewChildren]::Center($childHwnd)
+                    if ($center.Count -ne 2) { continue }
+                    try {
+                        $point = [System.Windows.Point]::new([double]$center[0], [double]$center[1])
+                        $current = [System.Windows.Automation.AutomationElement]::FromPoint($point)
+                        for ($depth = 0; $depth -lt 12 -and $null -ne $current; $depth++) {
+                            $control = $current.Current.ControlType.ProgrammaticName
+                            if ($control -eq "ControlType.Document" -or
+                                $control -eq "ControlType.Pane" -or
+                                $control -eq "ControlType.Group" -or
+                                $control -eq "ControlType.Custom") {
+                                $candidates += $current
+                                $hitTestCandidates++
+                            }
+                            $current = $walker.GetParent($current)
+                        }
+                    } catch [System.Windows.Automation.ElementNotAvailableException] {
+                        # A renderer node was replaced during navigation.
+                    } catch [System.Runtime.InteropServices.COMException] {
+                        # No usable UIA provider at the tested child point.
+                    }
+                }
+            }
             foreach ($root in $candidates) {
                 $tree = Get-Elements $root
                 $maxElements = [Math]::Max($maxElements, $tree.Count)
@@ -171,7 +235,7 @@ function Wait-ReactTree {
     # Do not dump UIA element text: text may contain sensitive local paths.
     # Only disclose presence/absence of five fixed labels and bounded counts.
     $missing = @($landmarks | Where-Object { -not $seen[$_] })
-    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers missingLandmarks=$($missing -join ',')"
+    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates missingLandmarks=$($missing -join ',')"
 }
 
 function Find-ByNameAndType($tree, [string]$prefix, [string]$type) {
