@@ -54,7 +54,7 @@ Le test vérifie à nouveau que les empreintes des quatre exécutables et l'inve
 
 ## Test React/WebView2 avec actions utilisateur — extension V2
 
-Sur le même runner Windows et **sur le binaire GUI extrait du ZIP**, `test_desktop_window.py --uia-script apps/desktop/scripts/test_webview_accessibility.ps1` exécute une vérification Windows UI Automation via `powershell.exe` (sans téléchargement de dépendance supplémentaire, sans bypass de la politique d'exécution, ni port DevTools distant).
+Sur le même runner Windows et **sur le binaire GUI extrait du ZIP**, `test_desktop_window.py --uia-script apps/desktop/scripts/test_webview_accessibility.ps1` exécute une vérification Windows UI Automation via `powershell.exe` (sans téléchargement de dépendance supplémentaire, sans bypass de la politique d'exécution, ni port DevTools distant). **Uniquement pour le GUI de test lancé dans GitHub Actions**, le script fixe `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--force-renderer-accessibility`, drapeau de diagnostic [documenté par Microsoft](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/webview-features-flags). Ce paramètre n'est pas intégré au binaire distribué et ne doit pas être employé en production. Les paramètres WebView2 hérités et les jetons CI sont supprimés des environnements des processus de test natifs.
 
 Contrôles observables :
 
