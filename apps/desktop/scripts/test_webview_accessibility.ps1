@@ -35,7 +35,7 @@ function Get-AppWindow {
     for ($i = 0; $i -lt $windows.Count; $i++) {
         try {
             $window = $windows.Item($i)
-            if ($window.Current.Name -eq "ARETOVUS — Node Desktop" -and
+            if ($window.Current.Name -eq ("ARETOVUS " + [char]0x2014 + " Node Desktop") -and
                 -not $window.Current.IsOffscreen) {
                 return $window
             }
