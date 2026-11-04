@@ -93,7 +93,7 @@ def wait_for_desktop_window(
     raise TimeoutError("No visible ARETOVUS desktop window before the bounded deadline")
 
 
-def smoke_archive(archive: Path) -> None:
+def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
     if sys.platform != "win32":
         raise RuntimeError("Windows only: cannot substitute a Linux simulated GUI")
 
@@ -130,6 +130,31 @@ def smoke_archive(archive: Path) -> None:
             )
             try:
                 wait_for_desktop_window(proc, top_level_windows_for_pid)
+                # The same extracted release GUI process must expose real
+                # React/WebView2 controls and reject an invalid folder via IPC.
+                if uia_script is not None:
+                    if sys.platform != "win32":
+                        raise RuntimeError("UI Automation requires Windows")
+                    verified_script = uia_script.resolve(strict=True)
+                    completed = subprocess.run(
+                        [
+                            "powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-ExecutionPolicy", "Bypass", "-File", str(verified_script),
+                            "-TargetPid", str(proc.pid),
+                        ],
+                        capture_output=True,
+                        check=False,
+                        timeout=110,
+                        cwd=folder,
+                        env=environment,
+                    )
+                    if completed.returncode != 0:
+                        error_text = completed.stderr.decode("utf-8", errors="replace")[-1600:]
+                        raise RuntimeError("Actual React/WebView2 UI Automation smoke failed: " + error_text)
+                    output = completed.stdout.decode("utf-8", errors="replace")
+                    if "PASS: WebView2 exposes React dashboard" not in output:
+                        raise RuntimeError("UI Automation did not report a real successful interaction")
+                    print("Actual embedded React controls + native invalid-folder IPC error verified")
                 # A transient startup splash screen is insufficient.
                 time.sleep(2)
                 if proc.poll() is not None or EXPECTED_TITLE not in top_level_windows_for_pid(proc.pid):
@@ -152,14 +177,18 @@ def smoke_archive(archive: Path) -> None:
             raise RuntimeError("The running GUI wrote files into its own installation directory")
 
     print("PASS: actual extracted ARETOVUS desktop opened a stable visible window on Windows")
-    print("NOT CHECKED: rendered React content, accessibility, GUI interactions, installer or funds")
+    if uia_script is None:
+        print("NOT CHECKED: rendered React content, GUI interactions, installer or funds")
+    else:
+        print("NOT CHECKED: valid local snapshot, explorer clicks, actual pixels, full accessibility, installer or funds")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", required=True, type=Path)
+    parser.add_argument("--uia-script", type=Path, default=None)
     args = parser.parse_args()
-    smoke_archive(args.archive.resolve(strict=True))
+    smoke_archive(args.archive.resolve(strict=True), args.uia_script)
     return 0
 
 
