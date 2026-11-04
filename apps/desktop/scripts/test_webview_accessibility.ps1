@@ -186,6 +186,7 @@ function Wait-ReactTree {
     $maxButtons = 0
     $maxTexts = 0
     $browserErrorSeen = $false
+    $documentDiagnostics = 'none'
     $seen = @{}
     $landmarks = @("Explorateur de blocs", "Hauteur valid", "TESTNET", "Aucun n", "Connecter le")
     foreach ($landmark in $landmarks) { $seen[$landmark] = $false }
@@ -269,6 +270,26 @@ function Wait-ReactTree {
                     @($tree | Where-Object { $_.Type -eq "ControlType.Button" }).Count)
                 $maxTexts = [Math]::Max($maxTexts,
                     @($tree | Where-Object { $_.Type -eq "ControlType.Text" }).Count)
+                # Record only structural properties of the first document. UIA
+                # names and values can contain local paths, so never print them.
+                if ($documentDiagnostics -eq 'none') {
+                    foreach ($entry in $tree) {
+                        if ($entry.Type -ne "ControlType.Document") { continue }
+                        try {
+                            $current = $entry.Element.Current
+                            $bounds = $current.BoundingRectangle
+                            $documentDiagnostics = "nameLength=$($entry.Name.Length) " +
+                                "framework=$($current.FrameworkId) " +
+                                "class=$($current.ClassName) " +
+                                "offscreen=$($current.IsOffscreen) " +
+                                "boundsNonempty=$(-not $bounds.IsEmpty) " +
+                                "samePid=$($current.ProcessId -eq $TargetPid)"
+                            break
+                        } catch [System.Windows.Automation.ElementNotAvailableException] {
+                            # Renderer replaced while collecting a diagnostic.
+                        }
+                    }
+                }
                 foreach ($hint in @("ERR_FILE_NOT_FOUND", "chrome-error", "can't be reached", "Cannot reach this page")) {
                     if (Match-Name $tree $hint) { $browserErrorSeen = $true }
                 }
@@ -291,7 +312,7 @@ function Wait-ReactTree {
     # Do not dump UIA element text: text may contain sensitive local paths.
     # Only disclose presence/absence of five fixed labels and bounded counts.
     $missing = @($landmarks | Where-Object { -not $seen[$_] })
-    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates sampledPoints=$sampledPoints hostOwnedPoints=$hostOwnedPoints maxDocuments=$maxDocuments maxEdits=$maxEdits maxButtons=$maxButtons maxTexts=$maxTexts browserErrorSeen=$browserErrorSeen missingLandmarks=$($missing -join ',')"
+    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates sampledPoints=$sampledPoints hostOwnedPoints=$hostOwnedPoints maxDocuments=$maxDocuments maxEdits=$maxEdits maxButtons=$maxButtons maxTexts=$maxTexts browserErrorSeen=$browserErrorSeen documentDiagnostics=$documentDiagnostics missingLandmarks=$($missing -join ',')"
 }
 
 function Find-ByNameAndType($tree, [string]$prefix, [string]$type) {
