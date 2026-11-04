@@ -1,6 +1,6 @@
 # ARETOVUS — fiche complète des travaux restants
 
-> **Note d'actualisation du 2 novembre 2026 :** les tableaux datés d'octobre ci-dessous sont **historiques** et ne doivent pas être traités comme un inventaire actuel de `main`. La [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) est la référence vivante. Le réseau natif ARETOVUS a été intégré ; les PR #165 (C1), #166 (C2), #167 (100 001 blocs TCP) et #168 (ZIP déterministes) ont été fusionnées, tandis que #169 documente un **NO-GO**. Le coût mémoire du nœud pendant la synchronisation, les campagnes physiques 72 heures, les outils LAN multiplateformes et l'audit humain indépendant restent des portes ouvertes. **E1 est réservée à l'étape ultime, pas supprimée.** Aucun fonds réel.
+> **Note d'actualisation du 2 novembre 2026 :** les tableaux datés d'octobre ci-dessous sont **historiques** et ne doivent pas être traités comme un inventaire actuel de `main`. La [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) est la référence vivante. Le réseau natif ARETOVUS a été intégré ; les PR #165 (C1), #166 (C2), #167 (100 001 blocs TCP) et #168 (ZIP déterministes) ont été fusionnées, tandis que #169 documente un **NO-GO**. Le coût mémoire du nœud pendant la synchronisation, les campagnes physiques 72 heures, les outils LAN multiplateformes et la revue E1 par une personne extérieure au projet restent des portes ouvertes. **E1 est réservée à l'étape ultime, pas supprimée.** Aucun fonds réel.
 
 ---
 
@@ -12,7 +12,7 @@ Cette liste conserve l'historique des essais. Pour connaître l'état d'une fonc
 
 **Essais acquis :** la release expérimentale du 27 octobre fournit des archives pour trois systèmes ; le test de stockage a chargé et restauré 100 003 blocs connus. Le rapport du 28 octobre confirme un essai Ubuntu court (six blocs, cinq paiements, deux redémarrages, sauvegarde restaurée). La campagne de 72 heures a été lancée, mais son résultat final n'est pas documenté ici.
 
-**Travaux toujours ouverts :** fusion et validation intégrée des PR, essais réseau avec horloges divergentes, saturation P2P après handshake et sous NAT, synchronisation réelle de plus de 100 000 blocs, campagne 72 h achevée, partitions prolongées, disque réellement plein, restauration hors machine, audit humain indépendant. Les projets de confidentialité native, récupération sociale, gouvernance de trésorerie et applications grand public restent à concevoir ou à implémenter.
+**Travaux toujours ouverts :** fusion et validation intégrée des PR, essais réseau avec horloges divergentes, saturation P2P après handshake et sous NAT, synchronisation réelle de plus de 100 000 blocs, campagne 72 h achevée, partitions prolongées, disque réellement plein, restauration hors machine, revue E1 par une personne extérieure au projet. Les projets de confidentialité native, récupération sociale, gouvernance de trésorerie et applications grand public restent à concevoir ou à implémenter.
 
 La mention « essais de volume restent à faire » dans les notes historiques ci-dessous est dépassée pour **le stockage seul**, mais demeure vraie pour **la synchronisation réseau à cette échelle**. Les résultats de CI d'une PR ne constituent ni un audit ni une validation du code de `main`.
 
@@ -59,7 +59,7 @@ Le [rapport d’essais](TESTNET_VALIDATION_REPORT.md) distingue les preuves déj
 3. **Outils automatiques : à approfondir.** Maintenir RustSec et CI; conserver et enrichir les corpus libFuzzer des décodeurs et preuves, exécuter des campagnes de plusieurs heures/jours, mesurer la couverture, examiner les crashs, ajouter des tests différentiels ou invariants sur émission, état et reorg. Aucun résultat vert n’est une preuve générale de sécurité.
 4. **Revue humaine indépendante : non faite.** Préparer un commit stable, le [dossier de revue](INDEPENDENT_REVIEW.md), les spécifications et les résultats reproductibles; faire examiner le tout par une personne compétente distincte des auteurs; recevoir un rapport écrit, corriger les constats élevés/critiques et faire vérifier les corrections. Le dépôt est devenu public le 27 octobre 2026; le propriétaire peut fournir le commit précis à un reviewer. Une voie possible est une collaboration GitHub avec un reviewer volontaire; aucun reviewer ni budget n’est engagé aujourd’hui.
 
-**Porte de sécurité :** aucune déclaration « sécurisé pour des fonds réels » ou « mainnet prêt » avant résolution des défauts bloquants, revue humaine indépendante et nouveaux essais complets.
+**Porte de sécurité :** aucune déclaration « sécurisé pour des fonds réels » ou « mainnet prêt » avant résolution des défauts bloquants, revue par une personne extérieure au projet et nouveaux essais complets.
 
 ## 3 — Terminer les choix de protocole et de gouvernance
 
@@ -93,6 +93,6 @@ Le porteur a gelé ce périmètre le 27 octobre 2026. Les éléments ci-dessous 
 
 ## Critère final et dépendances externes
 
-ARETOVUS ne sera « finalisée » que si tous les points suivants sont prouvés sur la même version gelée : défauts P0 corrigés, essais hostiles et multi-hôtes prolongés, stockage au-delà de l’horizon visé, fuzzing/mesures conservés, économie et gouvernance décidées, revue humaine indépendante avec corrections revérifiées, procédures d’exploitation et wallet CLI testé. Les applications et la vente réelle sont exclues du périmètre courant par décision du porteur.
+ARETOVUS ne sera « finalisée » que si tous les points suivants sont prouvés sur la même version gelée : défauts P0 corrigés, essais hostiles et multi-hôtes prolongés, stockage au-delà de l’horizon visé, fuzzing/mesures conservés, économie et gouvernance décidées, revue par une personne extérieure au projet avec corrections revérifiées, procédures d’exploitation et wallet CLI testé. Les applications et la vente réelle sont exclues du périmètre courant par décision du porteur.
 
 Ce qui nécessite une intervention extérieure : choix d’un reviewer humain et remise du commit public précis; machines/hébergement et opérateurs du réseau public de test; décisions de gouvernance de la trésorerie, DID et inactivité; analyse juridique pour une vente réelle. Le développement, les tests, la documentation et les prototypes peuvent avancer en attendant. Les preuves d'essai et les décisions du responsable du projet restent indispensables.
