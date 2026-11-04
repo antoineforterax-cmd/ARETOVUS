@@ -59,6 +59,6 @@ Le statut provient d'un **dossier de nœud existant et vérifié** ; il ne déma
 | V6.1 | Gestion P2P | Pairs LAN opt-in, diagnostics, filtres et budgets |
 | V20 | Intégration logicielle GitHub | E2E GUI → wallet → nœud P2P → mineur → explorateur |
 | V21 | Deux PC réels + 1/4/24/72 h | Preuves humaines et ressources, à la **toute fin** |
-| V22 | Revue indépendante E1 | Ultime étape ; aucun feu vert fonds réels par anticipation |
+| V22 | Revue E1 par une personne extérieure au projet | Ultime étape ; les revues du porteur et des agents restent des vérifications internes ; aucun feu vert fonds réels par anticipation |
 
 **Décisions non prises :** Tauri vs autre conteneur, RPC vs IPC, distribution du portefeuille mobile, support Ledger, confidentialité et gouvernance futures. Les inscrire en ADR et valider les implications de sécurité avant implémentation ; ne pas modifier le consensus en passant.
