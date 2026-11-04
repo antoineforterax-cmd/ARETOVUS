@@ -48,3 +48,11 @@ Une CI GitHub Windows dédiée prépare un **ZIP temporaire non signé**, sans i
 Le workflow teste la lecture réelle d'une chaîne testnet jetable, crée le ZIP, vérifie sa structure, puis lance de nouveau les compagnons **extraits de l'archive** depuis un dossier temporaire avec espaces. Les tests refusent les fausses signatures PE, les architectures autres qu'AMD64, les archives modifiées ou les erreurs de concurrence sur la destination. Ils **ne valident pas** le démarrage graphique interactif de Tauri sur un bureau Windows ni l'installation WebView2 d'une machine extérieure.
 
 Voir [la spécification et ses limites](../../docs/planning/V2_WINDOWS_PORTABLE_LAB.md) et [la PR #199](https://github.com/antoineforterax-cmd/ARETOVUS/pull/199). N'ouvrez pas de fonds réels, ne désactivez pas les protections Windows contre un programme non signé, et n'interprétez pas cet artefact comme une release approuvée.
+
+## Test de lancement de la fenêtre Windows sur le ZIP extrait
+
+La CI `v2-portable-windows-lab` compile **le desktop Tauri en mode `release`**, pour embarquer les ressources frontend React plutôt que de nécessiter un serveur Vite de développement, puis réalise un **smoke test graphique réel** sous Windows, après avoir vérifié les compagnons Rust et l'archive portable. Le script `apps/desktop/scripts/test_desktop_window.py` démarre `aretovus-desktop.exe` **depuis le ZIP extrait** et recherche, au niveau Win32, une fenêtre visible appartenant au PID lancé, avec un titre exact et une stabilité minimale de deux secondes. Il vérifie que les quatre binaires et le contenu du dossier n'ont pas été modifiés par le lancement ; aucune clé, donnée réelle ou commande réseau n'est demandée.
+
+Un processus vivant sans fenêtre, une autre application avec le même titre ou un démarrage sans environnement graphique sont **des échecs, pas des validations**. Les tests du script de surveillance couvrent titre falsifié, fermeture du processus et délai dépassé. Les différences entre les runners GitHub Actions et un bureau Windows personnel restent à vérifier.
+
+Ce test ne valide **ni le rendu WebView2/React ni des clics utilisateurs** ; il n'est pas une attestation d'accessibilité, de signature logicielle ou de sécurité pour fonds réels. Il ne constitue pas un installeur.
