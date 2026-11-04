@@ -270,12 +270,39 @@ function Type-WithKeyboard($inputElement, [string]$value) {
     [System.Windows.Forms.SendKeys]::SendWait($value)
 }
 
-function Wait-EnabledButton($window, [int]$seconds) {
+function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
+    # A button that was enabled for an OLD path is not evidence that React
+    # accepted the newly typed path. Assert the accessible edit value too.
     $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
     while ([DateTime]::UtcNow -lt $deadline) {
         $tree = Get-Elements $window
-        $button = Find-ByNameAndType $tree "Connecter le" "ControlType.Button"
-        if ($button.Enabled) { return $button }
+        $button = $null
+        $pathMatches = $false
+        foreach ($entry in $tree) {
+            if ($entry.Type -eq "ControlType.Button" -and
+                $entry.Name.StartsWith("Connecter le")) {
+                $button = $entry
+            }
+            if ($entry.Type -eq "ControlType.Edit") {
+                try {
+                    $value = $null
+                    if ($entry.Element.TryGetCurrentPattern(
+                        [System.Windows.Automation.ValuePattern]::Pattern,
+                        [ref]$value
+                    )) {
+                        $actual = ([System.Windows.Automation.ValuePattern]$value).Current.Value
+                        if ($actual -ceq $expectedPath) {
+                            $pathMatches = $true
+                        }
+                    }
+                } catch [System.Windows.Automation.ElementNotAvailableException] {
+                    # React may replace a control during the input update.
+                }
+            }
+        }
+        if ($null -ne $button -and $button.Enabled -and $pathMatches) {
+            return $button
+        }
         Start-Sleep -Milliseconds 250
     }
     return $null
@@ -306,12 +333,12 @@ if ($button.Enabled) { throw "Connect button should be disabled for an empty pat
 # Intentionally nonexistent (random) testnet folder; no keys, files or services.
 $missing = "X:\ARETOVUS_MISSING_$([Guid]::NewGuid().ToString('N'))"
 Set-InputValue $input $missing
-$button = Wait-EnabledButton $observed.Window 8
+$button = Wait-EnabledButton $observed.Window 8 $missing
 if ($null -eq $button) {
     # Some WebView2 providers implement ValuePattern without dispatching
     # the browser's React onChange event. Use actual focused keyboard input.
     Type-WithKeyboard $input $missing
-    $button = Wait-EnabledButton $observed.Window 8
+    $button = Wait-EnabledButton $observed.Window 8 $missing
 }
 if ($null -eq $button) {
     throw "Typing a nonexistent path did not enable the React-controlled button"
@@ -341,7 +368,7 @@ foreach ($entry in $tree) {
 }
 if ($null -eq $input) { throw "React path control disappeared after native error" }
 Type-WithKeyboard $input $TestDataDir
-$button = Wait-EnabledButton $observed.Window 12
+$button = Wait-EnabledButton $observed.Window 12 $TestDataDir
 if ($null -eq $button) { throw "Could not select disposable native testnet directory" }
 Activate-Button $button.Element
 
