@@ -19,7 +19,7 @@ Workflow [`v2-portable-windows-lab.yml`](../../.github/workflows/v2-portable-win
 
 1. Windows GitHub Actions isolé avec permissions `contents: read`, checkout sans identifiants persistants ; aucun secret de release ni publication de version.
 2. `npm ci` à partir du lockfile, `npm test`, `npm run build`, vérifications statiques du thème, `cargo test --locked` du desktop.
-3. Builds Rust **debug** verrouillés de Tauri et des trois binaires natifs, même checkout/commit.
+3. Build Tauri **release** verrouillé avec les assets React/Vite embarqués (et non l'URL de développement `127.0.0.1:5173`) ; trois compagnons Rust testnet **debug** verrouillés depuis le même checkout/commit.
 4. Sur un dossier testnet temporaire avec espaces : miner un bloc jetable avec le vrai nœud Rust, vérifier hauteur/tip par le pont stdio et blocs 0/1 par l'explorateur ; rejeter méthodes de signature, limites de page et chemins absents.
 5. Assembleur Python : contrôle présence, type PE Windows x64 (signature DOS `MZ`, signature `PE`, architecture AMD64 et en-tête PE32+, vérification structurelle uniquement), taille maximale et absence de liens symboliques ; ZIP à structure fixe sans chemins arbitraires ; SHA-256 de chaque binaire et `manifest.json` avec SHA exact du checkout, avertissements explicites `signed:false` et `release_approved:false`.
 6. Vérification indépendante du ZIP par le script de contrôle, **extraction uniquement après vérification de l'inventaire fixe**, puis exécution des trois vrais binaires de testnet extraits dans un dossier temporaire contenant des espaces. On vérifie de nouveau le bloc miné, le pont IPC, l'explorateur et l'absence de modification des binaires ou de création de fichiers à côté de l'application. Le binaire GUI est présent et haché, **mais aucun test interactif de fenêtre Tauri n'est revendiqué**.
@@ -36,7 +36,7 @@ Le script d'archive refuse également une **course à la création du fichier ZI
 ## Limites / risques
 
 - Archive **non signée**. Les checksums présents dans le même ZIP détectent la corruption involontaire et certaines modifications incohérentes, **pas** une attaque modifiant à la fois le binaire et son manifeste. Aucune attestation de build ni authentification cryptographique d'éditeur.
-- Fichiers compilés en mode **debug**, peut augmenter taille et RAM ; aucune preuve de build bit-à-bit reproductible d'un runner à l'autre.
+- Le GUI Tauri est compilé en mode **release** pour embarquer le frontend, tandis que node/bridge/explorer restent compilés en **debug**. Aucune preuve de build bit-à-bit reproductible d'un runner à l'autre ; les compagnons debug peuvent augmenter taille et consommation de ressources.
 - `WebView2`, bibliothèques et runtime Windows peuvent manquer ; aucune vérification de lancement d'interface graphique réelle sur un bureau Windows dans ce workflow.
 - Le pont et l'explorateur sont cherchés par chemin adjacent au binaire Tauri. Le dossier d'installation doit être privé et non modifiable par un autre utilisateur ; l'archive ne crée **pas** d'ACL, de sandbox d'installateur, de mise à jour automatique ou de vérification de signature des exécutables compagnons.
 - La validation d'un snapshot local ne prouve pas une connexion P2P globale ni une finalité. Ne pas publier les dossiers de données, logs sensibles, seeds ou clés de portefeuille.
