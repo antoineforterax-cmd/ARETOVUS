@@ -191,7 +191,7 @@ function Save-BoundedFailureImage {
     $height = $bottom - $top
     if ($width -lt 100 -or $height -lt 100 -or
         $width -gt 2000 -or $height -gt 1500) { return }
-    $bitmap = New-Object System.Drawing.Bitmap($width, $height)
+    $bitmap = [System.Drawing.Bitmap]::new($width, $height)
     try {
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         try {
