@@ -105,6 +105,14 @@ jobs:
           python apps/desktop/scripts/test_desktop_window.py `
             --archive dist-windows/aretovus-desktop-Windows-lab-UNSIGNED.zip `
             --uia-script apps/desktop/scripts/test_webview_accessibility.ps1
+      - name: Publish bounded synthetic GUI failure image for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aretovus-WebView2-failure-image
+          path: ${{ runner.temp }}/aretovus-webview-failure.png
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Publish short-lived CI artifact, NOT a signed release
         uses: actions/upload-artifact@v4
         with:
