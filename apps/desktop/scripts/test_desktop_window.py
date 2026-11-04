@@ -157,7 +157,7 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                     completed = subprocess.run(
                         [
                             "powershell.exe", "-NoProfile", "-NonInteractive",
-                            "-ExecutionPolicy", "Bypass", "-File", str(verified_script),
+                            "-File", str(verified_script),
                             "-TargetPid", str(proc.pid),
                             "-TestDataDir", str(disposable_data),
                         ],
