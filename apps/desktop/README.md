@@ -45,7 +45,7 @@ Ces contrôles ne remplacent **ni audit WCAG, ni vérification visuelle sur les 
 
 Une CI GitHub Windows dédiée prépare un **ZIP temporaire non signé**, sans installateur ni accès mainnet. Il comprend `aretovus-desktop.exe`, `aretovus-local-bridge.exe`, `aretovus-explorer.exe` et le `aretovus-node.exe` de testnet. Ces quatre exécutables sont construits depuis **le même SHA Git** et conservés côte à côte afin que l'application ne dépende pas du `PATH` pour ses compagnons. L'archive comporte un `manifest.json`, une liste SHA-256 et des avertissements obligatoires. Les hachages du ZIP ne sont **pas** des signatures numériques.
 
-Le workflow teste la lecture réelle d'une chaîne testnet jetable, crée le ZIP, vérifie sa structure, puis lance de nouveau les compagnons **extraits de l'archive** depuis un dossier temporaire avec espaces. Les tests refusent les fausses signatures PE, les architectures autres qu'AMD64, les archives modifiées ou les erreurs de concurrence sur la destination. Ils **ne valident pas** le démarrage graphique interactif de Tauri sur un bureau Windows ni l'installation WebView2 d'une machine extérieure.
+Le workflow teste la lecture réelle d'une chaîne testnet jetable, crée le ZIP, vérifie sa structure, puis lance de nouveau les compagnons **extraits de l'archive** depuis un dossier temporaire avec espaces. Les tests refusent les fausses signatures PE, les architectures autres qu'AMD64, les archives modifiées ou les erreurs de concurrence sur la destination. Le démarrage réel de la fenêtre dans le ZIP a été ajouté ensuite par la PR #200 ; l'installation WebView2 sur une machine extérieure reste non vérifiée.
 
 Voir [la spécification et ses limites](../../docs/planning/V2_WINDOWS_PORTABLE_LAB.md) et [la PR #199](https://github.com/antoineforterax-cmd/ARETOVUS/pull/199). N'ouvrez pas de fonds réels, ne désactivez pas les protections Windows contre un programme non signé, et n'interprétez pas cet artefact comme une release approuvée.
 
@@ -56,3 +56,11 @@ La CI `v2-portable-windows-lab` compile **le desktop Tauri en mode `release`**, 
 Un processus vivant sans fenêtre, une autre application avec le même titre ou un démarrage sans environnement graphique sont **des échecs, pas des validations**. Les tests du script de surveillance couvrent titre falsifié, fermeture du processus et délai dépassé. Les différences entre les runners GitHub Actions et un bureau Windows personnel restent à vérifier.
 
 Ce test ne valide **ni le rendu WebView2/React ni des clics utilisateurs** ; il n'est pas une attestation d'accessibilité, de signature logicielle ou de sécurité pour fonds réels. Il ne constitue pas un installeur.
+
+## Test E2E React et WebView2 sur un vrai snapshot jetable
+
+Une extension du workflow Windows ajoute `scripts/test_webview_accessibility.ps1` : Windows UI Automation **sur le véritable Tauri extrait de l'archive**. Le test confirme la présence de l'interface React, interagit avec son champ de chemin et ses boutons, contrôle le refus d'un dossier inexistant par la commande native, puis charge un snapshot testnet miné sur place et ouvre le tableau de blocs via le binaire explorateur Rust.
+
+Le résultat doit être visible dans l'arbre d'accessibilité Windows ; un processus simplement ouvert ou une réponse JSON inventée par le script ne comptent pas. Les données sont créées dans un répertoire temporaire, le GUI n'a aucun accès à une clé de portefeuille réelle, aucun nœud public n'est démarré et aucun port de débogage du navigateur n'est ouvert. Cette vérification dépend du provider UI Automation/WebView2 sur le runner GitHub : **si celui-ci n'expose pas les éléments, la CI doit échouer et le chantier reste à corriger**, jamais se marquer réussi par défaut.
+
+À ne pas confondre avec un contrôle visuel pixel-perfect, une mesure du contraste, une validation clavier complète, un E2E Windows physique, un test P2P live ou un audit indépendant. Cette étape n'autorise toujours pas les fonds réels ni le mainnet.
