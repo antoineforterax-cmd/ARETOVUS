@@ -7,6 +7,7 @@ screen rendering, P2P connectivity, or suitability for actual funds.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import ctypes
 import hashlib
 import os
@@ -29,7 +30,7 @@ CI_SECRET_NAMES = (
 WEBVIEW_ARGUMENTS = "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"
 
 
-def sanitized_ci_environment(raw: dict[str, str] | os._Environ[str]) -> dict[str, str]:
+def sanitized_ci_environment(raw: Mapping[str, str]) -> dict[str, str]:
     """Strip runner credentials and inherited Chromium command-line options."""
     env = dict(raw)
     for name in (*CI_SECRET_NAMES, WEBVIEW_ARGUMENTS):
