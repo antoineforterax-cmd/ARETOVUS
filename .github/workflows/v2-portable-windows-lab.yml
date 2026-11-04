@@ -26,6 +26,8 @@ jobs:
           python-version: "3.12"
       - name: Adversarial packaging tests without executing binaries
         run: python -m unittest discover -s apps/desktop/scripts -p test_portable_windows_lab.py -v
+      - name: Reject spoofed or missing GUI window evidence
+        run: python -m unittest discover -s apps/desktop/scripts -p test_desktop_window_contract.py -v
       - name: Install exact frontend dependency graph
         working-directory: apps/desktop
         run: npm ci --no-audit --no-fund
@@ -64,6 +66,11 @@ jobs:
         shell: pwsh
         run: |
           python apps/desktop/scripts/test_packaged_windows_lab.py `
+            --archive dist-windows/aretovus-desktop-Windows-lab-UNSIGNED.zip
+      - name: Prove extracted desktop launches a visible stable Windows GUI window
+        shell: pwsh
+        run: |
+          python apps/desktop/scripts/test_desktop_window.py `
             --archive dist-windows/aretovus-desktop-Windows-lab-UNSIGNED.zip
       - name: Publish short-lived CI artifact, NOT a signed release
         uses: actions/upload-artifact@v4
