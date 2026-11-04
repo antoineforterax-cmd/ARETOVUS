@@ -110,6 +110,24 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
         executables = {name: folder / name for name in lab.BINARIES}
         hashes_before = {name: binary_digest(path) for name, path in executables.items()}
 
+        # On UIA-enabled CI, create a ONE-BLOCK real native testnet snapshot
+        # with the node CLI extracted from the same verified lab ZIP. No
+        # production keys, user data or P2P listeners are involved.
+        disposable_data = None
+        if uia_script is not None:
+            disposable_data = Path(temp) / "real native testnet snapshot with spaces"
+            disposable_data.mkdir()
+            mined = subprocess.run(
+                [
+                    str(executables["aretovus-node.exe"]), "testnet", "mine",
+                    "--data-dir", str(disposable_data),
+                    "--miner", "11" * 32, "--count", "1",
+                ],
+                capture_output=True, check=False, timeout=100,
+            )
+            if mined.returncode != 0:
+                raise RuntimeError("Failed to mine disposable testnet snapshot for WebView2 UI smoke")
+
         # No user-supplied data directory or remote service is contacted. No
         # credentials are passed intentionally to the GUI in a CI job.
         environment = os.environ.copy()
@@ -141,10 +159,11 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                             "powershell.exe", "-NoProfile", "-NonInteractive",
                             "-ExecutionPolicy", "Bypass", "-File", str(verified_script),
                             "-TargetPid", str(proc.pid),
+                            "-TestDataDir", str(disposable_data),
                         ],
                         capture_output=True,
                         check=False,
-                        timeout=110,
+                        timeout=210,
                         cwd=folder,
                         env=environment,
                     )
@@ -152,9 +171,9 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                         error_text = completed.stderr.decode("utf-8", errors="replace")[-1600:]
                         raise RuntimeError("Actual React/WebView2 UI Automation smoke failed: " + error_text)
                     output = completed.stdout.decode("utf-8", errors="replace")
-                    if "PASS: WebView2 exposes React dashboard" not in output:
+                    if "PASS: WebView2 React displayed real Rust snapshot" not in output:
                         raise RuntimeError("UI Automation did not report a real successful interaction")
-                    print("Actual embedded React controls + native invalid-folder IPC error verified")
+                    print("Extracted React GUI: invalid-path rejection, real Rust snapshot and explorer click verified")
                 # A transient startup splash screen is insufficient.
                 time.sleep(2)
                 if proc.poll() is not None or EXPECTED_TITLE not in top_level_windows_for_pid(proc.pid):
@@ -180,7 +199,7 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
     if uia_script is None:
         print("NOT CHECKED: rendered React content, GUI interactions, installer or funds")
     else:
-        print("NOT CHECKED: valid local snapshot, explorer clicks, actual pixels, full accessibility, installer or funds")
+        print("NOT CHECKED: actual pixels, all accessibility modes, live P2P, signed installer or funds")
 
 
 def main() -> int:
