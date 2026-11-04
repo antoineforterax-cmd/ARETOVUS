@@ -28,6 +28,16 @@ jobs:
         run: python -m unittest discover -s apps/desktop/scripts -p test_portable_windows_lab.py -v
       - name: Reject spoofed or missing GUI window evidence
         run: python -m unittest discover -s apps/desktop/scripts -p test_desktop_window_contract.py -v
+      - name: Parse Windows UI Automation smoke script before costly native builds
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $script = (Resolve-Path apps/desktop/scripts/test_webview_accessibility.ps1).Path
+          [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            throw "Windows UI Automation test script has PowerShell syntax errors"
+          }
       - name: Install exact frontend dependency graph
         working-directory: apps/desktop
         run: npm ci --no-audit --no-fund
