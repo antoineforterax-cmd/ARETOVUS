@@ -180,6 +180,14 @@ if (-not ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "indisp
 
 # Now switch to a newly mined, disposable local testnet snapshot, created by
 # the Python parent with the REAL node CLI from the same verified ZIP.
+# React has re-rendered after the invalid-path error; reacquire the Edit element
+# instead of holding an accessibility handle that might have become stale.
+$tree = Get-Elements $observed.Window
+$input = $null
+foreach ($entry in $tree) {
+    if ($entry.Type -eq "ControlType.Edit") { $input = $entry.Element; break }
+}
+if ($null -eq $input) { throw "React path control disappeared after native error" }
 Type-WithKeyboard $input $TestDataDir
 $button = Wait-EnabledButton $observed.Window 12
 if ($null -eq $button) { throw "Could not select disposable native testnet directory" }
