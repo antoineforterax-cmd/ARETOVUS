@@ -110,6 +110,15 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
         executables = {name: folder / name for name in lab.BINARIES}
         hashes_before = {name: binary_digest(path) for name, path in executables.items()}
 
+        # Do not pass CI authentication tokens to ANY spawned native binary,
+        # including the synthetic one-block miner, GUI or UI Automation runner.
+        environment = os.environ.copy()
+        for secret_name in (
+            "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
+        ):
+            environment.pop(secret_name, None)
+
         # On UIA-enabled CI, create a ONE-BLOCK real native testnet snapshot
         # with the node CLI extracted from the same verified lab ZIP. No
         # production keys, user data or P2P listeners are involved.
@@ -123,19 +132,11 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                     "--data-dir", str(disposable_data),
                     "--miner", "11" * 32, "--count", "1",
                 ],
-                capture_output=True, check=False, timeout=100,
+                capture_output=True, check=False, timeout=100, env=environment,
             )
             if mined.returncode != 0:
                 raise RuntimeError("Failed to mine disposable testnet snapshot for WebView2 UI smoke")
 
-        # No user-supplied data directory or remote service is contacted. No
-        # credentials are passed intentionally to the GUI in a CI job.
-        environment = os.environ.copy()
-        for secret_name in (
-            "GITHUB_TOKEN", "GH_TOKEN", "ACTIONS_RUNTIME_TOKEN",
-            "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL",
-        ):
-            environment.pop(secret_name, None)
         diagnostic = Path(temp) / "desktop-stderr.log"
         with diagnostic.open("wb") as errors:
             proc = subprocess.Popen(
