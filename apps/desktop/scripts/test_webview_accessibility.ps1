@@ -20,6 +20,7 @@ if (-not (Test-Path -LiteralPath $TestDataDir -PathType Container)) {
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
 # WebView2 renders inside a separate Chromium process. On some Tauri/wry
 # versions, the top-level host HWND's UIA tree does not expose its WebView2
@@ -172,6 +173,35 @@ function Match-Name($items, [string]$text) {
     return $false
 }
 
+function Save-BoundedFailureImage {
+    # CI launches with a fresh, empty profile and a disposable testnet only.
+    # Capture the verified application's foreground rectangle, never the desktop.
+    if (-not $env:RUNNER_TEMP) { return }
+    $window = Get-AppWindow
+    if ($null -eq $window) { return }
+    $hwnd = [IntPtr]([long]$window.Current.NativeWindowHandle)
+    if (-not [AretovusWebViewChildren]::ForegroundIsVerifiedHost($hwnd)) { return }
+    $rect = $window.Current.BoundingRectangle
+    $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
+    $left = [Math]::Max([int]$rect.Left, $screen.Left)
+    $top = [Math]::Max([int]$rect.Top, $screen.Top)
+    $right = [Math]::Min([int]$rect.Right, $screen.Right)
+    $bottom = [Math]::Min([int]$rect.Bottom, $screen.Bottom)
+    $width = $right - $left
+    $height = $bottom - $top
+    if ($width -lt 100 -or $height -lt 100 -or
+        $width -gt 2000 -or $height -gt 1500) { return }
+    $bitmap = New-Object System.Drawing.Bitmap($width, $height)
+    try {
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        try {
+            $graphics.CopyFromScreen($left, $top, 0, 0, $bitmap.Size)
+        } finally { $graphics.Dispose() }
+        $destination = Join-Path $env:RUNNER_TEMP 'aretovus-webview-failure.png'
+        $bitmap.Save($destination, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally { $bitmap.Dispose() }
+}
+
 function Wait-ReactTree {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     $windowSeen = $false
@@ -312,6 +342,9 @@ function Wait-ReactTree {
     # Do not dump UIA element text: text may contain sensitive local paths.
     # Only disclose presence/absence of five fixed labels and bounded counts.
     $missing = @($landmarks | Where-Object { -not $seen[$_] })
+    try { Save-BoundedFailureImage } catch {
+        # Screenshot collection must never turn an E2E failure into a success.
+    }
     throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates sampledPoints=$sampledPoints hostOwnedPoints=$hostOwnedPoints maxDocuments=$maxDocuments maxEdits=$maxEdits maxButtons=$maxButtons maxTexts=$maxTexts browserErrorSeen=$browserErrorSeen documentDiagnostics=$documentDiagnostics missingLandmarks=$($missing -join ',')"
 }
 
