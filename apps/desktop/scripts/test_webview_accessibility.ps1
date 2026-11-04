@@ -21,6 +21,48 @@ Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Windows.Forms
 
+# WebView2 renders inside a separate Chromium process. On some Tauri/wry
+# versions, the top-level host HWND's UIA tree does not expose its WebView2
+# content. Find child render HWNDs belonging to the VERIFIED Tauri host
+# window; then ask Windows UIA for those real native elements directly.
+# This does not start a debug listener or inject JavaScript.
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class AretovusWebViewChildren {
+    private delegate bool EnumChildrenProc(IntPtr hwnd, IntPtr lparam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool EnumChildWindows(
+        IntPtr parent, EnumChildrenProc callback, IntPtr lparam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetClassName(
+        IntPtr hwnd, StringBuilder name, int capacity);
+
+    public static IntPtr[] Find(IntPtr parent) {
+        var renderers = new List<IntPtr>();
+        var webviews = new List<IntPtr>();
+        if (parent == IntPtr.Zero) return renderers.ToArray();
+        EnumChildWindows(parent, delegate(IntPtr hwnd, IntPtr unused) {
+            var name = new StringBuilder(128);
+            if (GetClassName(hwnd, name, name.Capacity) > 0) {
+                if (name.ToString() == "Chrome_RenderWidgetHostHWND")
+                    renderers.Add(hwnd);
+                else if (name.ToString() == "Chrome_WidgetWin_0")
+                    webviews.Add(hwnd);
+            }
+            return true;
+        }, IntPtr.Zero);
+        renderers.AddRange(webviews);
+        return renderers.ToArray();
+    }
+}
+'@
+
 function Get-AppWindow {
     $cond = [System.Windows.Automation.PropertyCondition]::new(
         [System.Windows.Automation.AutomationElement]::ProcessIdProperty,
@@ -82,6 +124,7 @@ function Wait-ReactTree {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     $windowSeen = $false
     $maxElements = 0
+    $maxRenderers = 0
     $seen = @{}
     $landmarks = @("Explorateur de blocs", "Hauteur valid", "TESTNET", "Aucun n", "Connecter le")
     foreach ($landmark in $landmarks) { $seen[$landmark] = $false }
@@ -92,27 +135,43 @@ function Wait-ReactTree {
         $window = Get-AppWindow
         if ($null -ne $window) {
             $windowSeen = $true
-            $tree = Get-Elements $window
-            $maxElements = [Math]::Max($maxElements, $tree.Count)
-            foreach ($landmark in $landmarks) {
-                if (Match-Name $tree $landmark) { $seen[$landmark] = $true }
+            $candidates = @($window)
+            $nativeHandle = [IntPtr]([long]$window.Current.NativeWindowHandle)
+            $rendererHandles = [AretovusWebViewChildren]::Find($nativeHandle)
+            $maxRenderers = [Math]::Max($maxRenderers, $rendererHandles.Count)
+            foreach ($childHwnd in $rendererHandles) {
+                try {
+                    $candidate = [System.Windows.Automation.AutomationElement]::FromHandle($childHwnd)
+                    if ($null -ne $candidate) { $candidates += $candidate }
+                } catch [System.Windows.Automation.ElementNotAvailableException] {
+                    # Chromium child was destroyed while the view started.
+                } catch [System.Runtime.InteropServices.COMException] {
+                    # A transient child HWND may lack a UIA provider.
+                }
             }
-            if (
-                (Match-Name $tree "Explorateur de blocs") -and
-                (Match-Name $tree "Hauteur valid") -and
-                (Match-Name $tree "TESTNET") -and
-                (Match-Name $tree "Aucun n") -and
-                (Match-Name $tree "Connecter le")
-            ) {
-                return @{ Window = $window; Tree = $tree }
+            foreach ($root in $candidates) {
+                $tree = Get-Elements $root
+                $maxElements = [Math]::Max($maxElements, $tree.Count)
+                foreach ($landmark in $landmarks) {
+                    if (Match-Name $tree $landmark) { $seen[$landmark] = $true }
+                }
+                if (
+                    (Match-Name $tree "Explorateur de blocs") -and
+                    (Match-Name $tree "Hauteur valid") -and
+                    (Match-Name $tree "TESTNET") -and
+                    (Match-Name $tree "Aucun n") -and
+                    (Match-Name $tree "Connecter le")
+                ) {
+                    return @{ Window = $root; Tree = $tree }
+                }
             }
         }
         Start-Sleep -Milliseconds 350
     }
     # Do not dump UIA element text: text may contain sensitive local paths.
-    # Only disclose presence/absence of the five fixed known UI landmarks.
+    # Only disclose presence/absence of five fixed labels and bounded counts.
     $missing = @($landmarks | Where-Object { -not $seen[$_] })
-    throw "React UIA timeout: windowSeen=$windowSeen maxElements=$maxElements missingLandmarks=$($missing -join ',')"
+    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers missingLandmarks=$($missing -join ',')"
 }
 
 function Find-ByNameAndType($tree, [string]$prefix, [string]$type) {
