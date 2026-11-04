@@ -63,13 +63,32 @@ public static class AretovusWebViewChildren {
         return GetForegroundWindow() == hwnd;
     }
 
-    public static int[] Center(IntPtr hwnd) {
+    public static int[][] SamplePoints(IntPtr hwnd) {
         Rectangle rect;
         if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out rect) ||
             rect.Right - rect.Left < 10 || rect.Bottom - rect.Top < 10)
-            return new int[0];
-        return new[] { rect.Left + (rect.Right - rect.Left) / 2,
-                       rect.Top + (rect.Bottom - rect.Top) / 2 };
+            return new int[0][];
+        var samples = new List<int[]>();
+        foreach (double x in new[] { 0.18, 0.50, 0.82 })
+            foreach (double y in new[] { 0.18, 0.50, 0.82 })
+                samples.Add(new[] { rect.Left + (int)((rect.Right - rect.Left) * x),
+                                    rect.Top + (int)((rect.Bottom - rect.Top) * y) });
+        return samples.ToArray();
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScreenPoint { public int X, Y; }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(ScreenPoint point);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsChild(IntPtr parent, IntPtr child);
+
+    public static bool PointBelongsToHost(IntPtr parent, int x, int y) {
+        var target = WindowFromPoint(new ScreenPoint { X = x, Y = y });
+        return target != IntPtr.Zero &&
+            (target == parent || IsChild(parent, target));
     }
 
     public static IntPtr[] Find(IntPtr parent) {
@@ -156,6 +175,11 @@ function Wait-ReactTree {
     $maxRenderers = 0
     $hitTestCandidates = 0
     $foregroundSeen = $false
+    $sampledPoints = 0
+    $hostOwnedPoints = 0
+    $maxDocuments = 0
+    $maxEdits = 0
+    $maxButtons = 0
     $seen = @{}
     $landmarks = @("Explorateur de blocs", "Hauteur valid", "TESTNET", "Aucun n", "Connecter le")
     foreach ($landmark in $landmarks) { $seen[$landmark] = $false }
@@ -190,32 +214,45 @@ function Wait-ReactTree {
                 $foregroundSeen = $true
                 $walker = [System.Windows.Automation.TreeWalker]::RawViewWalker
                 foreach ($childHwnd in $rendererHandles) {
-                    $center = [AretovusWebViewChildren]::Center($childHwnd)
-                    if ($center.Count -ne 2) { continue }
-                    try {
-                        $point = [System.Windows.Point]::new([double]$center[0], [double]$center[1])
-                        $current = [System.Windows.Automation.AutomationElement]::FromPoint($point)
-                        for ($depth = 0; $depth -lt 12 -and $null -ne $current; $depth++) {
-                            $control = $current.Current.ControlType.ProgrammaticName
-                            if ($control -eq "ControlType.Document" -or
-                                $control -eq "ControlType.Pane" -or
-                                $control -eq "ControlType.Group" -or
-                                $control -eq "ControlType.Custom") {
-                                $candidates += $current
-                                $hitTestCandidates++
+                    foreach ($sample in [AretovusWebViewChildren]::SamplePoints($childHwnd)) {
+                        $sampledPoints++
+                        # Hit-testing must never admit an unrelated window,
+                        # even when the verified Tauri host has foreground focus.
+                        if (-not [AretovusWebViewChildren]::PointBelongsToHost(
+                            $nativeHandle, $sample[0], $sample[1]
+                        )) { continue }
+                        $hostOwnedPoints++
+                        try {
+                            $point = [System.Windows.Point]::new([double]$sample[0], [double]$sample[1])
+                            $current = [System.Windows.Automation.AutomationElement]::FromPoint($point)
+                            for ($depth = 0; $depth -lt 12 -and $null -ne $current; $depth++) {
+                                $control = $current.Current.ControlType.ProgrammaticName
+                                if ($control -eq "ControlType.Document" -or
+                                    $control -eq "ControlType.Pane" -or
+                                    $control -eq "ControlType.Group" -or
+                                    $control -eq "ControlType.Custom") {
+                                    $candidates += $current
+                                    $hitTestCandidates++
+                                }
+                                $current = $walker.GetParent($current)
                             }
-                            $current = $walker.GetParent($current)
+                        } catch [System.Windows.Automation.ElementNotAvailableException] {
+                            # Renderer replaced during navigation.
+                        } catch [System.Runtime.InteropServices.COMException] {
+                            # No usable UIA provider at this host-owned point.
                         }
-                    } catch [System.Windows.Automation.ElementNotAvailableException] {
-                        # A renderer node was replaced during navigation.
-                    } catch [System.Runtime.InteropServices.COMException] {
-                        # No usable UIA provider at the tested child point.
                     }
                 }
             }
             foreach ($root in $candidates) {
                 $tree = Get-Elements $root
                 $maxElements = [Math]::Max($maxElements, $tree.Count)
+                $maxDocuments = [Math]::Max($maxDocuments,
+                    @($tree | Where-Object { $_.Type -eq "ControlType.Document" }).Count)
+                $maxEdits = [Math]::Max($maxEdits,
+                    @($tree | Where-Object { $_.Type -eq "ControlType.Edit" }).Count)
+                $maxButtons = [Math]::Max($maxButtons,
+                    @($tree | Where-Object { $_.Type -eq "ControlType.Button" }).Count)
                 foreach ($landmark in $landmarks) {
                     if (Match-Name $tree $landmark) { $seen[$landmark] = $true }
                 }
@@ -235,7 +272,7 @@ function Wait-ReactTree {
     # Do not dump UIA element text: text may contain sensitive local paths.
     # Only disclose presence/absence of five fixed labels and bounded counts.
     $missing = @($landmarks | Where-Object { -not $seen[$_] })
-    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates missingLandmarks=$($missing -join ',')"
+    throw "React UIA timeout: windowSeen=$windowSeen maxHostOrRendererElements=$maxElements rendererChildren=$maxRenderers foregroundConfirmed=$foregroundSeen hitTestRoots=$hitTestCandidates sampledPoints=$sampledPoints hostOwnedPoints=$hostOwnedPoints maxDocuments=$maxDocuments maxEdits=$maxEdits maxButtons=$maxButtons missingLandmarks=$($missing -join ',')"
 }
 
 function Find-ByNameAndType($tree, [string]$prefix, [string]$type) {
