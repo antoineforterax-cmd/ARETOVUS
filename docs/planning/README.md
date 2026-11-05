@@ -1,8 +1,8 @@
-# ARETOVUS — Documentation du projet (mise à jour le 29 octobre 2026)
+# ARETOVUS — Documentation du projet (mise à jour le 5 novembre 2026)
 
-**Statut : proposition documentaire pour revue.** Référence : branche expérimentale `feature/emission-schedule-v0`. Aucune modification de consensus ou de code n'est incluse.
+**Statut : dossier de planification.** Les propositions anciennes et les règles du réseau natif actuel doivent être distinguées par leur date et leur commit. Cette page ne modifie aucune règle de consensus.
 
-Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) présente désormais l'état général du projet. Le testnet avancé reste sur `feature/emission-schedule-v0`, et les améliorations des PR #13 à #22 ne sont pas encore fusionnées. Les comptes rendus techniques et les résultats de CI se trouvent sur ces PR ; les tests réussis sur une branche ne prouvent pas que `main` contient la fonctionnalité.
+Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) et [la feuille de route vivante](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) présentent l'état actuel. Le réseau natif ARETOVUS est intégré à `main` depuis le 1er novembre 2026. Les résultats de CI historiques sur une ancienne branche ne prouvent pas le comportement du commit courant.
 
 ## Ordre de lecture
 1. [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) — finalité, exigences, limites.
@@ -21,7 +21,7 @@ Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) pr
 En cas de divergence, ouvrir une tâche de réconciliation : ne jamais réécrire l'histoire ni faire passer une aspiration mainnet pour une règle du testnet. Le document Word historique évoqué dans les échanges n'a pas été retrouvé ; la comparaison mot à mot reste donc **à faire**, sans inventer son contenu.
 
 ## Situation des branches
-`main` est un prototype plus ancien ; PR #1 est un brouillon vers `main` ; PR #2 (`feature/emission-schedule-v0`) est un brouillon vers la branche de PR #1. Le contenu de PR #2 ne doit pas être présenté comme déjà fusionné à `main`.
+Les PR #1 et #2 ainsi que la branche `feature/emission-schedule-v0` sont des jalons historiques de l'ancien réseau. Vérifier le SHA et la compatibilité du protocole avant de reprendre leur code ; le réseau natif actuel est sur `main`.
 
 ## Limites
 Testnet expérimental uniquement, sans fonds réels, sans revue E1 par une personne extérieure au projet. Les essais locaux, CI et simulations ne démontrent ni sécurité mainnet ni anonymat absolu.
