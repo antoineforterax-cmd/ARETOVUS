@@ -1,10 +1,10 @@
 //! Create wallet secrets with an explicit ACL before writing any key material.
+// Win32 security descriptors require FFI; confine unsafe code to this module.
+#![allow(unsafe_code)]
 use std::{
     ffi::c_void,
     fs::File,
-    io,
-    iter,
-    mem,
+    io, iter, mem,
     os::windows::{
         ffi::OsStrExt,
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
@@ -15,20 +15,23 @@ use std::{
 
 use windows_sys::Win32::{
     Foundation::{
-        GetLastError, LocalFree, ERROR_NO_TOKEN, GENERIC_WRITE, INVALID_HANDLE_VALUE, READ_CONTROL,
-    },
-    Security::{
-        GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl, GetTokenInformation,
-        EqualSid, TokenUser, ACCESS_ALLOWED_ACE, ACCESS_ALLOWED_ACE_TYPE, ACL,
-        DACL_SECURITY_INFORMATION, SE_DACL_PROTECTED, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER,
+        GetLastError, LocalFree, ERROR_NO_TOKEN, GENERIC_WRITE, INVALID_HANDLE_VALUE,
     },
     Security::Authorization::{
         ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW,
         GetSecurityInfo, SDDL_REVISION_1, SE_FILE_OBJECT,
     },
+    Security::{
+        EqualSid, GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl,
+        GetTokenInformation, TokenUser, ACCESS_ALLOWED_ACE, ACL,
+        DACL_SECURITY_INFORMATION, SECURITY_ATTRIBUTES, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
+    },
     Storage::FileSystem::{CreateFileW, CREATE_NEW, FILE_ATTRIBUTE_NORMAL},
     System::Threading::{GetCurrentProcess, GetCurrentThread, OpenProcessToken, OpenThreadToken},
 };
+
+const READ_CONTROL: u32 = 0x0002_0000;
+const ACCESS_ALLOWED_ACE_TYPE: u8 = 0;
 
 struct LocalAllocation(*mut c_void);
 
@@ -58,18 +61,29 @@ fn current_user_sid() -> io::Result<String> {
         let mut needed = 0u32;
         GetTokenInformation(token, TokenUser, ptr::null_mut(), 0, &mut needed);
         if needed < mem::size_of::<TOKEN_USER>() as u32 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid token user size"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid token user size",
+            ));
         }
         // TOKEN_USER contains pointers, so a Vec<u8> would not be aligned.
         let mut words = vec![0usize; (needed as usize).div_ceil(mem::size_of::<usize>())];
-        if GetTokenInformation(token, TokenUser, words.as_mut_ptr().cast(), needed, &mut needed)
-            == 0
+        if GetTokenInformation(
+            token,
+            TokenUser,
+            words.as_mut_ptr().cast(),
+            needed,
+            &mut needed,
+        ) == 0
         {
             return Err(io::Error::last_os_error());
         }
         let user = &*words.as_ptr().cast::<TOKEN_USER>();
         if user.User.Sid.is_null() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "token has no user SID"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "token has no user SID",
+            ));
         }
         let mut sid = ptr::null_mut();
         if ConvertSidToStringSidW(user.User.Sid, &mut sid) == 0 {
@@ -93,9 +107,13 @@ fn private_descriptor() -> io::Result<LocalAllocation> {
     let mut descriptor = ptr::null_mut();
     if unsafe {
         ConvertStringSecurityDescriptorToSecurityDescriptorW(
-            wide.as_ptr(), SDDL_REVISION_1, &mut descriptor, ptr::null_mut(),
+            wide.as_ptr(),
+            SDDL_REVISION_1,
+            &mut descriptor,
+            ptr::null_mut(),
         )
-    } == 0 {
+    } == 0
+    {
         return Err(io::Error::last_os_error());
     }
     Ok(LocalAllocation(descriptor))
@@ -104,10 +122,10 @@ fn private_descriptor() -> io::Result<LocalAllocation> {
 unsafe fn allowed_ace(acl: *mut ACL, index: u32) -> io::Result<*const ACCESS_ALLOWED_ACE> {
     let mut ace = ptr::null_mut();
     if unsafe { GetAce(acl, index, &mut ace) } == 0 || ace.is_null() {
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "cannot inspect wallet ACL",
-            ));
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "cannot inspect wallet ACL",
+        ));
     }
     let ace = ace.cast::<ACCESS_ALLOWED_ACE>();
     if unsafe { (*ace).Header.AceType } != ACCESS_ALLOWED_ACE_TYPE {
@@ -220,7 +238,10 @@ fn verify_private_acl(file: &File, expected: *mut c_void) -> io::Result<()> {
 pub(super) fn create_private_file(path: &Path) -> io::Result<File> {
     let wide: Vec<u16> = path.as_os_str().encode_wide().collect();
     if wide.contains(&0) {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "NUL in wallet path"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "NUL in wallet path",
+        ));
     }
     let wide: Vec<u16> = wide.into_iter().chain(iter::once(0)).collect();
     let descriptor = private_descriptor()?;
