@@ -9,7 +9,7 @@ chemin ou trace conserve le message générique. Aucun détail natif n'est inter
 | --- | --- |
 | `invalid_data_dir` | Vérifier le chemin du dossier testnet |
 | `bridge_busy` | Attendre la lecture en cours puis réessayer |
-| `bridge_timeout`, `explorer_timeout` | Réessayer lorsque le disque est moins sollicité |
+| `bridge_timeout`, `explorer_timeout` | Réessayer dans un instant |
 | `bridge_unavailable`, `explorer_unavailable` | Vérifier les fichiers de l'application |
 | `verification_failed` | Vérifier le dossier et conserver les sauvegardes |
 | `explorer_failed` | Actualiser le nœud puis réessayer |
