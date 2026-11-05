@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseCanonicalPage, type CanonicalPage } from "./explorer";
+import { nativeErrorMessage } from "./nativeErrors";
 
 type Props = { dataDir: string; verifiedTip: string | null };
 const LIMIT = 10;
@@ -33,10 +34,10 @@ export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
         setPage(validated);
         setError("");
       }
-    } catch {
+    } catch (error) {
       if (expectedGeneration === generation.current) {
         setPage(null);
-        setError("Lecture des blocs indisponible ou sommet modifié. Actualise le nœud, puis réessaie.");
+        setError(nativeErrorMessage(error, "Lecture des blocs indisponible ou sommet modifié. Actualise le nœud, puis réessaie."));
       }
     } finally {
       busy.current = false;
