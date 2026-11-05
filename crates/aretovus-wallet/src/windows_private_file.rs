@@ -14,17 +14,15 @@ use std::{
 };
 
 use windows_sys::Win32::{
-    Foundation::{
-        GetLastError, LocalFree, ERROR_NO_TOKEN, GENERIC_WRITE, INVALID_HANDLE_VALUE,
-    },
+    Foundation::{GetLastError, LocalFree, ERROR_NO_TOKEN, GENERIC_WRITE, INVALID_HANDLE_VALUE},
     Security::Authorization::{
         ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW,
         GetSecurityInfo, SDDL_REVISION_1, SE_FILE_OBJECT,
     },
     Security::{
         EqualSid, GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl,
-        GetTokenInformation, TokenUser, ACCESS_ALLOWED_ACE, ACL,
-        DACL_SECURITY_INFORMATION, SECURITY_ATTRIBUTES, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
+        GetTokenInformation, TokenUser, ACCESS_ALLOWED_ACE, ACL, DACL_SECURITY_INFORMATION,
+        SECURITY_ATTRIBUTES, SE_DACL_PROTECTED, TOKEN_QUERY, TOKEN_USER,
     },
     Storage::FileSystem::{CreateFileW, CREATE_NEW, FILE_ATTRIBUTE_NORMAL},
     System::Threading::{GetCurrentProcess, GetCurrentThread, OpenProcessToken, OpenThreadToken},
