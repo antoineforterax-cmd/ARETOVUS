@@ -18,7 +18,7 @@ Le réseau natif ARETOVUS a été intégré sur `main` le 1er novembre 2026. **R
 - C2 : [PR #166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166) intégrée (tests réorganisations et partitions locaux) ; C3 : [PR #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) intégrée (100 001 blocs TCP loopback, pas réseau physique).
 - E2 : [PR #168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168) améliore la reproductibilité **des métadonnées ZIP**, pas celle des exécutables ; E3 : [PR #169](https://github.com/antoineforterax-cmd/ARETOVUS/pull/169) documente un **NO-GO**, pas un lancement.
 - Les PR historiques #108/#109/#112/#115/#116/#124–#131 incluent des conceptions, des branches empilées, des précurseurs et des résultats parfois anciens. Conserver leur provenance, revoir leurs différences avant toute reprise ; ne pas fusionner directement les assistants LAN sous l'ancienne marque.
-- Le responsable a placé **E1, audit indépendant, en ultime étape finale**, sans l'annuler et sans prétendre qu'il est accompli. Aucun mainnet ou fonds réel avant preuves et décisions adaptées.
+- Le responsable a placé **E1, revue par une personne qualifiée extérieure au projet, en ultime étape finale**, sans l'annuler et sans prétendre qu'il est accompli. Ses propres revues du code et celles des agents constituent des vérifications internes, pas cette étape extérieure. Aucun mainnet ou fonds réel avant preuves et décisions adaptées.
 
 ## 3. Ordre obligatoire pour chaque session de travail
 
@@ -71,7 +71,7 @@ Les relecteurs rendent leurs résultats indépendamment. Les corrections vont su
 3. **D1 — profils et optimisation durable.** Mesurer sur SHA épinglé les lectures de snapshots, les contrôles de métadonnées, CPU/RSS du processus nœud distinct, la latence de vérification ; ne jamais supprimer les vérifications de fichiers, le rejeu ou la restauration pour gagner du temps.
 4. **Compléter C2/C3/C4, D2 et E2 selon leurs preuves manquantes.** Refaire les expériences longues sur machines distinctes lorsque requises ; des smokes courts ou des modèles de 500 M blocs ne remplacent pas de vrais essais.
 5. **E3 — maintenir NO-GO tant que les critères de testnet public sont ouverts**. La préparation d'une checklist n'est pas une décision d'ouverture.
-6. **E1 — audit externe indépendant en étape ultime** selon la priorité demandée par le responsable. La repousser n'autorise aucune déclaration de sécurité pour des fonds réels.
+6. **E1 — revue par une personne extérieure au projet en étape ultime** selon la priorité demandée par le responsable. La repousser n'autorise aucune déclaration de sécurité pour des fonds réels.
 
 Chaque fusion demeure conditionnée aux autorisations, aux contrôles au SHA exact et à une contre-revue de sécurité. La liste et les résultats à jour se trouvent dans l'issue #142, pas dans l'ancien tableau de PR d'octobre.
 

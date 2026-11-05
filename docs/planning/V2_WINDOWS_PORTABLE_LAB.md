@@ -22,7 +22,7 @@ Workflow [`v2-portable-windows-lab.yml`](../../.github/workflows/v2-portable-win
 3. Build Tauri **release** verrouillé avec les assets React/Vite embarqués (et non l'URL de développement `127.0.0.1:5173`) ; trois compagnons Rust testnet **debug** verrouillés depuis le même checkout/commit.
 4. Sur un dossier testnet temporaire avec espaces : miner un bloc jetable avec le vrai nœud Rust, vérifier hauteur/tip par le pont stdio et blocs 0/1 par l'explorateur ; rejeter méthodes de signature, limites de page et chemins absents.
 5. Assembleur Python : contrôle présence, type PE Windows x64 (signature DOS `MZ`, signature `PE`, architecture AMD64 et en-tête PE32+, vérification structurelle uniquement), taille maximale et absence de liens symboliques ; ZIP à structure fixe sans chemins arbitraires ; SHA-256 de chaque binaire et `manifest.json` avec SHA exact du checkout, avertissements explicites `signed:false` et `release_approved:false`.
-6. Vérification indépendante du ZIP par le script de contrôle, **extraction uniquement après vérification de l'inventaire fixe**, puis exécution des trois vrais binaires de testnet extraits dans un dossier temporaire contenant des espaces. On vérifie de nouveau le bloc miné, le pont IPC, l'explorateur et l'absence de modification des binaires ou de création de fichiers à côté de l'application. Le binaire GUI est présent et haché, **mais aucun test interactif de fenêtre Tauri n'est revendiqué**.
+6. Vérification indépendante du ZIP par le script de contrôle, **extraction uniquement après vérification de l'inventaire fixe**, puis exécution des trois vrais binaires de testnet extraits dans un dossier temporaire contenant des espaces. On vérifie de nouveau le bloc miné, le pont IPC, l'explorateur et l'absence de modification des binaires ou de création de fichiers à côté de l'application. À ce stade du workflow, le binaire GUI est présent et haché ; les tests de fenêtre et d'interaction React décrits plus bas s'exécutent ensuite et sont bloquants.
 7. Dépôt de l'artefact GitHub (rétention **3 jours**) uniquement si les étapes précédentes passent. Le test adversarial refuse fichiers ajoutés, doublons, données modifiées, manifestes `mainnet`, limites dépassées, SHA incorrect, entrée non Windows et remplacement d'archive.
 
 Exécuter une vérification locale sans extraire ni exécuter les fichiers :
@@ -36,21 +36,21 @@ Le script d'archive refuse également une **course à la création du fichier ZI
 ## Limites / risques
 
 - Archive **non signée**. Les checksums présents dans le même ZIP détectent la corruption involontaire et certaines modifications incohérentes, **pas** une attaque modifiant à la fois le binaire et son manifeste. Aucune attestation de build ni authentification cryptographique d'éditeur.
-- Le GUI Tauri est compilé en mode **release** pour embarquer le frontend, tandis que node/bridge/explorer restent compilés en **debug**. Aucune preuve de build bit-à-bit reproductible d'un runner à l'autre ; les compagnons debug peuvent augmenter taille et consommation de ressources.
-- `WebView2`, bibliothèques et runtime Windows peuvent manquer ; aucune vérification de lancement d'interface graphique réelle sur un bureau Windows dans ce workflow.
+- Le GUI Tauri est compilé en mode **release avec `tauri/custom-protocol`** pour charger le frontend embarqué, tandis que node/bridge/explorer restent compilés en **debug**. Aucune preuve de build bit-à-bit reproductible d'un runner à l'autre ; les compagnons debug peuvent augmenter taille et consommation de ressources.
+- `WebView2`, bibliothèques et runtime Windows peuvent manquer ; le workflow exige désormais une vraie fenêtre Windows et une interaction React dans le runner, mais cela ne remplace pas un essai sur l'ordinateur de l'utilisateur.
 - Le pont et l'explorateur sont cherchés par chemin adjacent au binaire Tauri. Le dossier d'installation doit être privé et non modifiable par un autre utilisateur ; l'archive ne crée **pas** d'ACL, de sandbox d'installateur, de mise à jour automatique ou de vérification de signature des exécutables compagnons.
 - La validation d'un snapshot local ne prouve pas une connexion P2P globale ni une finalité. Ne pas publier les dossiers de données, logs sensibles, seeds ou clés de portefeuille.
-- Les tests physiques deux PC, endurance, signatures de release et E1 audit indépendant restent des phases distinctes non réalisées.
+- Les tests physiques deux PC, endurance, signatures de release et E1 revue par une personne extérieure au projet restent des phases distinctes non réalisées.
 
 **Gate de fusion :** PR associée, CI exacte `completed/success` y compris le job Windows de création et de vérification ; examen du rapport de sécurité, puis tests de la CI du nouveau `main`. Aucune release publique automatiquement créée.
 
-## Test de démarrage graphique Windows — validation supplémentaire
+## Premier test de démarrage graphique Windows — périmètre borné
 
 Après validation du ZIP et exécution des compagnons natifs sur un bloc testnet jetable, le workflow lance **le véritable `aretovus-desktop.exe` extrait** depuis le répertoire portable. Un script de test Win32, sans téléchargement ni dépendance Python supplémentaire, recherche une **fenêtre de premier niveau visible, possédée par le PID lancé**, dont le titre est exactement `ARETOVUS — Node Desktop`. Il refuse les autres processus, les titres imités, les fermetures prématurées et un démarrage dépassant 45 secondes. La fenêtre doit être encore visible deux secondes après son apparition ; le processus est ensuite arrêté avec un délai borné.
 
 Le test vérifie à nouveau que les empreintes des quatre exécutables et l'inventaire du dossier portable n'ont pas changé pendant cet essai. Il ne lit ni clés privées ni dossier de données personnel, ne déclenche pas le minage, ne démarre pas de serveur HTTP et ne publie pas de release.
 
-**Ce que ce test ne prouve pas :** chargement du contenu React dans WebView2, interaction avec un nœud depuis les boutons, conformité WCAG, qualité graphique sur de vrais écrans, comportement à faible mémoire, fonctionnement sur l'ordinateur de l'utilisateur, installateur signé, vérification d'éditeur, Linux/macOS, audit indépendant ou sécurité mainnet. Un runner CI Windows peut ne pas offrir de session graphique utilisable ; dans ce cas le test doit **échouer clairement**, jamais être ignoré silencieusement.
+**Ce test de fenêtre seul ne prouve pas :** chargement du contenu React dans WebView2 ni interaction avec un nœud depuis les boutons. Le test distinct ci-dessous couvre désormais ces deux points dans le runner CI, mais ne prouve pas la conformité WCAG, qualité graphique sur de vrais écrans, comportement à faible mémoire, fonctionnement sur l'ordinateur de l'utilisateur, installateur signé, vérification d'éditeur, Linux/macOS, audit indépendant ou sécurité mainnet. Un runner CI Windows peut ne pas offrir de session graphique utilisable ; dans ce cas le test doit **échouer clairement**, jamais être ignoré silencieusement.
 
 ## Test React/WebView2 avec actions utilisateur — extension V2
 
