@@ -40,4 +40,12 @@ it("re-enables block reading when an obsolete request settles after a tip change
   expect(button().disabled).toBe(false);
   expect(button().textContent).toBe("Lire les blocs");
   expect(host!.textContent).not.toContain("Lecture des blocs indisponible");
+  await act(async () => button().click());
+  expect(vi.mocked(invoke)).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(invoke)).toHaveBeenLastCalledWith("read_canonical_page", {
+    dataDir: "testnet-b", start: 0, limit: 10,
+  });
+  expect(button().disabled).toBe(true);
+  await act(async () => resolveOld(null));
+  expect(button().disabled).toBe(false);
 });
