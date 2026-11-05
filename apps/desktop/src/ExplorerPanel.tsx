@@ -40,7 +40,9 @@ export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
       }
     } finally {
       busy.current = false;
-      if (expectedGeneration === generation.current) setLoading(false);
+      // Only one native request can own the bridge. Even when its response is
+      // stale, releasing that request must enable the new tip's load button.
+      setLoading(false);
     }
   }, [dataDir, verifiedTip]);
 
