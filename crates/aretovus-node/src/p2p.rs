@@ -1048,6 +1048,9 @@ fn handle_peer_after_hello(
                 add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&SUBMIT_TX) if request.len() > 1 => {
+                // Reserve the largest possible reply before pool.push: accepting
+                // a transaction must not fail merely because its ACK cannot fit.
+                checked_reply_bytes(session_bytes, 37)?;
                 let tx = AccountTransaction::from_canonical_bytes(&request[1..])
                     .map_err(|_| P2pError::Protocol("invalid canonical transaction"))?;
                 let admission = (|| -> Result<(Hash256, usize), u8> {
