@@ -737,6 +737,16 @@ fn add_session_bytes(total: &mut usize, bytes: usize) -> Result<(), P2pError> {
     Ok(())
 }
 
+fn checked_reply_bytes(total: usize, payload_len: usize) -> Result<usize, P2pError> {
+    let sent = payload_len
+        .checked_add(4)
+        .ok_or(P2pError::Protocol("session byte counter overflow"))?;
+    if sent > MAX_SESSION_BYTES.saturating_sub(total) {
+        return Err(P2pError::Protocol("peer session byte budget exceeded"));
+    }
+    Ok(sent)
+}
+
 fn add_session_request(count: &mut usize) -> Result<(), P2pError> {
     *count = count
         .checked_add(1)
@@ -982,8 +992,9 @@ fn handle_peer_after_hello(
             reply.extend_from_slice(protocol_fingerprint(&chain).as_bytes());
             reply.extend_from_slice(&chain.height().to_be_bytes());
             reply.extend_from_slice(chain.tip_hash().as_bytes());
+            let sent = checked_reply_bytes(session_bytes, reply.len())?;
             write_frame(&mut stream, &reply)?;
-            add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+            add_session_bytes(&mut session_bytes, sent)?;
         } else {
             if let Err(error) = check_hello(&hello, &chain) {
                 let _ = write_frame(&mut stream, &[ERROR_REPLY]);
@@ -1032,8 +1043,9 @@ fn handle_peer_after_hello(
                 let mut reply = vec![ACCOUNT_REPLY];
                 reply.extend_from_slice(&account.next_nonce.to_be_bytes());
                 reply.extend_from_slice(&account.balance.to_units().to_be_bytes());
+                let sent = checked_reply_bytes(session_bytes, reply.len())?;
                 write_frame(&mut stream, &reply)?;
-                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+                add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&SUBMIT_TX) if request.len() > 1 => {
                 let tx = AccountTransaction::from_canonical_bytes(&request[1..])
@@ -1088,11 +1100,9 @@ fn handle_peer_after_hello(
                     }
                     Err(code) => vec![TX_REJECTED, code],
                 };
-                if reply.len() > MAX_SESSION_BYTES.saturating_sub(session_bytes) {
-                    return Err(P2pError::Protocol("peer session byte budget exceeded"));
-                }
+                let sent = checked_reply_bytes(session_bytes, reply.len())?;
                 write_frame(&mut stream, &reply)?;
-                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+                add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&GET_MEMPOOL) if request.len() == 5 => {
                 let offset =
@@ -1149,8 +1159,9 @@ fn handle_peer_after_hello(
                         0
                     },
                 ];
+                let sent = checked_reply_bytes(session_bytes, reply.len())?;
                 write_frame(&mut stream, &reply)?;
-                add_session_bytes(&mut session_bytes, reply.len() + 4)?;
+                add_session_bytes(&mut session_bytes, sent)?;
             }
             Some(&GET_HEADERS) if request.len() == 11 => {
                 let start = u64::from_be_bytes(request[1..9].try_into().expect("fixed height"));
@@ -3023,6 +3034,20 @@ mod tests {
         let mut requests = MAX_SESSION_REQUESTS - 1;
         assert!(add_session_request(&mut requests).is_ok());
         assert!(add_session_request(&mut requests).is_err());
+    }
+
+    #[test]
+    fn wallet_reply_budget_counts_framing_before_sending() {
+        // ACCOUNT_REPLY, accepted/rejected SUBMIT_TX, and TX_STATUS_REPLY.
+        for payload_len in [17usize, 37, 2] {
+            let framed = payload_len + 4;
+            assert_eq!(
+                checked_reply_bytes(MAX_SESSION_BYTES - framed, payload_len).unwrap(),
+                framed
+            );
+            assert!(checked_reply_bytes(MAX_SESSION_BYTES - framed + 1, payload_len).is_err());
+        }
+        assert!(checked_reply_bytes(MAX_SESSION_BYTES, usize::MAX).is_err());
     }
 
     #[test]
