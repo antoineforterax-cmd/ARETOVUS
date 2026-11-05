@@ -24,4 +24,4 @@ aretovus-core = { path = "crates/aretovus-core" }
 aretovus-consensus = { path = "crates/aretovus-consensus" }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"

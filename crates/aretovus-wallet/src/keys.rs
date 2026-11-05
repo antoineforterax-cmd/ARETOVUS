@@ -15,6 +15,10 @@ use chacha20poly1305::{
 use ml_dsa::{Keypair, MlDsa65, SigningKey};
 use zeroize::{Zeroize, Zeroizing};
 
+#[cfg(windows)]
+#[path = "windows_private_file.rs"]
+mod windows_private_file;
+
 const KEY_MAGIC: &[u8; 8] = b"ARETOVK3";
 const KEY_FILE_BYTES: usize = 8 + 32 + 32;
 const ENCRYPTED_MAGIC: &[u8; 8] = b"ARETOVK4";
@@ -366,14 +370,19 @@ fn derive_password_key(password: &str, salt: &[u8; 16]) -> Result<[u8; 32], Box<
 }
 
 fn write_new_private_file(path: &Path, payload: &[u8]) -> io::Result<()> {
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(path)?;
+    #[cfg(windows)]
+    let mut file = windows_private_file::create_private_file(path)?;
+    #[cfg(not(windows))]
+    let mut file = {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        options.open(path)?
+    };
     file.write_all(payload)?;
     file.sync_all()?;
     Ok(())
