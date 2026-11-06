@@ -470,13 +470,13 @@ Activate-Button $button.Element
 $deadline = [DateTime]::UtcNow.AddSeconds(30)
 while ([DateTime]::UtcNow -lt $deadline) {
     $tree = Get-Elements $observed.Window
-    if ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "indisponible")) {
+    if ((Match-Name $tree "Dossier introuvable ou inaccessible") -and (Match-Name $tree "indisponible")) {
         # Native Tauri host correctly rejected the absent folder.
         break
     }
     Start-Sleep -Milliseconds 350
 }
-if (-not ((Match-Name $tree "Lecture impossible") -and (Match-Name $tree "indisponible"))) {
+if (-not ((Match-Name $tree "Dossier introuvable ou inaccessible") -and (Match-Name $tree "indisponible"))) {
     throw "Native invalid-path rejection was never exposed in React"
 }
 

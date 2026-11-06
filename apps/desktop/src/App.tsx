@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseNodeStatus, type VerifiedNodeStatus } from "./status";
 import { ExplorerPanel } from "./ExplorerPanel";
+import { nativeErrorMessage } from "./nativeErrors";
 
 export function App() {
   const [folder, setFolder] = useState("");
@@ -30,9 +31,9 @@ export function App() {
         setError("");
         setUpdated(new Date());
       }
-    } catch {
+    } catch (error) {
       if (activeDir.current === dataDir) {
-        setError("Lecture impossible : dossier, binaire ou snapshot invalide. Vérifie le testnet local.");
+        setError(nativeErrorMessage(error, "Lecture impossible : dossier, binaire ou snapshot invalide. Vérifie le testnet local."));
         setData(null);
         setUpdated(null);
       }
