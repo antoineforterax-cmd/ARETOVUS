@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseNodeStatus, type VerifiedNodeStatus } from "./status";
 import { ExplorerPanel } from "./ExplorerPanel";
-import { nativeErrorMessage } from "./nativeErrors";
+import { nativeErrorCode, nativeErrorMessage } from "./nativeErrors";
 
 export function App() {
   const [folder, setFolder] = useState("");
@@ -34,8 +34,12 @@ export function App() {
     } catch (error) {
       if (activeDir.current === dataDir) {
         setError(nativeErrorMessage(error, "Lecture impossible : dossier, binaire ou snapshot invalide. Vérifie le testnet local."));
-        setData(null);
-        setUpdated(null);
+        // A busy bridge has not verified a newer snapshot. Keep the last
+        // verified tip so the explorer read holding the lease can finish.
+        if (nativeErrorCode(error) !== "bridge_busy") {
+          setData(null);
+          setUpdated(null);
+        }
       }
     } finally {
       busy.current = false;

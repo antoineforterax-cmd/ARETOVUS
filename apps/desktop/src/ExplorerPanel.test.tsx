@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { App } from "./App";
 import { ExplorerPanel } from "./ExplorerPanel";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -17,7 +18,58 @@ afterEach(async () => {
   root = null;
   host?.remove();
   host = null;
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  vi.useRealTimers();
+});
+
+it("keeps a verified explorer request when the status refresh finds the bridge busy", async () => {
+  vi.useFakeTimers();
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  host = document.createElement("div");
+  document.body.appendChild(host);
+  root = createRoot(host);
+
+  let resolvePage!: (value: unknown) => void;
+  vi.mocked(invoke)
+    .mockResolvedValueOnce({
+      schema_version: 1, network: "testnet", status: "verified", read_only: true,
+      source: "aretovus-native-stdio", height: 0, known_blocks: 1, tip: FIRST_TIP,
+      chain_work_display: "ChainWork([0, 1])",
+    })
+    .mockImplementationOnce(() => new Promise(resolve => { resolvePage = resolve; }))
+    .mockRejectedValueOnce({ schema_version: 1, code: "bridge_busy" })
+    .mockRejectedValueOnce({ schema_version: 1, code: "verification_failed" });
+
+  await act(async () => root!.render(<App />));
+  const input = host.querySelector<HTMLInputElement>("#path")!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, "testnet-a");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => host!.querySelector<HTMLButtonElement>("form button")!.click());
+  expect(host.textContent).toContain("Snapshot local validé");
+  await act(async () => host!.querySelector<HTMLButtonElement>(".explorer-head button")!.click());
+
+  await act(async () => vi.advanceTimersByTimeAsync(20_000));
+  expect(vi.mocked(invoke).mock.calls.map(([command]) => command)).toEqual([
+    "read_node_status", "read_canonical_page", "read_node_status",
+  ]);
+  expect(host.textContent).toContain("Snapshot local validé");
+  expect(host.textContent).toContain("Une lecture est déjà en cours");
+  await act(async () => resolvePage({
+    schema_version: 1, network: "testnet", status: "verified_local", read_only: true,
+    source: "aretovus-native-explorer", chain_tip: FIRST_TIP, chain_height: 0,
+    start: 0, next_start: null, blocks: [{
+      height: 0, hash: FIRST_TIP, parent: "0".repeat(64), merkle_root: "0".repeat(64),
+      timestamp_decimal: "1", nonce_decimal: "0", tx_count: 0,
+    }],
+  }));
+  expect(host.querySelector("table")?.textContent).toContain(FIRST_TIP);
+
+  await act(async () => vi.advanceTimersByTimeAsync(20_000));
+  expect(host.textContent).not.toContain("Snapshot local validé");
+  expect(host.querySelector("table")).toBeNull();
 });
 
 it("hides a stale versioned error and displays the error of the current request", async () => {

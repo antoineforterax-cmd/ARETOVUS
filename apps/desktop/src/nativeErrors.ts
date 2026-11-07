@@ -19,9 +19,12 @@ function versionedErrorCode(error: unknown): unknown {
 
 // The old string codes remain readable when developing against an older host.
 // Only fixed messages reach the view, even when the payload is malformed.
-export function nativeErrorMessage(error: unknown, fallback: string): string {
+export function nativeErrorCode(error: unknown): string | undefined {
   const code = typeof error === "string" ? error : versionedErrorCode(error);
-  return typeof code === "string" && Object.hasOwn(messages, code)
-    ? messages[code]
-    : fallback;
+  return typeof code === "string" && Object.hasOwn(messages, code) ? code : undefined;
+}
+
+export function nativeErrorMessage(error: unknown, fallback: string): string {
+  const code = nativeErrorCode(error);
+  return code === undefined ? fallback : messages[code];
 }
