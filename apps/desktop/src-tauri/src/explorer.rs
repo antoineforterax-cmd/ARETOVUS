@@ -232,7 +232,10 @@ mod tests {
         let mut shortened = sample();
         shortened["blocks"].as_array_mut().unwrap().truncate(1);
         shortened["next_start"] = json!(1);
-        assert_eq!(validate_page(&shortened, 0, 20), Err(InvalidExplorerResponse));
+        assert_eq!(
+            validate_page(&shortened, 0, 20),
+            Err(InvalidExplorerResponse)
+        );
 
         let mut missing_cursor = sample();
         missing_cursor.as_object_mut().unwrap().remove("next_start");
