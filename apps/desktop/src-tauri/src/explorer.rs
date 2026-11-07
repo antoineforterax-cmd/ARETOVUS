@@ -9,7 +9,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::BridgeLease;
+use crate::{
+    native_error::NativeError::{self, InvalidExplorerResponse},
+    BridgeLease,
+};
 use serde_json::{json, Value};
 
 const MAX_PAGE: usize = 20;
@@ -17,23 +20,21 @@ const MAX_OUTPUT: u64 = 16 * 1024;
 const DEADLINE: Duration = Duration::from_secs(30);
 const JS_MAX_SAFE: u64 = 9_007_199_254_740_991;
 
-fn bad() -> String {
-    "invalid_explorer_response".into()
+fn bounded_u64(v: &Value) -> Result<u64, NativeError> {
+    v.as_u64()
+        .filter(|n| *n <= JS_MAX_SAFE)
+        .ok_or(InvalidExplorerResponse)
 }
 
-fn bounded_u64(v: &Value) -> Result<u64, String> {
-    v.as_u64().filter(|n| *n <= JS_MAX_SAFE).ok_or_else(bad)
-}
-
-fn hash(v: &Value) -> Result<&str, String> {
-    let v = v.as_str().ok_or_else(bad)?;
+fn hash(v: &Value) -> Result<&str, NativeError> {
+    let v = v.as_str().ok_or(InvalidExplorerResponse)?;
     if v.len() == 64
         && v.bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
         Ok(v)
     } else {
-        Err(bad())
+        Err(InvalidExplorerResponse)
     }
 }
 
@@ -43,7 +44,7 @@ fn validate_page(
     page: &Value,
     requested_start: u64,
     requested_limit: usize,
-) -> Result<Value, String> {
+) -> Result<Value, NativeError> {
     if page["schema_version"] != 1
         || page["network"] != "testnet"
         || page["status"] != "verified_local"
@@ -51,35 +52,35 @@ fn validate_page(
         || page["read_only"] != true
         || !(1..=MAX_PAGE).contains(&requested_limit)
     {
-        return Err(bad());
+        return Err(InvalidExplorerResponse);
     }
     let tip = hash(&page["chain_tip"])?;
     let height = bounded_u64(&page["chain_height"])?;
     let start = bounded_u64(&page["start"])?;
     if start != requested_start {
-        return Err(bad());
+        return Err(InvalidExplorerResponse);
     }
-    let blocks = page["blocks"].as_array().ok_or_else(bad)?;
+    let blocks = page["blocks"].as_array().ok_or(InvalidExplorerResponse)?;
     if blocks.len() > requested_limit {
-        return Err(bad());
+        return Err(InvalidExplorerResponse);
     }
     if blocks.is_empty() && start <= height {
-        return Err(bad());
+        return Err(InvalidExplorerResponse);
     }
     let mut normalized = Vec::with_capacity(blocks.len());
     let mut previous: Option<String> = None;
     for (index, block) in blocks.iter().enumerate() {
-        let number = start.checked_add(index as u64).ok_or_else(bad)?;
+        let number = start.checked_add(index as u64).ok_or(InvalidExplorerResponse)?;
         if number > height || bounded_u64(&block["height"])? != number {
-            return Err(bad());
+            return Err(InvalidExplorerResponse);
         }
         let current_hash = hash(&block["hash"])?;
         let parent = hash(&block["parent"])?;
         if previous.as_deref().is_some_and(|h| parent != h) {
-            return Err(bad());
+            return Err(InvalidExplorerResponse);
         }
-        let timestamp = block["timestamp"].as_u64().ok_or_else(bad)?;
-        let nonce = block["nonce"].as_u64().ok_or_else(bad)?;
+        let timestamp = block["timestamp"].as_u64().ok_or(InvalidExplorerResponse)?;
+        let nonce = block["nonce"].as_u64().ok_or(InvalidExplorerResponse)?;
         let count = bounded_u64(&block["tx_count"])?;
         let root = hash(&block["merkle_root"])?;
         normalized.push(json!({
@@ -94,16 +95,16 @@ fn validate_page(
         && start + (blocks.len() as u64) - 1 == height
         && previous.as_deref() != Some(tip)
     {
-        return Err(bad());
+        return Err(InvalidExplorerResponse);
     }
-    let calculated_next = start.checked_add(blocks.len() as u64).ok_or_else(bad)?;
+    let calculated_next = start.checked_add(blocks.len() as u64).ok_or(InvalidExplorerResponse)?;
     let next = match page["next_start"].as_u64() {
         Some(next) if next == calculated_next && next <= height && !blocks.is_empty() => Some(next),
-        Some(_) => return Err(bad()),
+        Some(_) => return Err(InvalidExplorerResponse),
         None if page["next_start"].is_null() && (blocks.is_empty() || calculated_next > height) => {
             None
         }
-        None => return Err(bad()),
+        None => return Err(InvalidExplorerResponse),
     };
     Ok(json!({
         "schema_version":1,"network":"testnet","status":"verified_local",
@@ -113,7 +114,7 @@ fn validate_page(
     }))
 }
 
-fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, String> {
+fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, NativeError> {
     let _lease = BridgeLease::acquire()?;
     if data_dir.is_empty()
         || data_dir.len() > 1024
@@ -121,23 +122,23 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, String> 
         || start > JS_MAX_SAFE
         || !(1..=MAX_PAGE).contains(&limit)
     {
-        return Err("invalid_arguments".into());
+        return Err(NativeError::InvalidArguments);
     }
     let directory = Path::new(data_dir)
         .canonicalize()
-        .map_err(|_| "invalid_data_dir".to_string())?;
+        .map_err(|_| NativeError::InvalidDataDir)?;
     if !directory.is_dir() {
-        return Err("invalid_data_dir".into());
+        return Err(NativeError::InvalidDataDir);
     }
     let executable = std::env::current_exe()
-        .map_err(|_| "explorer_unavailable".to_string())?
+        .map_err(|_| NativeError::ExplorerUnavailable)?
         .with_file_name(if cfg!(windows) {
             "aretovus-explorer.exe"
         } else {
             "aretovus-explorer"
         });
     if !executable.is_file() {
-        return Err("explorer_unavailable".into());
+        return Err(NativeError::ExplorerUnavailable);
     }
     let mut child = Command::new(executable)
         .arg("--data-dir")
@@ -150,10 +151,10 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, String> 
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|_| "explorer_unavailable".to_string())?;
+        .map_err(|_| NativeError::ExplorerUnavailable)?;
     // A page of 20 blocks can exceed the OS pipe buffer. Drain concurrently
     // instead of deadlocking by waiting for exit before reading stdout.
-    let stdout = child.stdout.take().ok_or_else(bad)?;
+    let stdout = child.stdout.take().ok_or(InvalidExplorerResponse)?;
     let reader = thread::spawn(move || {
         let mut out = Vec::new();
         stdout
@@ -169,20 +170,23 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, String> 
             Ok(None) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err("explorer_timeout".into());
+                return Err(NativeError::ExplorerTimeout);
             }
             Err(_) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err("explorer_unavailable".into());
+                return Err(NativeError::ExplorerUnavailable);
             }
         }
     };
-    let bytes = reader.join().map_err(|_| bad())?.map_err(|_| bad())?;
+    let bytes = reader
+        .join()
+        .map_err(|_| InvalidExplorerResponse)?
+        .map_err(|_| InvalidExplorerResponse)?;
     if !exit.success() || bytes.len() as u64 > MAX_OUTPUT {
-        return Err("explorer_failed".into());
+        return Err(NativeError::ExplorerFailed);
     }
-    let value: Value = serde_json::from_slice(&bytes).map_err(|_| bad())?;
+    let value: Value = serde_json::from_slice(&bytes).map_err(|_| InvalidExplorerResponse)?;
     validate_page(&value, start, limit)
 }
 
@@ -191,10 +195,11 @@ pub(crate) async fn read_canonical_page(
     data_dir: String,
     start: u64,
     limit: usize,
-) -> Result<Value, String> {
+) -> Result<Value, Value> {
     tauri::async_runtime::spawn_blocking(move || read_page(&data_dir, start, limit))
         .await
-        .map_err(|_| "explorer_unavailable".to_string())?
+        .map_err(|_| NativeError::ExplorerUnavailable.into_payload())?
+        .map_err(NativeError::into_payload)
 }
 
 #[cfg(test)]
@@ -255,7 +260,7 @@ mod tests {
         for page in bad_pages {
             assert_eq!(
                 validate_page(&page, 0, 20),
-                Err("invalid_explorer_response".into())
+                Err(InvalidExplorerResponse)
             );
         }
         assert!(validate_page(&base, 0, 0).is_err());

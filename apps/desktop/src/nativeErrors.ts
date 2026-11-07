@@ -9,10 +9,19 @@ const messages: Readonly<Record<string, string>> = Object.freeze({
   explorer_failed: "Les blocs ne peuvent pas être relus. Actualise le nœud, puis réessaie.",
 });
 
-// Native diagnostics are untrusted display input. Only exact allowlisted codes
-// may select text; never interpolate exception messages, paths or stack traces.
+function versionedErrorCode(error: unknown): unknown {
+  if (error === null || typeof error !== "object" || Array.isArray(error)) return undefined;
+  if (Object.keys(error).length !== 2) return undefined;
+  const version = Object.getOwnPropertyDescriptor(error, "schema_version");
+  const code = Object.getOwnPropertyDescriptor(error, "code");
+  return version?.value === 1 ? code?.value : undefined;
+}
+
+// The old string codes remain readable when developing against an older host.
+// Only fixed messages reach the view, even when the payload is malformed.
 export function nativeErrorMessage(error: unknown, fallback: string): string {
-  return typeof error === "string" && Object.hasOwn(messages, error)
-    ? messages[error]
+  const code = typeof error === "string" ? error : versionedErrorCode(error);
+  return typeof code === "string" && Object.hasOwn(messages, code)
+    ? messages[code]
     : fallback;
 }

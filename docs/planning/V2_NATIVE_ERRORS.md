@@ -1,9 +1,11 @@
 # Erreurs du desktop local — contrat courant
 
-Incrément V0/V2 de la feuille de route #178. Les commandes Tauri en lecture seule
-renvoient actuellement un code chaîne en cas d'échec. Le frontend ne présente que
-des messages fixes pour les codes reconnus ; tout objet, diagnostic inconnu,
-chemin ou trace conserve le message générique. Aucun détail natif n'est interpolé.
+Les commandes Tauri `read_node_status` et `read_canonical_page` renvoient un
+objet d'erreur JSON v1, par exemple `{"schema_version":1,"code":"invalid_data_dir"}`.
+Rust choisit le code dans une liste fermée. Le frontend associe les codes reconnus
+à des messages fixes et garde la compatibilité avec les anciens codes texte.
+Une version inconnue, un champ supplémentaire ou un code non reconnu donne le
+message générique. Le message affiché ne reprend aucun détail natif.
 
 | Codes | Action présentée |
 | --- | --- |
@@ -16,6 +18,6 @@ chemin ou trace conserve le message générique. Aucun détail natif n'est inter
 | Autres codes ou valeurs | Message générique propre à la vue |
 
 Les erreurs n'établissent pas un diagnostic de corruption ou de perte de fonds.
-Les réponses périmées restent filtrées par les vues. Le contrat versionné JSON
-du processus stdio reste distinct : cet incrément ne livre pas encore un modèle
-d'erreur structuré et versionné pour toutes les futures API V0/V1.
+Les réponses périmées restent filtrées par les vues. Ce contrat porte sur la
+frontière entre Tauri et la WebView. Les réponses de succès et le protocole
+stdio du binaire compagnon suivent leurs contrats respectifs.
