@@ -1,27 +1,42 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseCanonicalPage, type CanonicalPage } from "./explorer";
 import { nativeErrorMessage } from "./nativeErrors";
+import type { VerifiedNodeStatus } from "./status";
 
-type Props = { dataDir: string; verifiedTip: string | null };
+type Props = {
+  dataDir: string;
+  snapshot: Pick<VerifiedNodeStatus, "tip" | "height"> | null;
+};
 const LIMIT = 10;
 
-export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
+export function ExplorerPanel({ dataDir, snapshot }: Props) {
+  const verifiedTip = snapshot?.tip;
+  const verifiedHeight = snapshot?.height;
   const [page, setPage] = useState<CanonicalPage | null>(null);
+  const [heightQuery, setHeightQuery] = useState("");
+  const [foundHeight, setFoundHeight] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const busy = useRef(false);
   const generation = useRef(0);
+  const heightInputId = useId();
+  const heightHintId = useId();
+  const hasSnapshot = !!dataDir && !!verifiedTip && verifiedHeight !== undefined;
+  const enteredHeight = /^[0-9]{1,16}$/.test(heightQuery) ? Number(heightQuery) : NaN;
+  const validHeight = verifiedHeight !== undefined && Number.isSafeInteger(enteredHeight)
+    && enteredHeight <= verifiedHeight;
 
   useEffect(() => {
     // Never retain blocks from another user-selected directory or tip.
     generation.current++;
     setPage(null);
+    setFoundHeight(null);
     setError("");
-  }, [dataDir, verifiedTip]);
+  }, [dataDir, verifiedTip, verifiedHeight]);
 
-  const load = useCallback(async (start: number) => {
-    if (!verifiedTip || !dataDir || busy.current) return;
+  const load = useCallback(async (start: number, targetHeight: number | null = null) => {
+    if (!verifiedTip || verifiedHeight === undefined || !dataDir || busy.current) return;
     const expectedGeneration = generation.current;
     busy.current = true;
     setLoading(true);
@@ -30,8 +45,10 @@ export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
         dataDir, start, limit: LIMIT,
       });
       const validated = parseCanonicalPage(raw, verifiedTip, start, LIMIT);
+      if (validated.chain_height !== verifiedHeight) throw new Error("snapshot_height_mismatch");
       if (expectedGeneration === generation.current) {
         setPage(validated);
+        setFoundHeight(targetHeight);
         setError("");
       }
     } catch (error) {
@@ -45,7 +62,7 @@ export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
       // stale, releasing that request must enable the new tip's load button.
       setLoading(false);
     }
-  }, [dataDir, verifiedTip]);
+  }, [dataDir, verifiedTip, verifiedHeight]);
 
   return <section className="explorer">
     <div className="explorer-head">
@@ -54,22 +71,39 @@ export function ExplorerPanel({ dataDir, verifiedTip }: Props) {
         <p>Blocs canoniques du snapshot local, pas une vue P2P en direct.</p>
       </div>
       <button type="button" className="refresh"
-        disabled={!dataDir || !verifiedTip || loading}
+        disabled={!hasSnapshot || loading}
         onClick={() => void load(0)}>
         {loading ? "Chargement…" : "Lire les blocs"}
       </button>
     </div>
+    {hasSnapshot && <form className="explorer-search" onSubmit={event => {
+      event.preventDefault();
+      if (!validHeight || loading) return;
+      // Keep every jump aligned with the existing previous/next page buttons.
+      void load(enteredHeight - enteredHeight % LIMIT, enteredHeight);
+    }}>
+      <label htmlFor={heightInputId}>Hauteur du bloc</label>
+      <div className="formline">
+        <input id={heightInputId} type="text" inputMode="numeric" value={heightQuery}
+          disabled={loading} autoComplete="off"
+          aria-describedby={heightHintId} aria-invalid={heightQuery !== "" && !validHeight}
+          onChange={event => setHeightQuery(event.target.value)} />
+        <button type="submit" disabled={!validHeight || loading}>Aller au bloc</button>
+      </div>
+      <small id={heightHintId}>Saisis une hauteur entière de 0 à {verifiedHeight?.toLocaleString("fr-FR")}.</small>
+    </form>}
     {error && <p className="warning" role="alert">{error}</p>}
     {page && <>
       <div className="explorer-meta">
         <span>Snapshot vérifié localement</span>
         <span>Hauteur {page.chain_height.toLocaleString("fr-FR")}</span>
       </div>
+      {foundHeight !== null && <p role="status">Bloc {foundHeight.toLocaleString("fr-FR")} trouvé dans le snapshot.</p>}
       <div className="explorer-table-scroll">
         <table className="explorer-table">
           <thead><tr><th>Hauteur</th><th>Hash du bloc</th><th>Transactions</th><th>Timestamp (s)</th></tr></thead>
           <tbody>{page.blocks.map(block => <tr key={block.hash}>
-            <td>{block.height.toLocaleString("fr-FR")}</td>
+            <td>{block.height.toLocaleString("fr-FR")}{block.height === foundHeight && <strong> · Recherché</strong>}</td>
             <td><code title={block.hash}>{block.hash}</code></td>
             <td>{block.tx_count}</td>
             <td><code>{block.timestamp_decimal}</code></td>

@@ -217,6 +217,9 @@ footer { padding: 36px 0; color: var(--subtle); font-size: 12px; line-height: 1.
 .explorer-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .explorer-head h2 { margin: 0 0 7px; }
 .explorer-head p, .explorer-empty, .explorer-note { color: var(--subtle); font-size: 13px; line-height: 1.6; }
+.explorer-search { margin-top: 16px; }
+.explorer-search label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 750; }
+.explorer-search small { display: block; margin-top: 8px; color: var(--subtle); font-size: 12px; }
 .explorer-meta, .explorer-pagination {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
