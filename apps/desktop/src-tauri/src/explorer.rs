@@ -61,10 +61,10 @@ fn validate_page(
         return Err(InvalidExplorerResponse);
     }
     let blocks = page["blocks"].as_array().ok_or(InvalidExplorerResponse)?;
-    if blocks.len() > requested_limit {
-        return Err(InvalidExplorerResponse);
-    }
-    if blocks.is_empty() && start <= height {
+    let expected_count = (height + 1)
+        .saturating_sub(start)
+        .min(requested_limit as u64);
+    if blocks.len() as u64 != expected_count {
         return Err(InvalidExplorerResponse);
     }
     let mut normalized = Vec::with_capacity(blocks.len());
@@ -102,14 +102,10 @@ fn validate_page(
     let calculated_next = start
         .checked_add(blocks.len() as u64)
         .ok_or(InvalidExplorerResponse)?;
-    let next = match page["next_start"].as_u64() {
-        Some(next) if next == calculated_next && next <= height && !blocks.is_empty() => Some(next),
-        Some(_) => return Err(InvalidExplorerResponse),
-        None if page["next_start"].is_null() && (blocks.is_empty() || calculated_next > height) => {
-            None
-        }
-        None => return Err(InvalidExplorerResponse),
-    };
+    let next = (calculated_next <= height).then_some(calculated_next);
+    if page.get("next_start") != Some(&json!(next)) {
+        return Err(InvalidExplorerResponse);
+    }
     Ok(json!({
         "schema_version":1,"network":"testnet","status":"verified_local",
         "read_only":true,"source":"aretovus-native-explorer",
@@ -230,6 +226,23 @@ mod tests {
         assert_eq!(page["blocks"][1]["nonce_decimal"], "18446744073709551615");
         assert_eq!(page["blocks"][1]["height"], 1);
         assert!(page["next_start"].is_null());
+    }
+    #[test]
+    fn rejects_short_pages_and_missing_terminal_cursors() {
+        let mut shortened = sample();
+        shortened["blocks"].as_array_mut().unwrap().truncate(1);
+        shortened["next_start"] = json!(1);
+        assert_eq!(
+            validate_page(&shortened, 0, 20),
+            Err(InvalidExplorerResponse)
+        );
+
+        let mut missing_cursor = sample();
+        missing_cursor.as_object_mut().unwrap().remove("next_start");
+        assert_eq!(
+            validate_page(&missing_cursor, 0, 20),
+            Err(InvalidExplorerResponse)
+        );
     }
     #[test]
     fn rejects_forged_or_discontinuous_pages() {
