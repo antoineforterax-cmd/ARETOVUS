@@ -40,7 +40,10 @@ impl Drop for BridgeLease {
 fn validate_status_response(answer: &serde_json::Value) -> Result<(), NativeError> {
     const JS_MAX_SAFE: u64 = 9_007_199_254_740_991;
     let invalid = NativeError::InvalidResponse;
-    if answer["schema_version"] != 1
+    // Every v1 field is checked below. Reject additional fields before
+    // returning the companion's JSON to the webview.
+    if answer.as_object().is_none_or(|fields| fields.len() != 9)
+        || answer["schema_version"] != 1
         || answer["status"] != "verified"
         || answer["network"] != "testnet"
         || answer["read_only"] != true
@@ -190,6 +193,7 @@ mod tests {
             ("known_blocks", serde_json::json!(0)),
             ("known_blocks", serde_json::json!(9_007_199_254_740_992_u64)),
             ("tip", serde_json::json!("<script>alert(1)</script>")),
+            ("diagnostic", serde_json::json!("synthetic private detail")),
             (
                 "chain_work_display",
                 serde_json::json!("<svg/onload=alert(1)>"),
