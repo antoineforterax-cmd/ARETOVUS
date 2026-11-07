@@ -45,9 +45,11 @@ export function parseCanonicalPage(
       page.status !== "verified_local" || page.read_only !== true ||
       page.source !== "aretovus-native-explorer" ||
       page.chain_tip !== expectedTip || !safe(page.chain_height) ||
-      page.start !== expectedStart || !Array.isArray(page.blocks) ||
-      page.blocks.length > requestedLimit ||
-      (page.blocks.length === 0 && expectedStart <= page.chain_height)) {
+      page.start !== expectedStart || !Array.isArray(page.blocks)) {
+    throw Error("invalid_page");
+  }
+  const expectedCount = Math.min(requestedLimit, Math.max(0, page.chain_height - expectedStart + 1));
+  if (page.blocks.length !== expectedCount) {
     throw Error("invalid_page");
   }
   let previousHash: string | null = null;
@@ -69,10 +71,7 @@ export function parseCanonicalPage(
     return block as CanonicalBlock;
   });
   const next = expectedStart + entries.length;
-  if (!safe(next) || (page.next_start !== null &&
-      (!safe(page.next_start) || page.next_start !== next ||
-       next > (page.chain_height as number))) ||
-      (page.next_start === null && entries.length > 0 && next <= (page.chain_height as number))) {
+  if (page.next_start !== (next <= page.chain_height ? next : null)) {
     throw Error("invalid_page");
   }
   if (entries.length > 0 && entries[entries.length - 1].height === page.chain_height &&

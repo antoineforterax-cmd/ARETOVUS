@@ -66,5 +66,13 @@ describe("native explorer page trust boundary", () => {
     ] };
     expect(parseCanonicalPage(end, TWO, 2, 2).blocks[0].hash).toBe(TWO);
     expect(() => parseCanonicalPage({ ...end, blocks: [{ ...end.blocks[0], hash: ONE }] }, TWO, 2, 2)).toThrow();
+    const beyondTip = { ...end, start: 3, blocks: [] };
+    expect(parseCanonicalPage(beyondTip, TWO, 3, 2).blocks).toEqual([]);
+    expect(() => parseCanonicalPage({ ...beyondTip, next_start: undefined }, TWO, 3, 2)).toThrow();
+  });
+  it("rejects a shortened page even when its next cursor matches its length", () => {
+    const page = sample();
+    const shortened = { ...page, blocks: [page.blocks[0]], next_start: 1 };
+    expect(() => parseCanonicalPage(shortened, ONE, 0, 10)).toThrow();
   });
 });
