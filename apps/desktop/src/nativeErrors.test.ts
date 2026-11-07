@@ -14,3 +14,26 @@ it("never displays unknown native text, paths, objects or inherited property nam
     expect(nativeErrorMessage(error, "Lecture indisponible.")).toBe("Lecture indisponible.");
   }
 });
+
+it("maps a v1 native error to the same fixed message as the legacy code", () => {
+  expect(nativeErrorMessage({ schema_version: 1, code: "invalid_data_dir" }, "fallback"))
+    .toBe(nativeErrorMessage("invalid_data_dir", "fallback"));
+});
+
+it("falls back for unknown versions, malformed codes and extra diagnostics", () => {
+  const getter = {
+    schema_version: 1,
+    get code(): string { throw new Error("The parser must not evaluate this getter"); },
+  };
+  for (const error of [
+    { schema_version: 2, code: "bridge_busy" },
+    { schema_version: "1", code: "bridge_busy" },
+    { schema_version: 1, code: "toString" },
+    { schema_version: 1, code: "bridge_busy", message: "/private/path" },
+    { schema_version: 1, code: { path: "/private/path" } },
+    Object.assign(Object.create({ code: "bridge_busy" }), { schema_version: 1, other: true }),
+    getter,
+  ]) {
+    expect(nativeErrorMessage(error, "Lecture indisponible.")).toBe("Lecture indisponible.");
+  }
+});

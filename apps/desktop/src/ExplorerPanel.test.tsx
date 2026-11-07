@@ -20,14 +20,16 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-it("re-enables block reading when an obsolete request settles after a tip change", async () => {
+it("hides a stale versioned error and displays the error of the current request", async () => {
   // React needs a real DOM to exercise effects, UI state and the click path.
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  let resolveOld!: (value: unknown) => void;
-  vi.mocked(invoke).mockImplementation(() => new Promise(resolve => { resolveOld = resolve; }));
+  let rejectRequest!: (reason: unknown) => void;
+  vi.mocked(invoke).mockImplementation(() => new Promise((_, reject) => {
+    rejectRequest = reject;
+  }));
 
   await act(async () => root!.render(<ExplorerPanel dataDir="testnet-a" verifiedTip={FIRST_TIP} />));
   const button = () => host!.querySelector<HTMLButtonElement>(".explorer-head button")!;
@@ -36,16 +38,17 @@ it("re-enables block reading when an obsolete request settles after a tip change
 
   await act(async () => root!.render(<ExplorerPanel dataDir="testnet-b" verifiedTip={NEXT_TIP} />));
   expect(button().disabled).toBe(true); // One native request still owns the bridge.
-  await act(async () => resolveOld(null));
+  await act(async () => rejectRequest({ schema_version: 1, code: "explorer_timeout" }));
   expect(button().disabled).toBe(false);
   expect(button().textContent).toBe("Lire les blocs");
-  expect(host!.textContent).not.toContain("Lecture des blocs indisponible");
+  expect(host!.querySelector('[role="alert"]')).toBeNull();
   await act(async () => button().click());
   expect(vi.mocked(invoke)).toHaveBeenCalledTimes(2);
   expect(vi.mocked(invoke)).toHaveBeenLastCalledWith("read_canonical_page", {
     dataDir: "testnet-b", start: 0, limit: 10,
   });
   expect(button().disabled).toBe(true);
-  await act(async () => resolveOld(null));
+  await act(async () => rejectRequest({ schema_version: 1, code: "explorer_timeout" }));
   expect(button().disabled).toBe(false);
+  expect(host!.querySelector('[role="alert"]')?.textContent).toContain("prend trop de temps");
 });

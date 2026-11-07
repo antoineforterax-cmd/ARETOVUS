@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod explorer;
+mod native_error;
+
+use native_error::NativeError;
 use std::{
     io::{Read, Write},
     path::Path,
@@ -17,10 +20,10 @@ const DEADLINE: Duration = Duration::from_secs(30);
 static BRIDGE_BUSY: AtomicBool = AtomicBool::new(false);
 struct BridgeLease;
 impl BridgeLease {
-    fn acquire() -> Result<Self, String> {
+    fn acquire() -> Result<Self, NativeError> {
         BRIDGE_BUSY
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-            .map_err(|_| "bridge_busy".to_string())?;
+            .map_err(|_| NativeError::BridgeBusy)?;
         Ok(Self)
     }
 }
@@ -34,31 +37,31 @@ impl Drop for BridgeLease {
 /// In particular, JSON numbers larger than JS MAX_SAFE_INTEGER are not safe
 /// for frontend arithmetic, and the diagnostic work string must not contain
 /// HTML/control characters or unbounded payloads.
-fn validate_status_response(answer: &serde_json::Value) -> Result<(), String> {
+fn validate_status_response(answer: &serde_json::Value) -> Result<(), NativeError> {
     const JS_MAX_SAFE: u64 = 9_007_199_254_740_991;
-    let invalid = || "invalid_response".to_string();
+    let invalid = NativeError::InvalidResponse;
     if answer["schema_version"] != 1
         || answer["status"] != "verified"
         || answer["network"] != "testnet"
         || answer["read_only"] != true
         || answer["source"] != "aretovus-native-stdio"
     {
-        return Err(invalid());
+        return Err(invalid);
     }
-    let height = answer["height"].as_u64().ok_or_else(invalid)?;
-    let known = answer["known_blocks"].as_u64().ok_or_else(invalid)?;
+    let height = answer["height"].as_u64().ok_or(invalid)?;
+    let known = answer["known_blocks"].as_u64().ok_or(invalid)?;
     if height >= JS_MAX_SAFE || known > JS_MAX_SAFE || known <= height {
-        return Err(invalid());
+        return Err(invalid);
     }
-    let tip = answer["tip"].as_str().ok_or_else(invalid)?;
+    let tip = answer["tip"].as_str().ok_or(invalid)?;
     if tip.len() != 64
         || !tip
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
-        return Err(invalid());
+        return Err(invalid);
     }
-    let work = answer["chain_work_display"].as_str().ok_or_else(invalid)?;
+    let work = answer["chain_work_display"].as_str().ok_or(invalid)?;
     if work.len() > 255
         || !work.starts_with("ChainWork([")
         || !work.ends_with("])")
@@ -66,25 +69,25 @@ fn validate_status_response(answer: &serde_json::Value) -> Result<(), String> {
             .bytes()
             .all(|b| b.is_ascii_digit() || b == b',' || b == b' ')
     {
-        return Err(invalid());
+        return Err(invalid);
     }
     Ok(())
 }
 
-fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
+fn bridge_status(data_dir: &str) -> Result<serde_json::Value, NativeError> {
     let _single_reader = BridgeLease::acquire()?;
     if data_dir.is_empty() || data_dir.len() > 1024 || data_dir.contains('\0') {
-        return Err("invalid_data_dir".into());
+        return Err(NativeError::InvalidDataDir);
     }
     let directory = Path::new(data_dir)
         .canonicalize()
-        .map_err(|_| "invalid_data_dir".to_string())?;
+        .map_err(|_| NativeError::InvalidDataDir)?;
     if !directory.is_dir() {
-        return Err("invalid_data_dir".into());
+        return Err(NativeError::InvalidDataDir);
     }
     // Never take the executable from PATH or a webview-controlled URL.
     // Prototype packaging requires a trusted bridge alongside this executable.
-    let current = std::env::current_exe().map_err(|_| "bridge_unavailable".to_string())?;
+    let current = std::env::current_exe().map_err(|_| NativeError::BridgeUnavailable)?;
     let bridge_name = if cfg!(windows) {
         "aretovus-local-bridge.exe"
     } else {
@@ -92,7 +95,7 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
     };
     let bridge = current.with_file_name(bridge_name);
     if !bridge.is_file() {
-        return Err("bridge_unavailable".into());
+        return Err(NativeError::BridgeUnavailable);
     }
     let mut child = Command::new(bridge)
         .arg("--data-dir")
@@ -101,12 +104,12 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|_| "bridge_unavailable".to_string())?;
+        .map_err(|_| NativeError::BridgeUnavailable)?;
     if let Some(mut stdin) = child.stdin.take() {
         if stdin.write_all(REQUEST).is_err() {
             let _ = child.kill();
             let _ = child.wait();
-            return Err("bridge_unavailable".into());
+            return Err(NativeError::BridgeUnavailable);
         }
     }
     let start = Instant::now();
@@ -117,12 +120,12 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
             Ok(None) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err("bridge_timeout".into());
+                return Err(NativeError::BridgeTimeout);
             }
             Err(_) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err("bridge_unavailable".into());
+                return Err(NativeError::BridgeUnavailable);
             }
         }
     };
@@ -131,22 +134,23 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, String> {
         stdout
             .take(MAX_OUTPUT + 1)
             .read_to_end(&mut bytes)
-            .map_err(|_| "invalid_response".to_string())?;
+            .map_err(|_| NativeError::InvalidResponse)?;
     }
     if !status.success() || bytes.len() as u64 > MAX_OUTPUT {
-        return Err("verification_failed".into());
+        return Err(NativeError::VerificationFailed);
     }
     let answer: serde_json::Value =
-        serde_json::from_slice(&bytes).map_err(|_| "invalid_response".to_string())?;
+        serde_json::from_slice(&bytes).map_err(|_| NativeError::InvalidResponse)?;
     validate_status_response(&answer)?;
     Ok(answer)
 }
 
 #[tauri::command]
-async fn read_node_status(data_dir: String) -> Result<serde_json::Value, String> {
+async fn read_node_status(data_dir: String) -> Result<serde_json::Value, serde_json::Value> {
     tauri::async_runtime::spawn_blocking(move || bridge_status(&data_dir))
         .await
-        .map_err(|_| "bridge_unavailable".to_string())?
+        .map_err(|_| NativeError::BridgeUnavailable.into_payload())?
+        .map_err(NativeError::into_payload)
 }
 
 fn main() {
@@ -196,7 +200,7 @@ mod tests {
             forged[key] = value;
             assert_eq!(
                 validate_status_response(&forged),
-                Err("invalid_response".into()),
+                Err(NativeError::InvalidResponse),
                 "{key}"
             );
         }
@@ -205,7 +209,10 @@ mod tests {
     #[test]
     fn only_one_snapshot_reader_is_allowed() {
         let first = BridgeLease::acquire().unwrap();
-        assert!(matches!(BridgeLease::acquire(), Err(ref s) if s == "bridge_busy"));
+        assert!(matches!(
+            BridgeLease::acquire(),
+            Err(NativeError::BridgeBusy)
+        ));
         drop(first);
         assert!(BridgeLease::acquire().is_ok());
     }
