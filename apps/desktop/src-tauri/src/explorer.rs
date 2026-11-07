@@ -70,7 +70,9 @@ fn validate_page(
     let mut normalized = Vec::with_capacity(blocks.len());
     let mut previous: Option<String> = None;
     for (index, block) in blocks.iter().enumerate() {
-        let number = start.checked_add(index as u64).ok_or(InvalidExplorerResponse)?;
+        let number = start
+            .checked_add(index as u64)
+            .ok_or(InvalidExplorerResponse)?;
         if number > height || bounded_u64(&block["height"])? != number {
             return Err(InvalidExplorerResponse);
         }
@@ -97,7 +99,9 @@ fn validate_page(
     {
         return Err(InvalidExplorerResponse);
     }
-    let calculated_next = start.checked_add(blocks.len() as u64).ok_or(InvalidExplorerResponse)?;
+    let calculated_next = start
+        .checked_add(blocks.len() as u64)
+        .ok_or(InvalidExplorerResponse)?;
     let next = match page["next_start"].as_u64() {
         Some(next) if next == calculated_next && next <= height && !blocks.is_empty() => Some(next),
         Some(_) => return Err(InvalidExplorerResponse),
@@ -258,10 +262,7 @@ mod tests {
         unsafe_count["blocks"][1]["tx_count"] = json!(9_007_199_254_740_992_u64);
         bad_pages.push(unsafe_count);
         for page in bad_pages {
-            assert_eq!(
-                validate_page(&page, 0, 20),
-                Err(InvalidExplorerResponse)
-            );
+            assert_eq!(validate_page(&page, 0, 20), Err(InvalidExplorerResponse));
         }
         assert!(validate_page(&base, 0, 0).is_err());
         assert!(validate_page(&base, 0, 21).is_err());

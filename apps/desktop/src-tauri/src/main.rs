@@ -209,7 +209,10 @@ mod tests {
     #[test]
     fn only_one_snapshot_reader_is_allowed() {
         let first = BridgeLease::acquire().unwrap();
-        assert!(matches!(BridgeLease::acquire(), Err(NativeError::BridgeBusy)));
+        assert!(matches!(
+            BridgeLease::acquire(),
+            Err(NativeError::BridgeBusy)
+        ));
         drop(first);
         assert!(BridgeLease::acquire().is_ok());
     }
