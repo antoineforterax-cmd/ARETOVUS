@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseCanonicalPage, type CanonicalPage } from "./explorer";
 import { nativeErrorMessage } from "./nativeErrors";
@@ -27,8 +27,8 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
   const validHeight = verifiedHeight !== undefined && Number.isSafeInteger(enteredHeight)
     && enteredHeight <= verifiedHeight;
 
-  useEffect(() => {
-    // Never retain blocks from another user-selected directory or tip.
+  useLayoutEffect(() => {
+    // Clear the old snapshot before it can paint or anchor a new request.
     generation.current++;
     setPage(null);
     setFoundHeight(null);
@@ -47,6 +47,13 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
       const validated = parseCanonicalPage(raw, verifiedTip, start, LIMIT);
       if (validated.chain_height !== verifiedHeight) throw new Error("snapshot_height_mismatch");
       if (expectedGeneration === generation.current) {
+        // Each cursor has already been checked against its page's block count.
+        if (page && (
+          (page.next_start === validated.start && page.blocks.at(-1)?.hash !== validated.blocks[0]?.parent)
+          || (validated.next_start === page.start && validated.blocks.at(-1)?.hash !== page.blocks[0]?.parent)
+        )) {
+          throw new Error("page_parent_mismatch");
+        }
         setPage(validated);
         setFoundHeight(targetHeight);
         setError("");
@@ -62,7 +69,7 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
       // stale, releasing that request must enable the new tip's load button.
       setLoading(false);
     }
-  }, [dataDir, verifiedTip, verifiedHeight]);
+  }, [dataDir, page, verifiedTip, verifiedHeight]);
 
   return <section className="explorer">
     <div className="explorer-head">
@@ -122,7 +129,7 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
           Page suivante
         </button>
       </div>
-      <p className="explorer-note">Le sommet d'une chaîne peut changer après une réorganisation. Les pages sont liées au même hash de sommet et refusées en cas d'écart. Aucune transaction n'est envoyée.</p>
+      <p className="explorer-note">Le sommet d'une chaîne peut changer après une réorganisation. Les pages doivent correspondre au sommet vérifié et deux pages voisines doivent se raccorder. Aucune transaction n'est envoyée.</p>
     </>}
     {!page && !error && <p className="explorer-empty">Connecte ton nœud, puis lis une page de ses véritables blocs.</p>}
   </section>;

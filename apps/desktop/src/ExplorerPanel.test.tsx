@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { App } from "./App";
+import { parseCanonicalPage } from "./explorer";
 import { ExplorerPanel } from "./ExplorerPanel";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -168,4 +169,121 @@ it("jumps to a verified block height and keeps pages aligned", async () => {
   await act(async () => host!.querySelector<HTMLButtonElement>(".explorer-head button")!.click());
   expect(host.querySelector("table")).toBeNull();
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Lecture des blocs indisponible");
+});
+
+const CHAIN_HEIGHT = 24;
+const FOREIGN_HASH = "f".repeat(64);
+
+function linkedPage(start: number, tip = FIRST_TIP) {
+  const hashAt = (height: number) => height === CHAIN_HEIGHT ? tip : (height + 1).toString(16).padStart(64, "0");
+  return {
+    schema_version: 1, network: "testnet", status: "verified_local", read_only: true,
+    source: "aretovus-native-explorer", chain_tip: tip, chain_height: CHAIN_HEIGHT,
+    start, next_start: start + 10 <= CHAIN_HEIGHT ? start + 10 : null,
+    blocks: Array.from({ length: Math.min(10, CHAIN_HEIGHT - start + 1) }, (_, index) => {
+      const height = start + index;
+      return {
+        height, hash: hashAt(height), parent: height === 0 ? "0".repeat(64) : hashAt(height - 1),
+        timestamp_decimal: "1", nonce_decimal: "0", tx_count: 0, merkle_root: "0".repeat(64),
+      };
+    }),
+  };
+}
+
+async function renderExplorer(tip = FIRST_TIP) {
+  if (!root) {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+  }
+  await act(async () => root!.render(
+    <ExplorerPanel dataDir="testnet-a" snapshot={{ tip, height: CHAIN_HEIGHT }} />,
+  ));
+}
+
+async function clickExplorerButton(label: string) {
+  const button = Array.from(host!.querySelectorAll("button")).find(button => button.textContent === label);
+  expect(button?.disabled).toBe(false);
+  await act(async () => button!.click());
+}
+
+async function searchHeight(height: number) {
+  const input = host!.querySelector<HTMLInputElement>(".explorer-search input")!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, String(height));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await clickExplorerButton("Aller au bloc");
+}
+
+it.each(["next", "previous", "search"] as const)("rejects a broken adjacent parent via %s", async route => {
+  const start = route === "previous" ? 0 : 10;
+  const response = linkedPage(start);
+  if (route === "previous") {
+    response.blocks.at(-1)!.hash = FOREIGN_HASH;
+  } else {
+    response.blocks[0].parent = FOREIGN_HASH;
+  }
+  expect(parseCanonicalPage(response, FIRST_TIP, start, 10).start).toBe(start);
+  vi.mocked(invoke).mockResolvedValueOnce(linkedPage(route === "previous" ? 10 : 0))
+    .mockResolvedValueOnce(response);
+
+  await renderExplorer();
+  if (route === "previous") {
+    await searchHeight(10);
+  } else {
+    await clickExplorerButton("Lire les blocs");
+  }
+  expect(host!.querySelector("table")).not.toBeNull();
+
+  if (route === "search") {
+    await searchHeight(12);
+  } else {
+    await clickExplorerButton(route === "next" ? "Page suivante" : "Page précédente");
+  }
+  expect(invoke).toHaveBeenLastCalledWith("read_canonical_page", { dataDir: "testnet-a", start, limit: 10 });
+  expect(host!.querySelector("table")).toBeNull();
+  expect(host!.querySelector('[role="alert"]')?.textContent).toContain("Lecture des blocs indisponible");
+});
+
+it("allows a valid round trip between adjacent pages and a nonadjacent jump", async () => {
+  const lastPage = linkedPage(20);
+  lastPage.blocks[0].parent = FOREIGN_HASH;
+  vi.mocked(invoke).mockResolvedValueOnce(linkedPage(0))
+    .mockResolvedValueOnce(linkedPage(10))
+    .mockResolvedValueOnce(linkedPage(0))
+    .mockResolvedValueOnce(lastPage);
+
+  await renderExplorer();
+  await clickExplorerButton("Lire les blocs");
+  await clickExplorerButton("Page suivante");
+  expect(host!.querySelector("tbody tr td")?.textContent).toBe("10");
+  await clickExplorerButton("Page précédente");
+  expect(host!.querySelector("tbody tr td")?.textContent).toBe("0");
+  await searchHeight(24);
+  expect(host!.querySelector("tbody tr td")?.textContent).toBe("20");
+  expect(host!.querySelector('[role="status"]')?.textContent).toContain("Bloc 24 trouvé");
+  expect(host!.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("ignores a pending adjacent response after the verified snapshot changes", async () => {
+  let resolveOldPage!: (value: unknown) => void;
+  const oldPage = linkedPage(10);
+  oldPage.blocks[0].parent = FOREIGN_HASH;
+  vi.mocked(invoke).mockResolvedValueOnce(linkedPage(0))
+    .mockImplementationOnce(() => new Promise(resolve => { resolveOldPage = resolve; }))
+    .mockResolvedValueOnce(linkedPage(20, NEXT_TIP));
+
+  await renderExplorer();
+  await clickExplorerButton("Lire les blocs");
+  await clickExplorerButton("Page suivante");
+  await renderExplorer(NEXT_TIP);
+  await act(async () => resolveOldPage(oldPage));
+
+  expect(host!.querySelector("table")).toBeNull();
+  expect(host!.querySelector('[role="alert"]')).toBeNull();
+  await searchHeight(24);
+  expect(host!.querySelector("tbody")?.textContent).toContain(NEXT_TIP);
 });
