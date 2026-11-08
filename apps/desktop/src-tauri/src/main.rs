@@ -1,19 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod companion_capture;
 mod explorer;
 mod native_error;
 
+use companion_capture::{capture, CaptureError};
 use native_error::NativeError;
 use std::{
-    io::{Read, Write},
     path::Path,
-    process::{Command, Stdio},
+    process::Command,
     sync::atomic::{AtomicBool, Ordering},
-    thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 const REQUEST: &[u8] = br#"{"schema_version":1,"method":"status"}"#;
-const MAX_OUTPUT: u64 = 4096;
+const MAX_OUTPUT: usize = 4096;
 const DEADLINE: Duration = Duration::from_secs(30);
 
 // A compromised webview must not spawn unlimited expensive snapshot readers.
@@ -100,48 +100,15 @@ fn bridge_status(data_dir: &str) -> Result<serde_json::Value, NativeError> {
     if !bridge.is_file() {
         return Err(NativeError::BridgeUnavailable);
     }
-    let mut child = Command::new(bridge)
-        .arg("--data-dir")
-        .arg(directory)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|_| NativeError::BridgeUnavailable)?;
-    if let Some(mut stdin) = child.stdin.take() {
-        if stdin.write_all(REQUEST).is_err() {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(NativeError::BridgeUnavailable);
-        }
-    }
-    let start = Instant::now();
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if start.elapsed() < DEADLINE => thread::sleep(Duration::from_millis(25)),
-            Ok(None) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(NativeError::BridgeTimeout);
-            }
-            Err(_) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(NativeError::BridgeUnavailable);
-            }
-        }
-    };
-    let mut bytes = Vec::new();
-    if let Some(stdout) = child.stdout.take() {
-        stdout
-            .take(MAX_OUTPUT + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| NativeError::InvalidResponse)?;
-    }
-    if !status.success() || bytes.len() as u64 > MAX_OUTPUT {
-        return Err(NativeError::VerificationFailed);
-    }
+    let mut command = Command::new(bridge);
+    command.arg("--data-dir").arg(directory);
+    let bytes =
+        capture(command, Some(REQUEST), MAX_OUTPUT, DEADLINE).map_err(|error| match error {
+            CaptureError::Unavailable => NativeError::BridgeUnavailable,
+            CaptureError::Timeout => NativeError::BridgeTimeout,
+            CaptureError::InvalidOutput => NativeError::InvalidResponse,
+            CaptureError::TooLarge | CaptureError::Unsuccessful => NativeError::VerificationFailed,
+        })?;
     let answer: serde_json::Value =
         serde_json::from_slice(&bytes).map_err(|_| NativeError::InvalidResponse)?;
     validate_status_response(&answer)?;

@@ -1,22 +1,17 @@
 //! Local-only, read-only canonical explorer child of the ARETOVUS desktop.
 //! Never open sockets, spawn via shell, expose wallet secrets or skip snapshot
 //! verification; the explorer executable is a *companion* of this host.
-use std::{
-    io::Read,
-    path::Path,
-    process::{Command, Stdio},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{path::Path, process::Command, time::Duration};
 
 use crate::{
+    companion_capture::{capture, CaptureError},
     native_error::NativeError::{self, InvalidExplorerResponse},
     BridgeLease,
 };
 use serde_json::{json, Value};
 
 const MAX_PAGE: usize = 20;
-const MAX_OUTPUT: u64 = 16 * 1024;
+const MAX_OUTPUT: usize = 16 * 1024;
 const DEADLINE: Duration = Duration::from_secs(30);
 const JS_MAX_SAFE: u64 = 9_007_199_254_740_991;
 
@@ -140,52 +135,20 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, NativeEr
     if !executable.is_file() {
         return Err(NativeError::ExplorerUnavailable);
     }
-    let mut child = Command::new(executable)
+    let mut command = Command::new(executable);
+    command
         .arg("--data-dir")
         .arg(directory)
         .arg("--start")
         .arg(start.to_string())
         .arg("--limit")
-        .arg(limit.to_string())
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|_| NativeError::ExplorerUnavailable)?;
-    // A page of 20 blocks can exceed the OS pipe buffer. Drain concurrently
-    // instead of deadlocking by waiting for exit before reading stdout.
-    let stdout = child.stdout.take().ok_or(InvalidExplorerResponse)?;
-    let reader = thread::spawn(move || {
-        let mut out = Vec::new();
-        stdout
-            .take(MAX_OUTPUT + 1)
-            .read_to_end(&mut out)
-            .map(|_| out)
-    });
-    let began = Instant::now();
-    let exit = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if began.elapsed() < DEADLINE => thread::sleep(Duration::from_millis(25)),
-            Ok(None) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(NativeError::ExplorerTimeout);
-            }
-            Err(_) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(NativeError::ExplorerUnavailable);
-            }
-        }
-    };
-    let bytes = reader
-        .join()
-        .map_err(|_| InvalidExplorerResponse)?
-        .map_err(|_| InvalidExplorerResponse)?;
-    if !exit.success() || bytes.len() as u64 > MAX_OUTPUT {
-        return Err(NativeError::ExplorerFailed);
-    }
+        .arg(limit.to_string());
+    let bytes = capture(command, None, MAX_OUTPUT, DEADLINE).map_err(|error| match error {
+        CaptureError::Unavailable => NativeError::ExplorerUnavailable,
+        CaptureError::Timeout => NativeError::ExplorerTimeout,
+        CaptureError::InvalidOutput => InvalidExplorerResponse,
+        CaptureError::TooLarge | CaptureError::Unsuccessful => NativeError::ExplorerFailed,
+    })?;
     let value: Value = serde_json::from_slice(&bytes).map_err(|_| InvalidExplorerResponse)?;
     validate_page(&value, start, limit)
 }
