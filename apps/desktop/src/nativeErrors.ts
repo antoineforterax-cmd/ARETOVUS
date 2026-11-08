@@ -7,6 +7,7 @@ const messages: Readonly<Record<string, string>> = Object.freeze({
   explorer_unavailable: "L’explorateur local ne peut pas démarrer. Vérifie que l’application et ses fichiers sont installés ensemble.",
   verification_failed: "Le snapshot ne peut pas être validé. Vérifie le dossier testnet et conserve tes sauvegardes.",
   explorer_failed: "Les blocs ne peuvent pas être relus. Actualise le nœud, puis réessaie.",
+  explorer_block_not_found: "Bloc introuvable dans la chaîne canonique du snapshot vérifié.",
 });
 
 function versionedErrorCode(error: unknown): unknown {

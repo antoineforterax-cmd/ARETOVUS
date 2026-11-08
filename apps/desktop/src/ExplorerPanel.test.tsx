@@ -218,7 +218,7 @@ async function searchHeight(height: number) {
   await clickExplorerButton("Aller au bloc");
 }
 
-it.each(["next", "previous", "search"] as const)("rejects a broken adjacent parent via %s", async route => {
+it.each(["next", "previous", "search", "hash"] as const)("rejects a broken adjacent parent via %s", async route => {
   const start = route === "previous" ? 0 : 10;
   const response = linkedPage(start);
   if (route === "previous") {
@@ -238,12 +238,21 @@ it.each(["next", "previous", "search"] as const)("rejects a broken adjacent pare
   }
   expect(host!.querySelector("table")).not.toBeNull();
 
-  if (route === "search") {
+  if (route === "hash") {
+    const blockHash = response.blocks[2].hash;
+    await enterHash(blockHash);
+    await clickExplorerButton("Chercher par hash");
+    expect(invoke).toHaveBeenLastCalledWith("read_canonical_page_by_hash", {
+      dataDir: "testnet-a", blockHash, limit: 10, expectedTip: FIRST_TIP, expectedHeight: CHAIN_HEIGHT,
+    });
+  } else if (route === "search") {
     await searchHeight(12);
   } else {
     await clickExplorerButton(route === "next" ? "Page suivante" : "Page précédente");
   }
-  expect(invoke).toHaveBeenLastCalledWith("read_canonical_page", { dataDir: "testnet-a", start, limit: 10 });
+  if (route !== "hash") {
+    expect(invoke).toHaveBeenLastCalledWith("read_canonical_page", { dataDir: "testnet-a", start, limit: 10 });
+  }
   expect(host!.querySelector("table")).toBeNull();
   expect(host!.querySelector('[role="alert"]')?.textContent).toContain("Lecture des blocs indisponible");
 });
@@ -286,4 +295,88 @@ it("ignores a pending adjacent response after the verified snapshot changes", as
   expect(host!.querySelector('[role="alert"]')).toBeNull();
   await searchHeight(24);
   expect(host!.querySelector("tbody")?.textContent).toContain(NEXT_TIP);
+});
+
+async function enterHash(value: string) {
+  const input = host!.querySelector<HTMLInputElement>(".explorer-hash-search input");
+  if (!input) throw new Error("The explorer hash input is missing");
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  return input;
+}
+
+it("only submits complete ASCII hashes and locates the matching block", async () => {
+  const foundPage = linkedPage(10);
+  const target = foundPage.blocks[3];
+  vi.mocked(invoke).mockResolvedValueOnce(foundPage);
+  await renderExplorer();
+
+  for (const malformed of [target.hash.slice(1), target.hash + "0", target.hash + " ",
+    "Ｆ".repeat(64), "--limit=20"]) {
+    const input = await enterHash(malformed);
+    const form = input.form!;
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(form.querySelector("button")?.disabled).toBe(true);
+    await act(async () => { form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  }
+  expect(invoke).not.toHaveBeenCalled();
+
+  const input = await enterHash(target.hash.toUpperCase());
+  expect(input.form?.querySelector("label")?.htmlFor).toBe(input.id);
+  await clickExplorerButton("Chercher par hash");
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("read_canonical_page_by_hash", {
+    dataDir: "testnet-a", blockHash: target.hash, limit: 10, expectedTip: FIRST_TIP,
+    expectedHeight: CHAIN_HEIGHT,
+  });
+  expect(host!.querySelector('[role="status"]')?.textContent).toContain("Bloc 13 trouvé");
+  expect(host!.querySelector("tbody strong")?.closest("tr")?.textContent).toContain(target.hash);
+  expect(host!.querySelector('[role="alert"]')).toBeNull();
+});
+
+it.each([
+  ["missing hash", linkedPage(10), FOREIGN_HASH],
+  ["misaligned start", linkedPage(11), linkedPage(11).blocks[2].hash],
+  ["different tip", linkedPage(10, NEXT_TIP), linkedPage(10).blocks[3].hash],
+  ["different height", { ...linkedPage(10), chain_height: CHAIN_HEIGHT + 1 }, linkedPage(10).blocks[3].hash],
+  ["non-numeric start", { ...linkedPage(10), start: "10" }, linkedPage(10).blocks[3].hash],
+] as const)("rejects a hash lookup response with %s", async (_case, response, target) => {
+  vi.mocked(invoke).mockResolvedValueOnce(response);
+  await renderExplorer();
+  await enterHash(target);
+  await clickExplorerButton("Chercher par hash");
+  expect(host!.querySelector("table")).toBeNull();
+  expect(host!.querySelector('[role="status"]')).toBeNull();
+  expect(host!.querySelector('[role="alert"]')?.textContent).toContain("Lecture des blocs indisponible");
+});
+
+it("displays the fixed not-found error from the native hash lookup", async () => {
+  vi.mocked(invoke).mockRejectedValueOnce({ schema_version: 1, code: "explorer_block_not_found" });
+  await renderExplorer();
+  await enterHash(FOREIGN_HASH);
+  await clickExplorerButton("Chercher par hash");
+  expect(host!.querySelector("table")).toBeNull();
+  expect(host!.querySelector('[role="alert"]')?.textContent).toContain("Bloc introuvable");
+});
+
+it("discards a pending hash lookup after the verified snapshot changes", async () => {
+  let resolveOldPage!: (value: unknown) => void;
+  const oldPage = linkedPage(10);
+  vi.mocked(invoke).mockImplementationOnce(() => new Promise(resolve => { resolveOldPage = resolve; }))
+    .mockResolvedValueOnce(linkedPage(20, NEXT_TIP));
+
+  await renderExplorer();
+  await enterHash(oldPage.blocks[3].hash);
+  await clickExplorerButton("Chercher par hash");
+  await renderExplorer(NEXT_TIP);
+  expect(host!.querySelector<HTMLButtonElement>(".explorer-hash-search button")?.disabled).toBe(true);
+  await act(async () => resolveOldPage(oldPage));
+  expect(host!.querySelector("table")).toBeNull();
+  expect(host!.querySelector('[role="alert"]')).toBeNull();
+
+  await enterHash(NEXT_TIP);
+  await clickExplorerButton("Chercher par hash");
+  expect(host!.querySelector('[role="status"]')?.textContent).toContain("Bloc 24 trouvé");
 });

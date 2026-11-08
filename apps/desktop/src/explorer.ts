@@ -84,3 +84,18 @@ export function parseCanonicalPage(
   }
   return { ...page, blocks: entries } as CanonicalPage;
 }
+
+export function parseCanonicalPageByHash(
+  raw: unknown,
+  expectedTip: string,
+  blockHash: string,
+  limit: number,
+): { page: CanonicalPage; height: number } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw Error("invalid_page");
+  const start: unknown = Object.getOwnPropertyDescriptor(raw, "start")?.value;
+  if (!safe(start)) throw Error("invalid_page");
+  const page = parseCanonicalPage(raw, expectedTip, start, limit);
+  const block = page.blocks.find(block => block.hash === blockHash);
+  if (!block || start !== block.height - block.height % limit) throw Error("invalid_hash_page");
+  return { page, height: block.height };
+}

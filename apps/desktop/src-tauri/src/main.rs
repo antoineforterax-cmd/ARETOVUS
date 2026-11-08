@@ -127,7 +127,8 @@ fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             read_node_status,
-            explorer::read_canonical_page
+            explorer::read_canonical_page,
+            explorer::read_canonical_page_by_hash
         ])
         .run(tauri::generate_context!())
         .expect("failed to run ARETOVUS Desktop Lab");

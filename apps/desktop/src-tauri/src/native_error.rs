@@ -12,6 +12,7 @@ pub(crate) enum NativeError {
     ExplorerUnavailable,
     ExplorerTimeout,
     ExplorerFailed,
+    ExplorerBlockNotFound,
     InvalidExplorerResponse,
 }
 
@@ -30,6 +31,7 @@ impl NativeError {
             Self::ExplorerUnavailable => "explorer_unavailable",
             Self::ExplorerTimeout => "explorer_timeout",
             Self::ExplorerFailed => "explorer_failed",
+            Self::ExplorerBlockNotFound => "explorer_block_not_found",
             Self::InvalidExplorerResponse => "invalid_explorer_response",
         };
         json!({ "schema_version": 1, "code": code })

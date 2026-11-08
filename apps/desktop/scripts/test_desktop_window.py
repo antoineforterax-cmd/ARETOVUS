@@ -10,8 +10,10 @@ import argparse
 from collections.abc import Mapping
 import ctypes
 import hashlib
+import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -160,6 +162,22 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
             )
             if mined.returncode != 0:
                 raise RuntimeError("Failed to mine disposable testnet snapshot for WebView2 UI smoke")
+            verified = subprocess.run(
+                [
+                    str(executables["aretovus-local-bridge.exe"]),
+                    "--data-dir", str(disposable_data),
+                ],
+                input=b'{"schema_version":1,"method":"status"}',
+                capture_output=True, check=True, timeout=30, env=environment,
+            )
+            status = json.loads(verified.stdout)
+            block_hash = status.get("tip")
+            if (
+                status.get("height") != 1
+                or not isinstance(block_hash, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", block_hash)
+            ):
+                raise RuntimeError("Disposable snapshot did not return a valid height-one tip")
 
         diagnostic = Path(temp) / "desktop-stderr.log"
         with diagnostic.open("wb") as errors:
@@ -185,10 +203,11 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                             "-File", str(verified_script),
                             "-TargetPid", str(proc.pid),
                             "-TestDataDir", str(disposable_data),
+                            "-TestBlockHash", block_hash,
                         ],
                         capture_output=True,
                         check=False,
-                        timeout=210,
+                        timeout=260,
                         cwd=folder,
                         env=environment,
                     )
@@ -196,9 +215,12 @@ def smoke_archive(archive: Path, uia_script: Path | None = None) -> None:
                         error_text = completed.stderr.decode("utf-8", errors="replace")[-1600:]
                         raise RuntimeError("Actual React/WebView2 UI Automation smoke failed: " + error_text)
                     output = completed.stdout.decode("utf-8", errors="replace")
-                    if "PASS: WebView2 React displayed real Rust snapshot" not in output:
+                    if (
+                        "PASS: WebView2 React displayed real Rust snapshot" not in output
+                        or "PASS: WebView2 hash search located the real mined block" not in output
+                    ):
                         raise RuntimeError("UI Automation did not report a real successful interaction")
-                    print("Extracted React GUI: invalid-path rejection, real Rust snapshot and explorer click verified")
+                    print("Extracted React GUI: invalid-path rejection, real Rust snapshot, explorer and hash lookup verified")
                 # A transient startup splash screen is insufficient.
                 time.sleep(2)
                 if proc.poll() is not None or EXPECTED_TITLE not in top_level_windows_for_pid(proc.pid):

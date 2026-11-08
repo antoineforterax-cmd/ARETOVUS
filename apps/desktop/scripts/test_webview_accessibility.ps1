@@ -11,7 +11,10 @@ param(
     [int] $TargetPid,
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string] $TestDataDir
+    [string] $TestDataDir,
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[a-f0-9]{64}$')]
+    [string] $TestBlockHash
 )
 $ErrorActionPreference = "Stop"
 if (-not (Test-Path -LiteralPath $TestDataDir -PathType Container)) {
@@ -383,7 +386,7 @@ function Type-WithKeyboard($inputElement, [string]$value) {
     [System.Windows.Forms.SendKeys]::SendWait($value)
 }
 
-function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
+function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath, [string]$buttonName = "Connecter le", [string]$editName = "") {
     # A button that was enabled for an OLD path is not evidence that React
     # accepted the newly typed path. Assert the accessible edit value too.
     $deadline = [DateTime]::UtcNow.AddSeconds($seconds)
@@ -397,10 +400,10 @@ function Wait-EnabledButton($window, [int]$seconds, [string]$expectedPath) {
         $pathMatches = $false
         foreach ($entry in $tree) {
             if ($entry.Type -eq "ControlType.Button" -and
-                $entry.Name.StartsWith("Connecter le")) {
+                $entry.Name.StartsWith($buttonName)) {
                 $button = $entry
             }
-            if ($entry.Type -eq "ControlType.Edit") {
+            if ($entry.Type -eq "ControlType.Edit" -and $entry.Name.StartsWith($editName)) {
                 $editSeen = $true
                 try {
                     $value = $null
@@ -528,14 +531,36 @@ $load = Find-ByNameAndType $tree "Lire les blocs" "ControlType.Button"
 if (-not $load.Enabled) { throw "Native explorer button remains disabled after valid snapshot" }
 Activate-Button $load.Element
 $deadline = [DateTime]::UtcNow.AddSeconds(45)
+$pageReady = $false
 while ([DateTime]::UtcNow -lt $deadline) {
     $tree = Get-Elements $observed.Window
     if ((Match-Name $tree "Hash du bloc") -and (Match-Name $tree "Timestamp (s)")) {
-        Write-Output "PASS: WebView2 React displayed real Rust snapshot and canonical explorer from extracted ZIP"
-        Write-Output "PASS: Invalid-path native rejection, controlled path edit, and read-only explorer click"
-        Write-Output "NOT CHECKED: screen pixels, all accessibility modes, real funds, wallet GUI or P2P live"
+        $pageReady = $true
+        break
+    }
+    Start-Sleep -Milliseconds 350
+}
+if (-not $pageReady) { throw "Native explorer did not render canonical block table after real UI interaction" }
+Write-Output "PASS: WebView2 React displayed real Rust snapshot and canonical explorer from extracted ZIP"
+
+$hashInput = Find-ByNameAndType $tree "Hash du bloc" "ControlType.Edit"
+Type-WithKeyboard $hashInput.Element $TestBlockHash
+$search = Wait-EnabledButton $observed.Window 8 $TestBlockHash "Chercher par hash" "Hash du bloc"
+if ($null -eq $search) {
+    $tree = Get-Elements $observed.Window
+    $hashInput = Find-ByNameAndType $tree "Hash du bloc" "ControlType.Edit"
+    Set-InputValue $hashInput.Element $TestBlockHash
+    $search = Wait-EnabledButton $observed.Window 8 $TestBlockHash "Chercher par hash" "Hash du bloc"
+}
+if ($null -eq $search) { throw "Typing the real hash did not enable the React search button" }
+Activate-Button $search.Element
+$deadline = [DateTime]::UtcNow.AddSeconds(40)
+while ([DateTime]::UtcNow -lt $deadline) {
+    $tree = Get-Elements $observed.Window
+    if ((Match-Name $tree "Bloc 1 trouv") -or (Match-Name $tree "Recherch")) {
+        Write-Output "PASS: WebView2 hash search located the real mined block"
         exit 0
     }
     Start-Sleep -Milliseconds 350
 }
-throw "Native explorer did not render canonical block table after real UI interaction"
+throw "Native hash search did not display the real mined block"
