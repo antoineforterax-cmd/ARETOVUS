@@ -48,18 +48,21 @@ export function parseCanonicalPage(
       page.start !== expectedStart || !Array.isArray(page.blocks)) {
     throw Error("invalid_page");
   }
-  const expectedCount = Math.min(requestedLimit, Math.max(0, page.chain_height - expectedStart + 1));
+  const height = page.chain_height;
+  const expectedCount = Math.min(requestedLimit, Math.max(0, height - expectedStart + 1));
   if (page.blocks.length !== expectedCount) {
     throw Error("invalid_page");
   }
   let previousHash: string | null = null;
+  const hashes = new Set<string>();
   const entries: CanonicalBlock[] = page.blocks.map((entry: unknown, i: number) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw Error("invalid_page");
     const block = entry as Record<string, unknown>;
     const expectedHeight = expectedStart + i;
     if (!safe(expectedHeight) || !safe(block.height) ||
-        block.height !== expectedHeight || expectedHeight > (page.chain_height as number) ||
+        block.height !== expectedHeight || expectedHeight > height ||
         typeof block.hash !== "string" || !HEX.test(block.hash) ||
+        hashes.has(block.hash) || (block.hash === expectedTip) !== (expectedHeight === height) ||
         typeof block.parent !== "string" || !HEX.test(block.parent) ||
         typeof block.merkle_root !== "string" || !HEX.test(block.merkle_root) ||
         !uint64Decimal(block.timestamp_decimal) ||
@@ -67,15 +70,16 @@ export function parseCanonicalPage(
         !safe(block.tx_count) || (previousHash !== null && block.parent !== previousHash)) {
       throw Error("invalid_page");
     }
+    hashes.add(block.hash);
     previousHash = block.hash;
     return block as CanonicalBlock;
   });
-  const next = expectedStart + entries.length;
-  if (page.next_start !== (next <= page.chain_height ? next : null)) {
+  const first = entries[0];
+  if (first && expectedStart > 0 && (first.parent === expectedTip || hashes.has(first.parent))) {
     throw Error("invalid_page");
   }
-  if (entries.length > 0 && entries[entries.length - 1].height === page.chain_height &&
-      entries[entries.length - 1].hash !== expectedTip) {
+  const next = expectedStart + entries.length;
+  if (page.next_start !== (next <= height ? next : null)) {
     throw Error("invalid_page");
   }
   return { ...page, blocks: entries } as CanonicalPage;
