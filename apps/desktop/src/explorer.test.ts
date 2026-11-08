@@ -4,6 +4,9 @@ import { parseCanonicalPage } from "./explorer";
 const ZERO = "0".repeat(64);
 const ONE = "a".repeat(64);
 const TWO = "b".repeat(64);
+const TIP = "c".repeat(64);
+const PREVIOUS_PAGE_LAST = "d".repeat(64);
+const THIRD_ROW = "e".repeat(64);
 function sample() {
   return {
     schema_version: 1,
@@ -21,6 +24,23 @@ function sample() {
     ],
   };
 }
+
+function middlePage() {
+  const row = sample().blocks[1];
+  return {
+    ...sample(),
+    chain_tip: TIP,
+    chain_height: 8,
+    start: 4,
+    next_start: 7,
+    blocks: [
+      { ...row, height: 4, hash: ONE, parent: PREVIOUS_PAGE_LAST },
+      { ...row, height: 5, hash: TWO, parent: ONE },
+      { ...row, height: 6, hash: THIRD_ROW, parent: TWO },
+    ],
+  };
+}
+
 describe("native explorer page trust boundary", () => {
   it("accepts validated canonical blocks and preserves unsigned u64 decimal fields", () => {
     const page = parseCanonicalPage(sample(), ONE, 0, 10);
@@ -74,5 +94,33 @@ describe("native explorer page trust boundary", () => {
     const page = sample();
     const shortened = { ...page, blocks: [page.blocks[0]], next_start: 1 };
     expect(() => parseCanonicalPage(shortened, ONE, 0, 10)).toThrow();
+  });
+
+  it("accepts a middle page whose first block has a parent outside the page", () => {
+    expect(parseCanonicalPage(middlePage(), TIP, 4, 3).blocks.map(block => block.hash))
+      .toEqual([ONE, TWO, THIRD_ROW]);
+  });
+
+  it("rejects a non-adjacent duplicate hash even when consecutive parent links match", () => {
+    const page = middlePage();
+    page.blocks[2].hash = ONE;
+    expect(() => parseCanonicalPage(page, TIP, 4, 3)).toThrow();
+  });
+
+  it("rejects the reported tip hash at a height before the verified tip", () => {
+    const page = middlePage();
+    page.blocks[0].hash = TIP;
+    page.blocks[1].parent = TIP;
+    expect(() => parseCanonicalPage(page, TIP, 4, 3)).toThrow();
+  });
+
+  it.each([
+    ["the tip", TIP],
+    ["itself", ONE],
+    ["a later row", TWO],
+  ])("rejects a non-genesis first block whose parent is %s", (_label, parent) => {
+    const page = middlePage();
+    page.blocks[0].parent = parent;
+    expect(() => parseCanonicalPage(page, TIP, 4, 3)).toThrow();
   });
 });

@@ -1,7 +1,7 @@
 //! Local-only, read-only canonical explorer child of the ARETOVUS desktop.
 //! Never open sockets, spawn via shell, expose wallet secrets or skip snapshot
 //! verification; the explorer executable is a *companion* of this host.
-use std::{path::Path, process::Command, time::Duration};
+use std::{collections::HashSet, path::Path, process::Command, time::Duration};
 
 use crate::{
     companion_capture::{capture, CaptureError},
@@ -63,7 +63,9 @@ fn validate_page(
         return Err(InvalidExplorerResponse);
     }
     let mut normalized = Vec::with_capacity(blocks.len());
-    let mut previous: Option<String> = None;
+    let mut seen_hashes = HashSet::with_capacity(blocks.len());
+    let mut previous = None;
+    let mut first_parent = None;
     for (index, block) in blocks.iter().enumerate() {
         let number = start
             .checked_add(index as u64)
@@ -73,8 +75,14 @@ fn validate_page(
         }
         let current_hash = hash(&block["hash"])?;
         let parent = hash(&block["parent"])?;
-        if previous.as_deref().is_some_and(|h| parent != h) {
+        if !seen_hashes.insert(current_hash)
+            || (current_hash == tip) != (number == height)
+            || previous.is_some_and(|h| parent != h)
+        {
             return Err(InvalidExplorerResponse);
+        }
+        if index == 0 && number > 0 {
+            first_parent = Some(parent);
         }
         let timestamp = block["timestamp"].as_u64().ok_or(InvalidExplorerResponse)?;
         let nonce = block["nonce"].as_u64().ok_or(InvalidExplorerResponse)?;
@@ -85,13 +93,10 @@ fn validate_page(
             "timestamp_decimal": timestamp.to_string(), "nonce_decimal": nonce.to_string(),
             "tx_count": count, "merkle_root": root
         }));
-        previous = Some(current_hash.to_owned());
+        previous = Some(current_hash);
     }
-    if start <= height
-        && !blocks.is_empty()
-        && start + (blocks.len() as u64) - 1 == height
-        && previous.as_deref() != Some(tip)
-    {
+    // If the page starts above genesis, its first block's parent is earlier.
+    if first_parent.is_some_and(|parent| parent == tip || seen_hashes.contains(parent)) {
         return Err(InvalidExplorerResponse);
     }
     let calculated_next = start
@@ -183,6 +188,22 @@ mod tests {
             ]
         })
     }
+
+    fn middle_page() -> Value {
+        let mut page = sample();
+        let first = "a".repeat(64);
+        page["chain_tip"] = json!("c".repeat(64));
+        page["chain_height"] = json!(3);
+        page["start"] = json!(1);
+        page["next_start"] = json!(3);
+        page["blocks"][0]["height"] = json!(1);
+        page["blocks"][0]["hash"] = json!(first);
+        page["blocks"][1]["height"] = json!(2);
+        page["blocks"][1]["parent"] = json!(first);
+        page["blocks"][1]["hash"] = json!("b".repeat(64));
+        page
+    }
+
     #[test]
     fn validates_realistic_page_without_rounding_nonce() {
         let page = validate_page(&sample(), 0, 20).unwrap();
@@ -207,6 +228,51 @@ mod tests {
             Err(InvalidExplorerResponse)
         );
     }
+
+    #[test]
+    fn rejects_duplicate_hashes() {
+        let mut duplicate = middle_page();
+        duplicate["chain_height"] = json!(4);
+        duplicate["next_start"] = json!(4);
+        let mut third = duplicate["blocks"][0].clone();
+        third["height"] = json!(3);
+        third["parent"] = json!("b".repeat(64));
+        duplicate["blocks"].as_array_mut().unwrap().push(third);
+        assert_eq!(
+            validate_page(&duplicate, 1, 3),
+            Err(InvalidExplorerResponse)
+        );
+    }
+
+    #[test]
+    fn rejects_tip_below_reported_height() {
+        let mut early_tip = middle_page();
+        early_tip["blocks"][1]["hash"] = json!("c".repeat(64));
+        assert_eq!(
+            validate_page(&early_tip, 1, 2),
+            Err(InvalidExplorerResponse)
+        );
+    }
+
+    #[test]
+    fn rejects_a_non_genesis_first_parent_at_or_above_its_height() {
+        let mut page = middle_page();
+        assert!(validate_page(&page, 1, 2).is_ok());
+        for forged_parent in ['a', 'b', 'c'] {
+            page["blocks"][0]["parent"] = json!(forged_parent.to_string().repeat(64));
+            assert_eq!(validate_page(&page, 1, 2), Err(InvalidExplorerResponse));
+        }
+    }
+
+    #[test]
+    fn accepts_an_empty_page_beyond_tip() {
+        let mut page = middle_page();
+        page["start"] = json!(4);
+        page["next_start"] = Value::Null;
+        page["blocks"] = json!([]);
+        assert!(validate_page(&page, 4, 2).is_ok());
+    }
+
     #[test]
     fn rejects_forged_or_discontinuous_pages() {
         let base = sample();
