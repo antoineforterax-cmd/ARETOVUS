@@ -16,7 +16,7 @@ Les fichiers de verrouillage npm et Cargo sont désormais présents sur cette br
 
 - Frontend **lecture seule**, ne conserve aucune clé, mot de passe ou seed dans JS.
 - Deux commandes IPC Rust en lecture seule : `read_node_status` et `read_canonical_page` ; pas de shell, HTTP, plugin shell ou permission filesystem webview. Voir [les frontières de confiance](../../docs/planning/V0_DESKTOP_TRUST_BOUNDARIES.md).
-- Chemin choisi par l'utilisateur canonisé côté hôte ; binaire fixe adjacent à l'exécutable (pas PATH). Entrée et sortie limitées, timeout du processus à 30 s ; stderr supprimé et codes d'erreurs stables.
+- L'hôte canonise le chemin choisi par l'utilisateur et lance le binaire adjacent à son exécutable. Les deux commandes partagent le même collecteur. Il lit stdout pendant l'exécution, attend la fin du flux et une sortie réussie dans le même délai de 30 s, et limite la réponse à 4 Kio pour le statut et 16 Kio pour l'explorateur. Si un descendant garde stdout ouvert, le collecteur ferme la lecture au délai et libère l'accès pour l'appel suivant. La résolution du chemin précède ce délai. Stderr est supprimé et les codes d'erreurs sont stables.
 - Les sorties du bridge sont vérifiées à nouveau dans l'hôte et dans le frontend. Un navigateur seul, même avec un JSON similaire, ne constitue pas un nœud validé.
 - Attention : le prototype dépend encore de l'intégrité des exécutables installés et peut consommer du CPU/disque à chaque relecture complète. Aucune garantie de synchronisation globale/P2P active. Distinguer la lecture du snapshot d'un affichage de consensus de réseau.
 
@@ -26,7 +26,7 @@ Audit et actualisation contrôlée des lockfiles, intégration packaging binaire
 
 ## Pages de blocs canoniques (PR empilée #196, dépendance #195)
 
-Le nouveau panneau « Explorateur de blocs » appelle `read_canonical_page` depuis l'hôte Tauri. L'hôte démarre uniquement le binaire Rust compagnon `aretovus-explorer` (PR #195) placé à côté de son propre exécutable, avec un dossier existant, un départ borné et une limite d'au plus 20 blocs. Il capture la sortie sans risque de blocage si elle dépasse la capacité du pipe, impose un timeout de 30 s, borne la réponse à 16 KiB, et **rejette** JSON malformé, discontinuité des parents, nombres JS non sûrs, faux tip et curseurs invalides. Les champs natifs timestamp et nonce (u64) passent dans la webview sous forme de **chaînes décimales** pour éviter tout arrondi JavaScript.
+Le panneau « Explorateur de blocs » appelle `read_canonical_page` depuis l'hôte Tauri. L'hôte démarre uniquement le binaire Rust compagnon `aretovus-explorer` (PR #195) placé à côté de son propre exécutable, avec un dossier existant, un départ borné et une limite d'au plus 20 blocs. Après la capture, il **rejette** JSON malformé, discontinuité des parents, nombres JS non sûrs, faux tip et curseurs invalides. Les champs natifs timestamp et nonce (u64) passent dans la webview sous forme de **chaînes décimales** pour éviter tout arrondi JavaScript.
 
 La page est **déclenchée à la demande**, et non à chaque rafraîchissement du nœud, afin de limiter la charge CPU/disque. La vue refuse des pages provenant d'un autre sommet que celui affiché dans le statut local. Il faut rafraîchir le statut puis la page après une réorganisation : l'identité du sommet ne garantit pas une finalité globale. La limite de 10 blocs par page utilisée côté UI est volontairement inférieure à celle du moteur Rust.
 
