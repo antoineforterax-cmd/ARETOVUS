@@ -439,6 +439,13 @@ impl AccountForkChain {
         hashes.iter().take(limit).map(|hash| &self.blocks[hash])
     }
 
+    /// Look up a block height on the selected branch without scanning the chain.
+    pub fn canonical_block_height(&self, hash: Hash256) -> Option<u64> {
+        let height = self.nodes.get(&hash)?.height;
+        let index = usize::try_from(height).ok()?;
+        (self.canonical.get(index) == Some(&hash)).then_some(height)
+    }
+
     /// Locate a confirmed transaction on the selected branch without scanning all blocks.
     pub fn canonical_transaction(&self, txid: Hash256) -> Option<(u64, usize, &AccountBlock)> {
         let &(height, index) = self.canonical_tx_index.get(&txid)?;

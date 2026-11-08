@@ -1,6 +1,6 @@
 import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseCanonicalPage, type CanonicalPage } from "./explorer";
+import { parseCanonicalPage, parseCanonicalPageByHash, type CanonicalPage } from "./explorer";
 import { nativeErrorMessage } from "./nativeErrors";
 import type { VerifiedNodeStatus } from "./status";
 
@@ -15,6 +15,7 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
   const verifiedHeight = snapshot?.height;
   const [page, setPage] = useState<CanonicalPage | null>(null);
   const [heightQuery, setHeightQuery] = useState("");
+  const [hashQuery, setHashQuery] = useState("");
   const [foundHeight, setFoundHeight] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,10 +23,13 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
   const generation = useRef(0);
   const heightInputId = useId();
   const heightHintId = useId();
+  const hashInputId = useId();
+  const hashHintId = useId();
   const hasSnapshot = !!dataDir && !!verifiedTip && verifiedHeight !== undefined;
   const enteredHeight = /^[0-9]{1,16}$/.test(heightQuery) ? Number(heightQuery) : NaN;
   const validHeight = verifiedHeight !== undefined && Number.isSafeInteger(enteredHeight)
     && enteredHeight <= verifiedHeight;
+  const validHash = /^[0-9a-fA-F]{64}$/.test(hashQuery);
 
   useLayoutEffect(() => {
     // Clear the old snapshot before it can paint or anchor a new request.
@@ -35,16 +39,28 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
     setError("");
   }, [dataDir, verifiedTip, verifiedHeight]);
 
-  const load = useCallback(async (start: number, targetHeight: number | null = null) => {
+  const load = useCallback(async (startOrHash: number | string, targetHeight: number | null = null) => {
     if (!verifiedTip || verifiedHeight === undefined || !dataDir || busy.current) return;
     const expectedGeneration = generation.current;
     busy.current = true;
     setLoading(true);
     try {
-      const raw = await invoke<unknown>("read_canonical_page", {
-        dataDir, start, limit: LIMIT,
-      });
-      const validated = parseCanonicalPage(raw, verifiedTip, start, LIMIT);
+      let validated: CanonicalPage;
+      let matchedHeight = targetHeight;
+      if (typeof startOrHash === "string") {
+        const raw = await invoke<unknown>("read_canonical_page_by_hash", {
+          dataDir, blockHash: startOrHash, limit: LIMIT, expectedTip: verifiedTip,
+          expectedHeight: verifiedHeight,
+        });
+        const result = parseCanonicalPageByHash(raw, verifiedTip, startOrHash, LIMIT);
+        validated = result.page;
+        matchedHeight = result.height;
+      } else {
+        const raw = await invoke<unknown>("read_canonical_page", {
+          dataDir, start: startOrHash, limit: LIMIT,
+        });
+        validated = parseCanonicalPage(raw, verifiedTip, startOrHash, LIMIT);
+      }
       if (validated.chain_height !== verifiedHeight) throw new Error("snapshot_height_mismatch");
       if (expectedGeneration === generation.current) {
         // Each cursor has already been checked against its page's block count.
@@ -55,7 +71,7 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
           throw new Error("page_parent_mismatch");
         }
         setPage(validated);
-        setFoundHeight(targetHeight);
+        setFoundHeight(matchedHeight);
         setError("");
       }
     } catch (error) {
@@ -98,6 +114,21 @@ export function ExplorerPanel({ dataDir, snapshot }: Props) {
         <button type="submit" disabled={!validHeight || loading}>Aller au bloc</button>
       </div>
       <small id={heightHintId}>Saisis une hauteur entière de 0 à {verifiedHeight?.toLocaleString("fr-FR")}.</small>
+    </form>}
+    {hasSnapshot && <form className="explorer-search explorer-hash-search" onSubmit={event => {
+      event.preventDefault();
+      if (!validHash || loading) return;
+      void load(hashQuery.toLowerCase());
+    }}>
+      <label htmlFor={hashInputId}>Hash du bloc</label>
+      <div className="formline">
+        <input id={hashInputId} type="text" value={hashQuery}
+          disabled={loading} autoComplete="off" autoCapitalize="none" spellCheck={false}
+          aria-describedby={hashHintId} aria-invalid={hashQuery !== "" && !validHash}
+          onChange={event => setHashQuery(event.target.value)} />
+        <button type="submit" disabled={!validHash || loading}>Chercher par hash</button>
+      </div>
+      <small id={hashHintId}>Saisis le hash complet du bloc en 64 caractères hexadécimaux.</small>
     </form>}
     {error && <p className="warning" role="alert">{error}</p>}
     {page && <>

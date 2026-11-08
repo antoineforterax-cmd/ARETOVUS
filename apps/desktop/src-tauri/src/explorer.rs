@@ -21,16 +21,32 @@ fn bounded_u64(v: &Value) -> Result<u64, NativeError> {
         .ok_or(InvalidExplorerResponse)
 }
 
-fn hash(v: &Value) -> Result<&str, NativeError> {
-    let v = v.as_str().ok_or(InvalidExplorerResponse)?;
-    if v.len() == 64
-        && v.bytes()
+fn is_hash(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+fn hash(v: &Value) -> Result<&str, NativeError> {
+    v.as_str()
+        .filter(|value| is_hash(value))
+        .ok_or(InvalidExplorerResponse)
+}
+
+fn validate_envelope<'a>(page: &'a Value, status: &str) -> Result<(&'a str, u64), NativeError> {
+    if page["schema_version"] != 1
+        || page["network"] != "testnet"
+        || page["status"] != status
+        || page["source"] != "aretovus-native-explorer"
+        || page["read_only"] != true
     {
-        Ok(v)
-    } else {
-        Err(InvalidExplorerResponse)
+        return Err(InvalidExplorerResponse);
     }
+    Ok((
+        hash(&page["chain_tip"])?,
+        bounded_u64(&page["chain_height"])?,
+    ))
 }
 
 /// Normalize large native u64 timestamp/nonce to strings before sending to JS
@@ -40,17 +56,10 @@ fn validate_page(
     requested_start: u64,
     requested_limit: usize,
 ) -> Result<Value, NativeError> {
-    if page["schema_version"] != 1
-        || page["network"] != "testnet"
-        || page["status"] != "verified_local"
-        || page["source"] != "aretovus-native-explorer"
-        || page["read_only"] != true
-        || !(1..=MAX_PAGE).contains(&requested_limit)
-    {
+    if !(1..=MAX_PAGE).contains(&requested_limit) {
         return Err(InvalidExplorerResponse);
     }
-    let tip = hash(&page["chain_tip"])?;
-    let height = bounded_u64(&page["chain_height"])?;
+    let (tip, height) = validate_envelope(page, "verified_local")?;
     let start = bounded_u64(&page["start"])?;
     if start != requested_start {
         return Err(InvalidExplorerResponse);
@@ -114,16 +123,71 @@ fn validate_page(
     }))
 }
 
-fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, NativeError> {
+enum PageQuery<'a> {
+    Start(u64),
+    Hash {
+        block_hash: &'a str,
+        expected_tip: &'a str,
+        expected_height: u64,
+    },
+}
+
+fn validate_hash_page(
+    page: &Value,
+    block_hash: &str,
+    expected_tip: &str,
+    expected_height: u64,
+    limit: usize,
+) -> Result<Value, NativeError> {
+    if page["chain_tip"].as_str() != Some(expected_tip)
+        || bounded_u64(&page["chain_height"])? != expected_height
+    {
+        return Err(InvalidExplorerResponse);
+    }
+    if page["status"] == "not_found" {
+        validate_envelope(page, "not_found")?;
+        if block_hash == expected_tip || page.as_object().is_none_or(|fields| fields.len() != 7) {
+            return Err(InvalidExplorerResponse);
+        }
+        return Err(NativeError::ExplorerBlockNotFound);
+    }
+
+    let start = bounded_u64(&page["start"])?;
+    let normalized = validate_page(page, start, limit)?;
+    let blocks = normalized["blocks"]
+        .as_array()
+        .ok_or(InvalidExplorerResponse)?;
+    let block = blocks
+        .iter()
+        .find(|block| block["hash"].as_str() == Some(block_hash))
+        .ok_or(InvalidExplorerResponse)?;
+    let height = bounded_u64(&block["height"])?;
+    if start != height - height % limit as u64 {
+        return Err(InvalidExplorerResponse);
+    }
+    Ok(normalized)
+}
+
+fn read_page(data_dir: &str, query: PageQuery<'_>, limit: usize) -> Result<Value, NativeError> {
     let _lease = BridgeLease::acquire()?;
     if data_dir.is_empty()
         || data_dir.len() > 1024
         || data_dir.contains('\0')
-        || start > JS_MAX_SAFE
         || !(1..=MAX_PAGE).contains(&limit)
     {
         return Err(NativeError::InvalidArguments);
     }
+    let (flag, value) = match query {
+        PageQuery::Start(start) if start <= JS_MAX_SAFE => ("--start", start.to_string()),
+        PageQuery::Hash {
+            block_hash,
+            expected_tip,
+            expected_height,
+        } if is_hash(block_hash) && is_hash(expected_tip) && expected_height < JS_MAX_SAFE => {
+            ("--hash", block_hash.to_owned())
+        }
+        _ => return Err(NativeError::InvalidArguments),
+    };
     let directory = Path::new(data_dir)
         .canonicalize()
         .map_err(|_| NativeError::InvalidDataDir)?;
@@ -144,8 +208,8 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, NativeEr
     command
         .arg("--data-dir")
         .arg(directory)
-        .arg("--start")
-        .arg(start.to_string())
+        .arg(flag)
+        .arg(value)
         .arg("--limit")
         .arg(limit.to_string());
     let bytes = capture(command, None, MAX_OUTPUT, DEADLINE).map_err(|error| match error {
@@ -155,7 +219,14 @@ fn read_page(data_dir: &str, start: u64, limit: usize) -> Result<Value, NativeEr
         CaptureError::TooLarge | CaptureError::Unsuccessful => NativeError::ExplorerFailed,
     })?;
     let value: Value = serde_json::from_slice(&bytes).map_err(|_| InvalidExplorerResponse)?;
-    validate_page(&value, start, limit)
+    match query {
+        PageQuery::Start(start) => validate_page(&value, start, limit),
+        PageQuery::Hash {
+            block_hash,
+            expected_tip,
+            expected_height,
+        } => validate_hash_page(&value, block_hash, expected_tip, expected_height, limit),
+    }
 }
 
 #[tauri::command]
@@ -164,10 +235,36 @@ pub(crate) async fn read_canonical_page(
     start: u64,
     limit: usize,
 ) -> Result<Value, Value> {
-    tauri::async_runtime::spawn_blocking(move || read_page(&data_dir, start, limit))
-        .await
-        .map_err(|_| NativeError::ExplorerUnavailable.into_payload())?
-        .map_err(NativeError::into_payload)
+    tauri::async_runtime::spawn_blocking(move || {
+        read_page(&data_dir, PageQuery::Start(start), limit)
+    })
+    .await
+    .map_err(|_| NativeError::ExplorerUnavailable.into_payload())?
+    .map_err(NativeError::into_payload)
+}
+
+#[tauri::command]
+pub(crate) async fn read_canonical_page_by_hash(
+    data_dir: String,
+    block_hash: String,
+    limit: usize,
+    expected_tip: String,
+    expected_height: u64,
+) -> Result<Value, Value> {
+    tauri::async_runtime::spawn_blocking(move || {
+        read_page(
+            &data_dir,
+            PageQuery::Hash {
+                block_hash: &block_hash,
+                expected_tip: &expected_tip,
+                expected_height,
+            },
+            limit,
+        )
+    })
+    .await
+    .map_err(|_| NativeError::ExplorerUnavailable.into_payload())?
+    .map_err(NativeError::into_payload)
 }
 
 #[cfg(test)]
@@ -271,6 +368,72 @@ mod tests {
         page["next_start"] = Value::Null;
         page["blocks"] = json!([]);
         assert!(validate_page(&page, 4, 2).is_ok());
+    }
+
+    #[test]
+    fn hash_lookup_requires_the_bound_snapshot_and_requested_block() {
+        let tip = "a".repeat(64);
+        let page = sample();
+        let normalized = validate_hash_page(&page, &tip, &tip, 1, 10).unwrap();
+        assert_eq!(normalized["blocks"][1]["hash"], tip);
+        assert_eq!(
+            normalized["blocks"][1]["nonce_decimal"],
+            "18446744073709551615"
+        );
+        let other = "b".repeat(64);
+        for (query, expected_tip, expected_height) in
+            [(&other, &tip, 1), (&tip, &other, 1), (&tip, &tip, 0)]
+        {
+            assert_eq!(
+                validate_hash_page(&page, query, expected_tip, expected_height, 10),
+                Err(InvalidExplorerResponse)
+            );
+        }
+        let unaligned = middle_page();
+        let higher_tip = "c".repeat(64);
+        assert!(validate_page(&unaligned, 1, 2).is_ok());
+        assert_eq!(
+            validate_hash_page(&unaligned, &other, &higher_tip, 3, 2),
+            Err(InvalidExplorerResponse)
+        );
+    }
+
+    #[test]
+    fn hash_lookup_distinguishes_a_bound_miss_from_a_forged_one() {
+        let tip = "a".repeat(64);
+        let other = "b".repeat(64);
+        let miss = json!({
+            "schema_version": 1, "network": "testnet", "status": "not_found",
+            "read_only": true, "source": "aretovus-native-explorer",
+            "chain_tip": tip, "chain_height": 1
+        });
+        assert_eq!(
+            validate_hash_page(&miss, &other, &tip, 1, 10),
+            Err(NativeError::ExplorerBlockNotFound)
+        );
+        assert_eq!(
+            validate_hash_page(&miss, &tip, &tip, 1, 10),
+            Err(InvalidExplorerResponse)
+        );
+        assert_eq!(
+            validate_hash_page(&miss, &other, &tip, 2, 10),
+            Err(InvalidExplorerResponse)
+        );
+        for (field, value) in [
+            ("chain_tip", json!(other)),
+            ("network", json!("mainnet")),
+            ("schema_version", json!(2)),
+            ("read_only", json!(false)),
+            ("source", json!("remote")),
+            ("details", json!("unexpected")),
+        ] {
+            let mut forged = miss.clone();
+            forged[field] = value;
+            assert_eq!(
+                validate_hash_page(&forged, &other, &tip, 1, 10),
+                Err(InvalidExplorerResponse)
+            );
+        }
     }
 
     #[test]

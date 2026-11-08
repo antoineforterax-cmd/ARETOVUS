@@ -67,6 +67,26 @@ def main() -> int:
             assert [block["height"] for block in blocks["blocks"]] == [0, 1]
             assert blocks["next_start"] is None
 
+            found = subprocess.run(
+                [str(explorer), "--data-dir", str(data), "--hash", state["tip"], "--limit", "1"],
+                capture_output=True, check=True, timeout=30,
+            )
+            found_page = json.loads(found.stdout)
+            assert len(found.stdout) <= 16 * 1024
+            assert found_page == {**blocks, "start": 1, "blocks": blocks["blocks"][1:]}
+
+            absent_hash = "0" * 64
+            assert all(block["hash"] != absent_hash for block in blocks["blocks"])
+            miss = subprocess.run(
+                [str(explorer), "--data-dir", str(data), "--hash", absent_hash, "--limit", "1"],
+                capture_output=True, check=True, timeout=30,
+            )
+            assert json.loads(miss.stdout) == {
+                "schema_version": 1, "network": "testnet", "status": "not_found",
+                "read_only": True, "source": "aretovus-native-explorer",
+                "chain_tip": state["tip"], "chain_height": state["height"],
+            }
+
             rejected_page = subprocess.run(
                 [str(explorer), "--data-dir", str(data), "--limit", "21"],
                 capture_output=True, check=False, timeout=30,
