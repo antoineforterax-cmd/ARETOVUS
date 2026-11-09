@@ -1,6 +1,9 @@
-//! Bloc expérimental et jetable.
+//! Bloc historique de phase 0, distinct des blocs par comptes du testnet natif.
 //!
-//! Hypothèses (non validées, voir `docs/DECISION_REGISTER.md`, annexe B) :
+//! Les limitations ci-dessous concernent uniquement ce format d'expérience :
+//! elles ne décrivent **pas** le bloc natif validé par `account_block.rs`.
+//!
+//! Hypothèses historiques (voir `docs/DECISION_REGISTER.md`, annexe B) :
 //! - l'en-tête ne contient **pas** de cible de difficulté ni de preuve de travail (POW-03 ouvert) ;
 //! - l'engagement sur les transactions est un condensat de la liste ordonnée des identifiants,
 //!   précédé du nombre de transactions : **ce n'est pas un arbre de Merkle** (TX-04 ouvert) ;
