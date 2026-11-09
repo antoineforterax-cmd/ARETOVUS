@@ -1,5 +1,7 @@
 # ARETOVUS — Registre de consolidation des décisions
 
+> **ARCHIVE de planification (état d'octobre) :** les statuts de ce tableau ne décrivent pas automatiquement le `main` actuel. Pour les règles observées du testnet et les choix restés ouverts, voir [décisions clarifiées](../DECISIONS_CLARIFIEES.md), [état actuel](../ETAT_ACTUEL.md) et [décisions testnet](../TESTNET_DECISIONS.md).
+
 **État au 29 octobre 2026 :** le testnet avancé se trouve sur `feature/emission-schedule-v0`. Les PR #13 à #22 apportent des tests et correctifs supplémentaires encore en attente de fusion. `Implémenté testnet` ne signifie pas `validé mainnet`. Ce document ne change pas le statut d'approbation du porteur de projet. Les décisions historiques demeurent dans `docs/DECISION_REGISTER.md`.
 
 | ID | Sujet | État vérifiable | Statut de gouvernance |
