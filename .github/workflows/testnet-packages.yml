@@ -11,7 +11,7 @@ on:
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
       - "scripts/testnet_two_node_package_smoke.py"
-      - "docs/TWO_PC_TEST.md"
+      - "docs/04-exploiter/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
   pull_request:
     paths:
@@ -19,7 +19,7 @@ on:
       - "scripts/testnet_lock_smoke.py"
       - "scripts/two_pc_preflight.ps1"
       - "scripts/testnet_two_node_package_smoke.py"
-      - "docs/TWO_PC_TEST.md"
+      - "docs/04-exploiter/TWO_PC_TEST.md"
       - ".github/workflows/testnet-packages.yml"
   workflow_dispatch:
 
