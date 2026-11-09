@@ -1,4 +1,4 @@
-# ARETOVUS — première interface de consultation du testnet (V2.0)
+# ARETOVUS — première interface de consultation du testnet (V2.0)\n\n> **Étape historique V2 :** ce guide décrit une page HTML statique produite à partir de JSON. Il **ne présente pas l'ensemble des travaux desktop plus récents**. Consultez [l'état actuel](../ETAT_ACTUEL.md) et [le README desktop](../../apps/desktop/README.md) avant de choisir quelle interface expérimentale tester.
 
 **Prototype local en lecture seule, pas un wallet graphique terminé.** Deux scripts Python de la V2 produisent une **page HTML à partir d'un vrai dossier de nœud vérifié**. Elle affiche hauteur, blocs connus, tip et travail cumulé sous sa forme de diagnostic, jamais des soldes inventés.
 
