@@ -81,7 +81,7 @@ Pour télécharger une chaîne une seule fois, sans laisser de serveur ouvert, l
 
 ## Essai de 72 heures
 
-Le [lanceur d’endurance](../ENDURANCE_RUN.md) automatise plusieurs nœuds locaux, le minage, les redémarrages et les mesures. Le script fourni dans la Release de référence mine des blocs sans transfert utilisateur. La branche de développement ajoute une campagne avec paiements : il faut identifier séparément la version du script et celle des binaires utilisés. Un essai n’est réussi qu’après lecture de ses journaux et de son résumé final, et non parce que le processus a été lancé.
+Le [lanceur d’endurance](../04-exploiter/ENDURANCE_RUN.md) automatise plusieurs nœuds locaux, le minage, les redémarrages et les mesures. Le script fourni dans la Release de référence mine des blocs sans transfert utilisateur. La branche de développement ajoute une campagne avec paiements : il faut identifier séparément la version du script et celle des binaires utilisés. Un essai n’est réussi qu’après lecture de ses journaux et de son résumé final, et non parce que le processus a été lancé.
 
 Au moment de la rédaction de ce guide, un essai court de la campagne avec paiements a réussi sur le binaire `421d443` : six blocs, cinq transferts, deux redémarrages et restauration d’une copie en 82,49 secondes. Ce résultat ne valide pas 72 heures de fonctionnement. Les résultats suivants doivent être consignés dans le [rapport d’essais](../TESTNET_VALIDATION_REPORT.md).
 
