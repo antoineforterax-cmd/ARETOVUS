@@ -1,8 +1,11 @@
-//! Transaction par comptes — modèle expérimental non signé.
+//! Transactions par comptes du réseau expérimental ARETOVUS.
 //!
-//! Ce module définit la forme canonique de base uniquement. Il ne vérifie pas les
-//! signatures, les soldes, les nonces contre l'état de la chaîne, ni les frais minimums.
-//! Ces contrôles appartiennent au validateur d'état, qui sera implémenté séparément.
+//! Ce module définit les types de transactions, leurs profils et l'encodage canonique.
+//! La vérification des signatures est implémentée dans `signature.rs` ; les contrôles
+//! d'état (solde, nonce, application atomique) sont effectués dans `state.rs`
+//! et lors de la validation des blocs par le consensus.
+//! Le Testnet natif impose les transactions v3 ML-DSA-65 ; les profils anciens
+//! restent uniquement disponibles sur Regtest. Aucun usage avec fonds réels.
 
 use crate::amount::{Amount, AmountError};
 use crate::codec::{CanonicalDecode, CanonicalEncode, DecodeError, Decoder, EncodeError, Encoder};
@@ -26,7 +29,7 @@ pub const HYBRID_AUTH_BYTES: usize =
 pub const POST_QUANTUM_AUTH_BYTES: usize = ML_DSA_65_PUBLIC_KEY_BYTES + ML_DSA_65_SIGNATURE_BYTES;
 pub const MAX_AUTH_BYTES: usize = 8_192;
 
-/// Identifiant de compte brut. Le format d'adresse lisible reste à définir.
+/// Identifiant brut de 32 octets, affichable en 64 chiffres hexadécimaux ASCII.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AccountId(pub [u8; ACCOUNT_ID_LEN]);
 
