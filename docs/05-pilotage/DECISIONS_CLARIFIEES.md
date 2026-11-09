@@ -49,7 +49,7 @@ Ces points restent **À DÉCIDER**. La présente page ne les transforme pas en c
 - [planning/DECISIONS.md](../planning/DECISIONS.md), [ancienne feuille de planification (historique Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/planning/ROADMAP.md), [planning/ARCHITECTURE_CIBLE.md](../planning/ARCHITECTURE_CIBLE.md) : propositions et constats datés.
 - [guide-fr/README.md](../guide-fr/README.md) : guide reproductible d'une release historique, non documentation automatique de la dernière branche.
 
-Voir [le catalogue des archives](../ARCHIVES_ET_RAPPORTS.md) pour les conserver sans surcharger la navigation. **Certains guides et plans dépassés ont été retirés de l'arborescence de travail, mais restent accessibles dans Git ; les rapports de test et registres de décisions ont été conservés.**
+Voir [le catalogue des archives](../90-archives/ARCHIVES_ET_RAPPORTS.md) pour les conserver sans surcharger la navigation. **Certains guides et plans dépassés ont été retirés de l'arborescence de travail, mais restent accessibles dans Git ; les rapports de test et registres de décisions ont été conservés.**
 
 ## Comment corriger une véritable contradiction de code ?
 
