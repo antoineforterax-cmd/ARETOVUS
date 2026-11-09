@@ -44,12 +44,12 @@ Ces points restent **À DÉCIDER**. La présente page ne les transforme pas en c
 ## Documents dont le statut est historique
 
 - [DECISION_REGISTER.md](DECISION_REGISTER.md) : registre de phase 0, nombreuses lignes non réconciliées.
-- [DECISION_BASELINE.md](DECISION_BASELINE.md) : recommandations antérieures à l'implémentation.
-- [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md) et [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) : états et bilans successifs d'octobre.
-- [planning/DECISIONS.md](planning/DECISIONS.md), [planning/ROADMAP.md](planning/ROADMAP.md), [planning/ARCHITECTURE_CIBLE.md](planning/ARCHITECTURE_CIBLE.md) : propositions et constats datés.
+- [ancienne baseline (historique Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/DECISION_BASELINE.md) : recommandations antérieures à l'implémentation.
+- [ancienne feuille d'exécution (historique Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/ROADMAP_EXECUTION.md) et [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) : états et bilans successifs d'octobre.
+- [planning/DECISIONS.md](planning/DECISIONS.md), [ancienne feuille de planification (historique Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/planning/ROADMAP.md), [planning/ARCHITECTURE_CIBLE.md](planning/ARCHITECTURE_CIBLE.md) : propositions et constats datés.
 - [guide-fr/README.md](guide-fr/README.md) : guide reproductible d'une release historique, non documentation automatique de la dernière branche.
 
-Voir [le catalogue des archives](ARCHIVES_ET_RAPPORTS.md) pour les conserver sans surcharger la navigation. **Aucun fichier ni commit historique n'a été effacé dans ce chantier.**
+Voir [le catalogue des archives](ARCHIVES_ET_RAPPORTS.md) pour les conserver sans surcharger la navigation. **Certains guides et plans dépassés ont été retirés de l'arborescence de travail, mais restent accessibles dans Git ; les rapports de test et registres de décisions ont été conservés.**
 
 ## Comment corriger une véritable contradiction de code ?
 
