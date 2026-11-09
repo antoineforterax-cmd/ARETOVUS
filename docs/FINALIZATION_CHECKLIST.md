@@ -1,5 +1,7 @@
 # ARETOVUS — fiche complète des travaux restants
 
+> **ARCHIVE / relevés historiques :** cette liste documente des états successifs et **ne doit pas être cochée à partir des seules anciennes preuves**. Le travail V2 est suivi dans [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), les jalons antérieurs dans [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) ; voir [état actuel](ETAT_ACTUEL.md) et [archives](ARCHIVES_ET_RAPPORTS.md).
+
 > **Note d'actualisation du 4 novembre 2026 :** les tableaux datés d'octobre ci-dessous sont **historiques** et ne doivent pas être traités comme un inventaire actuel de `main`. La [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) est la référence vivante. Le réseau natif ARETOVUS a été intégré ; les PR #165 (C1), #166 (C2), #167 (100 001 blocs TCP) et #168 (ZIP déterministes) ont été fusionnées, tandis que #169 documente un **NO-GO**. Le coût mémoire du nœud pendant la synchronisation, les campagnes physiques 72 heures, les outils LAN multiplateformes et la revue E1 par une personne extérieure au projet restent des portes ouvertes. **E1 est réservée à l'étape ultime, pas supprimée.** Aucun fonds réel.
 
 ---
