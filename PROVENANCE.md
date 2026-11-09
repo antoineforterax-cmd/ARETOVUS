@@ -1,8 +1,8 @@
-# Provenance et vérifications
+# Provenance et vérifications\n\nPour une explication des droits et licences, lire [LICENCES_ET_DROITS.md](docs/LICENCES_ET_DROITS.md). Un historique de commits ou une mention de copyright ne garantit pas à lui seul l'identité de l'auteur humain de chaque ligne ni une chaîne de droits incontestable.
 
 Le prototype initial d’ARETOVUS a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
 
-Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d’architecture, fixe les priorités et pilote activement le développement. Il a personnellement écrit et corrigé des pans entiers du code (notamment les scripts de test et d'automatisation en Python, ainsi que des contributions directes sur le Rust). L’IA est utilisée comme un outil d’assistance technique à la demande pour accélérer la mise en œuvre, générer certaines structures ou aider à la recherche de défauts. Les propositions et le code restent soumis aux décisions du porteur et à ses vérifications.
+Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d’architecture, fixe les priorités et pilote activement le développement. La production de code est **très largement assistée par IA**, y compris pour des parties techniques importantes. Le porteur a également rapporté des modifications et vérifications personnelles, notamment sur des scripts Python et des parties Rust ; la répartition exacte des lignes d'origine humaine ou IA **n'a pas été mesurée ni auditée**. Les outils d'IA servent à générer, expliquer, tester et contre-relire les modifications ; les résultats doivent être vérifiés, et une revue par une autre IA ne vaut pas un audit humain indépendant. Les décisions et priorités sont définies par le porteur.
 
 
 ## Continuité des attributions après le renommage
