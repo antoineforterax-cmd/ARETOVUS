@@ -8,7 +8,7 @@ ARETOVUS est une blockchain Rust **expérimentale** ; aucun fonds réel ni annon
 
 ## Situation et branches — état expérimental natif à revalider
 
-**Navigation :** [état du testnet](docs/01-demarrer/ETAT_ACTUEL.md), [décisions clarifiées](docs/03-protocole/DECISIONS_CLARIFIEES.md), [feuille V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), [jalons historiques #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Toujours vérifier le SHA actuel.
+**Navigation :** [état du testnet](docs/01-demarrer/ETAT_ACTUEL.md), [décisions clarifiées](docs/05-pilotage/DECISIONS_CLARIFIEES.md), [feuille V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), [jalons historiques #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Toujours vérifier le SHA actuel.
 
 - `main` contient le réseau expérimental **ARETOVUS natif** depuis la migration A3 du 1er novembre 2026. Cette identité de protocole est volontairement incompatible avec les anciennes données et clés.
 - Les jalons A1–A4, B1–B4 et C1 disposent de preuves conservées dans le [suivi historique #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Les workflows C2 [#166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166), C3 [#167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) et le packaging partiel E2 [#168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168) ont été fusionnés le 2 novembre ; leur **périmètre borné** ne clôt pas automatiquement toute la phase.
@@ -53,4 +53,4 @@ La référence reste le **comportement réel du code sur le SHA ciblé**, et non
 
 ## Identité native ARETOVUS (intégrée au testnet expérimental)
 
-La nouvelle identité ARETOVUS est intégrée dans `main` depuis A3. Elle distingue domaines de hachage, genèse, marqueurs de stockage, URI, wallet et outils du réseau antérieur. **Cette intégration ne signifie ni migration des soldes, ni sécurité mainnet.** Ne pas réécrire l'historique Git, supprimer les archives ou importer les clés/soldes de l'ancien réseau ; employer des dossiers de données neufs. Les décisions ultérieures de consensus, formats ou monnaie restent soumises à une approbation dédiée, des tests et une revue avant fusion. Lire [la migration de protocole](docs/03-protocole/PROTOCOL_IDENTITY_MIGRATION.md).
+La nouvelle identité ARETOVUS est intégrée dans `main` depuis A3. Elle distingue domaines de hachage, genèse, marqueurs de stockage, URI, wallet et outils du réseau antérieur. **Cette intégration ne signifie ni migration des soldes, ni sécurité mainnet.** Ne pas réécrire l'historique Git, supprimer les archives ou importer les clés/soldes de l'ancien réseau ; employer des dossiers de données neufs. Les décisions ultérieures de consensus, formats ou monnaie restent soumises à une approbation dédiée, des tests et une revue avant fusion. Lire [la migration de protocole](docs/03-recherche/PROTOCOL_IDENTITY_MIGRATION.md).
