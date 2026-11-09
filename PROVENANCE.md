@@ -1,6 +1,6 @@
 # Provenance et vérifications
 
-Pour une explication des droits et licences, lire [LICENCES_ET_DROITS.md](docs/05-contribuer/LICENCES_ET_DROITS.md). Un historique de commits ou une mention de copyright ne garantit pas à lui seul l'identité de l'auteur humain de chaque ligne ni une chaîne de droits incontestable.
+Pour une explication des droits et licences, lire [LICENCES_ET_DROITS.md](docs/02-participer/LICENCES_ET_DROITS.md). Un historique de commits ou une mention de copyright ne garantit pas à lui seul l'identité de l'auteur humain de chaque ligne ni une chaîne de droits incontestable.
 
 Le prototype initial d’ARETOVUS a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
 
@@ -9,7 +9,7 @@ Le porteur du projet définit la vision d’ARETOVUS, propose les orientations d
 
 ## Continuité des attributions après le renommage
 
-La mention `ARETOVUS contributors` utilisée dans les licences désigne le collectif des contributeurs du projet, y compris ceux intervenus avant son changement de nom. Le renommage de cette désignation ne constitue ni un transfert de droits, ni une suppression de contributions ou une validation de l'appartenance juridique des droits. Les textes MIT/Apache restent inchangés et les notices de licence antérieures demeurent consultables dans l'historique Git, notamment au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`. Consulter [l'histoire du projet](docs/90-archives/PROJECT_HISTORY.md) pour les notices originelles et les références archivées.
+La mention `ARETOVUS contributors` utilisée dans les licences désigne le collectif des contributeurs du projet, y compris ceux intervenus avant son changement de nom. Le renommage de cette désignation ne constitue ni un transfert de droits, ni une suppression de contributions ou une validation de l'appartenance juridique des droits. Les textes MIT/Apache restent inchangés et les notices de licence antérieures demeurent consultables dans l'historique Git, notamment au commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f`. Consulter [l'histoire du projet](docs/05-pilotage/PROJECT_HISTORY.md) pour les notices originelles et les références archivées.
 
 ## Ce qui a réellement été vérifié
 
