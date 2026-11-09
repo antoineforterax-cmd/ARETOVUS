@@ -8,23 +8,23 @@ Ce sommaire est la porte d'entrée de la documentation. **Il n'existe pas six fe
 
 | Votre besoin | Commencez ici | Pour approfondir |
 | --- | --- | --- |
-| **Je ne connais rien à la blockchain** | [Comprendre ARETOVUS de A à Z](COMPRENDRE_ARETOVUS.md) | [Guide débutant de la release historique](guide-fr/README.md) |
+| **Je ne connais rien à la blockchain** | [Comprendre ARETOVUS de A à Z](01-demarrer/COMPRENDRE_ARETOVUS.md) | [Guide débutant de la release historique](guide-fr/README.md) |
 | **Je veux essayer un nœud ou miner sans fonds réels** | [Installation de la release expérimentale](guide-fr/03-installation.md) | [Réseau local et minage](guide-fr/04-reseau-et-minage.md), [guide technique testnet](TESTNET_GUIDE.md) |
-| **Je veux connaître le véritable état du projet** | **[État actuel et limites](ETAT_ACTUEL.md)** | [Preuves et tests](TESTNET_VALIDATION_REPORT.md), [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) |
+| **Je veux connaître le véritable état du projet** | **[État actuel et limites](01-demarrer/ETAT_ACTUEL.md)** | [Preuves et tests](TESTNET_VALIDATION_REPORT.md), [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) |
 | **Je suis développeur ou relecteur** | [Architecture](../ARCHITECTURE.md) | [Protocole](PROTOCOL.md), [consensus](CONSENSUS.md), [code Rust](../crates) |
-| **Je veux aider, avec ou sans IA** | [Première contribution](CONTRIBUER_AVEC_IA.md) | [Règles de PR](../CONTRIBUTING.md), [garde-fous](../AGENTS.md) |
-| **Je veux examiner la sécurité** | [Modèle de menaces](THREAT_MODEL.md) | [Revue indépendante attendue](INDEPENDENT_REVIEW.md), [signalement privé](../SECURITY.md) |
-| **Je veux connaître les licences et les droits** | [Licences et droits](LICENCES_ET_DROITS.md) | [Textes officiels](../LICENSE), [provenance](../PROVENANCE.md) |
-| **Je vois une contradiction entre deux documents** | **[Décisions clarifiées](DECISIONS_CLARIFIEES.md)** | [Décisions testnet](TESTNET_DECISIONS.md), [catalogue des archives](ARCHIVES_ET_RAPPORTS.md) |
+| **Je veux aider, avec ou sans IA** | [Première contribution](02-participer/CONTRIBUER_AVEC_IA.md) | [Règles de PR](../CONTRIBUTING.md), [garde-fous](../AGENTS.md) |
+| **Je veux examiner la sécurité** | [Modèle de menaces](THREAT_MODEL.md) | [Revue indépendante attendue](06-securite/INDEPENDENT_REVIEW.md), [signalement privé](../SECURITY.md) |
+| **Je veux connaître les licences et les droits** | [Licences et droits](02-participer/LICENCES_ET_DROITS.md) | [Textes officiels](../LICENSE), [provenance](../PROVENANCE.md) |
+| **Je vois une contradiction entre deux documents** | **[Décisions clarifiées](05-pilotage/DECISIONS_CLARIFIEES.md)** | [Décisions testnet](TESTNET_DECISIONS.md), [catalogue des archives](ARCHIVES_ET_RAPPORTS.md) |
 
 ## Les six repères de la documentation
 
-1. **Découvrir** — [explication de la blockchain](COMPRENDRE_ARETOVUS.md), [guide pas à pas](guide-fr/README.md), [glossaire](COMPRENDRE_ARETOVUS.md#10-petit-glossaire).
+1. **Découvrir** — [explication de la blockchain](01-demarrer/COMPRENDRE_ARETOVUS.md), [guide pas à pas](guide-fr/README.md), [glossaire](01-demarrer/COMPRENDRE_ARETOVUS.md#10-petit-glossaire).
 2. **Fonctionnement technique** — [architecture](../ARCHITECTURE.md), [protocole](PROTOCOL.md), [consensus](CONSENSUS.md), [économie du testnet](EMISSION_MODEL.md).
 3. **Installer et utiliser le laboratoire** — [testnet](TESTNET_GUIDE.md), [exploitation](TESTNET_OPERATIONS.md), [desktop expérimental](../apps/desktop/README.md).
-4. **Sécurité et limites** — [état actuel](ETAT_ACTUEL.md), [menaces](THREAT_MODEL.md), [revue externe à réaliser](INDEPENDENT_REVIEW.md), [preuves et résultats](TESTNET_VALIDATION_REPORT.md).
-5. **Participer** — [guide humain–IA](CONTRIBUER_AVEC_IA.md), [contribuer](../CONTRIBUTING.md), [politique d'implémentation](planning/IMPLEMENTATION_POLICY.md), [licences](LICENCES_ET_DROITS.md).
-6. **Suivi et archives** — [roadmap V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), [reconciliation](DECISIONS_CLARIFIEES.md), [catalogue des rapports anciens](ARCHIVES_ET_RAPPORTS.md).
+4. **Sécurité et limites** — [état actuel](01-demarrer/ETAT_ACTUEL.md), [menaces](THREAT_MODEL.md), [revue externe à réaliser](06-securite/INDEPENDENT_REVIEW.md), [preuves et résultats](TESTNET_VALIDATION_REPORT.md).
+5. **Participer** — [guide humain–IA](02-participer/CONTRIBUER_AVEC_IA.md), [contribuer](../CONTRIBUTING.md), [politique d'implémentation](planning/IMPLEMENTATION_POLICY.md), [licences](02-participer/LICENCES_ET_DROITS.md).
+6. **Suivi et archives** — [roadmap V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), [reconciliation](05-pilotage/DECISIONS_CLARIFIEES.md), [catalogue des rapports anciens](ARCHIVES_ET_RAPPORTS.md).
 
 ## Comment interpréter ce dépôt
 
@@ -37,6 +37,6 @@ Ce sommaire est la porte d'entrée de la documentation. **Il n'existe pas six fe
 
 ## Et les dizaines d'autres fichiers ?
 
-Ils sont rangés **par sujet et par statut** dans [ARCHIVES_ET_RAPPORTS.md](ARCHIVES_ET_RAPPORTS.md). Les preuves historiques et les anciens liens ne sont volontairement **pas supprimés** par simple nettoyage visuel. Pour éviter de recréer le désordre : [conventions d'organisation documentaire](CONVENTIONS_DOCUMENTAIRES.md). Pour les questions de gouvernance et de nouvelles orientations, consulter [le dossier de planification](planning/README.md) en distinguant bien propositions et règles existantes.
+Ils sont rangés **par sujet et par statut** dans [ARCHIVES_ET_RAPPORTS.md](ARCHIVES_ET_RAPPORTS.md). Les preuves historiques et les anciens liens ne sont volontairement **pas supprimés** par simple nettoyage visuel. Pour éviter de recréer le désordre : [conventions d'organisation documentaire](05-pilotage/CONVENTIONS_DOCUMENTAIRES.md). Pour les questions de gouvernance et de nouvelles orientations, consulter [le dossier de planification](planning/README.md) en distinguant bien propositions et règles existantes.
 
-**Premier essai conseillé :** [Comprendre ARETOVUS](COMPRENDRE_ARETOVUS.md) → [Installer un ancien testnet local](guide-fr/03-installation.md) → [Miner un bloc de test](guide-fr/04-reseau-et-minage.md) → [Comprendre comment contribuer](CONTRIBUER_AVEC_IA.md).
+**Premier essai conseillé :** [Comprendre ARETOVUS](01-demarrer/COMPRENDRE_ARETOVUS.md) → [Installer un ancien testnet local](guide-fr/03-installation.md) → [Miner un bloc de test](guide-fr/04-reseau-et-minage.md) → [Comprendre comment contribuer](02-participer/CONTRIBUER_AVEC_IA.md).
