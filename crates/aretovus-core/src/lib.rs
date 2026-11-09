@@ -1,4 +1,4 @@
-//! `aretovus-core` : briques communes du **prototype expérimental** ARETOVUS.
+//! `aretovus-core` : primitives communes du testnet expérimental ARETOVUS.
 //!
 //! Ce crate contient les types du **testnet natif** :
 //! - [`accounts`] : transactions par comptes et versions d'autorisation ;
