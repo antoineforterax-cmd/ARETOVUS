@@ -1,6 +1,6 @@
 # DECISION_REGISTER.md — ARETOVUS
 
-> **REGISTRE HISTORIQUE DE PHASE 0.** Les nombreuses lignes `PROPOSÉ` ou `À COMPARER` ne sont **pas les règles exécutées du testnet actuel**. Les instructions de résolution d'écart visent les décisions **expressément validées** ; si une ancienne proposition contredit le code, ouvrir une tâche de réconciliation sans changer le consensus implicitement. Voir [décisions clarifiées](DECISIONS_CLARIFIEES.md) et [état actuel](ETAT_ACTUEL.md).
+> **REGISTRE HISTORIQUE DE PHASE 0.** Les nombreuses lignes `PROPOSÉ` ou `À COMPARER` ne sont **pas les règles exécutées du testnet actuel**. Les instructions de résolution d'écart visent les décisions **expressément validées** ; si une ancienne proposition contredit le code, ouvrir une tâche de réconciliation sans changer le consensus implicitement. Voir [décisions clarifiées](05-pilotage/DECISIONS_CLARIFIEES.md) et [état actuel](01-demarrer/ETAT_ACTUEL.md).
 
 **Statut :** registre historique des questions de conception de phase 0, conservé pour traçabilité. Les statuts du tableau ci-dessous n’ont pas tous été remis à jour après les prototypes et ne décrivent pas, à eux seuls, le protocole exécuté.  
 **Choix actifs du testnet expérimental :** [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md), [PROTOCOL.md](PROTOCOL.md) et [EMISSION_MODEL.md](EMISSION_MODEL.md).  
