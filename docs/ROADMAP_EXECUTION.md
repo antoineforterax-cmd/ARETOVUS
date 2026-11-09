@@ -1,5 +1,7 @@
 > Périmètre révisé le 27 octobre 2026 : explorateur, site, vente simulée, interfaces graphiques et mobile sont reportés aux repreneurs. Les anciennes étapes applicatives ci-dessous sont conservées comme historique, pas comme travaux en cours.
 
+> **ARCHIVE — ancienne feuille de route datée.** Ce document conserve l'histoire du développement et **n'est plus le plan actif**. Pour le travail V2 consulter [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) ; pour les étapes antérieures [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Voir aussi [l'état actuel](ETAT_ACTUEL.md) et [le catalogue des archives](ARCHIVES_ET_RAPPORTS.md).
+
 ## Situation au 29 octobre 2026
 
 Le travail actif est réparti entre la branche `feature/emission-schedule-v0` et plusieurs PR en brouillon. Le README de `main` explique désormais cette distinction. La release du 27 octobre reste un instantané expérimental, pas une version stable ni la somme des modifications récentes.
