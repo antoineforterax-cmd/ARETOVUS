@@ -1,10 +1,8 @@
 # ARETOVUS — laboratoire blockchain open source
 
-<p align="center">
-  <img src="assets/aretovus-logo.svg" alt="Logo ARETOVUS : temple et lettre A" width="260">
-</p>
-
 **Rust · Blockchain expérimentale · Développement humain–IA · Contributions ouvertes**
+
+**Vous découvrez ARETOVUS ?** Commencez par **[le guide pour débuter](docs/COMPRENDRE_ARETOVUS.md)**, puis consultez **[l'état réel du projet](docs/ETAT_ACTUEL.md)** et **[l'index de la documentation](docs/README.md)**. Aucune connaissance préalable en Rust n'est nécessaire pour comprendre le fonctionnement.
 
 ARETOVUS explore comment construire, comprendre, vérifier et améliorer collectivement une blockchain indépendante. Le projet a été **largement développé avec l'aide de l'IA**, sous direction humaine ; son ambition immédiate est un **laboratoire reproductible**, ouvert aux débutants comme aux spécialistes. Un futur réseau public avec minage et fonds réels reste une **perspective conditionnelle**, pas un lancement annoncé.
 
@@ -24,6 +22,10 @@ ARETOVUS explore comment construire, comprendre, vérifier et améliorer collect
 | **Comment trouver un ancien rapport ou une preuve ?** | [Archives et rapports](docs/ARCHIVES_ET_RAPPORTS.md) |
 
 **[Ouvrir le sommaire de toute la documentation](docs/README.md)**
+
+<p align="center">
+  <img src="assets/aretovus-logo.svg" alt="Logo ARETOVUS" width="112">
+</p>
 
 ## Le projet en une minute
 
