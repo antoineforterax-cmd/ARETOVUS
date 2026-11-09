@@ -10,7 +10,11 @@ Travail expérimental pour les tickets #181 et #178 ; dépend de **PR #192** et 
 4. **Important :** placer le binaire `aretovus-local-bridge` construit à côté du binaire `aretovus-desktop` produit par Tauri (ou configurer le même dossier cible Cargo de façon maîtrisée). Pas de résolution par PATH ni de binaire téléchargeable depuis la webview.
 5. Dans l'application, indiquer un chemin de **snapshot testnet natif déjà créé** puis connecter. La hauteur, le tip et le travail proviennent du vrai nœud via le pont ; la vue se rafraîchit toutes les 20 secondes, avec erreur explicite si le pont est indisponible.
 
-Les fichiers de verrouillage npm et Cargo sont désormais présents sur cette branche, mais la reproductibilité des binaires et la signature des installateurs restent à démontrer. Cette étape ne revendique **pas** un installateur utilisable par le public. Le build CI frontend valide typage/tests, la compilation hôte Tauri et le packaging multi-OS restent à vérifier séparément.
+Les fichiers de verrouillage npm et Cargo permettent de reproduire le graphe des dépendances. La reproductibilité des binaires et la signature des installateurs restent à démontrer. Les contrôles de compilation et de démarrage de l’hôte sont distincts des essais sur les archives extraites.
+
+### Contrôle de démarrage sous Linux
+
+Le workflow [desktop-linux](../../.github/workflows/desktop-linux.yml) construit l’hôte Tauri sur Ubuntu 24.04 x86-64 avec le frontend embarqué. Il exécute les tests de l’hôte Rust et cherche sous Xvfb une fenêtre visible du processus lancé. Le contrôle porte sur le démarrage de la fenêtre. La lecture interactive d’un snapshot depuis le WebView, l’archive Linux du desktop et l’essai sur une machine physique restent des jalons séparés.
 
 ## Sécurité
 
