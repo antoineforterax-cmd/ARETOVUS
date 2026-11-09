@@ -6,8 +6,8 @@
 `feature/emission-schedule-v0` utilise des comptes avec solde et nonce, des
 transactions v3 ML-DSA-65 et des transitions atomiques. La mention historique
 « TX-01 À COMPARER » ne décrit donc plus le code exécuté. Voir
-[CONSENSUS.md](CONSENSUS.md), [ARCHITECTURE.md](../ARCHITECTURE.md) et
-[le registre de comptes](../crates/aretovus-core/src/state.rs).
+[CONSENSUS.md](../CONSENSUS.md), [ARCHITECTURE.md](../../ARCHITECTURE.md) et
+[le registre de comptes](../../crates/aretovus-core/src/state.rs).
 
 Cette date est celle du constat documentaire, pas une date inventée de décision
 du porteur. La comparaison ci-dessous reste utile pour une recherche future,
