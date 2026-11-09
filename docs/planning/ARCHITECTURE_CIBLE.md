@@ -1,5 +1,7 @@
 # ARETOVUS — Architecture présente et options futures
 
+> **ÉTUDE / PROPOSITIONS DATÉES :** cette page conserve une architecture cible envisagée et un état de branches d'octobre, **pas une preuve de l'état de `main`**. Pour l'architecture effectivement documentée et le desktop V2, voir [architecture](../../ARCHITECTURE.md) et [état actuel](../ETAT_ACTUEL.md).
+
 Cette description concerne le testnet en développement, pas le code historique de `main`. Les correctifs récents sur les connexions P2P, le cache du mempool, les réorganisations et la validation des adresses sont répartis entre les PR #16 à #22, non fusionnées au 29 octobre 2026.
 
 ## A. Flux actuel (testnet)
