@@ -8,7 +8,7 @@
 - **[docs/README.md](../README.md)** : sommaire unique de la documentation.
 - **[ETAT_ACTUEL.md](../01-demarrer/ETAT_ACTUEL.md)** : état du testnet, fonctionnalités livrées et limites, avec une date et un SHA.
 - **[DECISIONS_CLARIFIEES.md](DECISIONS_CLARIFIEES.md)** : divergences entre vieilles propositions et règles documentées.
-- **[ARCHIVES_ET_RAPPORTS.md](../ARCHIVES_ET_RAPPORTS.md)** : catalogue des fichiers historiques, sans les faire passer pour des choix actifs.
+- **[ARCHIVES_ET_RAPPORTS.md](../90-archives/ARCHIVES_ET_RAPPORTS.md)** : catalogue des fichiers historiques, sans les faire passer pour des choix actifs.
 - **[Issue V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)** : suivi opérationnel V2, pas un substitut au code ni aux résultats CI.
 - **[Issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142)** : historique des jalons précédents.
 
