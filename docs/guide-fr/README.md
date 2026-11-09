@@ -13,6 +13,8 @@ ARETOVUS est une blockchain expérimentale. Ses unités de test servent à épro
 
 ## Parcours de lecture
 
+Ce parcours décrit les binaires de la **release expérimentale du 27 octobre 2026**. Pour la description actuelle du logiciel et des prototypes desktop, consulter [l'état du projet](../ETAT_ACTUEL.md) et le [guide de fonctionnement](../COMPRENDRE_ARETOVUS.md). Les anciennes pages 7 et 8 ont été retirées du parcours car remplacées par ces guides.
+
 | Pour… | Lire… |
 | --- | --- |
 | Comprendre le but, les mots et les composants | [1. Comprendre ARETOVUS](01-comprendre.md) |
