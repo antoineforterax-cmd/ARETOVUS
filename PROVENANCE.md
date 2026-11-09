@@ -1,4 +1,6 @@
-# Provenance et vérifications\n\nPour une explication des droits et licences, lire [LICENCES_ET_DROITS.md](docs/LICENCES_ET_DROITS.md). Un historique de commits ou une mention de copyright ne garantit pas à lui seul l'identité de l'auteur humain de chaque ligne ni une chaîne de droits incontestable.
+# Provenance et vérifications
+
+Pour une explication des droits et licences, lire [LICENCES_ET_DROITS.md](docs/LICENCES_ET_DROITS.md). Un historique de commits ou une mention de copyright ne garantit pas à lui seul l'identité de l'auteur humain de chaque ligne ni une chaîne de droits incontestable.
 
 Le prototype initial d’ARETOVUS a été largement écrit avec une IA à la demande du porteur du dépôt `antoineforterax-cmd`. La première phase a été menée très rapidement, sur environ une journée. L’historique Git commence le 25 octobre 2026 et contient des modifications supplémentaires les 26 et 27 octobre; cela ne représente pas des années de développement ou d’audit.
 
