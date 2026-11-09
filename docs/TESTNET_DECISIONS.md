@@ -1,5 +1,7 @@
 # Décisions du testnet expérimental ARETOVUS
 
+> **Version et statut (9 novembre 2026) :** décisions de **testnet expérimental** décrites initialement pour une branche du 26 octobre ; elles ne valent pas adoption automatique pour un mainnet. Pour les choix actuels et divergences documentaires, voir [l'état actuel](ETAT_ACTUEL.md) et [les décisions clarifiées](DECISIONS_CLARIFIEES.md). Les valeurs exécutées doivent être vérifiées au SHA cible.
+
 **Date :** 26 octobre 2026. **Portée :** branche `feature/emission-schedule-v0`, réseau de test supervisé. Ce document décrit les règles exécutées et les choix de périmètre; il ne valide ni mainnet ni usage de fonds réels.
 
 ## Règles économiques actives
