@@ -1,0 +1,51 @@
+name: desktop-linux
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "rust-toolchain.toml"
+      - ".github/workflows/desktop-linux.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "rust-toolchain.toml"
+      - ".github/workflows/desktop-linux.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  linux-host-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Tauri and virtual-display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev xvfb xauth xdotool
+      - name: Test and compile the locked frontend
+        working-directory: apps/desktop
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Test the native Linux host contract
+        run: cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol
+      - name: Build the Linux desktop with embedded frontend
+        run: cargo build --release --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol
+      - name: Verify a visible window from the release desktop process
+        timeout-minutes: 2
+        run: >-
+          xvfb-run -a --server-args="-screen 0 1280x800x24"
+          python3 apps/desktop/scripts/test_linux_desktop_window.py
+          apps/desktop/src-tauri/target/release/aretovus-desktop
