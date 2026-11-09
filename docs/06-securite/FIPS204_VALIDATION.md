@@ -2,7 +2,7 @@
 
 Le testnet ARETOVUS v3 utilise déjà la signature native **ML-DSA-65**, fournie par RustCrypto `ml-dsa = 0.1.1`, verrouillée dans `Cargo.lock`. Il n’est pas nécessaire de changer de primitive pour commencer à vérifier sa conformité aux exemples publics du NIST. Aucun paramètre de consensus ni format de transaction n’est modifié par ce lot.
 
-Le fichier `crates/aretovus-core/tests/fips204_vectors.rs` teste la même dépendance que le vérificateur de transactions. Les [données de référence](../tests/vectors-fips204/README.md) proviennent du dépôt officiel NIST ACVP-Server, commit `975de31eb83d87039ec88934fdc47d8c312b892d`. Les fichiers d’origine et les extractions ont des empreintes SHA-256 consignées; la notice NIST est conservée intégralement.
+Le fichier `crates/aretovus-core/tests/fips204_vectors.rs` teste la même dépendance que le vérificateur de transactions. Les [données de référence](../../tests/vectors-fips204/README.md) proviennent du dépôt officiel NIST ACVP-Server, commit `975de31eb83d87039ec88934fdc47d8c312b892d`. Les fichiers d’origine et les extractions ont des empreintes SHA-256 consignées; la notice NIST est conservée intégralement.
 
 ## Contrôles ajoutés
 

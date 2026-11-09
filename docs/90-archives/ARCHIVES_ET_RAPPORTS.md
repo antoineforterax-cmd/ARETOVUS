@@ -9,7 +9,7 @@ Pour commencer : [index documentaire](../README.md) · [état actuel](../01-dema
 - [CONSENSUS.md](../CONSENSUS.md), [PROTOCOL.md](../PROTOCOL.md), [TESTNET_DECISIONS.md](../TESTNET_DECISIONS.md) : spécification et décisions du **profil testnet** documenté ; confronter au SHA.
 - [EMISSION_MODEL.md](../EMISSION_MODEL.md) : détails économiques et simulations, pas un modèle mainnet approuvé.
 - [TESTNET_GUIDE.md](../TESTNET_GUIDE.md), [TESTNET_OPERATIONS.md](../TESTNET_OPERATIONS.md), [guide français](../guide-fr/README.md) : procédures datées et environnements expérimentaux.
-- [INDEPENDENT_REVIEW.md](../INDEPENDENT_REVIEW.md), [THREAT_MODEL.md](../04-securite/THREAT_MODEL.md), [FUZZING.md](../04-securite/FUZZING.md) : exigences de sécurité et méthodes.
+- [INDEPENDENT_REVIEW.md](../06-securite/INDEPENDENT_REVIEW.md), [THREAT_MODEL.md](../04-securite/THREAT_MODEL.md), [FUZZING.md](../04-securite/FUZZING.md) : exigences de sécurité et méthodes.
 - [TESTNET_VALIDATION_REPORT.md](../TESTNET_VALIDATION_REPORT.md) : preuves et limites **historiques**, vérifier le SHA et les workflows.
 - [Provenance](../../PROVENANCE.md), [licences](../05-contribuer/LICENCES_ET_DROITS.md), [contribution](../../CONTRIBUTING.md) : attribution, réutilisation et participation.
 
