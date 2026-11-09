@@ -1,66 +1,78 @@
-# ARETOVUS — blockchain expérimentale
+# ARETOVUS — laboratoire blockchain expérimental
 
 <p align="center">
-  <img src="assets/aretovus-logo.svg" alt="Emblème officiel ARETOVUS : temple stylisé et lettre A" width="320">
+  <img src="assets/aretovus-logo.svg" alt="Emblème ARETOVUS : temple stylisé et lettre A" width="250">
 </p>
 
+**Blockchain open source en Rust · développement humain–IA · réseau de test expérimental**
 
-> **Réseau expérimental ARETOVUS (nouvelle identité de protocole).** Cette branche utilise une nouvelle genèse, de nouveaux identifiants cryptographiques, de nouveaux formats de stockage et le schéma `aretovus://`. Les anciennes sauvegardes ne sont pas migrées : **nouveau dossier de données obligatoire**. Voir [migration](docs/PROTOCOL_IDENTITY_MIGRATION.md).
+> **Sécurité : aucun mainnet, aucun fonds réel.** Le logiciel et le protocole n'ont pas fait l'objet d'un audit humain externe indépendant confirmé. Ils ne doivent pas être utilisés pour recevoir, conserver ou échanger des actifs de valeur. Des tests automatisés réussis ne constituent pas une garantie de sécurité.
 
-> Prototype de testnet uniquement. Le code et le protocole ne sont pas audités et ne doivent jamais recevoir de fonds réels. Il ne s’agit pas d’un mainnet ni d’une promesse de sécurité.
+ARETOVUS explore la construction, le test et l'amélioration collaborative d'une blockchain. Le porteur du projet définit les objectifs et pilote le développement, **largement assisté par IA**. Les contributions humaines, contre-revues techniques et expérimentations reproductibles sont bienvenues. Voir [provenance et vérifications](PROVENANCE.md).
 
-Pour découvrir le projet et faire un premier essai : [ARETOVUS, de A à Z](docs/guide-fr/README.md). L'ancienne [Release expérimentale `testnet-v0.0.1-experimental.1`](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) archive les binaires du commit `421d443370e83a9ffa0c128da9f09d6f99b0ef8f` et les sommes SHA-256 des archives.
+La finalité immédiate est un **laboratoire ouvert et compréhensible**. L'hypothèse d'un futur réseau public doté d'un véritable minage et d'unités susceptibles d'avoir une valeur réelle reste **conditionnelle**, sans date ni promesse de lancement.
 
-## État actuel
+## Commencer en deux minutes
 
-Le testnet expérimental utilise désormais des transactions natives ML-DSA-65 v3; le consensus refuse les transactions Ed25519 v1 et hybrides v2. Les anciens formats de signatures sont encore étudiés en Regtest, mais l'identité de chaîne a changé. Le changement de profil est incompatible avec l’ancien testnet: utiliser un nouveau dossier de données et garder les snapshots précédents. Cela ne rend pas SHA-256/PoW post-quantique. Voir `docs/POST_QUANTUM.md`.
+| Vous voulez… | Rendez-vous ici |
+| --- | --- |
+| Découvrir le projet, même sans savoir coder | [Guide débutant en français](docs/guide-fr/README.md) |
+| Trouver la bonne documentation sans vous perdre | **[Carte de la documentation](docs/README.md)** |
+| Comprendre le consensus, les signatures et le réseau | [Architecture](ARCHITECTURE.md) et [protocole](docs/PROTOCOL.md) |
+| Installer et expérimenter en local | [Guide testnet](docs/TESTNET_GUIDE.md) |
+| Contribuer, seul ou avec une IA | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Vérifier les tests et les limites | [Rapport de validation](docs/TESTNET_VALIDATION_REPORT.md) |
+| Consulter les priorités du développement | **[Feuille de route V2 (issue #178)](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)** |
+| Signaler une vulnérabilité | [SECURITY.md](SECURITY.md) |
 
-| Composant | Fonctionnement présent |
-|---|---|
-| `aretovus-core` | Montants entiers, encodage canonique, signatures ML-DSA-65 natives v3 sur Testnet, compatibilité Ed25519 v1/hybride v2 sur Regtest. |
-| `aretovus-consensus` | Validation atomique, PoW SHA-256, temps strictement croissants au-dessus du MTP, retarget borné sur le timestamp candidat, travail cumulé et réorganisations. |
-| `aretovus-storage` | Blocs immuables, pages d’index et manifestes checksummés `ARETOIDX` v6, trois générations récentes et une ancre de reprise ancienne, toutes les branches; lecture v4/v5 et revalidation au chargement. La [CI du lot réseau/états](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40488607637) a passé formatage, Clippy, compilation, tests Rust et smoke multi-nœuds. Un [essai de stockage de 100 003 blocs connus](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/40527921129), avec branche secondaire et rechargement, a réussi; la [PR native #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) a depuis validé la synchronisation de **100 001 blocs via TCP loopback** avec branche secondaire et restauration ([preuve CI](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41466739781)). Cette preuve ne couvre ni deux ordinateurs physiques ni un réseau WAN. |
-| `aretovus-node` | Minage local testnet, persistance, vérification en lecture seule des données, TCP push/pull v4 à inventaire u64 et reprise de session, rattrapage périodique et relais validé des transactions en attente depuis les pairs configurés, découverte opt-in bornée, 8 sessions serveur simultanées avec au plus 4 par IP et handshake de 2 secondes, limites cumulées de 256 MiB/16 384 requêtes/15 minutes et 3 tentatives sur erreur réseau transitoire. |
-| `aretovus-wallet` | CLI testnet ML-DSA-65 v3 : clés, solde/nonce, envoi signé, suivi, vérification SPV par preuves Merkle et URI `aretovus://` via bibliothèque. Nouvelles clés chiffrées par défaut, sauvegarde/restauration chiffrées; testnet uniquement. |
+Le [guide débutant](docs/guide-fr/README.md) explique une **ancienne release expérimentale d'octobre 2026**. Vérifiez toujours le commit et la version des binaires avant de reproduire une commande.
 
-## Règles économiques exécutées
+## Que contient le projet ?
 
-Le testnet utilise le plafond brut strict de **500 000 000 ARETOVUS**, avec 8 décimales et une genèse sans préminage. Pour chaque bloc, l’émission est calculée en unités minimales comme `min(reliquat, max(1, floor(reliquat / 1_000_000)))`. Le premier bloc crée 500 ARETOVUS; l’émission décroît ensuite continûment avec l’offre restante et finit par atteindre le plafond grâce au plancher d’une unité. La règle de consensus s’identifie comme `proportional-remaining-1e6-v1`.
+| Élément | Portée actuelle |
+| --- | --- |
+| **Cœur Rust et consensus** | Transactions, blocs, comptes, signatures natives ML-DSA-65 sur testnet, preuve de travail SHA-256, validations et réorganisations |
+| **Nœud et stockage** | Nœud TCP/P2P expérimental, minage local, synchronisation, sauvegarde et restauration |
+| **Portefeuille** | Outils en ligne de commande, clés chiffrées, paiements expérimentaux et vérifications SPV |
+| **Application et explorateur** | Prototypes desktop et consultation en lecture seule, encore incomplets ; suivre les PR et l'[issue #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) pour le périmètre réel |
+| **Sécurité et validation** | Tests Rust/CI, campagnes ciblées et rapports de risques ; **aucune certification de sécurité ni revue humaine indépendante confirmée** |
 
-Cinq pour cent de chaque émission vont au compte testnet fixe `[0xA0; 32]`, et 95 % au mineur. La moitié des frais va au mineur, l’autre moitié est brûlée; le burn ne libère jamais du plafond. Une fois le plafond atteint, le mineur est rémunéré uniquement par les frais, selon le même partage 50/50.
+Le code et les [règles de consensus](docs/CONSENSUS.md) à un **SHA précis** font foi pour les comportements exécutés. Les rapports historiques et la documentation de planification ne prouvent pas à eux seuls l'état courant.
 
-Le compte de trésorerie est actuellement crédité automatiquement mais n’a pas de logique de smart contract, de gouvernance ou de dépense. Les gardiens/time-locks et le recyclage des comptes inactifs ne sont pas encore implémentés; ils changent les règles de propriété et doivent être spécifiés et testés séparément avant d’entrer au consensus. Voir `docs/EMISSION_MODEL.md`.
+### Un essai technique local
 
-Un changement de règle d’émission crée un réseau incompatible. Utilise un nouveau dossier `--data-dir` pour cette version de testnet; conserve ou sauvegarde tes anciens snapshots au lieu de les supprimer.
+Sur un environnement de développement Rust/Python adapté :
 
-## Testnet expérimentale locale
-
-Le guide [docs/TESTNET_GUIDE.md](docs/TESTNET_GUIDE.md) explique comment télécharger la Release expérimentale pour Linux x86-64, macOS arm64 ou Windows x86-64, ou compiler le nœud, synchroniser un pair, lancer un serveur et miner en testnet. Sur Windows, Rust Build Tools et `link.exe` ne servent qu’à la compilation depuis les sources. Utilise seulement des pairs connus sur localhost ou un réseau privé. Arrête `serve` avant d’exécuter `mine` ou `sync` sur le même dossier de données, puis redémarre le serveur pour recharger le snapshot. Le [parcours débutant](docs/guide-fr/04-reseau-et-minage.md) utilise plutôt des dossiers séparés pour conserver le serveur en fonctionnement pendant le minage.
-
-Vérification reproductible :
-
-```bash
-python3 scripts/testnet_smoke.py
+```sh
+git clone https://github.com/antoineforterax-cmd/ARETOVUS.git
+cd ARETOVUS
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace --locked
 cargo test --workspace --locked
+python3 scripts/testnet_smoke.py
 ```
 
-Le smoke test démarre plusieurs processus, vérifie les récompenses, envoie et confirme un paiement wallet avec preuve SPV, traverse deux fenêtres de retarget jusqu’à 20 blocs, redémarre un pair, synchronise un dossier neuf et vérifie le relais d’une transaction en attente jusqu’à son minage par un autre pair. Il force aussi l’arrêt d’un mineur entre deux sauvegardes et simule une erreur d’écriture avec une limite de taille de fichier sous Linux. GitHub Actions exécute ces vérifications. Les tests fuzz déterministes tournent dans la CI principale; les cibles libFuzzer sont dans le workflow séparé et exécutées pour 5 minutes chacune. Voir le [rapport d’essais](docs/TESTNET_VALIDATION_REPORT.md), [guide fuzzing](docs/FUZZING.md), [procédures de sauvegarde et reprise](docs/TESTNET_OPERATIONS.md), [décisions testnet](docs/TESTNET_DECISIONS.md), [feuille de route](docs/ROADMAP_EXECUTION.md) et [fiche complète des travaux restants](docs/FINALIZATION_CHECKLIST.md) pour les résultats, les limites, les contre-revues et le périmètre actuel. Le service TCP rattrape périodiquement ses pairs configurés et leurs transactions en attente, mais n’annonce pas spontanément des blocs à plusieurs sauts; garde-le sur un réseau contrôlé. Le RPC wallet/mempool et les RPC d’en-têtes/preuves sont disponibles seulement sur le testnet.
+Ce sont les **commandes de vérification prévues**, pas des résultats de tests obtenus lors de la rédaction de cette page. Pour exécuter un nœud et miner des unités de test, suivre le [guide testnet](docs/TESTNET_GUIDE.md) dans un environnement isolé et autorisé ; ne jamais y utiliser de clés ou de fonds réels.
 
-## Limites avant de parler d’une blockchain terminée
+## État, risques et compatibilité
 
-Il reste notamment les simulations approfondies d’[horodatages futurs](https://github.com/antoineforterax-cmd/ARETOVUS/issues/3), la [saturation des workers P2P](https://github.com/antoineforterax-cmd/ARETOVUS/issues/4), la preuve d’une synchronisation réseau au-delà de 100 000 blocs connus ([issue #5](https://github.com/antoineforterax-cmd/ARETOVUS/issues/5)), les campagnes fuzz longues, les essais prolongés de pairs hostiles, une simulation indépendante du retarget, des tests de restauration hors machine et un essai sur volume réellement saturé. Une limite de taille de fichier simule déjà une écriture interrompue sous Linux, mais ce n’est pas une panne électrique. Aucune revue indépendante n’a été réalisée; voir le dossier [docs/INDEPENDENT_REVIEW.md](docs/INDEPENDENT_REVIEW.md). Le DID/récupération a un document de conception, mais n’altère pas les comptes. Le portefeuille CLI expérimental propose maintenant une vérification SPV et une bibliothèque d’URI de paiement; cela ne remplace pas une validation par un nœud complet. La trésorerie n’a pas de gouvernance ni de règles de dépense. Les mécanismes de récupération et de recyclage des soldes restent hors consensus. Explorateur, site, vente simulée et mobile sont hors du périmètre actuel; aucun usage de fonds réels ou présentation de sécurité mainnet n’est justifié sans stabilisation, revue indépendante et analyse juridique de la vente.
+- **Statut : testnet expérimental, NO-GO mainnet/fonds réels.** Les conditions d'un éventuel lancement public ne sont pas remplies.
+- **Réseau natif ARETOVUS :** identité de protocole, genèse, clés et formats incompatibles avec les anciennes versions du réseau. **Ne réutilisez pas un ancien dossier de données comme s'il était compatible** ; consulter la [migration](docs/PROTOCOL_IDENTITY_MIGRATION.md).
+- **Limites à examiner :** tests adversariaux prolongés, réseaux et machines indépendants, résistance aux attaques, cryptographie/gestion des clés, gouvernance et évaluation juridique. Voir [revue indépendante attendue](docs/INDEPENDENT_REVIEW.md).
+- **Traçabilité :** [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions), [preuves et limites](docs/TESTNET_VALIDATION_REPORT.md). Les résultats dépendent du commit testé.
+- **Feuilles de route :** l'[issue #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) couvre le chantier V2 ; l'[issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) préserve les jalons antérieurs. Les descriptions datées restent historiques.
 
-## Hors périmètre / pour les repreneurs
+Les détails économiques du **testnet uniquement** sont documentés dans [EMISSION_MODEL.md](docs/EMISSION_MODEL.md). Ils ne sont pas une offre de cryptoactifs ni une promesse de valeur.
 
-Le travail actuel porte sur le nœud, le consensus, le stockage, le réseau, le wallet CLI et leurs preuves de fonctionnement. L’explorateur, le site de présentation, la vente ou l’échange simulé, les interfaces graphiques et le mobile sont reportés. Aucune de ces applications n’est annoncée comme disponible.
+## Participer
 
-## Contribuer et signaler un problème
+Les débutants peuvent commencer par la documentation, les tests et l'expérimentation sur un réseau isolé. Les développeurs peuvent proposer des correctifs et des fonctionnalités sous forme de petites pull requests, avec reproductions, risques et preuves de test. Les mécanismes critiques exigent une revue et une décision spécifiques : [guide de contribution](CONTRIBUTING.md), [règles de développement](AGENTS.md).
 
-Lire [ARCHITECTURE.md](ARCHITECTURE.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) et [PROVENANCE.md](PROVENANCE.md). Les premiers travaux proposés sont dans les issues `good first issue`.
+Les personnes qui découvrent une faille doivent utiliser les instructions de [signalement responsable](SECURITY.md), et non publier une exploitation détaillée.
 
-## Licence
+## Licence et historique
 
-Le code ARETOVUS est proposé sous **MIT OR Apache-2.0**, au choix : [LICENSE](LICENSE), [MIT](LICENSE-MIT), [Apache-2.0](LICENSE-APACHE). Les licences des dépendances restent applicables.
+Le code est proposé sous **MIT OR Apache-2.0**, sous réserve des droits et licences des contributions concernées : [LICENSE](LICENSE). Le projet accepte les contributions au dépôt commun, même si ces licences autorisent aussi la création de versions dérivées.
+
+Pour retrouver la présentation technique antérieure, consulter l'[historique du README sur GitHub](https://github.com/antoineforterax-cmd/ARETOVUS/commits/main/README.md) ; aucun historique Git n'est effacé par cette réorganisation documentaire.
