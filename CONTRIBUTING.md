@@ -1,4 +1,4 @@
-# Contribuer à ARETOVUS
+# Contribuer à ARETOVUS\n\n**Nouveau sur le projet ?** Suivez le [parcours de première contribution avec ou sans IA](docs/CONTRIBUER_AVEC_IA.md), puis l'[état actuel et les limites](docs/ETAT_ACTUEL.md). Pour la réutilisation, les forks et l'attribution, voir [licences et droits](docs/LICENCES_ET_DROITS.md). Les documents anciens sont indexés dans [les archives](docs/ARCHIVES_ET_RAPPORTS.md).
 
 Pour tout développement assisté par IA, lire d'abord [AGENTS.md](AGENTS.md) : ordre de travail, cartographie des PR, tests de sécurité adversariaux et règles avant fusion. Les décisions de protocole restent sous le contrôle du responsable du projet.
 
