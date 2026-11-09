@@ -1,7 +1,12 @@
 {
-  "as_of": "6bc495454b03705e2439d7a673433af4d24148e4",
-  "reason": "Reorganisation documentaire, ne change pas les preuves historiques",
+  "as_of": "Reclassement consolidé au 9 novembre 2026",
+  "reason": "Correspondance historique des anciens chemins vers les dossiers thématiques, sans changement du consensus",
   "moved": {
+    "docs/ACCOUNT_STATE_FUZZING.md": "docs/07-rapports/ACCOUNT_STATE_FUZZING.md",
+    "docs/ADVERSARIAL_DOS_FIXES.md": "docs/07-rapports/ADVERSARIAL_DOS_FIXES.md",
+    "docs/AI_COUNTER_REVIEW.md": "docs/06-securite/AI_COUNTER_REVIEW.md",
+    "docs/ARCHIVES_ET_RAPPORTS.md": "docs/90-archives/ARCHIVES_ET_RAPPORTS.md",
+    "docs/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md": "docs/07-rapports/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md",
     "docs/B2_STORAGE_CORRUPTION_MATRIX_2026-11-01.md": "docs/07-rapports/B2_STORAGE_CORRUPTION_MATRIX_2026-11-01.md",
     "docs/B3_WALLET_RECOVERY_ADVERSARIAL_MATRIX_2026-11-01.md": "docs/07-rapports/B3_WALLET_RECOVERY_ADVERSARIAL_MATRIX_2026-11-01.md",
     "docs/BRANDING_COMPATIBILITY.md": "docs/05-pilotage/BRANDING_COMPATIBILITY.md",
@@ -48,10 +53,6 @@
     "docs/STORAGE_V6_DESIGN.md": "docs/03-recherche/STORAGE_V6_DESIGN.md",
     "docs/TWO_PC_TEST.md": "docs/04-exploiter/TWO_PC_TEST.md",
     "docs/WALLET_FUND_PROTECTION.md": "docs/04-exploiter/WALLET_FUND_PROTECTION.md",
-    "docs/WALLET_RPC_DEADLINES.md": "docs/04-exploiter/WALLET_RPC_DEADLINES.md",
-    "docs/ACCOUNT_STATE_FUZZING.md": "docs/07-rapports/ACCOUNT_STATE_FUZZING.md",
-    "docs/ADVERSARIAL_DOS_FIXES.md": "docs/07-rapports/ADVERSARIAL_DOS_FIXES.md",
-    "docs/AI_COUNTER_REVIEW.md": "docs/06-securite/AI_COUNTER_REVIEW.md",
-    "docs/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md": "docs/07-rapports/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md"
+    "docs/WALLET_RPC_DEADLINES.md": "docs/04-exploiter/WALLET_RPC_DEADLINES.md"
   }
 }
