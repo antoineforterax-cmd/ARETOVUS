@@ -1,4 +1,4 @@
-# ARETOVUS Desktop Lab — première interface réellement connectée (V2)
+# ARETOVUS Desktop Lab — prototype expérimental (V2)\n\n> **État documentaire :** cette page inclut des notes de PR successives, parfois écrites avant leur fusion. Pour le statut consolidé, voir [l'état actuel](../../docs/ETAT_ACTUEL.md) et [l'issue V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178). Le prototype est **en lecture seule**, sans wallet graphique complet ni contrôle de minage ; aucune utilisation avec des fonds réels ni garantie de distribution publique.
 
 Travail expérimental pour les tickets #181 et #178 ; dépend de **PR #192** et de son binaire Rust `aretovus-local-bridge`. Aucun fonds réel, aucun wallet/signature ni contrôle du minage. Interface React/Vite/TypeScript, hôte local Tauri v2. L'hôte lance un binaire natif placé **à côté de son propre exécutable**, transmet une requête unique et affiche une réponse validée. Aucun navigateur web ordinaire ne peut obtenir ces données via une API publique.
 
