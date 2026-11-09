@@ -105,7 +105,7 @@ Le contrôle local `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous 
 - Une revue indépendante du consensus, de la cryptographie, du portefeuille ou du réseau. Aucun reviewer n’est encore désigné.
 - Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles. Les clés nouvelles du wallet CLI sont chiffrées par défaut, mais son stockage, son UX et ses sauvegardes n’ont pas subi de revue indépendante.
 
-Le plan et les portes restantes sont dans [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md). Le dossier de revue est dans [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md).
+L'[état et les limites actuels](ETAT_ACTUEL.md) ainsi que la [feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) décrivent les portes restantes ; l'ancienne feuille de route se retrouve dans l'[historique Git du 9 novembre](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/ROADMAP_EXECUTION.md). Le dossier de revue est dans [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md).
 
 ## Dépôt public et scan de l’historique — 27 octobre 2026
 
