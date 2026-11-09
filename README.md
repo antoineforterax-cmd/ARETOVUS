@@ -1,5 +1,9 @@
 # ARETOVUS — laboratoire blockchain open source
 
+**[Commencer ici](docs/README.md) · [Comprendre](docs/COMPRENDRE_ARETOVUS.md) · [Installer](docs/guide-fr/03-installation.md) · [Contribuer](docs/CONTRIBUER_AVEC_IA.md) · [Sécurité](SECURITY.md) · [Roadmap](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)**
+
+<img src="assets/aretovus-logo.svg" alt="Logo ARETOVUS" width="116" align="right">
+
 **Rust · Blockchain expérimentale · Développement humain–IA · Contributions ouvertes**
 
 **Vous découvrez ARETOVUS ?** Commencez par **[le guide pour débuter](docs/01-demarrer/COMPRENDRE_ARETOVUS.md)**, puis consultez **[l'état réel du projet](docs/01-demarrer/ETAT_ACTUEL.md)** et **[l'index de la documentation](docs/README.md)**. Aucune connaissance préalable en Rust n'est nécessaire pour comprendre le fonctionnement.
@@ -22,10 +26,6 @@ ARETOVUS explore comment construire, comprendre, vérifier et améliorer collect
 | **Comment trouver un ancien rapport ou une preuve ?** | [Archives et rapports](docs/90-archives/ARCHIVES_ET_RAPPORTS.md) |
 
 **[Ouvrir le sommaire de toute la documentation](docs/README.md)**
-
-<p align="center">
-  <img src="assets/aretovus-logo.svg" alt="Logo ARETOVUS" width="112">
-</p>
 
 ## Le projet en une minute
 
