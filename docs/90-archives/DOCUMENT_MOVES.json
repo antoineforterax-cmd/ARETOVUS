@@ -48,6 +48,10 @@
     "docs/STORAGE_V6_DESIGN.md": "docs/03-recherche/STORAGE_V6_DESIGN.md",
     "docs/TWO_PC_TEST.md": "docs/04-exploiter/TWO_PC_TEST.md",
     "docs/WALLET_FUND_PROTECTION.md": "docs/04-exploiter/WALLET_FUND_PROTECTION.md",
-    "docs/WALLET_RPC_DEADLINES.md": "docs/04-exploiter/WALLET_RPC_DEADLINES.md"
+    "docs/WALLET_RPC_DEADLINES.md": "docs/04-exploiter/WALLET_RPC_DEADLINES.md",
+    "docs/ACCOUNT_STATE_FUZZING.md": "docs/07-rapports/ACCOUNT_STATE_FUZZING.md",
+    "docs/ADVERSARIAL_DOS_FIXES.md": "docs/07-rapports/ADVERSARIAL_DOS_FIXES.md",
+    "docs/AI_COUNTER_REVIEW.md": "docs/06-securite/AI_COUNTER_REVIEW.md",
+    "docs/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md": "docs/07-rapports/B1_CONSENSUS_ADVERSARIAL_MATRIX_2026-11-01.md"
   }
 }
