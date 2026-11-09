@@ -17,9 +17,9 @@ Pour commencer : [index documentaire](README.md) · [état actuel](ETAT_ACTUEL.m
 
 | Documents | À quoi ils servent désormais |
 | --- | --- |
-| [DECISION_BASELINE.md](DECISION_BASELINE.md), [DECISION_REGISTER.md](DECISION_REGISTER.md) | Hypothèses et arbitrages initiaux, **pas** paramètres du testnet courant |
-| [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md), [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) | Anciennes séquences de travail et bilan d'octobre, non feuille de route vivante |
-| [planning/DECISIONS.md](planning/DECISIONS.md), [planning/ROADMAP.md](planning/ROADMAP.md), [planning/ARCHITECTURE_CIBLE.md](planning/ARCHITECTURE_CIBLE.md) | Propositions et rapprochements de conception datés |
+| [ancienne baseline (Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/DECISION_BASELINE.md), [DECISION_REGISTER.md](DECISION_REGISTER.md) | Hypothèses et arbitrages initiaux, **pas** paramètres du testnet courant |
+| [ancienne feuille d'exécution (Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/ROADMAP_EXECUTION.md), [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) | Anciennes séquences de travail et bilan d'octobre, non feuille de route vivante |
+| [planning/DECISIONS.md](planning/DECISIONS.md), [ancienne feuille de planification (Git)](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/planning/ROADMAP.md), [planning/ARCHITECTURE_CIBLE.md](planning/ARCHITECTURE_CIBLE.md) | Propositions et rapprochements de conception datés |
 | [consolidation/STATE_2026-10-29.md](consolidation/STATE_2026-10-29.md), [consolidation/state-2026-10-29.json](consolidation/state-2026-10-29.json), [consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md](consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md) | Photographes de consolidation de fin octobre |
 | [REVIEW_2026_10_29.md](REVIEW_2026_10_29.md), [SECURITY_REVIEW_2026-10-25.md](SECURITY_REVIEW_2026-10-25.md), [POST_MERGE_VALIDATION_GATES_2026-10-31.md](POST_MERGE_VALIDATION_GATES_2026-10-31.md) | Relectures et critères d'intégration datés |
 | [E3_PRELIMINARY_NO_GO_2026-11-02.md](E3_PRELIMINARY_NO_GO_2026-11-02.md) | Motifs d'un NO-GO historique ; il ne se transforme pas en GO par vieillissement |
@@ -50,8 +50,8 @@ Pour commencer : [index documentaire](README.md) · [état actuel](ETAT_ACTUEL.m
 
 Les documents de `docs/planning/` consacrés au desktop (ADR, architecture, IPC, erreurs, pagination, frontières de confiance et labo Windows) documentent des **décisions et expériences propres à une version donnée**. Consulter d'abord [apps/desktop/README.md](../apps/desktop/README.md) et la [feuille V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178).
 
-## Pourquoi ne pas supprimer les vieux fichiers maintenant ?
+## Documents retirés de la branche et archives conservées
 
-Des **issues, scripts, PR, rapports et guides** les citent, parfois avec des liens profonds. Les supprimer ou les déplacer en bloc risquerait de **casser la traçabilité** et de masquer les résultats négatifs. Le tri effectué ici est un **tri de visibilité et de statut** : les anciens textes restent accessibles depuis ce catalogue, mais ne figurent plus comme autant de sources de vérité concurrentes sur l'accueil. Une suppression future exige un inventaire des références entrantes et une justification vérifiable ; on peut déplacer les rapports avec redirections seulement après cette vérification.
+Les anciens guides `guide-fr/07-technologie-et-suite.md` et `guide-fr/08-interface-locale.md`, ainsi que `DECISION_BASELINE.md`, `ROADMAP_EXECUTION.md` et `planning/ROADMAP.md`, ont été sélectionnés pour retrait de cette branche documentaire. Ils restent accessibles via [leur version Git de référence](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/guide-fr/07-technologie-et-suite.md), dans l'historique et les PR. Les liens dans les guides actifs ont été mis à jour. Les comptes rendus d'essais, bilans adversariaux, registres de décisions et sources de preuve demeurent conservés dans l'arbre : les effacer ferait perdre du contexte et pourrait casser des liens historiques.
 
 **Règle d'archivage :** conserver le texte et sa date, ajouter un lien vers la documentation courante, ne jamais réécrire un rapport ancien pour faire croire qu'il validait un protocole ultérieur.
