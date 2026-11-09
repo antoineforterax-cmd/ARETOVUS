@@ -1,57 +1,40 @@
-# Documentation ARETOVUS
+# Documentation ARETOVUS — choisir son parcours
 
-**Bienvenue !** ARETOVUS est une blockchain expérimentale en Rust développée avec l'aide de l'IA, sous direction humaine et ouverte à la collaboration. Ce dépôt est un **laboratoire technique** : aucun mainnet autorisé, aucune utilisation avec des fonds réels, aucun audit humain externe indépendant approfondi confirmé.
+**Un seul sommaire.** Cette page guide les nouveaux lecteurs vers les dossiers utiles, sans mélanger les règles du testnet, les projets futurs et les rapports historiques.
 
-Pour découvrir le projet, **suivez les étapes dans l'ordre**. Il n'est pas nécessaire de connaître Rust.
+> **Statut : laboratoire blockchain expérimental, aucun mainnet ni fonds réels.** Aucune revue humaine extérieure complète et documentée n'est confirmée ; les vérifications IA et la CI ne sont pas des audits indépendants.
 
-## Pour commencer, choisissez votre parcours
+## Où commencer ?
 
-| Je veux… | Première lecture | Suite |
-| --- | --- | --- |
-| **Comprendre sans coder** | [Comment fonctionne ARETOVUS](01-demarrer/COMPRENDRE_ARETOVUS.md) | [Ce qui fonctionne actuellement](01-demarrer/ETAT_ACTUEL.md) |
-| **Installer et tester** | [Guide français de la release expérimentale](guide-fr/README.md) | [Nœud, minage et wallet en local](TESTNET_GUIDE.md) |
-| **Participer avec ou sans IA** | [Première contribution](02-participer/CONTRIBUER_AVEC_IA.md) | [Règles des contributions](../CONTRIBUTING.md) |
-| **Comprendre le code** | [Architecture Rust](../ARCHITECTURE.md) | [Consensus](CONSENSUS.md) et [protocole](PROTOCOL.md) |
-| **Examiner la sécurité** | [Modèle de menaces](THREAT_MODEL.md) | [Audit indépendant restant à faire](06-securite/INDEPENDENT_REVIEW.md) |
-| **Comprendre les licences** | [Droits, contributions et forks](02-participer/LICENCES_ET_DROITS.md) | [Textes juridiques originaux](../LICENSE) |
-| **Comparer les anciennes décisions** | [Choix et contradictions clarifiés](05-pilotage/DECISIONS_CLARIFIEES.md) | [Rapports historiques](90-archives/ARCHIVES_ET_RAPPORTS.md) |
-
-## Les dossiers spécialisés
-
-| Dossier | Ce qu'on y trouve |
+| Je veux… | Ouvrir |
 | --- | --- |
-| [01 — Bien démarrer](01-demarrer/) | Présentation accessible, explication des transactions et état vérifié |
-| [02 — Participer](02-participer/) | Premières contributions, travail humain–IA, droits et licences |
-| [03 — Recherche](03-recherche/) | Modèles alternatifs, études crypto/PQ, stockage, migrations |
-| [04 — Exploiter](04-exploiter/) | Deux PC, endurance, sauvegardes, wallet et procédures pratiques |
-| [05 — Pilotage](05-pilotage/) | Décisions réconciliées, suivi documentaire, provenance historique |
-| [06 — Sécurité](06-securite/) | Audits à réaliser, cryptographie, garde des clés, contre-revues |
-| [07 — Rapports](07-rapports/) | Mesures, tests adversariaux, simulations et constats datés |
-| [90 — Archives](90-archives/) | Index historique et correspondances des anciens chemins |
-| [Guide français](guide-fr/) | Tutoriel reproductible d'une **ancienne release datée**, sans garantie de compatibilité avec `main` |
-| [Planification](planning/) | Propositions et ADR, pas des décisions de consensus déjà validées |
-| [Validation](validation/) | Protocoles d'essais et procédures de preuve |
-| [Consolidation](consolidation/) | États techniques historiques datés |
+| Découvrir la blockchain sans coder | **[01 — Découvrir ARETOVUS](01-demarrer/README.md)** |
+| Participer, proposer une idée ou développer avec l'IA | **[02 — Contribuer](02-participer/README.md)** |
+| Comprendre les règles, la cryptographie ou les recherches futures | **[03 — Protocole et recherche](03-recherche/README.md)** |
+| Installer un testnet, utiliser le portefeuille ou miner des blocs de test | **[04 — Installer et exploiter](04-exploiter/README.md)** |
+| Suivre l'avancement et comprendre les décisions contradictoires | **[05 — Pilotage et décisions](05-pilotage/README.md)** |
+| Vérifier la sécurité, examiner les risques, proposer un audit | **[06 — Sécurité](06-securite/README.md)** |
+| Chercher une preuve, un bug, un benchmark ou un résultat de test | **[07 — Rapports](07-rapports/README.md)** |
+| Retrouver un ancien document retiré ou déplacé | **[90 — Archives](90-archives/README.md)** |
 
-## Pourquoi quelques fichiers restent à la racine de `docs/` ?
+## Références techniques à chemins stables
 
-Ces fichiers sont des **références stables** auxquelles renvoient d'autres outils, scripts de création des archives et guides :
+Les documents suivants restent **à la racine de `docs/`** car de nombreux guides, scripts ou procédures les utilisent déjà. Ce n'est **pas un second sommaire**.
 
-- [CONSENSUS.md](CONSENSUS.md) : règles expérimentales de validation.
-- [PROTOCOL.md](PROTOCOL.md) : formats, messages et protocole.
-- [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md) et [EMISSION_MODEL.md](EMISSION_MODEL.md) : paramètres du testnet (ne préjugent pas du mainnet).
-- [TESTNET_GUIDE.md](TESTNET_GUIDE.md) et [TESTNET_OPERATIONS.md](TESTNET_OPERATIONS.md) : démarrage et exploitation.
-- [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md) : essais historiques avec références des commits.
-- [THREAT_MODEL.md](THREAT_MODEL.md), [FUZZING.md](FUZZING.md) : sécurité et tests.
-- [DECISION_REGISTER.md](DECISION_REGISTER.md) et [FINALIZATION_CHECKLIST.md](FINALIZATION_CHECKLIST.md) : **archives de décisions et de jalons**, à lire avec leurs avertissements historiques.
+- [Protocole](PROTOCOL.md) et [consensus](CONSENSUS.md) : profils expérimentaux, à confronter au code sur le SHA visé.
+- [Émission](EMISSION_MODEL.md), [décisions testnet](TESTNET_DECISIONS.md), [registre de phase 0](DECISION_REGISTER.md).
+- [Guide technique testnet](TESTNET_GUIDE.md), [exploitation](TESTNET_OPERATIONS.md), [rapport de validation](TESTNET_VALIDATION_REPORT.md).
+- [Fuzzing](FUZZING.md), [modèle de menaces](THREAT_MODEL.md).
+- [Checklist antérieure](FINALIZATION_CHECKLIST.md) : **archive historique**, pas feuille de route V2.
 
-Les déplacer automatiquement casserait certains scripts ou des références historiques. Le but est de **réduire les confusions sans sacrifier les preuves ni la reproductibilité**.
+Les autres sous-dossiers existants (`guide-fr/`, `planning/`, `validation/`, `consolidation/`) regroupent les travaux datés et les procédures avancées. Les déplacer aveuglément casserait les scripts ou les preuves qui les citent ; ils restent accessibles depuis les sections correspondantes.
 
-## Comment savoir ce qui est vrai ?
+## Pour les contributeurs
 
-1. Pour un **comportement du logiciel**, le code et ses tests au **SHA Git exact** sont déterminants ; un document ancien ne suffit pas.
-2. Pour l'**avancement V2**, consulter [l'issue #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) et les PR ; [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) concerne les étapes antérieures.
-3. Pour les **preuves**, lire les [runs GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) et les limitations des essais.
-4. **Une CI verte, une revue IA et un essai sur deux ordinateurs ne valent pas un audit indépendant.** Aucun usage financier réel n'est autorisé par cette documentation.
+- [Règles de contribution](../CONTRIBUTING.md), [garde-fous des agents](../AGENTS.md), [politique de développement](planning/IMPLEMENTATION_POLICY.md).
+- [Licence officielle MIT OR Apache-2.0](../LICENSE), [explication des droits](02-participer/LICENCES_ET_DROITS.md), [provenance IA](../PROVENANCE.md).
+- [Feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) ; [anciens jalons #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142).
 
-**Une erreur, une contradiction ou un lien cassé ?** Commencez par [les conventions de documentation](05-pilotage/CONVENTIONS_DOCUMENTAIRES.md), puis proposez une correction ciblée par pull request.
+**Règle de lecture :** « existe dans un testnet » ≠ « audité pour de l'argent réel » ; « proposé » ≠ « implémenté » ; « une CI est verte » ≠ « un audit indépendant a été effectué ».
+
+[Retour à la page d'accueil](../README.md).
