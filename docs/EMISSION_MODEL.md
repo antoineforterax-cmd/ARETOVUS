@@ -1,6 +1,8 @@
 # ARETOVUS — émission proportionnelle `proportional-remaining-1e6-v1`
 
-**Note de lecture (9 novembre 2026) :** ce texte est issu d'une branche historique ; la formule est également décrite dans les règles du testnet natif, mais toute validation doit se faire sur le code et les tests au SHA visé. Voir [l'état actuel](ETAT_ACTUEL.md) et [les décisions clarifiées](DECISIONS_CLARIFIEES.md).\n\n**État historique : implémentée pour la testnet expérimentale** sur `feature/emission-schedule-v0`. La formule est une règle de consensus du prototype; la politique économique reste à valider par le porteur du projet et par une revue indépendante avant tout usage public.
+**Note de lecture (9 novembre 2026) :** ce texte est issu d'une branche historique ; la formule est également décrite dans les règles du testnet natif, mais toute validation doit se faire sur le code et les tests au SHA visé. Voir [l'état actuel](ETAT_ACTUEL.md) et [les décisions clarifiées](DECISIONS_CLARIFIEES.md).
+
+**État historique : implémentée pour la testnet expérimentale** sur `feature/emission-schedule-v0`. La formule est une règle de consensus du prototype; la politique économique reste à valider par le porteur du projet et par une revue indépendante avant tout usage public.
 
 ## Plafond et lancement équitable
 
