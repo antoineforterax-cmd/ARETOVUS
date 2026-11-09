@@ -1,8 +1,8 @@
-# Contribuer à ARETOVUS\n\n**Nouveau sur le projet ?** Suivez le [parcours de première contribution avec ou sans IA](docs/CONTRIBUER_AVEC_IA.md), puis l'[état actuel et les limites](docs/ETAT_ACTUEL.md). Pour la réutilisation, les forks et l'attribution, voir [licences et droits](docs/LICENCES_ET_DROITS.md). Les documents anciens sont indexés dans [les archives](docs/ARCHIVES_ET_RAPPORTS.md).
+# Contribuer à ARETOVUS\n\n**Nouveau sur le projet ?** Suivez le [parcours de première contribution avec ou sans IA](docs/05-contribuer/CONTRIBUER_AVEC_IA.md), puis l'[état actuel et les limites](docs/01-demarrer/ETAT_ACTUEL.md). Pour la réutilisation, les forks et l'attribution, voir [licences et droits](docs/05-contribuer/LICENCES_ET_DROITS.md). Les documents anciens sont indexés dans [les archives](docs/90-archives/ARCHIVES_ET_RAPPORTS.md).
 
 Pour tout développement assisté par IA, lire d'abord [AGENTS.md](AGENTS.md) : ordre de travail, cartographie des PR, tests de sécurité adversariaux et règles avant fusion. Les décisions de protocole restent sous le contrôle du responsable du projet.
 
-Le testnet expérimental est désormais intégré à `main`. Les branches historiques et les PR anciennes ne doivent pas être considérées comme la référence courante ; vérifier le SHA de `main` et ses contrôles GitHub Actions avant de commencer. Lire [ARCHITECTURE.md](ARCHITECTURE.md), [PROVENANCE.md](PROVENANCE.md), les [règles de consensus](docs/CONSENSUS.md) et les [portes de validation](docs/POST_MERGE_VALIDATION_GATES_2026-10-31.md).
+Le testnet expérimental est désormais intégré à `main`. Les branches historiques et les PR anciennes ne doivent pas être considérées comme la référence courante ; vérifier le SHA de `main` et ses contrôles GitHub Actions avant de commencer. Lire [ARCHITECTURE.md](ARCHITECTURE.md), [PROVENANCE.md](PROVENANCE.md), les [règles de consensus](docs/CONSENSUS.md) et les [portes de validation](docs/90-archives/POST_MERGE_VALIDATION_GATES_2026-10-31.md).
 
 ## Si vous débutez (avec ou sans IA)
 
@@ -31,7 +31,7 @@ Le test de volume est séparé car il écrit plus de 100 000 fichiers de blocs :
 cargo test --locked -p aretovus-storage --lib volume_above_100k_blocks_with_side_branch_and_restart -- --ignored --nocapture
 ```
 
-Il couvre le stockage et le rejeu; il ne constitue pas un essai réseau de 72 heures. Les campagnes libFuzzer sont décrites dans [FUZZING.md](docs/FUZZING.md).
+Il couvre le stockage et le rejeu; il ne constitue pas un essai réseau de 72 heures. Les campagnes libFuzzer sont décrites dans [FUZZING.md](docs/04-securite/FUZZING.md).
 
 ## Proposer une modification
 

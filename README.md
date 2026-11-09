@@ -2,7 +2,7 @@
 
 **Rust · Blockchain expérimentale · Développement humain–IA · Contributions ouvertes**
 
-**Vous découvrez ARETOVUS ?** Commencez par **[le guide pour débuter](docs/COMPRENDRE_ARETOVUS.md)**, puis consultez **[l'état réel du projet](docs/ETAT_ACTUEL.md)** et **[l'index de la documentation](docs/README.md)**. Aucune connaissance préalable en Rust n'est nécessaire pour comprendre le fonctionnement.
+**Vous découvrez ARETOVUS ?** Commencez par **[le guide pour débuter](docs/01-demarrer/COMPRENDRE_ARETOVUS.md)**, puis consultez **[l'état réel du projet](docs/01-demarrer/ETAT_ACTUEL.md)** et **[l'index de la documentation](docs/README.md)**. Aucune connaissance préalable en Rust n'est nécessaire pour comprendre le fonctionnement.
 
 ARETOVUS explore comment construire, comprendre, vérifier et améliorer collectivement une blockchain indépendante. Le projet a été **largement développé avec l'aide de l'IA**, sous direction humaine ; son ambition immédiate est un **laboratoire reproductible**, ouvert aux débutants comme aux spécialistes. Un futur réseau public avec minage et fonds réels reste une **perspective conditionnelle**, pas un lancement annoncé.
 
@@ -12,14 +12,14 @@ ARETOVUS explore comment construire, comprendre, vérifier et améliorer collect
 
 | Votre question | Guide conseillé |
 | --- | --- |
-| **Qu'est-ce qu'ARETOVUS et comment fonctionne une blockchain ?** | [Explication complète pour débutants](docs/COMPRENDRE_ARETOVUS.md) |
-| **Où en est réellement le projet ?** | [État actuel : livré, prototype, manquant](docs/ETAT_ACTUEL.md) |
+| **Qu'est-ce qu'ARETOVUS et comment fonctionne une blockchain ?** | [Explication complète pour débutants](docs/01-demarrer/COMPRENDRE_ARETOVUS.md) |
+| **Où en est réellement le projet ?** | [État actuel : livré, prototype, manquant](docs/01-demarrer/ETAT_ACTUEL.md) |
 | **Comment tester un nœud, un wallet et un mineur ?** | [Installation et testnet local](docs/guide-fr/README.md) |
-| **Je veux contribuer, même sans savoir coder** | [Guide de contribution avec ou sans IA](docs/CONTRIBUER_AVEC_IA.md) |
+| **Je veux contribuer, même sans savoir coder** | [Guide de contribution avec ou sans IA](docs/05-contribuer/CONTRIBUER_AVEC_IA.md) |
 | **Je veux comprendre l'architecture Rust** | [Architecture des composants](ARCHITECTURE.md) |
-| **Quelle licence ? Puis-je créer un fork ?** | [Droits, licences MIT / Apache-2.0](docs/LICENCES_ET_DROITS.md) |
-| **Je vois des anciennes décisions contradictoires** | [Table des décisions clarifiées](docs/DECISIONS_CLARIFIEES.md) |
-| **Comment trouver un ancien rapport ou une preuve ?** | [Archives et rapports](docs/ARCHIVES_ET_RAPPORTS.md) |
+| **Quelle licence ? Puis-je créer un fork ?** | [Droits, licences MIT / Apache-2.0](docs/05-contribuer/LICENCES_ET_DROITS.md) |
+| **Je vois des anciennes décisions contradictoires** | [Table des décisions clarifiées](docs/03-protocole/DECISIONS_CLARIFIEES.md) |
+| **Comment trouver un ancien rapport ou une preuve ?** | [Archives et rapports](docs/90-archives/ARCHIVES_ET_RAPPORTS.md) |
 
 **[Ouvrir le sommaire de toute la documentation](docs/README.md)**
 
@@ -37,7 +37,7 @@ Le logiciel expérimental comprend :
 - **Desktop en développement :** prototype React/Tauri de consultation en lecture seule, pas un portefeuille graphique commercial abouti.
 - **Travail de vérification :** tests Rust, CI GitHub, simulations et scénarios adversariaux. **Ces contrôles ne sont pas des garanties de sécurité**.
 
-Les paramètres du testnet et leurs limites sont décrits dans [l'état actuel](docs/ETAT_ACTUEL.md), le [consensus](docs/CONSENSUS.md), le [protocole](docs/PROTOCOL.md) et le [modèle d'émission](docs/EMISSION_MODEL.md). L'anonymat fort, la gouvernance de trésorerie, la récupération sociale et une infrastructure publique durable restent à rechercher, concevoir ou démontrer : **ne pas les présenter comme acquis**.
+Les paramètres du testnet et leurs limites sont décrits dans [l'état actuel](docs/01-demarrer/ETAT_ACTUEL.md), le [consensus](docs/CONSENSUS.md), le [protocole](docs/PROTOCOL.md) et le [modèle d'émission](docs/EMISSION_MODEL.md). L'anonymat fort, la gouvernance de trésorerie, la récupération sociale et une infrastructure publique durable restent à rechercher, concevoir ou démontrer : **ne pas les présenter comme acquis**.
 
 ## Essayer le projet (sans fonds réels)
 
@@ -65,6 +65,6 @@ La [feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/is
 
 ## Licence, provenance et histoire
 
-Le dépôt annonce **MIT OR Apache-2.0**, sous réserve des droits applicables aux contributions : [textes](LICENSE), [explications](docs/LICENCES_ET_DROITS.md), [provenance du code assisté par IA](PROVENANCE.md). Les licences permissives autorisent les forks ; nous souhaitons surtout encourager les contributions vers le dépôt commun.
+Le dépôt annonce **MIT OR Apache-2.0**, sous réserve des droits applicables aux contributions : [textes](LICENSE), [explications](docs/05-contribuer/LICENCES_ET_DROITS.md), [provenance du code assisté par IA](PROVENANCE.md). Les licences permissives autorisent les forks ; nous souhaitons surtout encourager les contributions vers le dépôt commun.
 
-Les anciens documents et résultats ne sont pas effacés : [catalogue des archives](docs/ARCHIVES_ET_RAPPORTS.md). Le projet ne prétend pas avoir déjà prouvé la sécurité d'une cryptomonnaie utilisable avec de l'argent réel.
+Les anciens documents et résultats ne sont pas effacés : [catalogue des archives](docs/90-archives/ARCHIVES_ET_RAPPORTS.md). Le projet ne prétend pas avoir déjà prouvé la sécurité d'une cryptomonnaie utilisable avec de l'argent réel.
