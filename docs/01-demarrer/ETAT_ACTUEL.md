@@ -17,7 +17,7 @@
 | `aretovus-wallet` | CLI de test : clés chiffrées, transactions signées, sauvegardes et preuves SPV | Portefeuille commercial sûr pour des fonds réels |
 | `apps/desktop` | Prototype Tauri/React en lecture seule avec état du nœud et pages de blocs, contrôles Windows documentés | Produit desktop complet avec wallet graphique, minage et installation signée |
 
-Sources de référence : [architecture](../ARCHITECTURE.md), [protocole](PROTOCOL.md), [tests](TESTNET_VALIDATION_REPORT.md), [feuille V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178). Toute affirmation de test doit être rattachée à un **commit et un run**.
+Sources de référence : [architecture](../../ARCHITECTURE.md), [protocole](../PROTOCOL.md), [tests](../TESTNET_VALIDATION_REPORT.md), [feuille V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178). Toute affirmation de test doit être rattachée à un **commit et un run**.
 
 ## Paramètres expérimentaux en vigueur dans la documentation technique
 
@@ -28,7 +28,7 @@ Sources de référence : [architecture](../ARCHITECTURE.md), [protocole](PROTOCO
 - **5 %** de l'émission vont à une adresse de trésorerie **fixe et sans mécanisme de dépense**, 95 % au mineur ; sur les frais, `floor(F/2)` est versé au mineur et le **reste est brûlé**.
 - Les choix économiques ci-dessus sont des **règles exécutées du testnet**, **pas des engagements arrêtés pour un futur mainnet**.
 
-Consulter [consensus](CONSENSUS.md), [émission](EMISSION_MODEL.md), [décisions testnet](TESTNET_DECISIONS.md) et surtout le code au SHA choisi pour les formats et invariants précis.
+Consulter [consensus](../CONSENSUS.md), [émission](../EMISSION_MODEL.md), [décisions testnet](../TESTNET_DECISIONS.md) et surtout le code au SHA choisi pour les formats et invariants précis.
 
 ## Ce qui n'est pas livré ou prouvé
 
@@ -43,8 +43,8 @@ Consulter [consensus](CONSENSUS.md), [émission](EMISSION_MODEL.md), [décisions
 
 1. Pour le **développement V2**, suivre [l'issue #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) et les PR ouvertes. Les cases de l'issue reflètent une progression documentée, qu'il faut confronter au SHA et à la CI.
 2. Pour les **jalons antérieurs A à E**, conserver [l'issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) comme historique.
-3. Pour les **preuves**, consulter [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) et le [rapport d'essais](TESTNET_VALIDATION_REPORT.md).
+3. Pour les **preuves**, consulter [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) et le [rapport d'essais](../TESTNET_VALIDATION_REPORT.md).
 4. Pour les **releases**, vérifier qu'un binaire correspond exactement à sa version ; la [release d'octobre](https://github.com/antoineforterax-cmd/ARETOVUS/releases/tag/testnet-v0.0.1-experimental.1) n'est pas automatiquement le dernier code de `main`.
 5. Une branche ouverte, une PR en brouillon, une CI verte, un test deux-PC et une revue extérieure sont **des états distincts**.
 
-**Décision de sécurité : NO-GO pour mainnet et fonds réels jusqu'à preuves et décisions spécifiques.** Un futur feu vert nécessitera notamment une revue humaine indépendante, une validation multi-hôtes, une analyse de la sécurité économique et un examen juridique adapté. Voir [conditions de revue](INDEPENDENT_REVIEW.md).
+**Décision de sécurité : NO-GO pour mainnet et fonds réels jusqu'à preuves et décisions spécifiques.** Un futur feu vert nécessitera notamment une revue humaine indépendante, une validation multi-hôtes, une analyse de la sécurité économique et un examen juridique adapté. Voir [conditions de revue](../06-securite/INDEPENDENT_REVIEW.md).

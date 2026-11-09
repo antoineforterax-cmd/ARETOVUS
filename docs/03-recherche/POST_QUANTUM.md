@@ -26,7 +26,7 @@ Chaque transaction transporte plus de 5 KiB d’autorisation. Cela réduit le no
 
 ## Fonctions déjà présentes
 
-Le portefeuille CLI génère et utilise des clés ML-DSA-65. Il chiffre ses nouveaux fichiers par défaut et propose sauvegarde et restauration chiffrées. Les racines et preuves Merkle, le téléchargement et la vérification SPV d’en-têtes et la bibliothèque d’URI `aretovus://` sont intégrés. Ces fonctions restent expérimentales; une preuve d’inclusion fournie par un pair ne garantit pas l’absence d’éclipse. Voir le [guide du portefeuille](guide-fr/05-portefeuille.md).
+Le portefeuille CLI génère et utilise des clés ML-DSA-65. Il chiffre ses nouveaux fichiers par défaut et propose sauvegarde et restauration chiffrées. Les racines et preuves Merkle, le téléchargement et la vérification SPV d’en-têtes et la bibliothèque d’URI `aretovus://` sont intégrés. Ces fonctions restent expérimentales; une preuve d’inclusion fournie par un pair ne garantit pas l’absence d’éclipse. Voir le [guide du portefeuille](../guide-fr/05-portefeuille.md).
 
 ## Vérifications et travaux restants
 

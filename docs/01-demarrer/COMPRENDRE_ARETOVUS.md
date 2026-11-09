@@ -1,6 +1,6 @@
 # Comprendre ARETOVUS — de zéro au fonctionnement technique
 
-Ce guide s'adresse aux curieux et aux personnes qui découvrent la programmation. Il décrit le **testnet expérimental** au niveau conceptuel ; les détails exécutables sont dans le [protocole](PROTOCOL.md). Aucune unité de test ne doit être considérée comme de l'argent réel.
+Ce guide s'adresse aux curieux et aux personnes qui découvrent la programmation. Il décrit le **testnet expérimental** au niveau conceptuel ; les détails exécutables sont dans le [protocole](../PROTOCOL.md). Aucune unité de test ne doit être considérée comme de l'argent réel.
 
 ## 1. Qu'est-ce qu'une blockchain ?
 
@@ -20,7 +20,7 @@ ARETOVUS utilise un **modèle de comptes** : chaque adresse a un solde et un num
 | **Stockage** | Les archives locales | Conserve blocs et index, vérifie les intégrités, recharge les données après redémarrage |
 | **Explorateur** | La fenêtre de lecture | Affiche des informations sur la chaîne, sans être lui-même source de vérité |
 
-Les cinq crates principales sont détaillées dans [ARCHITECTURE.md](../ARCHITECTURE.md). L'application Tauri/React reste un prototype de **consultation**.
+Les cinq crates principales sont détaillées dans [ARCHITECTURE.md](../../ARCHITECTURE.md). L'application Tauri/React reste un prototype de **consultation**.
 
 ## 3. Que se passe-t-il quand Alice envoie à Bob ?
 
@@ -79,18 +79,18 @@ ARETOVUS écrit des blocs immuables et des index/manifestes contrôlés par somm
 
 Oui, en local, sur un ordinateur compatible, avec **des données jetables et un réseau isolé**. Commencez par :
 
-1. Lire la [page d'état](ETAT_ACTUEL.md) et le [guide français](guide-fr/README.md).
-2. Suivre l'[installation](guide-fr/03-installation.md) ; ce guide utilise une **release datée d'octobre 2026**, donc vérifier le commit et la version.
-3. Faire un [premier réseau local et du minage de test](guide-fr/04-reseau-et-minage.md), puis un [paiement de test](guide-fr/05-portefeuille.md).
-4. Examiner l'[exploitation et les sauvegardes](guide-fr/06-exploitation.md). Ne jamais exposer un RPC ni des clés réelles pour cette expérience.
+1. Lire la [page d'état](ETAT_ACTUEL.md) et le [guide français](../guide-fr/README.md).
+2. Suivre l'[installation](../guide-fr/03-installation.md) ; ce guide utilise une **release datée d'octobre 2026**, donc vérifier le commit et la version.
+3. Faire un [premier réseau local et du minage de test](../guide-fr/04-reseau-et-minage.md), puis un [paiement de test](../guide-fr/05-portefeuille.md).
+4. Examiner l'[exploitation et les sauvegardes](../guide-fr/06-exploitation.md). Ne jamais exposer un RPC ni des clés réelles pour cette expérience.
 
-Les tests automatisés sont décrits dans [CONTRIBUTING.md](../CONTRIBUTING.md). Vous pouvez également participer en corrigeant la documentation, en posant une question technique ou en proposant un **test reproductible**, même sans maîtriser Rust.
+Les tests automatisés sont décrits dans [CONTRIBUTING.md](../../CONTRIBUTING.md). Vous pouvez également participer en corrigeant la documentation, en posant une question technique ou en proposant un **test reproductible**, même sans maîtriser Rust.
 
 ## 9. Ce qu'ARETOVUS n'est pas encore
 
 Ce n'est pas Ethereum : **pas d'environnement de contrats intelligents généralistes**, pas de DeFi intégrée. Ce n'est pas non plus un réseau anonyme prêt à l'emploi : Tor/I2P, montants cachés et confidentialité forte sont des **pistes de recherche**. Les signatures ML-DSA-65 ne rendent pas à elles seules tout le système « 100 % post-quantique ».
 
-**Question suivante :** [Comment contribuer avec ou sans IA ?](CONTRIBUER_AVEC_IA.md) — ou consulter le [glossaire ci-dessous](#10-petit-glossaire).
+**Question suivante :** [Comment contribuer avec ou sans IA ?](../02-participer/CONTRIBUER_AVEC_IA.md) — ou consulter le [glossaire ci-dessous](#10-petit-glossaire).
 
 ## 10. Petit glossaire
 
