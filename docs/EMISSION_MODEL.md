@@ -1,6 +1,8 @@
 # ARETOVUS — émission proportionnelle `proportional-remaining-1e6-v1`
 
-**État : implémentée pour la testnet expérimentale** sur `feature/emission-schedule-v0`. La formule est une règle de consensus du prototype; la politique économique reste à valider par le porteur du projet et par une revue indépendante avant tout usage public.
+**Note de lecture (9 novembre 2026) :** ce texte est issu d'une branche historique ; la formule est également décrite dans les règles du testnet natif, mais toute validation doit se faire sur le code et les tests au SHA visé. Voir [l'état actuel](01-demarrer/ETAT_ACTUEL.md) et [les décisions clarifiées](05-pilotage/DECISIONS_CLARIFIEES.md).
+
+**État historique : implémentée pour la testnet expérimentale** sur `feature/emission-schedule-v0`. La formule est une règle de consensus du prototype; la politique économique reste à valider par le porteur du projet et par une revue indépendante avant tout usage public.
 
 ## Plafond et lancement équitable
 
@@ -38,7 +40,7 @@ miner_fees = floor(F / 2)       # 50 %
 burned     = F - miner_fees     # 50 %
 ```
 
-Les arrondis résiduels vont au mineur. Les frais brûlés disparaissent du solde total, mais ne changent pas l’émission brute.
+**Précision sur les arrondis :** pour l'émission, le solde après prélèvement de la trésorerie va au mineur ; pour les frais, le mineur reçoit `floor(F/2)` et **l'unité résiduelle en cas de frais impairs est brûlée**, conformément à `crates/aretovus-consensus/src/reward.rs`. Les frais brûlés disparaissent du solde total, mais ne changent pas l’émission brute.
 
 La trésorerie reçoit les fonds à l’identifiant testnet fixe `[0xA0; 32]`. Dans le code actuel, il s’agit d’un compte de consensus crédité automatiquement, pas d’un smart contract : il n’y a ni gouvernance, ni règles de dépense, ni procédure de financement des audits. Cette capacité de dépense doit être conçue avant d’attribuer une valeur réelle à la trésorerie.
 

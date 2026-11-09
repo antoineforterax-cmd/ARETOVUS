@@ -1,5 +1,7 @@
 # ARETOVUS — spécification expérimentale v0
 
+> **Attention à la version :** cette spécification comporte des passages rattachés à la branche historique `feature/emission-schedule-v0` et peut ne pas décrire toutes les extensions V2 intégrées depuis. Pour l'état du dépôt au 9 novembre 2026, lire [ETAT_ACTUEL.md](01-demarrer/ETAT_ACTUEL.md). Le code et les vecteurs d'un SHA ciblé restent la source d'exécution ; toute modification critique de protocole exige un accord spécifique. Voir [DECISIONS_CLARIFIEES.md](05-pilotage/DECISIONS_CLARIFIEES.md).
+
 **Version de travail :** 0.1-expérimental. **Branche :** `feature/emission-schedule-v0`. **Usage :** expériences locales/testnet, aucun fonds réel. Les règles sont exécutables et couvertes par CI, mais le protocole n’a pas reçu de revue indépendante et n’est pas prêt pour un mainnet.
 
 Ce document décrit l’implémentation actuelle. Les choix actifs sont dans [TESTNET_DECISIONS.md](TESTNET_DECISIONS.md); `DECISION_REGISTER.md` conserve les hypothèses historiques et questions de recherche. Le développement expérimental continue sans revue externe immédiate, sans garantie de sécurité.

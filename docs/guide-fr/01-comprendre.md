@@ -44,6 +44,6 @@ Une inclusion peut disparaître lors d’une réorganisation. Le statut `Confirm
 
 ## Ce qui est disponible aujourd’hui
 
-Les nœuds locaux, le minage de test, le portefeuille CLI chiffré, les transactions natives ML-DSA-65, le stockage persistant, les réorganisations, les preuves Merkle et la vérification légère SPV sont présents. La découverte des pairs est limitée et part d’adresses connues. Les interfaces graphiques, l’explorateur, le site de présentation, les fonctions de vente et le mobile sont reportés.
+Les nœuds locaux, le minage de test, le portefeuille CLI chiffré, les transactions natives ML-DSA-65, le stockage persistant, les réorganisations, les preuves Merkle et la vérification légère SPV sont présents. La découverte des pairs est limitée et part d’adresses connues. **Depuis cette release datée, des prototypes de consultation desktop et d'explorateur en lecture seule ont été développés.** Cela ne constitue ni un wallet graphique complet ni un système de minage graphique ; le site public complet, les fonctions de vente et le mobile ne sont pas livrés. Voir [état du projet](../01-demarrer/ETAT_ACTUEL.md).
 
-La récupération par gardiens, les DID dans les comptes, la gouvernance de trésorerie et le recyclage des soldes inactifs ne font pas partie des règles actives. La [dernière page](07-technologie-et-suite.md) distingue les propositions et les fonctions déjà livrées.
+La récupération par gardiens, les DID dans les comptes, la gouvernance de trésorerie et le recyclage des soldes inactifs ne font pas partie des règles actives. Le [guide actuel du fonctionnement](../01-demarrer/COMPRENDRE_ARETOVUS.md) et les [décisions clarifiées](../05-pilotage/DECISIONS_CLARIFIEES.md) distinguent les propositions et les fonctions déjà livrées.

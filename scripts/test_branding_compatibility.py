@@ -37,7 +37,7 @@ def audit_full_tracked_tree() -> None:
         # Only the canonical history and three dated snapshots are exempt.
         # New documents in historical directories still pass the audit.
         historical = path in {
-            "docs/PROJECT_HISTORY.md",
+            "docs/05-pilotage/PROJECT_HISTORY.md",
             "docs/consolidation/INTEGRATION_PREFLIGHT_2026-10-29.md",
             "docs/consolidation/STATE_2026-10-29.md",
             "docs/consolidation/state-2026-10-29.json",

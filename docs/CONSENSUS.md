@@ -1,5 +1,7 @@
 # Consensus du testnet ARETOVUS
 
+> **Document technique daté :** les paramètres ci-dessous décrivent un profil expérimental, historiquement documenté le 27 octobre 2026. Pour le réseau natif sur `main`, lire [l'état actuel](01-demarrer/ETAT_ACTUEL.md) et vérifier le code du **SHA précis**. Toute divergence constatée exige une réconciliation explicite, pas une modification silencieuse du consensus. Voir [décisions clarifiées](05-pilotage/DECISIONS_CLARIFIEES.md).
+
 État du 27 octobre 2026, branche `feature/emission-schedule-v0`. Le code reste expérimental et non audité par un humain indépendant.
 
 | Élément | Règle exécutée |

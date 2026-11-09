@@ -1,14 +1,16 @@
-# ARETOVUS — Documentation du projet (mise à jour le 5 novembre 2026)
+# ARETOVUS — Dossier de planification (historique et propositions)
+
+> **Commencer ailleurs si vous découvrez le projet :** [documentation générale](../README.md), [état actuel du testnet](../01-demarrer/ETAT_ACTUEL.md), [décisions clarifiées](../05-pilotage/DECISIONS_CLARIFIEES.md), [licences](../02-participer/LICENCES_ET_DROITS.md). Ce dossier **ne crée aucune règle de consensus** et contient des documents datés. La feuille opérationnelle V2 est [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) ; l'issue [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) conserve les précédents jalons.
 
 **Statut : dossier de planification.** Les propositions anciennes et les règles du réseau natif actuel doivent être distinguées par leur date et leur commit. Cette page ne modifie aucune règle de consensus.
 
-Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) et [la feuille de route vivante](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) présentent l'état actuel. Le réseau natif ARETOVUS est intégré à `main` depuis le 1er novembre 2026. Les résultats de CI historiques sur une ancienne branche ne prouvent pas le comportement du commit courant.
+Le [README public de `main`](https://github.com/antoineforterax-cmd/ARETOVUS) et [le suivi V2 actif](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) présentent l'état actuel. Le réseau natif ARETOVUS est intégré à `main` depuis le 1er novembre 2026. Les résultats de CI historiques sur une ancienne branche ne prouvent pas le comportement du commit courant.
 
 ## Ordre de lecture
 1. [CAHIER_DES_CHARGES.md](CAHIER_DES_CHARGES.md) — finalité, exigences, limites.
 2. [DECISIONS.md](DECISIONS.md) — décisions historiques, profil implémenté, propositions.
 3. [ARCHITECTURE_CIBLE.md](ARCHITECTURE_CIBLE.md) — composants, dépendances, options de confidentialité.
-4. [ROADMAP.md](ROADMAP.md) — séquence, critères de sortie, blocages.
+4. [Feuille V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) — travaux en cours et critères de sortie ; [ancienne feuille Git](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/planning/ROADMAP.md) pour l'historique.
 5. [IMPLEMENTATION_POLICY.md](IMPLEMENTATION_POLICY.md) — méthode de modification contrôlée.
 
 ## Hiérarchie documentaire

@@ -33,12 +33,12 @@ def main() -> int:
         (ROOT / "docs" / "PROTOCOL.md", "docs/PROTOCOL.md"),
     ]
     for name in ("TWO_PC_TEST.md", "INTEGRATION_TWO_PC.md"):
-        files.append((ROOT / "docs" / name, f"docs/{name}"))
+        files.append((ROOT / "docs" / "04-exploiter" / name, f"docs/{name}"))
     for name in ("LICENSE", "LICENSE-MIT", "LICENSE-APACHE", "PROVENANCE.md", "SECURITY.md"):
         files.append((ROOT / name, name))
     for name in ("testnet_endurance.py", "testnet_smoke.py", "testnet_soak.py", "two_pc_preflight.ps1", "lan_pair.py"):
         files.append((ROOT / "scripts" / name, f"scripts/{name}"))
-    files.append((ROOT / "docs" / "ENDURANCE_RUN.md", "docs/ENDURANCE_RUN.md"))
+    files.append((ROOT / "docs" / "04-exploiter" / "ENDURANCE_RUN.md", "docs/ENDURANCE_RUN.md"))
     for source, _ in files:
         if not source.is_file():
             raise FileNotFoundError(source)

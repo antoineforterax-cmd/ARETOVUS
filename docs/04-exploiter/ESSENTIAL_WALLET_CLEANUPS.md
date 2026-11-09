@@ -43,9 +43,7 @@ des snapshots, du swap ou du disque. Une revue indépendante reste requise.
 
 ## Suivi global
 
-Le [tableau de finalisation](FINALIZATION_CHECKLIST.md) et la
-[roadmap](planning/ROADMAP.md) différencient les fonctions sur PR de celles
-fusionnées. Ce lot ne remplace pas la correction des risques P0 réseau,
+Pour l'état actuel, consulter la [feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) et les [preuves antérieures #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142), sans traiter une PR encore ouverte comme fusionnée. Ce lot ne remplace pas la correction des risques P0 réseau,
 les essais de grande échelle, une campagne de 72 h, les essais physiques
 ni un audit humain. Les nouvelles issues restent ouvertes jusqu'à
 l'intégration effectivement décidée ; une CI verte n'est pas une fusion.

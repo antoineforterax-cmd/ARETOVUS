@@ -1,6 +1,6 @@
 # Rapport d’essais du testnet ARETOVUS
 
-> **Note d'actualisation du 2 novembre 2026 :** les preuves du 29 octobre ci-dessous sont conservées pour la traçabilité, mais leurs descriptions de PR non fusionnées sont **périmées** après la migration native. Consulter la [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) et les runs des PR natives : [C1 #165](https://github.com/antoineforterax-cmd/ARETOVUS/pull/165), [C2 #166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166), [C3 #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) ([preuve TCP 100 001 blocs](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41466739781)), et [E2 #168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168). **Aucun audit indépendant ni autorisation mainnet** ; E3 reste [NO-GO](E3_PRELIMINARY_NO_GO_2026-11-02.md).
+> **Note d'actualisation du 2 novembre 2026 :** les preuves du 29 octobre ci-dessous sont conservées pour la traçabilité, mais leurs descriptions de PR non fusionnées sont **périmées** après la migration native. Consulter la [feuille de route #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) et les runs des PR natives : [C1 #165](https://github.com/antoineforterax-cmd/ARETOVUS/pull/165), [C2 #166](https://github.com/antoineforterax-cmd/ARETOVUS/pull/166), [C3 #167](https://github.com/antoineforterax-cmd/ARETOVUS/pull/167) ([preuve TCP 100 001 blocs](https://github.com/antoineforterax-cmd/ARETOVUS/actions/runs/41466739781)), et [E2 #168](https://github.com/antoineforterax-cmd/ARETOVUS/pull/168). **Aucun audit indépendant ni autorisation mainnet** ; E3 reste [NO-GO](07-rapports/E3_PRELIMINARY_NO_GO_2026-11-02.md).
 
 ---
 
@@ -100,12 +100,12 @@ Le contrôle local `cargo fmt --all -- --check` a réussi avec Rust 1.99.1 sous 
 ## Ce que ces essais ne valident pas
 
 - Une saturation réelle du disque, une panne électrique, la durabilité après redémarrage matériel, ou une restauration interversion.
-- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. La [contre-revue technique](AI_COUNTER_REVIEW.md) a identifié des risques de temps futurs, de saturation des workers et de limite à 100 000 blocs; les correctifs partiels doivent encore être éprouvés à grande échelle. L’essai local de 490,2 secondes ne couvre pas ces cas.
+- Des essais sur des pairs hostiles, connexions lentes à grande échelle, partitions répétées ou un réseau multi-hôtes public pendant plusieurs jours. La [contre-revue technique](06-securite/AI_COUNTER_REVIEW.md) a identifié des risques de temps futurs, de saturation des workers et de limite à 100 000 blocs; les correctifs partiels doivent encore être éprouvés à grande échelle. L’essai local de 490,2 secondes ne couvre pas ces cas.
 - La résistance à une attaque d’éclipse contre le client SPV.
 - Une revue indépendante du consensus, de la cryptographie, du portefeuille ou du réseau. Aucun reviewer n’est encore désigné.
 - Une sécurité adaptée aux fonds réels. Les paramètres PoW sont faibles. Les clés nouvelles du wallet CLI sont chiffrées par défaut, mais son stockage, son UX et ses sauvegardes n’ont pas subi de revue indépendante.
 
-Le plan et les portes restantes sont dans [ROADMAP_EXECUTION.md](ROADMAP_EXECUTION.md). Le dossier de revue est dans [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md).
+L'[état et les limites actuels](01-demarrer/ETAT_ACTUEL.md) ainsi que la [feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) décrivent les portes restantes ; l'ancienne feuille de route se retrouve dans l'[historique Git du 9 novembre](https://github.com/antoineforterax-cmd/ARETOVUS/blob/caa94228b2fb769e3a5ea479ea5fd07485744489/docs/ROADMAP_EXECUTION.md). Le dossier de revue est dans [INDEPENDENT_REVIEW.md](06-securite/INDEPENDENT_REVIEW.md).
 
 ## Dépôt public et scan de l’historique — 27 octobre 2026
 

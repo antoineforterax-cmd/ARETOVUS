@@ -1,8 +1,14 @@
-# Contribuer à ARETOVUS
+# Contribuer à ARETOVUS\n\n**Nouveau sur le projet ?** Suivez le [parcours de première contribution avec ou sans IA](docs/02-participer/CONTRIBUER_AVEC_IA.md), puis l'[état actuel et les limites](docs/01-demarrer/ETAT_ACTUEL.md). Pour la réutilisation, les forks et l'attribution, voir [licences et droits](docs/02-participer/LICENCES_ET_DROITS.md). Les documents anciens sont indexés dans [les archives](docs/90-archives/ARCHIVES_ET_RAPPORTS.md).
 
 Pour tout développement assisté par IA, lire d'abord [AGENTS.md](AGENTS.md) : ordre de travail, cartographie des PR, tests de sécurité adversariaux et règles avant fusion. Les décisions de protocole restent sous le contrôle du responsable du projet.
 
-Le testnet expérimental est désormais intégré à `main`. Les branches historiques et les PR anciennes ne doivent pas être considérées comme la référence courante ; vérifier le SHA de `main` et ses contrôles GitHub Actions avant de commencer. Lire [ARCHITECTURE.md](ARCHITECTURE.md), [PROVENANCE.md](PROVENANCE.md), les [règles de consensus](docs/CONSENSUS.md) et les [portes de validation](docs/POST_MERGE_VALIDATION_GATES_2026-10-31.md).
+Le testnet expérimental est désormais intégré à `main`. Les branches historiques et les PR anciennes ne doivent pas être considérées comme la référence courante ; vérifier le SHA de `main` et ses contrôles GitHub Actions avant de commencer. Lire [ARCHITECTURE.md](ARCHITECTURE.md), [PROVENANCE.md](PROVENANCE.md), les [règles de consensus](docs/CONSENSUS.md) et les [portes de validation](docs/07-rapports/POST_MERGE_VALIDATION_GATES_2026-10-31.md).
+
+## Si vous débutez (avec ou sans IA)
+
+Commencez par la [carte de documentation](docs/README.md) puis le [guide français](docs/guide-fr/README.md) ; ce dernier décrit une ancienne release et doit être confronté au SHA que vous testez. Vous pouvez apporter une correction de documentation, un test de non-régression ou une amélioration isolée sans maîtriser tout le consensus.
+
+Pour une contribution assistée par IA, **expliquez ce que l'outil a proposé, ce que vous avez vous-même vérifié et ce qui reste non testé**. Ne présentez jamais une relecture d'IA comme un audit humain indépendant. Préférez une petite PR reproductible à une refonte massive non relue. Les changements de consensus, de cryptographie, de garde des clés ou d'économie nécessitent une décision et une revue spécifiques.
 
 ## Compiler et vérifier
 
