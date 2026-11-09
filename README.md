@@ -1,6 +1,6 @@
 # ARETOVUS — laboratoire blockchain open source
 
-**[Commencer ici](docs/README.md) · [Comprendre](docs/COMPRENDRE_ARETOVUS.md) · [Installer](docs/guide-fr/03-installation.md) · [Contribuer](docs/CONTRIBUER_AVEC_IA.md) · [Sécurité](SECURITY.md) · [Roadmap](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)**
+**[Commencer ici](docs/README.md) · [Comprendre](docs/01-demarrer/COMPRENDRE_ARETOVUS.md) · [Installer](docs/guide-fr/03-installation.md) · [Contribuer](docs/02-participer/CONTRIBUER_AVEC_IA.md) · [Sécurité](SECURITY.md) · [Roadmap](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)**
 
 <img src="assets/aretovus-logo.svg" alt="Logo ARETOVUS" width="116" align="right">
 
