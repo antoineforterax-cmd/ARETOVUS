@@ -1,6 +1,6 @@
 # Revue technique initiale — ARETOVUS
 
-> Archive : décrit l’ancien prototype v0.0.1 au moment de sa rédaction. Pour les formats actuels, voir [CONSENSUS.md](CONSENSUS.md) et [PROTOCOL.md](PROTOCOL.md); pour les preuves, voir [TESTNET_VALIDATION_REPORT.md](TESTNET_VALIDATION_REPORT.md).
+> Archive : décrit l’ancien prototype v0.0.1 au moment de sa rédaction. Pour les formats actuels, voir [CONSENSUS.md](../CONSENSUS.md) et [PROTOCOL.md](../PROTOCOL.md); pour les preuves, voir [TESTNET_VALIDATION_REPORT.md](../TESTNET_VALIDATION_REPORT.md).
 
 **Date :** 2026-10-25  
 **Périmètre :** lecture du code source et résultat de la CI GitHub du prototype expérimental.  
