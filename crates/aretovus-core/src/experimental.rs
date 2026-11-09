@@ -1,6 +1,8 @@
-//! Transaction **expérimentale et jetable**.
+//! Transaction **historique de phase 0, non utilisée comme profil natif du testnet**.
 //!
-//! Cette structure ne préjuge **pas** de la décision TX-01 (UTXO ou comptes) : elle a la forme
+//! Les propositions de conception ci-dessous décrivent exclusivement cette structure
+//! d'expérimentation, et non les règles exécutées par le consensus par comptes.
+//! Cette structure ne préjuge **pas** de l'ancien choix TX-01 (UTXO ou comptes) : elle a la forme
 //! « entrées / sorties » uniquement parce qu'il faut une structure concrète pour tester la
 //! sérialisation. Le prototype de comparaison UTXO / comptes (phase 0b) reste à écrire, et ce
 //! module pourra être supprimé ou remplacé après lui.

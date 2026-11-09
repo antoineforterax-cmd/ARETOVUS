@@ -1,6 +1,6 @@
-//! Identifiants des environnements (hypothèse TX-09, non validée).
+//! Identifiants de réseau utilisés par les formats expérimentaux d'ARETOVUS.
 //!
-//! Chaque transaction et chaque bloc porte son réseau : une donnée de test ne peut pas être
+//! Les transactions et blocs portent leur identifiant de réseau : une donnée de test ne doit pas être
 //! prise pour une donnée d'un autre environnement. `Mainnet` est réservé : aucun réseau de
 //! production n'existe, et rien ici n'autorise l'usage de vrais fonds.
 

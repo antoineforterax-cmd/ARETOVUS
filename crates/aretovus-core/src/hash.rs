@@ -1,9 +1,10 @@
-//! Hachage SHA-256 avec séparation de domaines (hypothèse TX-03, non validée).
+//! Hachage SHA-256 et séparation de domaines du testnet expérimental natif.
 //!
-//! Construction expérimentale :
+//! Construction :
 //! `H(domaine, données) = SHA-256( longueur_du_tag (1 octet) || tag || données )`.
-//! Le SHA-256 vient de la bibliothèque `sha2` (RustCrypto) : aucune primitive maison.
-//! Le choix SHA-256 simple / double / autre reste ouvert dans le registre.
+//! SHA-256 provient de la bibliothèque `sha2` (RustCrypto), sans primitive maison.
+//! Le testnet exécute ces règles ; une évolution pour un futur réseau nécessiterait
+//! une décision et des tests incompatibles, et ne saurait être implicite.
 
 use std::fmt;
 

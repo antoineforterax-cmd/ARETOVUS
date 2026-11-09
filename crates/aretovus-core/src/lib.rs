@@ -1,15 +1,18 @@
-//! `aretovus-core` : briques communes du **prototype expérimental** ARETOVUS.
+//! `aretovus-core` : primitives communes du testnet expérimental ARETOVUS.
 //!
-//! Ce crate contient :
-//! - [`amount`] : montants entiers (jamais de flottants) ;
-//! - [`codec`] : sérialisation canonique déterministe ;
-//! - [`hash`] : hachage SHA-256 avec séparation de domaines ;
-//! - [`network`] : identifiants des environnements (regtest, testnet, mainnet) ;
-//! - [`experimental`] : transaction jetable, qui ne préjuge d'aucune décision du registre.
+//! Ce crate contient les types du **testnet natif** :
+//! - [`accounts`] : transactions par comptes et versions d'autorisation ;
+//! - [`state`] : soldes, nonces et transitions de comptes ;
+//! - [`signature`] : vérification ML-DSA-65 v3 (Testnet) et profils anciens (Regtest) ;
+//! - [`amount`] : montants entiers et borne de 500 millions ;
+//! - [`codec`], [`hash`], [`merkle`] : formats, empreintes et engagements canoniques ;
+//! - [`network`] : identifiants d'environnements ;
+//! - [`experimental`] : anciens types de phase 0, **pas** le profil Testnet natif.
 //!
-//! **Statut : expérimental.** Ce code n'est pas un protocole validé, n'est pas audité et ne doit
-//! jamais être utilisé avec de vrais fonds. Les choix qu'il contient sont des hypothèses listées
-//! dans `docs/DECISION_REGISTER.md` (annexe B).
+//! **Statut : prototype non audité.** Les paramètres exécutés du testnet ne sont
+//! plus de simples propositions de phase 0. Ils ne constituent pas pour autant
+//! un protocole prêt à recevoir des fonds réels ; consulter les décisions
+//! testnet et le code de consensus au SHA précis.
 
 pub mod accounts;
 pub mod amount;

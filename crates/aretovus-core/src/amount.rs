@@ -1,27 +1,29 @@
 //! Montants monétaires : entiers uniquement.
 //!
-//! Hypothèses du prototype (non validées, voir `docs/DECISION_REGISTER.md`) :
-//! - unité minimale : 10^-8 ARETOVUS, soit 8 décimales (TX-06) ;
-//! - plafond de sécurité du type : 500 000 000 ARETOVUS (plafond de garde-fou du prototype,
-//!   pas une règle d'émission).
+//! Paramètres exécutés par le testnet expérimental :
+//! - unité minimale : 10^-8 ARETOVUS, soit 8 décimales ;
+//! - borne de 500 000 000 ARETOVUS. Le consensus applique aussi un plafond brut
+//!   d'émission via `aretovus-consensus/src/reward.rs`.
+//!
+//! Ce n'est pas une validation de sécurité pour un futur mainnet.
 
 use std::fmt;
 
 use crate::codec::{CanonicalDecode, CanonicalEncode, DecodeError, Decoder, EncodeError, Encoder};
 
-/// Nombre de décimales (hypothèse TX-06).
+/// Nombre de décimales du testnet expérimental.
 pub const DECIMALS: usize = 8;
 /// Nombre d'unités minimales dans 1 ARETOVUS (10^8).
 pub const UNITS_PER_COIN: u64 = 100_000_000;
-/// Plafond de garde-fou en ARETOVUS (proposition de travail).
+/// Borne de montants en ARETOVUS du testnet expérimental.
 pub const MAX_COINS: u64 = 500_000_000;
-/// Plafond hypothétique en unités minimales.
+/// Borne en unités minimales, utilisée aussi par le calendrier d'émission testnet.
 pub const MAX_UNITS: u64 = MAX_COINS * UNITS_PER_COIN;
 
 /// Erreur d'arithmétique sur les montants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AmountError {
-    /// Le montant dépasse le plafond hypothétique.
+    /// Le montant dépasse la borne du profil expérimental.
     AboveCap,
     /// Dépassement de capacité lors d'une addition.
     Overflow,

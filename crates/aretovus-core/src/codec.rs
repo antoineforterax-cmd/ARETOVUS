@@ -1,4 +1,6 @@
-//! Sérialisation canonique expérimentale (hypothèse TX-02, non validée).
+//! Sérialisation canonique du prototype ARETOVUS, utilisée par le testnet natif.
+//!
+//! Les formats sont implémentés et testés, mais ne sont pas audités pour des fonds réels.
 //!
 //! Règles de ce prototype :
 //! - entiers à largeur fixe, **big-endian** (aucun encodage à longueur variable, donc aucune
