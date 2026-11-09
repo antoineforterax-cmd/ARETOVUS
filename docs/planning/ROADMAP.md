@@ -1,5 +1,7 @@
 # ARETOVUS — Feuille de route technique et critères de validation
 
+> **PLAN D'ÉTUDE HISTORIQUE :** ne pas utiliser cette séquence comme la feuille de route opérationnelle actuelle. Pour V2 consulter [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), pour les jalons précédents [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Les propositions de cette page ne changent pas le consensus. Voir [l'index](../README.md).
+
 Les études peuvent avancer en parallèle. En revanche, une fonction sensible n'est considérée comme terminée qu'après les essais et la revue prévus. Les résultats ci-dessous sont rattachés à leurs branches : les PR ouvertes ne sont pas des fonctionnalités fusionnées.
 
 | Phase | Travaux | Porte de sortie |
