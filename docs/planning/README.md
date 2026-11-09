@@ -1,6 +1,6 @@
 # ARETOVUS — Dossier de planification (historique et propositions)
 
-> **Commencer ailleurs si vous découvrez le projet :** [documentation générale](../README.md), [état actuel du testnet](../ETAT_ACTUEL.md), [décisions clarifiées](../DECISIONS_CLARIFIEES.md), [licences](../LICENCES_ET_DROITS.md). Ce dossier **ne crée aucune règle de consensus** et contient des documents datés. La feuille opérationnelle V2 est [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) ; l'issue [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) conserve les précédents jalons.
+> **Commencer ailleurs si vous découvrez le projet :** [documentation générale](../README.md), [état actuel du testnet](../01-demarrer/ETAT_ACTUEL.md), [décisions clarifiées](../05-pilotage/DECISIONS_CLARIFIEES.md), [licences](../02-participer/LICENCES_ET_DROITS.md). Ce dossier **ne crée aucune règle de consensus** et contient des documents datés. La feuille opérationnelle V2 est [#178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) ; l'issue [#142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) conserve les précédents jalons.
 
 **Statut : dossier de planification.** Les propositions anciennes et les règles du réseau natif actuel doivent être distinguées par leur date et leur commit. Cette page ne modifie aucune règle de consensus.
 
