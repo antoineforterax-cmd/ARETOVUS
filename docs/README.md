@@ -37,6 +37,6 @@ Ce sommaire est la porte d'entrée de la documentation. **Il n'existe pas six fe
 
 ## Et les dizaines d'autres fichiers ?
 
-Ils sont rangés **par sujet et par statut** dans [ARCHIVES_ET_RAPPORTS.md](ARCHIVES_ET_RAPPORTS.md). Les preuves historiques et les anciens liens ne sont volontairement **pas supprimés** par simple nettoyage visuel. Pour les questions de gouvernance et de nouvelles orientations, consulter [le dossier de planification](planning/README.md) en distinguant bien propositions et règles existantes.
+Ils sont rangés **par sujet et par statut** dans [ARCHIVES_ET_RAPPORTS.md](ARCHIVES_ET_RAPPORTS.md). Les preuves historiques et les anciens liens ne sont volontairement **pas supprimés** par simple nettoyage visuel. Pour éviter de recréer le désordre : [conventions d'organisation documentaire](CONVENTIONS_DOCUMENTAIRES.md). Pour les questions de gouvernance et de nouvelles orientations, consulter [le dossier de planification](planning/README.md) en distinguant bien propositions et règles existantes.
 
 **Premier essai conseillé :** [Comprendre ARETOVUS](COMPRENDRE_ARETOVUS.md) → [Installer un ancien testnet local](guide-fr/03-installation.md) → [Miner un bloc de test](guide-fr/04-reseau-et-minage.md) → [Comprendre comment contribuer](CONTRIBUER_AVEC_IA.md).
