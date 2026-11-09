@@ -15,10 +15,10 @@ ARETOVUS explore comment construire, comprendre, vérifier et améliorer collect
 | **Qu'est-ce qu'ARETOVUS et comment fonctionne une blockchain ?** | [Explication complète pour débutants](docs/01-demarrer/COMPRENDRE_ARETOVUS.md) |
 | **Où en est réellement le projet ?** | [État actuel : livré, prototype, manquant](docs/01-demarrer/ETAT_ACTUEL.md) |
 | **Comment tester un nœud, un wallet et un mineur ?** | [Installation et testnet local](docs/guide-fr/README.md) |
-| **Je veux contribuer, même sans savoir coder** | [Guide de contribution avec ou sans IA](docs/05-contribuer/CONTRIBUER_AVEC_IA.md) |
+| **Je veux contribuer, même sans savoir coder** | [Guide de contribution avec ou sans IA](docs/02-participer/CONTRIBUER_AVEC_IA.md) |
 | **Je veux comprendre l'architecture Rust** | [Architecture des composants](ARCHITECTURE.md) |
-| **Quelle licence ? Puis-je créer un fork ?** | [Droits, licences MIT / Apache-2.0](docs/05-contribuer/LICENCES_ET_DROITS.md) |
-| **Je vois des anciennes décisions contradictoires** | [Table des décisions clarifiées](docs/03-protocole/DECISIONS_CLARIFIEES.md) |
+| **Quelle licence ? Puis-je créer un fork ?** | [Droits, licences MIT / Apache-2.0](docs/02-participer/LICENCES_ET_DROITS.md) |
+| **Je vois des anciennes décisions contradictoires** | [Table des décisions clarifiées](docs/05-pilotage/DECISIONS_CLARIFIEES.md) |
 | **Comment trouver un ancien rapport ou une preuve ?** | [Archives et rapports](docs/90-archives/ARCHIVES_ET_RAPPORTS.md) |
 
 **[Ouvrir le sommaire de toute la documentation](docs/README.md)**
@@ -65,6 +65,6 @@ La [feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/is
 
 ## Licence, provenance et histoire
 
-Le dépôt annonce **MIT OR Apache-2.0**, sous réserve des droits applicables aux contributions : [textes](LICENSE), [explications](docs/05-contribuer/LICENCES_ET_DROITS.md), [provenance du code assisté par IA](PROVENANCE.md). Les licences permissives autorisent les forks ; nous souhaitons surtout encourager les contributions vers le dépôt commun.
+Le dépôt annonce **MIT OR Apache-2.0**, sous réserve des droits applicables aux contributions : [textes](LICENSE), [explications](docs/02-participer/LICENCES_ET_DROITS.md), [provenance du code assisté par IA](PROVENANCE.md). Les licences permissives autorisent les forks ; nous souhaitons surtout encourager les contributions vers le dépôt commun.
 
 Les anciens documents et résultats ne sont pas effacés : [catalogue des archives](docs/90-archives/ARCHIVES_ET_RAPPORTS.md). Le projet ne prétend pas avoir déjà prouvé la sécurité d'une cryptomonnaie utilisable avec de l'argent réel.
