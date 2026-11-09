@@ -1,6 +1,6 @@
 # D2 — faisabilité théorique des volumes ARETOVUS (aucun essai physique implicite)
 
-Cette étude du 2 novembre 2026 complète [le diagnostic des snapshots](validation/P2P_STORAGE_COST_MODEL_2026-10-31.md). **Aucun bloc parmi les volumes 1 M à 500 M n'est créé, propagé ou stocké par le script : les résultats ci-dessous sont calculés à partir de la politique de pagination actuelle.**
+Cette étude du 2 novembre 2026 complète [le diagnostic des snapshots](../validation/P2P_STORAGE_COST_MODEL_2026-10-31.md). **Aucun bloc parmi les volumes 1 M à 500 M n'est créé, propagé ou stocké par le script : les résultats ci-dessous sont calculés à partir de la politique de pagination actuelle.**
 
 ## Modèle vérifiable
 
