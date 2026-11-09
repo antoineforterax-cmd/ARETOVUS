@@ -23,7 +23,9 @@ Ce parcours décrit les binaires de la **release expérimentale du 27 octobre 20
 | Lancer des nœuds et miner sur un PC | [4. Premier réseau local](04-reseau-et-minage.md) |
 | Envoyer un paiement et sauvegarder les clés | [5. Portefeuille et paiements](05-portefeuille.md) |
 | Vérifier, sauvegarder, restaurer et dépanner | [6. Exploitation](06-exploitation.md) |
-| Comprendre les choix techniques et la suite | [7. Technologie et limites](07-technologie-et-suite.md) |\n| Voir une ancienne interface HTML locale | [8. Consultation locale expérimentale](08-interface-locale.md) |\n| Comprendre l'état actuel et ses limites | [État actuel (9 novembre 2026)](../ETAT_ACTUEL.md) |\n| Contribuer même sans coder | [Contribuer avec ou sans IA](../CONTRIBUER_AVEC_IA.md) |\n| Comprendre les licences et les forks | [Licences et droits](../LICENCES_ET_DROITS.md) |
+| Comprendre l'état actuel et ses limites | [État actuel (9 novembre 2026)](../ETAT_ACTUEL.md) |
+| Contribuer même sans coder | [Contribuer avec ou sans IA](../CONTRIBUER_AVEC_IA.md) |
+| Comprendre les licences et les forks | [Licences et droits](../LICENCES_ET_DROITS.md) |
 
 Les exemples principaux utilisent PowerShell sous Windows. Ils fonctionnent avec le contenu d’une archive extraite : `bin/aretovus-node.exe` et `bin/aretovus-wallet.exe`. Pour Linux et macOS, utiliser les mêmes arguments, des chemins avec `/` et les binaires sans `.exe`.
 
