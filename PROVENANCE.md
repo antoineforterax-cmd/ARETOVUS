@@ -15,7 +15,7 @@ La mention `ARETOVUS contributors` utilisée dans les licences désigne le colle
 
 - GitHub Actions exécute formatage, Clippy, compilation, tests Rust, smoke multi-nœuds, empaquetage et campagnes bornées de fuzzing/soak. Les commits et liens sont dans [TESTNET_VALIDATION_REPORT.md](docs/TESTNET_VALIDATION_REPORT.md).
 - Le porteur a fourni des sorties Windows de création de wallet, minage, lecture de solde et synchronisation de trois blocs. Il a aussi rapporté des essais macOS/Linux; leur convergence multi-hôtes n’est pas démontrée par ces messages.
-- Une contre-revue par un autre agent IA a signalé des risques consignés dans [AI_COUNTER_REVIEW.md](docs/04-securite/AI_COUNTER_REVIEW.md). Une nouvelle tentative du 27 octobre n’a produit aucun rapport à cause d’une limite d’usage.
+- Une contre-revue par un autre agent IA a signalé des risques consignés dans [AI_COUNTER_REVIEW.md](docs/06-securite/AI_COUNTER_REVIEW.md). Une nouvelle tentative du 27 octobre n’a produit aucun rapport à cause d’une limite d’usage.
 - Le scan Gitleaks de l’historique disponible du 27 octobre n’a signalé aucun secret; sa portée exacte est consignée dans le rapport.
 
 Le porteur a personnellement examiné et corrigé du code, notamment en Python, en complément des essais manuels et automatisés. Ces vérifications internes comptent dans le développement, sans constituer une revue extérieure indépendante.
