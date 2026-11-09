@@ -1,6 +1,6 @@
 # ARETOVUS — Instructions de développement et d'intégration pour Codex
 
-_Mise à jour opérationnelle : 2 novembre 2026 ; contexte historique du 29 octobre conservé dans Git. Consulter [AGENTS.md](../../AGENTS.md) sur le **même SHA** que le code et [la feuille de route active #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Le dépôt est un réseau expérimental natif ARETOVUS, non le prototype des branches initiales._
+_Mise à jour opérationnelle : 2 novembre 2026 ; contexte historique du 29 octobre conservé dans Git. Consulter [AGENTS.md](../../AGENTS.md) sur le **même SHA** que le code et [la feuille de route V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) et [l'historique #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142). Le dépôt est un réseau expérimental natif ARETOVUS, non le prototype des branches initiales._
 
 ## 1. Mission et autorité
 
@@ -73,7 +73,7 @@ Les relecteurs rendent leurs résultats indépendamment. Les corrections vont su
 5. **E3 — maintenir NO-GO tant que les critères de testnet public sont ouverts**. La préparation d'une checklist n'est pas une décision d'ouverture.
 6. **E1 — revue par une personne extérieure au projet en étape ultime** selon la priorité demandée par le responsable. La repousser n'autorise aucune déclaration de sécurité pour des fonds réels.
 
-Chaque fusion demeure conditionnée aux autorisations, aux contrôles au SHA exact et à une contre-revue de sécurité. La liste et les résultats à jour se trouvent dans l'issue #142, pas dans l'ancien tableau de PR d'octobre.
+Chaque fusion demeure conditionnée aux autorisations, aux contrôles au SHA exact et à une contre-revue de sécurité. Les travaux V2 sont suivis dans l'issue #178 et les jalons antérieurs dans l'issue #142 ; vérifier chaque preuve par rapport à son SHA.
 
 ## 7. Modèle de compte rendu obligatoire
 
