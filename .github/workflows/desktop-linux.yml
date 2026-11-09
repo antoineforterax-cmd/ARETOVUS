@@ -4,12 +4,24 @@ on:
   pull_request:
     paths:
       - "apps/desktop/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "LICENSE*"
+      - "PROVENANCE.md"
+      - "SECURITY.md"
       - "rust-toolchain.toml"
       - ".github/workflows/desktop-linux.yml"
   push:
     branches: [main]
     paths:
       - "apps/desktop/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "LICENSE*"
+      - "PROVENANCE.md"
+      - "SECURITY.md"
       - "rust-toolchain.toml"
       - ".github/workflows/desktop-linux.yml"
 
@@ -28,11 +40,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install Tauri and virtual-display dependencies
+      - name: Install Tauri, virtual display and accessibility dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
-            libayatana-appindicator3-dev librsvg2-dev xvfb xauth xdotool
+            libayatana-appindicator3-dev librsvg2-dev xvfb xauth xdotool \
+            python3-gi gir1.2-atspi-2.0 at-spi2-core libatk-adaptor dbus-daemon
+      - name: Reject malformed Linux lab archives
+        run: python3 -m unittest discover -s apps/desktop/scripts -p test_portable_linux_lab.py -v
       - name: Test and compile the locked frontend
         working-directory: apps/desktop
         run: |
@@ -43,9 +58,38 @@ jobs:
         run: cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol
       - name: Build the Linux desktop with embedded frontend
         run: cargo build --release --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --features tauri/custom-protocol
-      - name: Verify a visible window from the release desktop process
-        timeout-minutes: 2
+      - name: Build the native node and adjacent read-only companions
         run: >-
-          xvfb-run -a --server-args="-screen 0 1280x800x24"
-          python3 apps/desktop/scripts/test_linux_desktop_window.py
-          apps/desktop/src-tauri/target/release/aretovus-desktop
+          cargo build --release --locked -p aretovus-node
+          --bin aretovus-node --bin aretovus-local-bridge --bin aretovus-explorer
+      - name: Build, verify and safely extract the unsigned Linux lab archive
+        run: |
+          archive="$RUNNER_TEMP/aretovus-desktop-Linux-x86_64-lab-UNSIGNED.tar.gz"
+          sha="$(git rev-parse HEAD)"
+          python3 apps/desktop/scripts/package_linux_lab.py pack \
+            --desktop apps/desktop/src-tauri/target/release/aretovus-desktop \
+            --bridge target/release/aretovus-local-bridge \
+            --explorer target/release/aretovus-explorer \
+            --node target/release/aretovus-node --source-sha "$sha" --output "$archive"
+          python3 apps/desktop/scripts/package_linux_lab.py verify --archive "$archive" \
+            --expected-sha "$sha" --extract-to "$RUNNER_TEMP/ARETOVUS Linux lab"
+      - name: Exercise the extracted Rust node and companions
+        run: |
+          extracted="$RUNNER_TEMP/ARETOVUS Linux lab"
+          python3 apps/desktop/scripts/test_native_integration.py \
+            --node "$extracted/aretovus-node" --bridge "$extracted/aretovus-local-bridge" \
+            --explorer "$extracted/aretovus-explorer"
+      - name: Read a disposable snapshot through the extracted WebKitGTK desktop
+        timeout-minutes: 5
+        run: >-
+          xvfb-run -a --server-args="-screen 0 1280x800x24" dbus-run-session --
+          /usr/bin/python3 apps/desktop/scripts/test_linux_desktop_snapshot.py
+          "$RUNNER_TEMP/ARETOVUS Linux lab"
+      - name: Upload the short-lived unsigned testnet lab archive
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: aretovus-desktop-Linux-x86_64-lab-UNSIGNED
+          path: ${{ runner.temp }}/aretovus-desktop-Linux-x86_64-lab-UNSIGNED.tar.gz
+          if-no-files-found: error
+          retention-days: 3

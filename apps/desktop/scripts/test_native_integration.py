@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Windows CI: real native ARETOVUS node -> read-only bridge, disposable data only."""
+"""Exercise the native ARETOVUS node and read-only companions on disposable data."""
 from __future__ import annotations
 
 import argparse

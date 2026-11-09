@@ -12,9 +12,21 @@ Travail expérimental pour les tickets #181 et #178 ; dépend de **PR #192** et 
 
 Les fichiers de verrouillage npm et Cargo permettent de reproduire le graphe des dépendances. La reproductibilité des binaires et la signature des installateurs restent à démontrer. Les contrôles de compilation et de démarrage de l’hôte sont distincts des essais sur les archives extraites.
 
-### Contrôle de démarrage sous Linux
+### Archive portable de laboratoire sous Linux
 
-Le workflow [desktop-linux](../../.github/workflows/desktop-linux.yml) construit l’hôte Tauri sur Ubuntu 24.04 x86-64 avec le frontend embarqué. Il exécute les tests de l’hôte Rust et cherche sous Xvfb une fenêtre visible du processus lancé. Le contrôle porte sur le démarrage de la fenêtre. La lecture interactive d’un snapshot depuis le WebView, l’archive Linux du desktop et l’essai sur une machine physique restent des jalons séparés.
+Le workflow [desktop-linux](../../.github/workflows/desktop-linux.yml) construit sous Ubuntu 24.04 x86‑64 un `.tar.gz` testnet non signé. Le desktop Tauri embarque le frontend. Le pont local, l’explorateur et le nœud CLI sont placés à côté de lui et compilés depuis la même révision. L’archive inclut un manifeste, les empreintes SHA‑256 et les avis du dépôt. Les empreintes contrôlent l’intégrité des fichiers et la révision déclarée. L’origine du téléchargement se vérifie auprès du job GitHub Actions qui a produit l’archive.
+
+Depuis le dépôt, vérifie l’archive téléchargée avec la révision complète affichée dans ce job et un répertoire neuf sous un parent privé. GitHub Actions peut livrer le `.tar.gz` à l’intérieur d’un ZIP d’artefact.
+
+```sh
+python3 apps/desktop/scripts/package_linux_lab.py verify \
+  --archive /chemin/vers/aretovus-desktop-Linux-x86_64-lab-UNSIGNED.tar.gz \
+  --expected-sha REVISION_GIT_COMPLETE --extract-to "$HOME/aretovus-linux-lab"
+```
+
+Avec WebKitGTK 4.1 et une session graphique disponibles, lance `"$HOME/aretovus-linux-lab/aretovus-desktop"` puis sélectionne un dossier testnet natif créé avec `aretovus-node`. Garde les quatre binaires ensemble dans le répertoire privé et utilise un snapshot jetable. L’archive du laboratoire est disponible trois jours dans le job qui l’a validée.
+
+La CI vérifie le paquet, exécute les compagnons extraits et contrôle l’ouverture d’un snapshot miné sur place dans le WebView GTK, via l’interface React et l’arbre d’accessibilité AT‑SPI sous Xvfb. Le dashboard est en lecture seule. Les essais sur un bureau Linux physique, les autres distributions et la signature du logiciel restent à valider.
 
 ## Sécurité
 
