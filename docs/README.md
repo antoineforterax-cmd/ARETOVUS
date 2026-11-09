@@ -1,70 +1,42 @@
-# Documentation ARETOVUS — commencer ici
+# Documentation ARETOVUS — point d'entrée unique
 
-> **Statut : laboratoire blockchain expérimental.** Aucun mainnet, aucun fonds réel, aucune garantie de sécurité et **aucun audit humain externe indépendant confirmé**. Les essais, revues par IA et CI ne remplacent pas un audit. Les documents datés décrivent le commit ou le prototype qu'ils examinent, pas nécessairement `main` aujourd'hui.
+> **ARETOVUS est un laboratoire blockchain expérimental en Rust. Pas de mainnet, pas de fonds réels, pas de sécurité certifiée.** Aucun audit humain extérieur indépendant approfondi et documenté n'est confirmé. Le projet est largement développé avec l'assistance de l'IA et cherche des contributions humaines.
 
-Cette page est le **point d'entrée documentaire**. L'objectif est de guider les nouveaux lecteurs sans effacer les rapports, preuves ni décisions historiques.
+Ce sommaire est la porte d'entrée de la documentation. **Il n'existe pas six feuilles de route équivalentes** : l'[issue V2 #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) organise le développement courant ; l'[issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) garde le suivi des étapes précédentes. Les anciens rapports restent consultables, mais ils ne remplacent ni le code au SHA exact, ni les décisions du testnet.
 
-## Je veux…
+## Commencer selon son profil
 
-| Mon objectif | Point de départ | Ensuite |
+| Votre besoin | Commencez ici | Pour approfondir |
 | --- | --- | --- |
-| **Découvrir sans programmer** | [Guide français de A à Z](guide-fr/README.md) | [Comprendre ARETOVUS](guide-fr/01-comprendre.md) |
-| **Essayer un réseau de test local** | [Guide du testnet](TESTNET_GUIDE.md) | [Réseau et minage](guide-fr/04-reseau-et-minage.md) |
-| **Comprendre le code** | [Architecture générale](../ARCHITECTURE.md) | [Protocole](PROTOCOL.md), [consensus](CONSENSUS.md) |
-| **Contribuer avec ou sans IA** | [Guide de contribution](../CONTRIBUTING.md) | [Politique de développement](planning/IMPLEMENTATION_POLICY.md), [règles d'agents](../AGENTS.md) |
-| **Examiner la sécurité** | [Politique de signalement](../SECURITY.md) | [Modèle de menaces](THREAT_MODEL.md), [revue indépendante attendue](INDEPENDENT_REVIEW.md) |
-| **Savoir ce qui reste à faire** | [Feuille de route V2 active, issue #178](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178) | [Plan maître antérieur, issue #142](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142) |
-| **Vérifier ce qui a été testé** | [Rapport de validation](TESTNET_VALIDATION_REPORT.md) | [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) et SHA précis |
+| **Je ne connais rien à la blockchain** | [Comprendre ARETOVUS de A à Z](COMPRENDRE_ARETOVUS.md) | [Guide débutant de la release historique](guide-fr/README.md) |
+| **Je veux essayer un nœud ou miner sans fonds réels** | [Installation de la release expérimentale](guide-fr/03-installation.md) | [Réseau local et minage](guide-fr/04-reseau-et-minage.md), [guide technique testnet](TESTNET_GUIDE.md) |
+| **Je veux connaître le véritable état du projet** | **[État actuel et limites](ETAT_ACTUEL.md)** | [Preuves et tests](TESTNET_VALIDATION_REPORT.md), [GitHub Actions](https://github.com/antoineforterax-cmd/ARETOVUS/actions) |
+| **Je suis développeur ou relecteur** | [Architecture](../ARCHITECTURE.md) | [Protocole](PROTOCOL.md), [consensus](CONSENSUS.md), [code Rust](../crates) |
+| **Je veux aider, avec ou sans IA** | [Première contribution](CONTRIBUER_AVEC_IA.md) | [Règles de PR](../CONTRIBUTING.md), [garde-fous](../AGENTS.md) |
+| **Je veux examiner la sécurité** | [Modèle de menaces](THREAT_MODEL.md) | [Revue indépendante attendue](INDEPENDENT_REVIEW.md), [signalement privé](../SECURITY.md) |
+| **Je veux connaître les licences et les droits** | [Licences et droits](LICENCES_ET_DROITS.md) | [Textes officiels](../LICENSE), [provenance](../PROVENANCE.md) |
+| **Je vois une contradiction entre deux documents** | **[Décisions clarifiées](DECISIONS_CLARIFIEES.md)** | [Décisions testnet](TESTNET_DECISIONS.md), [catalogue des archives](ARCHIVES_ET_RAPPORTS.md) |
 
-**Attention aux versions :** le [guide français](guide-fr/README.md) documente notamment une release du **27 octobre 2026**, pas automatiquement la dernière version de `main`. Lisez toujours la date, la branche et le SHA. Ne réutilisez pas d'anciennes données/clés sur le réseau ARETOVUS natif sans suivre la [migration d'identité](PROTOCOL_IDENTITY_MIGRATION.md).
+## Les six repères de la documentation
 
-## Carte thématique
+1. **Découvrir** — [explication de la blockchain](COMPRENDRE_ARETOVUS.md), [guide pas à pas](guide-fr/README.md), [glossaire](COMPRENDRE_ARETOVUS.md#10-petit-glossaire).
+2. **Fonctionnement technique** — [architecture](../ARCHITECTURE.md), [protocole](PROTOCOL.md), [consensus](CONSENSUS.md), [économie du testnet](EMISSION_MODEL.md).
+3. **Installer et utiliser le laboratoire** — [testnet](TESTNET_GUIDE.md), [exploitation](TESTNET_OPERATIONS.md), [desktop expérimental](../apps/desktop/README.md).
+4. **Sécurité et limites** — [état actuel](ETAT_ACTUEL.md), [menaces](THREAT_MODEL.md), [revue externe à réaliser](INDEPENDENT_REVIEW.md), [preuves et résultats](TESTNET_VALIDATION_REPORT.md).
+5. **Participer** — [guide humain–IA](CONTRIBUER_AVEC_IA.md), [contribuer](../CONTRIBUTING.md), [politique d'implémentation](planning/IMPLEMENTATION_POLICY.md), [licences](LICENCES_ET_DROITS.md).
+6. **Suivi et archives** — [roadmap V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178), [reconciliation](DECISIONS_CLARIFIEES.md), [catalogue des rapports anciens](ARCHIVES_ET_RAPPORTS.md).
 
-### 1 — Comprendre le système
+## Comment interpréter ce dépôt
 
-- [Architecture du dépôt](../ARCHITECTURE.md)
-- [Protocole](PROTOCOL.md), [règles de consensus](CONSENSUS.md), [modèle d'émission](EMISSION_MODEL.md)
-- [Décisions effectives du testnet](TESTNET_DECISIONS.md), [cryptographie post-quantique et limites](POST_QUANTUM.md)
-- [Guide d'introduction](guide-fr/README.md)
+- **Implémenté dans un testnet** ne signifie pas **prêt pour des fonds réels**.
+- Une **CI verte** valide une exécution précise, **pas** l'absence de toutes les vulnérabilités.
+- Une **contre-revue IA** n'est pas une **revue humaine externe**.
+- Un guide **daté d'octobre** n'est pas automatiquement valable pour les binaires de novembre.
+- Les paramètres testnet **n'engagent pas un futur mainnet** : les modifications critiques nécessitent des décisions spécifiques.
+- Une fonctionnalité annoncée dans un cahier des charges est parfois une **ambition**, et non un code livré.
 
-### 2 — Installer, exécuter, maintenir
+## Et les dizaines d'autres fichiers ?
 
-- [Guide de lancement du testnet](TESTNET_GUIDE.md)
-- [Exploitation et dépannage](TESTNET_OPERATIONS.md)
-- [Tests physiques sur deux PC](TWO_PC_TEST.md) et [intégration deux PC](INTEGRATION_TWO_PC.md)
-- [Validation du testnet](TESTNET_VALIDATION_REPORT.md), [fuzzing](FUZZING.md)
+Ils sont rangés **par sujet et par statut** dans [ARCHIVES_ET_RAPPORTS.md](ARCHIVES_ET_RAPPORTS.md). Les preuves historiques et les anciens liens ne sont volontairement **pas supprimés** par simple nettoyage visuel. Pour les questions de gouvernance et de nouvelles orientations, consulter [le dossier de planification](planning/README.md) en distinguant bien propositions et règles existantes.
 
-### 3 — Sécurité et audits
-
-- [Signalement responsable](../SECURITY.md)
-- [Modèle de menaces](THREAT_MODEL.md), [protection des clés](SECURITY_CUSTODY_THREAT_MODEL.md)
-- [Revue humaine indépendante — travail attendu, pas audit accompli](INDEPENDENT_REVIEW.md)
-- [Contre-revue par IA — vérification interne seulement](AI_COUNTER_REVIEW.md)
-
-### 4 — Développer et contribuer
-
-- [Contribuer](../CONTRIBUTING.md)
-- [Règles des agents et garde-fous](../AGENTS.md)
-- [Politique d'implémentation](planning/IMPLEMENTATION_POLICY.md)
-- [Cahier des charges et propositions](planning/README.md)
-- [Provenance des contributions, notamment IA](../PROVENANCE.md)
-
-### 5 — Décisions et feuille de route
-
-- **[Issue #178 — feuille de route V2](https://github.com/antoineforterax-cmd/ARETOVUS/issues/178)** : suivi de l'application, du wallet, de l'explorateur, du P2P et de la validation future.
-- **[Issue #142 — plan maître précédent](https://github.com/antoineforterax-cmd/ARETOVUS/issues/142)** : conserver les preuves antérieures ; ne pas recopier ses cases comme statut actuel.
-- [Registre des décisions](DECISION_REGISTER.md) et [dossier de planification](planning/README.md).
-- [Ancienne feuille de route narrative](ROADMAP_EXECUTION.md) et [ancienne checklist](FINALIZATION_CHECKLIST.md) : documents **historiques**, à ne pas utiliser seuls pour juger la version courante.
-
-### 6 — Archives et résultats techniques détaillés
-
-Les autres fichiers de `docs/`, notamment les matrices adversariales, rapports de performance, bilans datés et études de conception, sont conservés. Ils sont **des preuves ou des propositions contextualisées**, pas nécessairement des spécifications en vigueur. Il est volontairement possible de [parcourir tout le dossier](https://github.com/antoineforterax-cmd/ARETOVUS/tree/main/docs) sans afficher chaque rapport sur la page d'accueil.
-
-## Comment vérifier une affirmation technique
-
-1. Identifier la **branche**, le **SHA** et la **date** de la preuve.
-2. Comparer le code et le comportement exécuté à ce SHA, et consulter les workflows GitHub Actions terminés.
-3. Distinguer un test local, un test CI multi-processus, un essai **sur deux machines physiques** et une **revue humaine indépendante** : ce sont des niveaux différents.
-4. Pour toute modification du consensus, de la cryptographie, des fonds, des formats ou de l'économie : ouvrir une décision dédiée ; **ne pas fusionner à partir de cette seule documentation**.
-
-**Perspective :** ARETOVUS vise d'abord un laboratoire open source collaboratif humain–IA. Un éventuel mainnet avec des unités ayant une valeur réelle reste un objectif conditionnel à l'examen indépendant, à la sécurité du protocole et à l'analyse juridique ; **ce n'est pas un lancement annoncé**.
+**Premier essai conseillé :** [Comprendre ARETOVUS](COMPRENDRE_ARETOVUS.md) → [Installer un ancien testnet local](guide-fr/03-installation.md) → [Miner un bloc de test](guide-fr/04-reseau-et-minage.md) → [Comprendre comment contribuer](CONTRIBUER_AVEC_IA.md).
