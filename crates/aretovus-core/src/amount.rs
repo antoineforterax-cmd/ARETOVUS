@@ -4,6 +4,7 @@
 //! - unité minimale : 10^-8 ARETOVUS, soit 8 décimales ;
 //! - borne de 500 000 000 ARETOVUS. Le consensus applique aussi un plafond brut
 //!   d'émission via `aretovus-consensus/src/reward.rs`.
+//!
 //! Ce n'est pas une validation de sécurité pour un futur mainnet.
 
 use std::fmt;
