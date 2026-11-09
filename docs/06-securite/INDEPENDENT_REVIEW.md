@@ -5,7 +5,7 @@
 **Ancienne base historique :** `7d0f1ee598235b7194f92081424c008c4c628ceb` ne représente plus le code natif actuel. La personne extérieure devra relever le SHA final et inclure tous les changements ultérieurs dans son périmètre.
 **Usage autorisé du code :** testnet local/expérimental uniquement; pas de fonds réels.
 
-Une [contre-revue par un second agent IA](../AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Le responsable a lui aussi relu des passages et exécuté des essais. Ces travaux sont consignés comme vérifications internes ; ils ne remplissent pas le critère E1 d'une revue par une personne extérieure au projet.
+Une [contre-revue par un second agent IA](AI_COUNTER_REVIEW.md) a signalé quatre risques et ouvert les tâches de correction. Le responsable a lui aussi relu des passages et exécuté des essais. Ces travaux sont consignés comme vérifications internes ; ils ne remplissent pas le critère E1 d'une revue par une personne extérieure au projet.
 
 ## Portée demandée
 
